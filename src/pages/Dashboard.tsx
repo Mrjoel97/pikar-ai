@@ -79,11 +79,14 @@ function JourneyBand() {
         <CardDescription>Track from setup to sustainability</CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-1 md:grid-cols-7 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
           {phases.map((p) => (
-            <div key={p.id} className="rounded-lg border p-3">
+            <div
+              key={p.id}
+              className="rounded-lg border p-4 bg-background hover:shadow-sm transition-shadow"
+            >
               <div className="text-sm font-medium">{p.name}</div>
-              <div className="text-xs text-muted-foreground mb-2">{p.description}</div>
+              <div className="text-xs text-muted-foreground mb-3">{p.description}</div>
               <div className="flex flex-wrap gap-2">
                 {p.actions.map((a, i) => (
                   <Button key={i} variant="outline" size="sm" onClick={a.onClick}>
@@ -275,9 +278,6 @@ export default function Dashboard() {
         <div className="container mx-auto px-4 py-8 space-y-6">
           {renderTierHeader()}
 
-          {/* Journey Band */}
-          <JourneyBand />
-
           {/* Header */}
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
@@ -311,6 +311,9 @@ export default function Dashboard() {
               />
             ))}
           </div>
+
+          {/* Initiative Journey */}
+          <JourneyBand />
 
           {/* Main Content Tabs */}
           <Tabs defaultValue="overview" className="space-y-6">
