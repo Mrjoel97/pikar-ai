@@ -28,6 +28,19 @@ import { motion } from "framer-motion";
 
 function JourneyBand() {
   const navigate = useNavigate();
+  // Animation variants
+  const container = {
+    hidden: { opacity: 0 },
+    show: {
+      opacity: 1,
+      transition: { staggerChildren: 0.06, delayChildren: 0.05 },
+    },
+  };
+  const item = {
+    hidden: { opacity: 0, y: 8 },
+    show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 280, damping: 24, mass: 0.6 } },
+  };
+
   const phases: Array<{ id: number; name: string; description: string; actions: Array<{ label: string; onClick: () => void }> }> = [
     {
       id: 0,
@@ -80,10 +93,17 @@ function JourneyBand() {
         <CardDescription>Track from setup to sustainability</CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
+        <motion.div
+          className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4"
+          variants={container}
+          initial="hidden"
+          animate="show"
+        >
           {phases.map((p) => (
-            <div
+            <motion.div
               key={p.id}
+              variants={item}
+              whileHover={{ y: -2, scale: 1.01 }}
               className="rounded-lg border p-4 bg-background hover:shadow-sm transition-shadow"
             >
               <div className="text-sm font-medium">{p.name}</div>
@@ -95,9 +115,9 @@ function JourneyBand() {
                   </Button>
                 ))}
               </div>
-            </div>
+            </motion.div>
           ))}
-        </div>
+        </motion.div>
       </CardContent>
     </Card>
   );
@@ -279,8 +299,13 @@ export default function Dashboard() {
         <div className="container mx-auto px-4 py-8 space-y-6">
           {renderTierHeader()}
 
-          {/* Header */}
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          {/* Header with subtle entrance animation */}
+          <motion.div
+            className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ type: "spring", stiffness: 260, damping: 22, mass: 0.7 }}
+          >
             <div>
               <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
               <p className="text-muted-foreground">
@@ -297,23 +322,42 @@ export default function Dashboard() {
                 New Agent
               </Button>
             </div>
-          </div>
+          </motion.div>
 
-          {/* Stats Grid using StatCard */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {/* Stats Grid with container/child stagger */}
+          <motion.div
+            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"
+            initial="hidden"
+            animate="show"
+            variants={{
+              hidden: { opacity: 0 },
+              show: {
+                opacity: 1,
+                transition: { staggerChildren: 0.08, delayChildren: 0.05 },
+              },
+            }}
+          >
             {stats.map((stat) => (
-              <StatCard
+              <motion.div
                 key={stat.title}
-                title={stat.title}
-                value={stat.value}
-                description={stat.description}
-                suffix={stat.suffix}
-                icon={stat.icon}
-              />
+                variants={{
+                  hidden: { opacity: 0, y: 10 },
+                  show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 280, damping: 24 } },
+                }}
+                whileHover={{ y: -2 }}
+              >
+                <StatCard
+                  title={stat.title}
+                  value={stat.value}
+                  description={stat.description}
+                  suffix={stat.suffix}
+                  icon={stat.icon}
+                />
+              </motion.div>
             ))}
-          </div>
+          </motion.div>
 
-          {/* Initiative Journey */}
+          {/* Initiative Journey moved below greeting & stats (already positioned here) */}
           <JourneyBand />
 
           {/* Main Content Tabs */}
@@ -334,41 +378,65 @@ export default function Dashboard() {
                     <CardDescription>Latest updates from your AI agents</CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <div className="space-y-4">
+                    <motion.div
+                      className="space-y-4"
+                      initial="hidden"
+                      animate="show"
+                      variants={{
+                        hidden: { opacity: 1 },
+                        show: {
+                          opacity: 1,
+                          transition: { staggerChildren: 0.06 },
+                        },
+                      }}
+                    >
                       {agents?.slice(0, 5).map((agent: any) => (
-                        <div key={agent._id} className="flex items-center space-x-4">
-                          <div
-                            className={`w-2 h-2 rounded-full ${
-                              agent.status === "active"
-                                ? "bg-green-500"
-                                : agent.status === "training"
-                                ? "bg-yellow-500"
-                                : "bg-gray-500"
-                            }`}
-                          />
-                          <div className="flex-1">
-                            <p className="text-sm font-medium">{agent.name}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {(agent.metrics?.totalRuns ?? 0)} runs • {(agent.metrics?.successRate ?? 0)}% success
-                            </p>
+                        <motion.div
+                          key={agent._id}
+                          variants={{
+                            hidden: { opacity: 0, y: 8 },
+                            show: { opacity: 1, y: 0 },
+                          }}
+                        >
+                          <div className="flex items-center space-x-4">
+                            <div
+                              className={`w-2 h-2 rounded-full ${
+                                agent.status === "active"
+                                  ? "bg-green-500"
+                                  : agent.status === "training"
+                                  ? "bg-yellow-500"
+                                  : "bg-gray-500"
+                              }`}
+                            />
+                            <div className="flex-1">
+                              <p className="text-sm font-medium">{agent.name}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {(agent.metrics?.totalRuns ?? 0)} runs • {(agent.metrics?.successRate ?? 0)}% success
+                              </p>
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              {agent.metrics?.lastRun
+                                ? new Date(agent.metrics.lastRun).toLocaleDateString()
+                                : "Never"}
+                            </div>
                           </div>
-                          <div className="text-xs text-muted-foreground">
-                            {agent.metrics?.lastRun
-                              ? new Date(agent.metrics.lastRun).toLocaleDateString()
-                              : "Never"}
-                          </div>
-                        </div>
+                        </motion.div>
                       ))}
                       {(!agents || agents.length === 0) && (
-                        <div className="text-center py-8">
+                        <motion.div
+                          className="text-center py-8"
+                          initial={{ opacity: 0, scale: 0.98 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          transition={{ type: "spring", stiffness: 260, damping: 22 }}
+                        >
                           <Bot className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                           <p className="text-sm text-muted-foreground">No agents created yet</p>
                           <Button className="mt-2" onClick={() => navigate("/agents")}>
                             Create Your First Agent
                           </Button>
-                        </div>
+                        </motion.div>
                       )}
-                    </div>
+                    </motion.div>
                   </CardContent>
                 </Card>
 
@@ -379,29 +447,46 @@ export default function Dashboard() {
                     <CardDescription>Common tasks and shortcuts</CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <div className="grid grid-cols-2 gap-4">
-                      <Button variant="outline" className="h-24 flex-col" onClick={() => navigate("/agents")}>
-                        <Bot className="h-5 w-5 mb-2" />
-                        <span className="text-sm">New Agent</span>
-                      </Button>
-                      <Button variant="outline" className="h-24 flex-col" onClick={() => navigate("/workflows")}>
-                        <Brain className="h-5 w-5 mb-2" />
-                        <span className="text-sm">New Workflow</span>
-                      </Button>
-                      <Button variant="outline" className="h-24 flex-col" onClick={() => navigate("/analytics")}>
-                        <BarChart3 className="h-5 w-5 mb-2" />
-                        <span className="text-sm">View Analytics</span>
-                      </Button>
-                      <Button variant="outline" className="h-24 flex-col" onClick={() => navigate("/business")}>
-                        <Building2 className="h-5 w-5 mb-2" />
-                        <span className="text-sm">Business Settings</span>
-                      </Button>
-                    </div>
+                    <motion.div
+                      className="grid grid-cols-2 gap-4"
+                      initial="hidden"
+                      animate="show"
+                      variants={{
+                        hidden: { opacity: 0 },
+                        show: {
+                          opacity: 1,
+                          transition: { staggerChildren: 0.07, delayChildren: 0.05 },
+                        },
+                      }}
+                    >
+                      {[
+                        { icon: Bot, label: "New Agent", to: "/agents" },
+                        { icon: Brain, label: "New Workflow", to: "/workflows" },
+                        { icon: BarChart3, label: "View Analytics", to: "/analytics" },
+                        { icon: Building2, label: "Business Settings", to: "/business" },
+                      ].map((qa) => (
+                        <motion.div
+                          key={qa.label}
+                          variants={{ hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0 } }}
+                          whileHover={{ y: -2 }}
+                        >
+                          <Button
+                            variant="outline"
+                            className="h-24 flex-col"
+                            onClick={() => navigate(qa.to)}
+                          >
+                            <qa.icon className="h-5 w-5 mb-2" />
+                            <span className="text-sm">{qa.label}</span>
+                          </Button>
+                        </motion.div>
+                      ))}
+                    </motion.div>
                   </CardContent>
                 </Card>
               </div>
             </TabsContent>
 
+            {/* Agents tab: animate list */}
             <TabsContent value="agents">
               <Card>
                 <CardHeader>
@@ -409,22 +494,34 @@ export default function Dashboard() {
                   <CardDescription>Manage your AI-powered automation agents</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-4">
+                  <motion.div
+                    className="space-y-4"
+                    initial="hidden"
+                    animate="show"
+                    variants={{ hidden: { opacity: 1 }, show: { opacity: 1, transition: { staggerChildren: 0.07 } } }}
+                  >
                     {agents?.map((agent: any) => (
-                      <AgentRow key={agent._id} agent={agent} />
+                      <motion.div key={agent._id} variants={{ hidden: { opacity: 0, y: 8 }, show: { opacity: 1, y: 0 } }}>
+                        <AgentRow agent={agent} />
+                      </motion.div>
                     ))}
                     {(!agents || agents.length === 0) && (
-                      <div className="text-center py-8">
+                      <motion.div
+                        className="text-center py-8"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                      >
                         <Bot className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                         <p className="text-sm text-muted-foreground mb-4">No agents created yet</p>
                         <Button onClick={() => navigate("/agents")}>Create Your First Agent</Button>
-                      </div>
+                      </motion.div>
                     )}
-                  </div>
+                  </motion.div>
                 </CardContent>
               </Card>
             </TabsContent>
 
+            {/* Workflows tab: animate list */}
             <TabsContent value="workflows">
               <Card>
                 <CardHeader>
@@ -432,22 +529,34 @@ export default function Dashboard() {
                   <CardDescription>Automated business processes and agent orchestration</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-4">
+                  <motion.div
+                    className="space-y-4"
+                    initial="hidden"
+                    animate="show"
+                    variants={{ hidden: { opacity: 1 }, show: { opacity: 1, transition: { staggerChildren: 0.07 } } }}
+                  >
                     {workflows?.map((workflow: any) => (
-                      <WorkflowRow key={workflow._id} workflow={workflow} />
+                      <motion.div key={workflow._id} variants={{ hidden: { opacity: 0, y: 8 }, show: { opacity: 1, y: 0 } }}>
+                        <WorkflowRow workflow={workflow} />
+                      </motion.div>
                     ))}
                     {(!workflows || workflows.length === 0) && (
-                      <div className="text-center py-8">
+                      <motion.div
+                        className="text-center py-8"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                      >
                         <Brain className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                         <p className="text-sm text-muted-foreground mb-4">No workflows created yet</p>
                         <Button onClick={() => navigate("/workflows")}>Create Your First Workflow</Button>
-                      </div>
+                      </motion.div>
                     )}
-                  </div>
+                  </motion.div>
                 </CardContent>
               </Card>
             </TabsContent>
 
+            {/* Analytics tab remains unchanged */}
             <TabsContent value="analytics">
               <Card>
                 <CardHeader>
