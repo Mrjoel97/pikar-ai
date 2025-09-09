@@ -24,6 +24,7 @@ import { Sidebar } from "@/components/layout/Sidebar";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { AgentRow } from "@/components/dashboard/rows/AgentRow";
 import { WorkflowRow } from "@/components/dashboard/rows/WorkflowRow";
+import { motion } from "framer-motion";
 
 function JourneyBand() {
   const navigate = useNavigate();
@@ -476,12 +477,18 @@ export default function Dashboard() {
                       Run Inspection
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+                  <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 data-[state=open]:zoom-in-95 data-[state=closed]:zoom-out-95 data-[state=open]:slide-in-from-top-4 data-[state=closed]:slide-out-to-top-2">
                     <DialogHeader>
                       <DialogTitle>Pikar AI Feature Implementation Report</DialogTitle>
                     </DialogHeader>
 
-                    <div className="space-y-4">
+                    <motion.div
+                      className="space-y-4"
+                      initial={{ opacity: 0, y: -8, scale: 0.98 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: -6, scale: 0.98 }}
+                      transition={{ type: "spring", stiffness: 280, damping: 24, mass: 0.6 }}
+                    >
                       <div className="flex gap-2">
                         <Button onClick={handleRunInspection} disabled={isRunningInspection} size="sm">
                           {isRunningInspection ? "Running..." : "Run Inspection"}
@@ -607,7 +614,7 @@ export default function Dashboard() {
                           </div>
                         </div>
                       )}
-                    </div>
+                    </motion.div>
                   </DialogContent>
                 </Dialog>
               </CardTitle>
