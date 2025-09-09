@@ -25,6 +25,10 @@ import {
   Search,
 } from "lucide-react";
 import type { FullAppInspectionReport } from "@/convex/inspector";
+import { SolopreneurDashboardHeader } from "@/components/dashboards/SolopreneurDashboard";
+import { StartupDashboardHeader } from "@/components/dashboards/StartupDashboard";
+import { SmeDashboardHeader } from "@/components/dashboards/SmeDashboard";
+import { EnterpriseDashboardHeader } from "@/components/dashboards/EnterpriseDashboard";
 
 function JourneyBand() {
   const navigate = useNavigate();
@@ -214,9 +218,27 @@ export default function Dashboard() {
     return <Badge>{label}</Badge>;
   };
 
+  const renderTierHeader = () => {
+    const tier = (currentBusiness as any)?.tier as string | undefined;
+    switch (tier) {
+      case "solopreneur":
+        return <SolopreneurDashboardHeader />;
+      case "startup":
+        return <StartupDashboardHeader />;
+      case "sme":
+        return <SmeDashboardHeader />;
+      case "enterprise":
+        return <EnterpriseDashboardHeader />;
+      default:
+        return null;
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
       <div className="container mx-auto px-4 py-8">
+        {renderTierHeader()}
+
         {/* Journey Band */}
         <JourneyBand />
 
