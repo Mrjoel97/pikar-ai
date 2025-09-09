@@ -27,7 +27,7 @@ export function Sidebar({
           <Input
             aria-label="Search navigation"
             placeholder="Search..."
-            className="bg-white/10 border-white/20 text-white placeholder:text-white/70"
+            className="bg-white text-emerald-900 placeholder:text-emerald-600 border-white/30"
           />
         </div>
 
