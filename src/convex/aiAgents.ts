@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { mutation, query, action, internalMutation } from "./_generated/server";
+import { mutation, query, action, internalMutation, internalAction } from "./_generated/server";
 import { withErrorHandling } from "./utils";
 import { Id } from "./_generated/dataModel";
 import { api } from "./_generated/api";
@@ -1040,4 +1040,166 @@ export const seedForBusinessInternal = internalMutation({
 
     return createdIds;
   },
+});
+
+export const seedAllTierTemplatesInternal = internalAction({
+  args: {},
+  handler: async (ctx) => {
+    // Calls the existing public action; remains idempotent via createTemplate usage.
+    await ctx.runAction(api.aiAgents.seedAllTierTemplates, {});
+    return { message: "Seeded all tier templates (internal trigger)" };
+  },
+});
+
+export const seedAllTierTemplates = action({
+  args: {},
+  handler: withErrorHandling(async (ctx) => {
+    // 1) Load all existing templates and track names to avoid duplicates
+    const existing = await ctx.runQuery(api.aiAgents.listTemplates, {});
+    const existingNames = new Set(existing.map((t: any) => t.name));
+
+    // 2) Resolve creator
+    let creator = await ctx.runQuery(api.users.currentUser, {});
+    if (!creator) {
+      creator = { _id: "seed-user" as Id<"users">, name: "Seed User", email: "seed@example.com" } as any;
+    }
+
+    // 3) Tier targets: 120 total -> 30 per tier
+    const tiers: Array<"solopreneur" | "startup" | "sme" | "enterprise"> = [
+      "solopreneur",
+      "startup",
+      "sme",
+      "enterprise",
+    ];
+    const targetPerTier: Record<string, number> = {
+      solopreneur: 30,
+      startup: 30,
+      sme: 30,
+      enterprise: 30,
+    };
+
+    // 4) Count current per tier
+    const currentPerTier: Record<string, number> = { solopreneur: 0, startup: 0, sme: 0, enterprise: 0 };
+    for (const t of existing) {
+      if (tiers.includes(t.tier)) currentPerTier[t.tier] = (currentPerTier[t.tier] || 0) + 1;
+    }
+
+    // 5) Base concepts per tier (human-friendly, reusable)
+    const baseConcepts: Record<typeof tiers[number], string[]> = {
+      solopreneur: [
+        "Content Scheduler",
+        "Personal Brand Booster",
+        "One-Page Site Builder",
+        "Invoice Assistant",
+        "Lead Magnet Crafter",
+        "Micro-Newsletter",
+        "Solo CRM Lite",
+        "Client Proposal Wizard",
+        "Calendar Optimizer",
+        "Daily Focus Coach",
+      ],
+      startup: [
+        "Feature Launch Orchestrator",
+        "Growth Experiments Runner",
+        "User Onboarding Flow",
+        "PR Outreach Kit",
+        "Product Metrics Digest",
+        "Release Notes Writer",
+        "Beta Program Manager",
+        "Churn Rescue Playbook",
+        "Pricing Test Rig",
+        "Investor Update Composer",
+      ],
+      sme: [
+        "Procurement Tracker",
+        "Multi-Channel Campaign",
+        "Customer Health Monitor",
+        "NPS Insights Miner",
+        "Account Playbook Runner",
+        "Inventory Alerts",
+        "Service Desk Triage",
+        "Operations Scorecard",
+        "Quarterly Planning",
+        "Policy Compliance Checker",
+      ],
+      enterprise: [
+        "Global Campaign Orchestrator",
+        "Risk & Forecast Analyst",
+        "Security Incident Triage",
+        "Vendor Compliance Auditor",
+        "Data Quality Watchdog",
+        "Talent Pipeline Manager",
+        "Legal Clause Reviewer",
+        "Change Management Orchestrator",
+        "Procurement Optimizer",
+        "Executive KPI Digest",
+      ],
+    };
+
+    // 6) Tag helpers per tier
+    const tierTags: Record<string, string[]> = {
+      solopreneur: ["solo", "simple", "growth", "creator", "automation"],
+      startup: ["startup", "growth", "product", "experiments", "metrics"],
+      sme: ["sme", "ops", "marketing", "service", "planning"],
+      enterprise: ["enterprise", "governance", "risk", "security", "compliance"],
+    };
+
+    // 7) Seed loop: generate variants to reach 30 per tier without duplicates
+    let created = 0;
+    for (const tier of tiers) {
+      const current = currentPerTier[tier] || 0;
+      const need = Math.max(0, targetPerTier[tier] - current);
+      if (need === 0) continue;
+
+      const concepts = baseConcepts[tier];
+      let attempts = 0;
+      let made = 0;
+
+      while (made < need && attempts < need * 5) {
+        attempts += 1;
+
+        // Build a deterministic name to reduce collisions
+        const concept = concepts[attempts % concepts.length];
+        const variant = Math.floor(attempts / concepts.length) + 1;
+        const name = variant > 1 ? `${concept} v${variant}` : concept;
+
+        if (existingNames.has(name)) continue;
+        existingNames.add(name);
+
+        const description = (() => {
+          switch (tier) {
+            case "solopreneur":
+              return "Lightweight assistant for solo operators to automate repetitive tasks and grow audience.";
+            case "startup":
+              return "Experiment-driven template to accelerate product growth, launches, and user onboarding.";
+            case "sme":
+              return "Operational accelerator for small/medium teams to streamline processes and insights.";
+            case "enterprise":
+              return "Governance-ready playbook with controls for scale, compliance, and security.";
+          }
+        })();
+
+        const tags = tierTags[tier];
+        const configPreview = {
+          inputs: ["data_source", "settings", "schedule"],
+          hooks: ["ingest", "analyze", "act"],
+          outputs: ["summary", "actions", "metrics"],
+        };
+
+        await ctx.runMutation(api.aiAgents.createTemplate, {
+          name,
+          description,
+          tags,
+          tier,
+          configPreview: configPreview as any,
+          createdBy: creator._id,
+        });
+
+        made += 1;
+        created += 1;
+      }
+    }
+
+    return { message: `Templates seeding complete. Created: ${created}.` };
+  }),
 });

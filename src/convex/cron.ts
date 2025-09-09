@@ -122,4 +122,12 @@ crons.interval("approval-sla-checks", { minutes: 30 }, internal.cron.checkApprov
 crons.cron("cleanup-notifications", "0 2 * * *", internal.cron.cleanupExpiredNotificationsCron, {});
 crons.cron("cleanup-telemetry", "0 3 * * 0", internal.cron.cleanupOldTelemetryEventsCron, {});
 
+// Schedule periodic seeding of templates across tiers (idempotent)
+crons.interval(
+  "seed ai agent templates across tiers",
+  { hours: 12 },
+  internal.aiAgents.seedAllTierTemplatesInternal,
+  {}
+);
+
 export default crons;
