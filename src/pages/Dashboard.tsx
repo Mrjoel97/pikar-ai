@@ -20,6 +20,10 @@ import { SolopreneurDashboardHeader } from "@/components/dashboards/SolopreneurD
 import { StartupDashboardHeader } from "@/components/dashboards/StartupDashboard";
 import { SmeDashboardHeader } from "@/components/dashboards/SmeDashboard";
 import { EnterpriseDashboardHeader } from "@/components/dashboards/EnterpriseDashboard";
+import { Sidebar } from "@/components/layout/Sidebar";
+import { StatCard } from "@/components/dashboard/StatCard";
+import { AgentRow } from "@/components/dashboard/rows/AgentRow";
+import { WorkflowRow } from "@/components/dashboard/rows/WorkflowRow";
 
 function JourneyBand() {
   const navigate = useNavigate();
@@ -257,70 +261,25 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen">
-      {/* Fixed left sidebar */}
-      <aside className="hidden md:flex fixed left-0 top-0 bottom-0 w-72 bg-gradient-to-b from-emerald-900 to-emerald-800 text-white">
-        <div className="flex flex-col h-full w-full p-4">
-          {/* Search */}
-          <div className="mb-4">
-            <Input
-              placeholder="Search..."
-              className="bg-white/10 border-white/20 text-white placeholder:text-white/70"
-            />
-          </div>
-
-          {/* Menu label */}
-          <div className="text-xs uppercase tracking-wider text-emerald-200/80 mb-2">
-            Menu
-          </div>
-
-          {/* Nav items */}
-          <nav className="space-y-1 overflow-y-auto pr-1">
-            {sidebarItems.map((item) => (
-              <button
-                key={item.label}
-                onClick={() => navigate(item.to)}
-                className="w-full flex items-center gap-3 px-3 py-2 rounded-md hover:bg-white/10 transition"
-              >
-                <item.icon className="h-4 w-4" />
-                <span className="text-sm">{item.label}</span>
-              </button>
-            ))}
-          </nav>
-
-          {/* Spacer */}
-          <div className="flex-1" />
-
-          {/* Bottom section: user + logout */}
-          <div className="space-y-2">
-            <div className="bg-white/10 rounded-lg p-3">
-              <div className="text-sm font-medium truncate">
-                {(user as any)?.name || (user as any)?.email || "User"}
-              </div>
-              <div className="text-xs text-emerald-100/80">
-                {(tier || "Plan").toString().charAt(0).toUpperCase() + (tier || "Plan").toString().slice(1)}
-              </div>
-            </div>
-            <button
-              onClick={() => signOut()}
-              className="w-full flex items-center gap-2 px-3 py-2 rounded-md bg-white/10 hover:bg-white/15 transition"
-            >
-              <LogOut className="h-4 w-4" />
-              <span className="text-sm">Logout</span>
-            </button>
-          </div>
-        </div>
-      </aside>
+      {/* Sidebar extracted */}
+      <Sidebar
+        items={sidebarItems}
+        userDisplay={(user as any)?.name || (user as any)?.email || "User"}
+        planLabel={(tier || "Plan").toString().charAt(0).toUpperCase() + (tier || "Plan").toString().slice(1)}
+        onNavigate={(to) => navigate(to)}
+        onLogout={() => signOut()}
+      />
 
       {/* Main content shifted for sidebar on md+ */}
       <div className="md:pl-72 min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
-        <div className="container mx-auto px-4 py-8">
+        <div className="container mx-auto px-4 py-8 space-y-6">
           {renderTierHeader()}
 
           {/* Journey Band */}
           <JourneyBand />
 
           {/* Header */}
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
               <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
               <p className="text-muted-foreground">
@@ -339,22 +298,17 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Stats Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          {/* Stats Grid using StatCard */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {stats.map((stat) => (
-              <Card key={stat.title}>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">{stat.title}</CardTitle>
-                  <stat.icon className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">
-                    {stat.value}
-                    {stat.suffix}
-                  </div>
-                  <p className="text-xs text-muted-foreground">{stat.description}</p>
-                </CardContent>
-              </Card>
+              <StatCard
+                key={stat.title}
+                title={stat.title}
+                value={stat.value}
+                description={stat.description}
+                suffix={stat.suffix}
+                icon={stat.icon}
+              />
             ))}
           </div>
 
@@ -453,32 +407,7 @@ export default function Dashboard() {
                 <CardContent>
                   <div className="space-y-4">
                     {agents?.map((agent: any) => (
-                      <div key={agent._id} className="flex items-center justify-between p-4 border rounded-lg">
-                        <div className="flex items-center space-x-4">
-                          <div
-                            className={`w-3 h-3 rounded-full ${
-                              agent.status === "active"
-                                ? "bg-green-500"
-                                : agent.status === "training"
-                                ? "bg-yellow-500"
-                                : "bg-gray-500"
-                            }`}
-                          />
-                          <div>
-                            <h3 className="font-medium">{agent.name}</h3>
-                            <p className="text-sm text-muted-foreground capitalize">
-                              {String(agent.type || "").replace("_", " ")}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex items-center space-x-4">
-                          <div className="text-right">
-                            <p className="text-sm font-medium">{agent.metrics?.totalRuns ?? 0} runs</p>
-                            <p className="text-xs text-muted-foreground">{agent.metrics?.successRate ?? 0}% success</p>
-                          </div>
-                          <Button variant="outline" size="sm">Configure</Button>
-                        </div>
-                      </div>
+                      <AgentRow key={agent._id} agent={agent} />
                     ))}
                     {(!agents || agents.length === 0) && (
                       <div className="text-center py-8">
@@ -501,30 +430,7 @@ export default function Dashboard() {
                 <CardContent>
                   <div className="space-y-4">
                     {workflows?.map((workflow: any) => (
-                      <div key={workflow._id} className="flex items-center justify-between p-4 border rounded-lg">
-                        <div className="flex items-center space-x-4">
-                          <div
-                            className={`w-3 h-3 rounded-full ${
-                              workflow.status === "active"
-                                ? "bg-green-500"
-                                : workflow.status === "draft"
-                                ? "bg-yellow-500"
-                                : "bg-gray-500"
-                            }`}
-                          />
-                          <div>
-                            <h3 className="font-medium">{workflow.name}</h3>
-                            <p className="text-sm text-muted-foreground">{workflow.description}</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center space-x-4">
-                          <div className="text-right">
-                            <p className="text-sm font-medium">{workflow.metrics?.totalRuns ?? 0} runs</p>
-                            <p className="text-xs text-muted-foreground">{workflow.metrics?.successRate ?? 0}% success</p>
-                          </div>
-                          <Button variant="outline" size="sm">Edit</Button>
-                        </div>
-                      </div>
+                      <WorkflowRow key={workflow._id} workflow={workflow} />
                     ))}
                     {(!workflows || workflows.length === 0) && (
                       <div className="text-center py-8">
