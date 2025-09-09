@@ -2,20 +2,20 @@ import { useNavigate } from "react-router";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
+import { toast } from "sonner";
+import { useState, type ChangeEvent } from "react";
+import { Play, Copy, BarChart3, Clock, Webhook } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
-import { toast } from "sonner";
-import { useState } from "react";
-import { Play, Copy, BarChart3, Clock, Webhook } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 export default function WorkflowsPage() {
   const navigate = useNavigate();
@@ -28,8 +28,6 @@ export default function WorkflowsPage() {
   const [editedPipelines, setEditedPipelines] = useState<Record<string, any[]>>({});
   const [templateTierFilter, setTemplateTierFilter] = useState<string>("all");
   const [templateIndustryFilter, setTemplateIndustryFilter] = useState<string>("all");
-
-
 
   const businesses = useQuery(api.businesses.getUserBusinesses, {});
   const firstBizId = businesses?.[0]?._id;
@@ -52,6 +50,7 @@ export default function WorkflowsPage() {
   const copyFromTemplate = useMutation(api.workflows.copyFromTemplate);
   const updateTrigger = useMutation(api.workflows.updateTrigger);
   const seedBusinessTemplates = useMutation(api.workflows.seedBusinessWorkflowTemplates);
+  const seedAllTierTemplates = useAction(api.aiAgents.seedAllTierTemplates);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -288,8 +287,6 @@ export default function WorkflowsPage() {
     });
   };
 
-
-
   const savePipeline = async (wf: any) => {
     try {
       const pipeline = editedPipelines[wf._id] ?? wf.pipeline;
@@ -338,6 +335,17 @@ export default function WorkflowsPage() {
     }
   };
 
+  const handleSeed = async () => {
+    try {
+      toast.loading("Seeding 120 templates...", { id: "seed-templates" });
+      await seedAllTierTemplates({});
+      toast.success("Seeding complete. 120 templates distributed across tiers.", { id: "seed-templates" });
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to seed templates. Please try again.", { id: "seed-templates" });
+    }
+  };
+
   return (
     <div className="max-w-6xl mx-auto px-4 md:px-6 py-6 space-y-6">
       <div className="flex items-center justify-between">
@@ -363,7 +371,7 @@ export default function WorkflowsPage() {
                   <Input
                     id="name"
                     value={formData.name}
-                    onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                    onChange={(e: ChangeEvent<HTMLInputElement>) => setFormData(prev => ({ ...prev, name: e.target.value }))}
                     placeholder="Workflow name"
                   />
                 </div>
@@ -387,7 +395,7 @@ export default function WorkflowsPage() {
                 <Input
                   id="description"
                   value={formData.description}
-                  onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                  onChange={(e: ChangeEvent<HTMLInputElement>) => setFormData(prev => ({ ...prev, description: e.target.value }))}
                   placeholder="Optional description"
                 />
               </div>
@@ -398,7 +406,7 @@ export default function WorkflowsPage() {
                   <Input
                     id="cron"
                     value={formData.cron}
-                    onChange={(e) => setFormData(prev => ({ ...prev, cron: e.target.value }))}
+                    onChange={(e: ChangeEvent<HTMLInputElement>) => setFormData(prev => ({ ...prev, cron: e.target.value }))}
                     placeholder="0 9 * * 1 (Every Monday at 9 AM)"
                   />
                 </div>
@@ -410,7 +418,7 @@ export default function WorkflowsPage() {
                   <Input
                     id="eventKey"
                     value={formData.eventKey}
-                    onChange={(e) => setFormData(prev => ({ ...prev, eventKey: e.target.value }))}
+                    onChange={(e: ChangeEvent<HTMLInputElement>) => setFormData(prev => ({ ...prev, eventKey: e.target.value }))}
                     placeholder="unique-event-key"
                   />
                 </div>
@@ -420,7 +428,7 @@ export default function WorkflowsPage() {
                 <Switch
                   id="approval"
                   checked={formData.approvalRequired}
-                  onCheckedChange={(checked) => setFormData(prev => ({ ...prev, approvalRequired: checked }))}
+                  onCheckedChange={(checked: boolean) => setFormData(prev => ({ ...prev, approvalRequired: checked }))}
                 />
                 <Label htmlFor="approval">Require Approval</Label>
               </div>
@@ -429,7 +437,7 @@ export default function WorkflowsPage() {
                 <Switch
                   id="template"
                   checked={formData.saveAsTemplate}
-                  onCheckedChange={(checked) => setFormData(prev => ({ ...prev, saveAsTemplate: checked }))}
+                  onCheckedChange={(checked: boolean) => setFormData(prev => ({ ...prev, saveAsTemplate: checked }))}
                 />
                 <Label htmlFor="template">Save as Template</Label>
               </div>
@@ -441,7 +449,7 @@ export default function WorkflowsPage() {
                     id="threshold"
                     type="number"
                     value={formData.approvalThreshold}
-                    onChange={(e) => setFormData(prev => ({ ...prev, approvalThreshold: parseInt(e.target.value) || 1 }))}
+                    onChange={(e: ChangeEvent<HTMLInputElement>) => setFormData(prev => ({ ...prev, approvalThreshold: parseInt(e.target.value) || 1 }))}
                     min="1"
                   />
                 </div>
@@ -452,7 +460,7 @@ export default function WorkflowsPage() {
                 <Textarea
                   id="pipeline"
                   value={formData.pipeline}
-                  onChange={(e) => setFormData(prev => ({ ...prev, pipeline: e.target.value }))}
+                  onChange={(e: ChangeEvent<HTMLTextAreaElement>) => setFormData(prev => ({ ...prev, pipeline: e.target.value }))}
                   rows={8}
                   className="font-mono text-sm"
                 />
@@ -463,7 +471,7 @@ export default function WorkflowsPage() {
                 <Input
                   id="tags"
                   value={formData.tags}
-                  onChange={(e) => setFormData(prev => ({ ...prev, tags: e.target.value }))}
+                  onChange={(e: ChangeEvent<HTMLInputElement>) => setFormData(prev => ({ ...prev, tags: e.target.value }))}
                   placeholder="marketing, automation"
                 />
               </div>
@@ -533,58 +541,57 @@ export default function WorkflowsPage() {
                   )}
                 </CardContent>
 
-	                {expanded[workflow._id] && (
-	                  <div className="border-t pt-3 space-y-2">
-	                    {(editedPipelines[workflow._id] ?? workflow.pipeline).map((step: any, idx: number) => {
-	                      const kind = getStepKind(step);
-	                      return (
-	                        <div key={idx} className="flex items-center justify-between p-2 border rounded">
-	                          <div className="text-sm">
-	                            <div className="font-medium capitalize">{kind}</div>
-	                            {kind === "branch" && (
-	                              <div className="text-xs text-muted-foreground">
-	                                IF {step?.condition?.metric} {step?.condition?.op} {String(step?.condition?.value)} THEN → {step?.onTrueNext} ELSE → {step?.onFalseNext}
-	                              </div>
-	                            )}
-	                            {kind === "approval" && (
-	                              <div className="text-xs text-muted-foreground">Approver: {step?.approverRole || step?.config?.approverRole || "manager"}</div>
-	                            )}
-	                            {kind === "delay" && (
-	                              <div className="text-xs text-muted-foreground">Delay: {step?.delayMinutes || step?.config?.delayMinutes || 0} min</div>
-
-	                            )}
-	                          </div>
-                            <div className="mt-1 flex flex-wrap items-center gap-2">
+                {expanded[workflow._id] && (
+                  <div className="border-t pt-3 space-y-2">
+                    {(editedPipelines[workflow._id] ?? workflow.pipeline).map((step: any, idx: number) => {
+                      const kind = getStepKind(step);
+                      return (
+                        <div key={idx} className="flex items-center justify-between p-2 border rounded">
+                          <div className="text-sm">
+                            <div className="font-medium capitalize">{kind}</div>
+                            {kind === "branch" && (
+                              <div className="text-xs text-muted-foreground">
+                                IF {step?.condition?.metric} {step?.condition?.op} {String(step?.condition?.value)} THEN → {step?.onTrueNext} ELSE → {step?.onFalseNext}
+                              </div>
+                            )}
+                            {kind === "approval" && (
+                              <div className="text-xs text-muted-foreground">Approver: {step?.approverRole || step?.config?.approverRole || "manager"}</div>
+                            )}
+                            {kind === "delay" && (
+                              <div className="text-xs text-muted-foreground">Delay: {step?.delayMinutes || step?.config?.delayMinutes || 0} min</div>
+                            )}
+                          </div>
+                          <div className="mt-1 flex flex-wrap items-center gap-2">
+                            <Input
+                              className="h-8 w-64"
+                              placeholder="Step title (optional)"
+                              value={step?.title || ""}
+                              onChange={(e: ChangeEvent<HTMLInputElement>) => setStepField(workflow, idx, { title: e.target.value })}
+                            />
+                            {kind === "approval" && (
                               <Input
-                                className="h-8 w-64"
-                                placeholder="Step title (optional)"
-                                value={step?.title || ""}
-                                onChange={(e) => setStepField(workflow, idx, { title: e.target.value })}
+                                className="h-8 w-56"
+                                placeholder="Approver role"
+                                value={step?.approverRole || step?.config?.approverRole || ""}
+                                onChange={(e: ChangeEvent<HTMLInputElement>) => setStepField(workflow, idx, { approverRole: e.target.value })}
                               />
-                              {kind === "approval" && (
-                                <Input
-                                  className="h-8 w-56"
-                                  placeholder="Approver role"
-                                  value={step?.approverRole || step?.config?.approverRole || ""}
-                                  onChange={(e) => setStepField(workflow, idx, { approverRole: e.target.value })}
-                                />
-                              )}
-                              {kind === "delay" && (
-                                <Input
-                                  type="number"
-                                  className="h-8 w-40"
-                                  placeholder="Delay minutes"
-                                  value={String(step?.delayMinutes ?? step?.config?.delayMinutes ?? 0)}
-                                  onChange={(e) => setStepField(workflow, idx, { delayMinutes: parseInt(e.target.value) || 0 })}
-                                />
-                              )}
+                            )}
+                            {kind === "delay" && (
+                              <Input
+                                type="number"
+                                className="h-8 w-40"
+                                placeholder="Delay minutes"
+                                value={String(step?.delayMinutes ?? step?.config?.delayMinutes ?? 0)}
+                                onChange={(e: ChangeEvent<HTMLInputElement>) => setStepField(workflow, idx, { delayMinutes: parseInt(e.target.value) || 0 })}
+                              />
+                            )}
+                          </div>
+                          {kind === "agent" && (
+                            <div className="flex items-center gap-2">
+                              <Switch checked={!!step?.mmrRequired} onCheckedChange={(v: boolean) => toggleMMR(workflow, idx, !!v)} id={`mmr-${workflow._id}-${idx}`} />
+                              <Label htmlFor={`mmr-${workflow._id}-${idx}`}>Require human review</Label>
                             </div>
-	                          {kind === "agent" && (
-	                            <div className="flex items-center gap-2">
-	                              <Switch checked={!!step?.mmrRequired} onCheckedChange={(v) => toggleMMR(workflow, idx, !!v)} id={`mmr-${workflow._id}-${idx}`} />
-	                              <Label htmlFor={`mmr-${workflow._id}-${idx}`}>Require human review</Label>
-	                            </div>
-	                          )}
+                          )}
                           <div className="flex items-center gap-1">
                             <Button size="sm" variant="outline" onClick={() => addStep(workflow, idx, "agent")}>+Agent</Button>
                             <Button size="sm" variant="outline" onClick={() => addStep(workflow, idx, "approval")}>+Approval</Button>
@@ -594,14 +601,14 @@ export default function WorkflowsPage() {
                             <Button size="sm" variant="outline" onClick={() => moveStep(workflow, idx, 1)}>Down</Button>
                             <Button size="sm" variant="destructive" onClick={() => removeStep(workflow, idx)}>Remove</Button>
                           </div>
-	                        </div>
-	                      );
-	                    })}
-	                    <div className="pt-1">
-	                      <Button size="sm" onClick={() => savePipeline(workflow)}>Save pipeline</Button>
-	                    </div>
-	                  </div>
-	                )}
+                        </div>
+                      );
+                    })}
+                    <div className="pt-1">
+                      <Button size="sm" onClick={() => savePipeline(workflow)}>Save pipeline</Button>
+                    </div>
+                  </div>
+                )}
 
               </Card>
             ))}
@@ -756,6 +763,14 @@ export default function WorkflowsPage() {
           )}
         </TabsContent>
       </Tabs>
+
+      <Button
+        onClick={handleSeed}
+        className="fixed bottom-6 right-6 z-50 shadow-lg"
+        variant="default"
+      >
+        Seed 120 Templates
+      </Button>
     </div>
   );
 }
