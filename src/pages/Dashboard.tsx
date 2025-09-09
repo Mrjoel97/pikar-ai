@@ -331,7 +331,7 @@ export default function Dashboard() {
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
-                      {agents?.slice(0, 3).map((agent: any) => (
+                      {agents?.slice(0, 5).map((agent: any) => (
                         <div key={agent._id} className="flex items-center space-x-4">
                           <div
                             className={`w-2 h-2 rounded-full ${
@@ -376,20 +376,20 @@ export default function Dashboard() {
                   </CardHeader>
                   <CardContent>
                     <div className="grid grid-cols-2 gap-4">
-                      <Button variant="outline" className="h-20 flex-col" onClick={() => navigate("/agents")}>
-                        <Bot className="h-6 w-6 mb-2" />
+                      <Button variant="outline" className="h-24 flex-col" onClick={() => navigate("/agents")}>
+                        <Bot className="h-5 w-5 mb-2" />
                         <span className="text-sm">New Agent</span>
                       </Button>
-                      <Button variant="outline" className="h-20 flex-col" onClick={() => navigate("/workflows")}>
-                        <Brain className="h-6 w-6 mb-2" />
+                      <Button variant="outline" className="h-24 flex-col" onClick={() => navigate("/workflows")}>
+                        <Brain className="h-5 w-5 mb-2" />
                         <span className="text-sm">New Workflow</span>
                       </Button>
-                      <Button variant="outline" className="h-20 flex-col" onClick={() => navigate("/analytics")}>
-                        <BarChart3 className="h-6 w-6 mb-2" />
+                      <Button variant="outline" className="h-24 flex-col" onClick={() => navigate("/analytics")}>
+                        <BarChart3 className="h-5 w-5 mb-2" />
                         <span className="text-sm">View Analytics</span>
                       </Button>
-                      <Button variant="outline" className="h-20 flex-col" onClick={() => navigate("/business")}>
-                        <Building2 className="h-6 w-6 mb-2" />
+                      <Button variant="outline" className="h-24 flex-col" onClick={() => navigate("/business")}>
+                        <Building2 className="h-5 w-5 mb-2" />
                         <span className="text-sm">Business Settings</span>
                       </Button>
                     </div>

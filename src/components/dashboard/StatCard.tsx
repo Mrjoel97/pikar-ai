@@ -17,12 +17,13 @@ export function StatCard({ title, value, description, suffix, icon: Icon }: Stat
         <Icon className="h-4 w-4 text-muted-foreground" />
       </CardHeader>
       <CardContent>
-        <div className="text-2xl font-bold">
-          {value}
-          {suffix}
+        {/* Normalize number + suffix spacing and hierarchy */}
+        <div className="text-2xl font-bold leading-tight flex items-baseline gap-1">
+          <span>{value}</span>
+          {suffix && <span className="text-muted-foreground text-sm">{suffix}</span>}
         </div>
         {description && (
-          <p className="text-xs text-muted-foreground">{description}</p>
+          <p className="text-xs text-muted-foreground mt-1">{description}</p>
         )}
       </CardContent>
     </Card>

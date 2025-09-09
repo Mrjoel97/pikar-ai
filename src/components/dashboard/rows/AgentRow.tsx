@@ -14,12 +14,12 @@ export function AgentRow({ agent }: AgentRowProps) {
       : "bg-gray-500";
 
   return (
-    <div className="flex items-center justify-between p-4 border rounded-lg">
+    <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition">
       <div className="flex items-center space-x-4">
-        <div className={`w-3 h-3 rounded-full ${statusColor}`} />
+        <div className={`w-2.5 h-2.5 rounded-full ${statusColor}`} />
         <div>
-          <h3 className="font-medium truncate max-w-[220px]">{agent.name}</h3>
-          <p className="text-sm text-muted-foreground capitalize">
+          <h3 className="font-medium truncate max-w-[240px]">{agent.name}</h3>
+          <p className="text-xs text-muted-foreground capitalize">
             {String(agent.type || "").replace("_", " ")}
           </p>
         </div>
