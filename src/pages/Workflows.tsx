@@ -336,13 +336,18 @@ export default function WorkflowsPage() {
   };
 
   const handleSeed = async () => {
+    if (!firstBizId) {
+      toast.error("No business found. Complete onboarding first.");
+      return;
+    }
     try {
       toast.loading("Seeding 120 templates...", { id: "seed-templates" });
-      await seedAllTierTemplates({});
-      toast.success("Seeding complete. 120 templates distributed across tiers.", { id: "seed-templates" });
-    } catch (err) {
+      const res = await seedBusinessTemplates({ businessId: firstBizId as any, perTier: 30 } as any);
+      const inserted = (res as any)?.inserted ?? 0;
+      toast.success(`Seeding complete. Inserted ${inserted} templates.`, { id: "seed-templates" });
+    } catch (err: any) {
       console.error(err);
-      toast.error("Failed to seed templates. Please try again.", { id: "seed-templates" });
+      toast.error(err?.message || "Failed to seed templates. Please try again.", { id: "seed-templates" });
     }
   };
 
@@ -768,6 +773,7 @@ export default function WorkflowsPage() {
         onClick={handleSeed}
         className="fixed bottom-6 right-6 z-50 shadow-lg"
         variant="default"
+        disabled={!firstBizId}
       >
         Seed 120 Templates
       </Button>
