@@ -134,3 +134,31 @@ export const seedDemoTasksForBusiness = mutation({
     return selected.length;
   },
 });
+
+// Add: Top 3 tasks (SNAP-like) per business: urgent/high first, then updatedAt desc
+export const topThreeForBusiness = query({
+  args: { businessId: v.id("businesses") },
+  handler: async (ctx, args) => {
+    // Fetch by business via index and manually prioritize
+    const rows: Array<any> = [];
+    for await (const row of ctx.db
+      .query("tasks")
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))) {
+      rows.push(row);
+      if (rows.length > 100) break; // cap scan for perf in dev
+    }
+
+    const priorityRank: Record<string, number> = { high: 0, medium: 1, low: 2 };
+    rows.sort((a, b) => {
+      // Urgent first
+      if (a.urgent !== b.urgent) return a.urgent ? -1 : 1;
+      // Priority next
+      const pr = (priorityRank[a.priority] ?? 9) - (priorityRank[b.priority] ?? 9);
+      if (pr !== 0) return pr;
+      // Newer updatedAt first
+      return (b.updatedAt ?? 0) - (a.updatedAt ?? 0);
+    });
+
+    return rows.slice(0, 3);
+  },
+});

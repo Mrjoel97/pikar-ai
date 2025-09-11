@@ -2,6 +2,24 @@ import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
 
+// Add: latest KPI snapshot for a business
+export const latestForBusiness = query({
+  args: { businessId: v.id("businesses") },
+  handler: async (ctx, args) => {
+    // Use by_business_and_date to get latest by date (string YYYY-MM-DD)
+    // We'll scan and keep the max since date is a string; dataset is small for dev
+    let latest: any | null = null;
+    for await (const row of ctx.db
+      .query("dashboardKpis")
+      .withIndex("by_business_and_date", (q) => q.eq("businessId", args.businessId))) {
+      if (!latest || row.date > latest.date) {
+        latest = row;
+      }
+    }
+    return latest;
+  },
+});
+
 // Get the latest KPI snapshot for a business (fallback to zeros)
 export const getSnapshot = query({
   args: { businessId: v.id("businesses") },

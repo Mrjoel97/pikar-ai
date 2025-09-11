@@ -441,3 +441,69 @@ export const checkApprovalSLABreaches = internalMutation({
     return approvalsNeedingWarning.length;
   },
 });
+
+// Add: Lightweight pending approvals query
+export const pendingByUser = query({
+  args: {
+    userId: v.id("users"),
+    businessId: v.optional(v.id("businesses")),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const limit = args.limit ?? 5;
+    // Use index by_assignee to fetch requests assigned to user
+    const q = ctx.db
+      .query("approvalQueue")
+      .withIndex("by_assignee", (q) => q.eq("assigneeId", args.userId));
+
+    const rows: Array<any> = [];
+    for await (const row of q) {
+      if (row.status !== "pending") continue;
+      if (args.businessId && row.businessId !== args.businessId) continue;
+      rows.push(row);
+      if (rows.length >= limit) break;
+    }
+    return rows;
+  },
+});
+
+// Add: Approve action
+export const approve = mutation({
+  args: {
+    id: v.id("approvalQueue"),
+    approvedBy: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    const now = Date.now();
+    await ctx.db.patch(args.id, {
+      status: "approved",
+      approvedAt: now,
+      approvedBy: args.approvedBy,
+      rejectionReason: undefined,
+      rejectedAt: undefined,
+      rejectedBy: undefined,
+    });
+    return true;
+  },
+});
+
+// Add: Reject action
+export const reject = mutation({
+  args: {
+    id: v.id("approvalQueue"),
+    rejectedBy: v.id("users"),
+    reason: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const now = Date.now();
+    await ctx.db.patch(args.id, {
+      status: "rejected",
+      rejectedAt: now,
+      rejectedBy: args.rejectedBy,
+      rejectionReason: args.reason,
+      approvedAt: undefined,
+      approvedBy: undefined,
+    });
+    return true;
+  },
+});

@@ -153,6 +153,33 @@ export default function Dashboard() {
     currentBusiness ? { businessId: currentBusiness._id } : "skip" // use "skip" per Convex types
   );
 
+  // Add helper selectors near existing user/business context hooks
+  const currentUser = useQuery(api.users.currentUser);
+  const pendingApprovals = useQuery(
+    api.approvals.pendingByUser,
+    currentUser && currentBusiness
+      ? { userId: currentUser._id, businessId: currentBusiness._id, limit: 5 }
+      : "skip"
+  );
+
+  const approveApproval = useMutation(api.approvals.approve);
+  const rejectApproval = useMutation(api.approvals.reject);
+
+  const topTasks = useQuery(
+    api.tasks.topThreeForBusiness,
+    currentBusiness ? { businessId: currentBusiness._id } : "skip"
+  );
+
+  const kpisLatest = useQuery(
+    api.kpis.latestForBusiness,
+    currentBusiness ? { businessId: currentBusiness._id } : "skip"
+  );
+
+  const upgradeNudges = useQuery(
+    api.telemetry.getUpgradeNudges,
+    currentBusiness ? { businessId: currentBusiness._id } : "skip"
+  );
+
   // Inspector state
   const [inspectionOpen, setInspectionOpen] = useState(false);
   const [isRunningInspection, setIsRunningInspection] = useState(false);
@@ -344,6 +371,151 @@ export default function Dashboard() {
     return <Badge>{label}</Badge>;
   };
 
+  const renderTodayFocus = () => {
+    if (topTasks === undefined) return null;
+    if (topTasks === null || topTasks.length === 0) {
+      return (
+        <div className="rounded-lg border p-4">
+          <div className="font-medium">Today's Focus</div>
+          <div className="text-sm text-muted-foreground mt-1">No tasks yet.</div>
+        </div>
+      );
+    }
+    return (
+      <div className="rounded-lg border p-4">
+        <div className="font-medium mb-2">Today's Focus</div>
+        <ul className="space-y-2">
+          {topTasks.map((t: any) => (
+            <li key={t._id} className="flex items-start justify-between">
+              <div>
+                <div className="font-medium">{t.title}</div>
+                {t.description ? (
+                  <div className="text-sm text-muted-foreground">{t.description}</div>
+                ) : null}
+                <div className="text-xs mt-1">
+                  {t.urgent ? "Urgent • " : ""}
+                  Priority: {t.priority}
+                </div>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </div>
+    );
+  };
+
+  const renderPerformanceSnapshot = () => {
+    if (kpisLatest === undefined) return null;
+    const k = kpisLatest;
+    return (
+      <div className="rounded-lg border p-4">
+        <div className="font-medium mb-3">Performance Snapshot</div>
+        {k ? (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <KpiCard label="Visitors" value={k.visitors} delta={k.visitorsDelta} />
+            <KpiCard label="Subscribers" value={k.subscribers} delta={k.subscribersDelta} />
+            <KpiCard label="Engagement" value={`${k.engagement}%`} delta={k.engagementDelta} />
+            <KpiCard label="Revenue" value={`$${k.revenue.toLocaleString()}`} delta={k.revenueDelta} />
+          </div>
+        ) : (
+          <div className="text-sm text-muted-foreground">No KPI data yet.</div>
+        )}
+      </div>
+    );
+  };
+
+  function KpiCard({ label, value, delta }: { label: string; value: any; delta?: number }) {
+    const positive = (delta ?? 0) >= 0;
+    return (
+      <div className="rounded-md border p-3">
+        <div className="text-xs text-muted-foreground">{label}</div>
+        <div className="text-xl font-semibold mt-1">{value ?? "—"}</div>
+        <div className={`text-xs mt-1 ${positive ? "text-emerald-600" : "text-rose-600"}`}>
+          {delta !== undefined ? `${positive ? "▲" : "▼"} ${Math.abs(delta)}%` : "—"}
+        </div>
+      </div>
+    );
+  }
+
+  const renderApprovals = () => {
+    if (pendingApprovals === undefined) return null;
+    if (!pendingApprovals || pendingApprovals.length === 0) {
+      return (
+        <div className="rounded-lg border p-4">
+          <div className="font-medium">Pending Approvals</div>
+          <div className="text-sm text-muted-foreground mt-1">Nothing pending.</div>
+        </div>
+      );
+    }
+    return (
+      <div className="rounded-lg border p-4">
+        <div className="font-medium mb-2">Pending Approvals</div>
+        <ul className="space-y-2">
+          {pendingApprovals.map((r: any) => (
+            <li key={r._id} className="flex items-center justify-between">
+              <div>
+                <div className="font-medium">{r.priority.toUpperCase()} • {r.status}</div>
+                <div className="text-xs text-muted-foreground">Workflow Step: {String(r.stepId)}</div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  className="px-2 py-1 rounded bg-emerald-600 text-white text-xs"
+                  onClick={async () => {
+                    try {
+                      await approveApproval({ id: r._id, approvedBy: currentUser!._id });
+                      toast.success("Approved");
+                    } catch (e: any) {
+                      toast.error(e?.message ?? "Approve failed");
+                    }
+                  }}
+                >
+                  Approve
+                </button>
+                <button
+                  className="px-2 py-1 rounded bg-rose-600 text-white text-xs"
+                  onClick={async () => {
+                    try {
+                      await rejectApproval({ id: r._id, rejectedBy: currentUser!._id });
+                      toast.success("Rejected");
+                    } catch (e: any) {
+                      toast.error(e?.message ?? "Reject failed");
+                    }
+                  }}
+                >
+                  Reject
+                </button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </div>
+    );
+  };
+
+  const renderUpgradeNudge = () => {
+    // Behind implicit flag: only show if backend says so
+    if (upgradeNudges === undefined || !upgradeNudges?.showBanner) return null;
+    const first = upgradeNudges.nudges[0];
+    return (
+      <div className="rounded-lg border p-4 bg-amber-50">
+        <div className="flex items-center justify-between gap-2">
+          <div className="text-sm">
+            <span className="font-medium">Upgrade</span>: {first?.message}
+          </div>
+          <a
+            href="#"
+            onClick={() =>
+              toast.info("Upgrade flow coming soon")
+            }
+            className="text-xs underline"
+          >
+            Learn more
+          </a>
+        </div>
+      </div>
+    );
+  };
+
   const renderTierHeader = () => {
     const tier = (currentBusiness as any)?.tier as string | undefined;
     switch (tier) {
@@ -435,74 +607,7 @@ export default function Dashboard() {
           </motion.div>
 
           {/* Today's Focus */}
-          <div className="mb-6 rounded-lg border p-4">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="font-semibold">Today's Focus</h3>
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-muted-foreground">
-                  Top 3 tasks prioritized by urgency and priority
-                </span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={async () => {
-                    try {
-                      await seedTasks({ businessId: currentBusiness._id } as any);
-                      toast("Seeded 3 demo tasks");
-                    } catch {
-                      toast("Failed to seed tasks");
-                    }
-                  }}
-                >
-                  Seed 3 Tasks
-                </Button>
-              </div>
-            </div>
-            <div className="space-y-2">
-              {(focusTasks ?? []).length === 0 ? (
-                <div className="text-sm text-muted-foreground">No tasks yet. Great time to create a quick win.</div>
-              ) : (
-                (focusTasks ?? []).map((t) => (
-                  <div
-                    key={t._id}
-                    className="flex items-center justify-between rounded-md border px-3 py-2"
-                  >
-                    <div className="flex items-center gap-3">
-                      <input
-                        type="checkbox"
-                        checked={t.status === "done"}
-                        onChange={async (e) => {
-                          try {
-                            await updateTaskStatus({
-                              taskId: t._id,
-                              status: e.target.checked ? "done" : "todo",
-                            });
-                            toast("Task updated");
-                          } catch (err: any) {
-                            toast("Failed to update task");
-                          }
-                        }}
-                      />
-                      <div>
-                        <div className="text-sm font-medium">{t.title}</div>
-                        {t.description && (
-                          <div className="text-xs text-muted-foreground">{t.description}</div>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {t.urgent && (
-                        <span className="text-[10px] rounded bg-red-100 px-2 py-0.5 text-red-700">Urgent</span>
-                      )}
-                      <span className="text-[10px] rounded bg-slate-100 px-2 py-0.5 capitalize">
-                        {t.priority}
-                      </span>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
+          {renderTodayFocus()}
 
           {/* Compact action row */}
           <div className="flex items-center justify-end -mb-2">

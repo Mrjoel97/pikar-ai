@@ -287,3 +287,85 @@ export const trackOnboardingProgress = mutation({
     });
   },
 });
+
+// Add: generic event collector (non-PII)
+export const recordEvent = mutation({
+  args: {
+    businessId: v.id("businesses"),
+    userId: v.optional(v.id("users")),
+    eventName: v.string(),
+    eventData: v.optional(v.any()),
+    source: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.insert("telemetryEvents", {
+      businessId: args.businessId,
+      userId: args.userId ?? undefined,
+      eventName: args.eventName,
+      eventData: args.eventData ?? {},
+      timestamp: Date.now(),
+      sessionId: undefined,
+      userAgent: undefined,
+      ipAddress: undefined,
+      source: args.source ?? "app",
+    });
+    return true;
+  },
+});
+
+// Add: lightweight upgrade nudges based on usage (counts only)
+export const getUpgradeNudges = query({
+  args: {
+    businessId: v.id("businesses"),
+  },
+  handler: async (ctx, args) => {
+    // Count workflows for business
+    let workflowsCount = 0;
+    for await (const _ of ctx.db
+      .query("workflows")
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))) {
+      workflowsCount++;
+      if (workflowsCount > 50) break;
+    }
+
+    // Count workflow runs
+    let runsCount = 0;
+    for await (const _ of ctx.db
+      .query("workflowRuns")
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))) {
+      runsCount++;
+      if (runsCount > 200) break;
+    }
+
+    // Count agents
+    let agentsCount = 0;
+    for await (const _ of ctx.db
+      .query("aiAgents")
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))) {
+      agentsCount++;
+      if (agentsCount > 20) break;
+    }
+
+    // Simple heuristic for nudging
+    const nudges: Array<{ code: string; message: string; level: "info" | "warn" }> = [];
+    if (runsCount >= 50 && agentsCount >= 3) {
+      nudges.push({
+        code: "upgrade_usage_high",
+        message: "You're nearing higher usage—unlock more runs and premium features.",
+        level: "warn",
+      });
+    } else if (workflowsCount >= 5) {
+      nudges.push({
+        code: "upgrade_more_workflows",
+        message: "Create more workflows with premium templates and analytics.",
+        level: "info",
+      });
+    }
+
+    return {
+      showBanner: nudges.length > 0,
+      nudges,
+      snapshot: { workflowsCount, runsCount, agentsCount },
+    };
+  },
+});
