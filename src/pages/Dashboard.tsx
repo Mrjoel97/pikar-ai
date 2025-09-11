@@ -316,6 +316,8 @@ export default function Dashboard() {
     },
   ];
 
+  const isHelpEnabled = Array.isArray(flags) && flags.some((f: any) => f.flagName === "help_chat" && !!f.isEnabled);
+
   const handleRunInspection = async () => {
     setIsRunningInspection(true);
     try {
@@ -620,6 +622,11 @@ export default function Dashboard() {
                                   : "bg-gray-500"
                               }`}
                             />
+                            {((agent.metrics?.successRate ?? 0) >= 60) ? (
+                              <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                            ) : (
+                              <XCircle className="h-4 w-4 text-red-600 shrink-0" />
+                            )}
                             <div className="flex-1">
                               <p className="text-sm font-medium">{agent.name}</p>
                               <p className="text-xs text-muted-foreground">
@@ -643,7 +650,7 @@ export default function Dashboard() {
                         >
                           <Bot className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                           <p className="text-sm text-muted-foreground">No agents created yet</p>
-                          <Button className="mt-2" onClick={() => navigate("/agents")}>
+                          <Button onClick={() => navigate("/agents")}>
                             Create Your First Agent
                           </Button>
                         </motion.div>
@@ -692,9 +699,49 @@ export default function Dashboard() {
                           </Button>
                         </motion.div>
                       ))}
+                      {isHelpEnabled && (
+                        <motion.div
+                          variants={{ hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0 } }}
+                          whileHover={{ y: -2 }}
+                        >
+                          <Button
+                            variant="outline"
+                            className="h-24 flex-col"
+                            onClick={() => {
+                              toast("Connecting you to support…");
+                            }}
+                          >
+                            <MessageSquare className="h-5 w-5 mb-2" />
+                            <span className="text-sm">Get Help</span>
+                          </Button>
+                        </motion.div>
+                      )}
                     </motion.div>
                   </CardContent>
                 </Card>
+
+                {/* Initiative Status */}
+                <div className="grid grid-cols-1 gap-6">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Initiative Status</CardTitle>
+                      <CardDescription>Current phase for your primary initiative</CardDescription>
+                    </CardHeader>
+                    <CardContent className="flex items-center justify-between">
+                      <div>
+                        <div className="text-sm text-muted-foreground mb-1">Phase</div>
+                        <div className="text-lg font-semibold capitalize">
+                          {(initiative as any)?.phase || "not started"}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button variant="outline" onClick={() => navigate("/initiatives")}>
+                          View Details
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
               </div>
 
               {/* Compact widgets row: Approvals, Feature Flags, Telemetry Debug */}
