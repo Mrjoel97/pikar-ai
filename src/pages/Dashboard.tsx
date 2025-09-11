@@ -635,6 +635,21 @@ export default function Dashboard() {
             >
               Seed KPIs
             </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="ml-2"
+              onClick={async () => {
+                try {
+                  await seedTasks({ businessId: currentBusiness._id, count: 3 } as any);
+                  toast("Seeded demo tasks");
+                } catch {
+                  toast("Failed to seed tasks");
+                }
+              }}
+            >
+              Seed Tasks
+            </Button>
           </div>
 
           {/* Performance Snapshot */}
