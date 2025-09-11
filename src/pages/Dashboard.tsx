@@ -26,6 +26,8 @@ import { AgentRow } from "@/components/dashboard/rows/AgentRow";
 import { WorkflowRow } from "@/components/dashboard/rows/WorkflowRow";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
+import { Switch } from "@/components/ui/switch";
+import { CheckCircle2, XCircle, Flag } from "lucide-react";
 
 function JourneyBand() {
   const navigate = useNavigate();
@@ -160,6 +162,15 @@ export default function Dashboard() {
   const focusTasks = useQuery(api.tasks.listTopFocus, businessIdForQueries);
   const nudges = useQuery(api.nudges.getUpgradeNudges, businessIdForQueries);
   const updateTaskStatus = useMutation(api.tasks.updateStatus);
+
+  // Additional queries/mutations for compact widgets (gate with "skip" via existing variable)
+  const approvals = useQuery(api.approvals.getApprovalQueue, businessIdForQueries);
+  const flags = useQuery(api.featureFlags.getFeatureFlags, businessIdForQueries);
+  const telemetryAnalytics = useQuery(api.telemetry.getEventAnalytics, businessIdForQueries);
+
+  const toggleFlag = useMutation(api.featureFlags.toggleFeatureFlag);
+  const processApproval = useMutation(api.approvals.processApproval);
+  const trackEventMutation = useMutation(api.telemetry.trackEvent);
 
   // Sidebar tier-specific items
   const tier = (currentBusiness as any)?.tier as string | undefined;
@@ -586,6 +597,158 @@ export default function Dashboard() {
                         </motion.div>
                       ))}
                     </motion.div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Compact widgets row: Approvals, Feature Flags, Telemetry Debug */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Pending Approvals */}
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                      Pending Approvals
+                    </CardTitle>
+                    <CardDescription>Quick review of items awaiting action</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {(approvals ?? []).length === 0 ? (
+                      <div className="text-sm text-muted-foreground">No pending items</div>
+                    ) : (
+                      (approvals ?? []).slice(0, 5).map((a: any) => (
+                        <div key={a._id} className="flex items-center justify-between rounded-md border p-2">
+                          <div className="min-w-0">
+                            <div className="text-sm font-medium truncate">{a.comments || "Approval Request"}</div>
+                            <div className="text-xs text-muted-foreground">
+                              Priority: <span className="capitalize">{a.priority}</span> • Status: {a.status}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={async () => {
+                                try {
+                                  await processApproval({ approvalId: a._id, action: "approve" });
+                                  toast("Approved");
+                                } catch (e) {
+                                  toast("Failed to approve");
+                                }
+                              }}
+                            >
+                              Approve
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={async () => {
+                                try {
+                                  await processApproval({ approvalId: a._id, action: "reject" });
+                                  toast("Rejected");
+                                } catch (e) {
+                                  toast("Failed to reject");
+                                }
+                              }}
+                            >
+                              Reject
+                            </Button>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Feature Flags */}
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <Flag className="h-4 w-4 text-amber-600" />
+                      Feature Flags
+                    </CardTitle>
+                    <CardDescription>Toggle features scoped to this business</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {(flags ?? []).length === 0 ? (
+                      <div className="text-sm text-muted-foreground">No flags configured</div>
+                    ) : (
+                      (flags ?? []).slice(0, 6).map((f: any) => (
+                        <div key={f._id} className="flex items-center justify-between rounded-md border p-2">
+                          <div className="min-w-0">
+                            <div className="text-sm font-medium truncate">{f.flagName}</div>
+                            <div className="text-xs text-muted-foreground">
+                              {f.rolloutPercentage}% rollout
+                              {f.conditions?.userTier && (
+                                <> • Users: {Array.isArray(f.conditions.userTier) ? f.conditions.userTier.join(", ") : ""}</>
+                              )}
+                              {f.conditions?.businessTier && (
+                                <> • Tiers: {Array.isArray(f.conditions.businessTier) ? f.conditions.businessTier.join(", ") : ""}</>
+                              )}
+                            </div>
+                          </div>
+                          <Switch
+                            checked={!!f.isEnabled}
+                            onCheckedChange={async () => {
+                              try {
+                                await toggleFlag({ flagId: f._id });
+                                toast(`Flag ${f.isEnabled ? "disabled" : "enabled"}`);
+                              } catch (e) {
+                                toast("Failed to toggle flag");
+                              }
+                            }}
+                          />
+                        </div>
+                      ))
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Telemetry Debug */}
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base">Telemetry Debug</CardTitle>
+                    <CardDescription>Quick stats and a test event logger</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-3 gap-3 text-center">
+                      <div className="rounded-md border p-2">
+                        <div className="text-xl font-semibold">
+                          {telemetryAnalytics?.totalEvents ?? 0}
+                        </div>
+                        <div className="text-xs text-muted-foreground">Events</div>
+                      </div>
+                      <div className="rounded-md border p-2">
+                        <div className="text-xl font-semibold">
+                          {telemetryAnalytics?.uniqueUsers ?? 0}
+                        </div>
+                        <div className="text-xs text-muted-foreground">Users</div>
+                      </div>
+                      <div className="rounded-md border p-2">
+                        <div className="text-xl font-semibold">
+                          {telemetryAnalytics?.uniqueSessions ?? 0}
+                        </div>
+                        <div className="text-xs text-muted-foreground">Sessions</div>
+                      </div>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={async () => {
+                        try {
+                          await trackEventMutation({
+                            businessId: currentBusiness._id,
+                            eventName: "debug_click",
+                            eventData: { location: "dashboard_telemetry_debug" },
+                          } as any);
+                          toast("Logged test event");
+                        } catch (e) {
+                          toast("Failed to log event");
+                        }
+                      }}
+                    >
+                      Log Test Event
+                    </Button>
                   </CardContent>
                 </Card>
               </div>
