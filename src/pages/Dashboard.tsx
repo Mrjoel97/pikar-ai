@@ -225,7 +225,8 @@ export default function Dashboard() {
   const [emailFrom, setEmailFrom] = useState((user as any)?.email || "no-reply@yourdomain.com");
   const [emailPreview, setEmailPreview] = useState("");
   const [recipientsRaw, setRecipientsRaw] = useState("");
-  const [scheduledAt, setScheduledAt] = useState<string>("");
+  // Add schedule datetime state for email campaigns
+  const [scheduledAt, setScheduledAt] = useState("");
   const tz = useMemo(() => Intl.DateTimeFormat().resolvedOptions().timeZone, []);
   const [blocks, setBlocks] = useState<Array<any>>([
     { type: "text", content: "Hi there," },
@@ -251,6 +252,10 @@ export default function Dashboard() {
     });
   };
   const removeBlock = (i: number) => setBlocks((arr) => arr.filter((_, idx) => idx !== i));
+
+  // Add mutations for seeding
+  const seedTasks = useMutation(api.tasks.seedDemoTasksForBusiness);
+  const seedKpis = useMutation(api.kpis.seedDemoKpisSnapshot);
 
   // Redirects
   useEffect(() => {
@@ -431,9 +436,25 @@ export default function Dashboard() {
           <div className="mb-6 rounded-lg border p-4">
             <div className="flex items-center justify-between mb-3">
               <h3 className="font-semibold">Today's Focus</h3>
-              <span className="text-xs text-muted-foreground">
-                Top 3 tasks prioritized by urgency and priority
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground">
+                  Top 3 tasks prioritized by urgency and priority
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={async () => {
+                    try {
+                      await seedTasks({ businessId: currentBusiness._id } as any);
+                      toast("Seeded 3 demo tasks");
+                    } catch {
+                      toast("Failed to seed tasks");
+                    }
+                  }}
+                >
+                  Seed 3 Tasks
+                </Button>
+              </div>
             </div>
             <div className="space-y-2">
               {(focusTasks ?? []).length === 0 ? (
@@ -479,6 +500,34 @@ export default function Dashboard() {
                 ))
               )}
             </div>
+          </div>
+
+          {/* Compact action row */}
+          <div className="flex items-center justify-end -mb-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={async () => {
+                try {
+                  await seedKpis({
+                    businessId: currentBusiness._id,
+                    visitors: 1240,
+                    subscribers: 86,
+                    engagement: 37,
+                    revenue: 2150,
+                    visitorsDelta: 9,
+                    subscribersDelta: 6,
+                    engagementDelta: 4,
+                    revenueDelta: 12,
+                  } as any);
+                  toast("Seeded KPI snapshot");
+                } catch {
+                  toast("Failed to seed KPIs");
+                }
+              }}
+            >
+              Seed KPIs
+            </Button>
           </div>
 
           {/* Performance Snapshot */}
@@ -549,11 +598,8 @@ export default function Dashboard() {
                       initial="hidden"
                       animate="show"
                       variants={{
-                        hidden: { opacity: 1 },
-                        show: {
-                          opacity: 1,
-                          transition: { staggerChildren: 0.06 },
-                        },
+                        hidden: { opacity: 0, y: 8 },
+                        show: { opacity: 1, y: 0 },
                       }}
                     >
                       {agents?.slice(0, 5).map((agent: any) => (
@@ -1143,6 +1189,7 @@ export default function Dashboard() {
                             setEmailSubject("");
                             setEmailPreview("");
                             setRecipientsRaw("");
+                            setScheduledAt("");
                           } catch (e) {
                             toast("Failed to schedule");
                           }

@@ -83,3 +83,34 @@ export const upsert = mutation({
     });
   },
 });
+
+export const seedDemoKpisSnapshot = mutation({
+  args: {
+    businessId: v.id("businesses"),
+    visitors: v.number(),
+    subscribers: v.number(),
+    engagement: v.number(),
+    revenue: v.number(),
+    visitorsDelta: v.optional(v.number()),
+    subscribersDelta: v.optional(v.number()),
+    engagementDelta: v.optional(v.number()),
+    revenueDelta: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const doc = {
+      businessId: args.businessId,
+      visitors: args.visitors,
+      subscribers: args.subscribers,
+      engagement: args.engagement,
+      revenue: args.revenue,
+      visitorsDelta: args.visitorsDelta ?? 12,
+      subscribersDelta: args.subscribersDelta ?? 8,
+      engagementDelta: args.engagementDelta ?? 5,
+      revenueDelta: args.revenueDelta ?? 15,
+      snapshotAt: Date.now(),
+    } as any;
+
+    await ctx.db.insert("dashboardKpis", doc);
+    return null;
+  },
+});

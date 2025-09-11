@@ -2,7 +2,7 @@ import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
 
-// List top "Today’s Focus" tasks using simple SNAP-like priority
+// List top "Today's Focus" tasks using simple SNAP-like priority
 export const listTopFocus = query({
   args: { businessId: v.id("businesses"), limit: v.optional(v.number()) },
   handler: async (ctx, args) => {
@@ -79,5 +79,58 @@ export const update = mutation({
     const { taskId, ...rest } = args;
     await ctx.db.patch(taskId, { ...rest, updatedAt: Date.now() });
     return taskId;
+  },
+});
+
+export const seedDemoTasksForBusiness = mutation({
+  args: {
+    businessId: v.id("businesses"),
+    count: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const now = Date.now();
+    const toCreate = args.count ?? 3;
+
+    const presets = [
+      {
+        title: "Define ICP and top 3 pains",
+        description: "Draft a sharp ICP and validate pains with 3 customer calls.",
+        priority: "high" as const,
+        urgent: true,
+        dueDate: now + 24 * 60 * 60 * 1000,
+      },
+      {
+        title: "Publish one value post",
+        description: "Share a practical tip on LinkedIn and collect 3 comments.",
+        priority: "medium" as const,
+        urgent: false,
+        dueDate: now + 2 * 24 * 60 * 60 * 1000,
+      },
+      {
+        title: "Schedule 2 demo calls",
+        description: "Book two 20-minute discovery calls with warm leads.",
+        priority: "low" as const,
+        urgent: false,
+        dueDate: now + 3 * 24 * 60 * 60 * 1000,
+      },
+    ];
+
+    const selected = presets.slice(0, toCreate);
+    for (const p of selected) {
+      await ctx.db.insert("tasks", {
+        businessId: args.businessId,
+        initiativeId: undefined,
+        title: p.title,
+        description: p.description,
+        priority: p.priority,
+        urgent: p.urgent,
+        status: "todo",
+        createdAt: now,
+        updatedAt: now,
+        dueDate: p.dueDate,
+      } as any);
+    }
+
+    return selected.length;
   },
 });
