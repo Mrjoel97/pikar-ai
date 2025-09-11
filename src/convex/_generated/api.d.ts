@@ -15,6 +15,7 @@ import type {
 } from "convex/server";
 import type * as aiAgents from "../aiAgents.js";
 import type * as approvals from "../approvals.js";
+import type * as audit from "../audit.js";
 import type * as auth_emailOtp from "../auth/emailOtp.js";
 import type * as auth from "../auth.js";
 import type * as businesses from "../businesses.js";
@@ -50,6 +51,7 @@ import type * as workflows from "../workflows.js";
 declare const fullApi: ApiFromModules<{
   aiAgents: typeof aiAgents;
   approvals: typeof approvals;
+  audit: typeof audit;
   "auth/emailOtp": typeof auth_emailOtp;
   auth: typeof auth;
   businesses: typeof businesses;

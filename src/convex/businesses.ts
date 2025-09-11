@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { query, mutation } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
+import { api, internal } from "./_generated/api";
 
 export const getUserBusinesses = query({
   args: {},
@@ -57,7 +58,7 @@ export const create = mutation({
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) {
-      throw new Error("Not authenticated");
+      throw new Error("[ERR_NOT_AUTHENTICATED] You must be signed in to create a business.");
     }
 
     const user = await ctx.db
@@ -66,7 +67,7 @@ export const create = mutation({
       .first();
 
     if (!user) {
-      throw new Error("User not found");
+      throw new Error("[ERR_USER_NOT_FOUND] User not found.");
     }
 
     const businessId = await ctx.db.insert("businesses", {
@@ -87,6 +88,15 @@ export const create = mutation({
       businessModel: args.businessModel,
       tier: args.tier,
     } as any);
+
+    // Write audit log (internal)
+    await ctx.runMutation(internal.audit.write, {
+      businessId,
+      type: "business.create",
+      message: `Business created: ${args.name}`,
+      actorUserId: user._id,
+      data: { industry: args.industry, tier: args.tier ?? null },
+    });
 
     return businessId;
   },
@@ -166,30 +176,39 @@ export const update = mutation({
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) {
-      throw new Error("Not authenticated");
+      throw new Error("[ERR_NOT_AUTHENTICATED] You must be signed in to update a business.");
     }
 
     const user = await ctx.db
       .query("users")
       .withIndex("email", (q) => q.eq("email", identity.email!))
       .first();
-    
+
     if (!user) {
-      throw new Error("User not found");
+      throw new Error("[ERR_USER_NOT_FOUND] User not found.");
     }
 
     const business = await ctx.db.get(args.id);
     if (!business) {
-      throw new Error("Business not found");
+      throw new Error("[ERR_BUSINESS_NOT_FOUND] Business not found.");
     }
 
     if (business.ownerId !== user._id) {
-      throw new Error("Not authorized to update this business");
+      throw new Error("[ERR_FORBIDDEN] Not authorized to update this business.");
     }
 
     const { id, ...updates } = args;
     await ctx.db.patch(id, updates);
-    
+
+    // Audit
+    await ctx.runMutation(internal.audit.write, {
+      businessId: id,
+      type: "business.update",
+      message: "Business updated",
+      actorUserId: user._id,
+      data: updates,
+    });
+
     return await ctx.db.get(id);
   },
 });
@@ -202,33 +221,42 @@ export const addTeamMember = mutation({
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) {
-      throw new Error("Not authenticated");
+      throw new Error("[ERR_NOT_AUTHENTICATED] You must be signed in to manage team members.");
     }
 
     const user = await ctx.db
       .query("users")
       .withIndex("email", (q) => q.eq("email", identity.email!))
       .first();
-    
+
     if (!user) {
-      throw new Error("User not found");
+      throw new Error("[ERR_USER_NOT_FOUND] User not found.");
     }
 
     const business = await ctx.db.get(args.businessId);
     if (!business) {
-      throw new Error("Business not found");
+      throw new Error("[ERR_BUSINESS_NOT_FOUND] Business not found.");
     }
 
     if (business.ownerId !== user._id) {
-      throw new Error("Not authorized to add team members");
+      throw new Error("[ERR_FORBIDDEN] Not authorized to add team members.");
     }
 
     if (business.teamMembers.includes(args.userId)) {
-      throw new Error("User is already a team member");
+      throw new Error("[ERR_ALREADY_MEMBER] User is already a team member.");
     }
 
     await ctx.db.patch(args.businessId, {
       teamMembers: [...business.teamMembers, args.userId],
+    });
+
+    // Audit
+    await ctx.runMutation(internal.audit.write, {
+      businessId: args.businessId,
+      type: "business.add_team_member",
+      message: "Team member added",
+      actorUserId: user._id,
+      data: { addedUserId: args.userId },
     });
 
     return await ctx.db.get(args.businessId);
@@ -243,29 +271,38 @@ export const removeTeamMember = mutation({
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) {
-      throw new Error("Not authenticated");
+      throw new Error("[ERR_NOT_AUTHENTICATED] You must be signed in to manage team members.");
     }
 
     const user = await ctx.db
       .query("users")
       .withIndex("email", (q) => q.eq("email", identity.email!))
       .first();
-    
+
     if (!user) {
-      throw new Error("User not found");
+      throw new Error("[ERR_USER_NOT_FOUND] User not found.");
     }
 
     const business = await ctx.db.get(args.businessId);
     if (!business) {
-      throw new Error("Business not found");
+      throw new Error("[ERR_BUSINESS_NOT_FOUND] Business not found.");
     }
 
     if (business.ownerId !== user._id) {
-      throw new Error("Not authorized to remove team members");
+      throw new Error("[ERR_FORBIDDEN] Not authorized to remove team members.");
     }
 
     await ctx.db.patch(args.businessId, {
       teamMembers: business.teamMembers.filter((id: Id<"users">) => id !== args.userId),
+    });
+
+    // Audit
+    await ctx.runMutation(internal.audit.write, {
+      businessId: args.businessId,
+      type: "business.remove_team_member",
+      message: "Team member removed",
+      actorUserId: user._id,
+      data: { removedUserId: args.userId },
     });
 
     return await ctx.db.get(args.businessId);

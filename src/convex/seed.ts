@@ -23,6 +23,56 @@ export const run = action({
   }
 });
 
+export const seedOneCommand = action({
+  args: {},
+  handler: async (
+    ctx,
+  ): Promise<{
+    message: string;
+    businessId?: Id<"businesses">;
+    initiativeId?: Id<"initiatives">;
+    diagnosticId?: Id<"diagnostics">;
+  }> => {
+    // Deterministic seed flow using a single command
+    const email = "demo@pikar.ai";
+
+    // Ensure the seed user exists
+    await ctx.runMutation(api.users.ensureSeedUser, { email });
+
+    // Seed business/initiative/diagnostics
+    const seeded: {
+      businessId?: Id<"businesses">;
+      initiativeId?: Id<"initiatives">;
+      diagnosticId?: Id<"diagnostics">;
+    } = await ctx.runMutation(api.initiatives.seedForEmail, { email });
+
+    // Also seed KPIs if business created (idempotent if already seeded elsewhere)
+    if (seeded?.businessId) {
+      try {
+        await ctx.runMutation(api.kpis.upsert, {
+          businessId: seeded.businessId,
+          date: new Date().toISOString().slice(0, 10),
+          visitors: 420,
+          subscribers: 180,
+          engagement: 62,
+          revenue: 12500,
+          visitorsDelta: 8,
+          subscribersDelta: 5,
+          engagementDelta: 3,
+          revenueDelta: 12,
+        });
+      } catch {
+        // best-effort
+      }
+    }
+
+    return {
+      message: "Deterministic seed completed",
+      ...seeded,
+    };
+  },
+});
+
 export const seedDemo: any = action({
   args: {
     email: v.string(),

@@ -79,12 +79,42 @@ import {
   BarChart3,
 } from "lucide-react";
 import { useLocation } from "react-router";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface AgentBuilderNode {
   id: string;
   type: "input" | "hook" | "output";
   title: string;
   config: any;
+}
+
+class AgentsErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean; error?: any }> {
+  constructor(props: any) {
+    super(props);
+    this.state = { hasError: false, error: undefined };
+  }
+  static getDerivedStateFromError(error: any) {
+    return { hasError: true, error };
+  }
+  componentDidCatch(error: any) {
+    // no-op; could emit telemetry here later
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="max-w-3xl mx-auto mt-8">
+          <div className="rounded-lg border bg-white p-6 shadow-sm">
+            <h2 className="text-xl font-semibold mb-2">Something went wrong on Agents</h2>
+            <p className="text-sm text-gray-600 mb-4">
+              Please refresh the page. If this continues, contact support.
+            </p>
+            <pre className="text-xs bg-gray-50 p-3 rounded overflow-auto">{String(this.state.error)}</pre>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
 }
 
 const AgentsPage: React.FC = () => {
@@ -616,4 +646,26 @@ function MonitoringTab({}: { userId?: Id<"users"> }) {
   );
 }
 
-export default AgentsPage;
+const AgentsRoute: React.FC = () => {
+  // Lightweight top-level skeleton while tabs mount
+  return (
+    <AgentsErrorBoundary>
+      <React.Suspense
+        fallback={
+          <div className="max-w-7xl mx-auto p-4 md:p-8 space-y-4">
+            <Skeleton className="h-10 w-64" />
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <Skeleton className="h-48 w-full" />
+              <Skeleton className="h-48 w-full" />
+              <Skeleton className="h-48 w-full" />
+            </div>
+          </div>
+        }
+      >
+        <AgentsPage />
+      </React.Suspense>
+    </AgentsErrorBoundary>
+  );
+};
+
+export default AgentsRoute;

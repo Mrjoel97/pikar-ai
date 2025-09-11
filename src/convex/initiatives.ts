@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
+import { api, internal } from "./_generated/api";
 
 export const upsertForBusiness = mutation({
   args: {
@@ -12,7 +13,7 @@ export const upsertForBusiness = mutation({
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) {
-      throw new Error("Not authenticated");
+      throw new Error("[ERR_NOT_AUTHENTICATED] You must be signed in.");
     }
 
     const user = await ctx.db
@@ -21,17 +22,17 @@ export const upsertForBusiness = mutation({
       .first();
     
     if (!user) {
-      throw new Error("User not found");
+      throw new Error("[ERR_USER_NOT_FOUND] User not found.");
     }
 
     const business = await ctx.db.get(args.businessId);
     if (!business) {
-      throw new Error("Business not found");
+      throw new Error("[ERR_BUSINESS_NOT_FOUND] Business not found.");
     }
 
     // RBAC: Check if user is owner or team member
     if (business.ownerId !== user._id && !business.teamMembers.includes(user._id)) {
-      throw new Error("Not authorized to access this business");
+      throw new Error("[ERR_FORBIDDEN] Not authorized to access this business.");
     }
 
     // Check if initiative already exists for this business
@@ -62,6 +63,15 @@ export const upsertForBusiness = mutation({
       updatedAt: Date.now(),
     });
 
+    // Audit
+    await ctx.runMutation(internal.audit.write, {
+      businessId: args.businessId,
+      type: "initiative.create",
+      message: "Initiative created",
+      actorUserId: user._id,
+      data: { initiativeId, name: args.name ?? null },
+    });
+
     return await ctx.db.get(initiativeId);
   },
 });
@@ -78,7 +88,7 @@ export const updateOnboarding = mutation({
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) {
-      throw new Error("Not authenticated");
+      throw new Error("[ERR_NOT_AUTHENTICATED] You must be signed in.");
     }
 
     const user = await ctx.db
@@ -87,22 +97,22 @@ export const updateOnboarding = mutation({
       .first();
     
     if (!user) {
-      throw new Error("User not found");
+      throw new Error("[ERR_USER_NOT_FOUND] User not found.");
     }
 
     const initiative = await ctx.db.get(args.initiativeId);
     if (!initiative) {
-      throw new Error("Initiative not found");
+      throw new Error("[ERR_INITIATIVE_NOT_FOUND] Initiative not found.");
     }
 
     const business = await ctx.db.get(initiative.businessId);
     if (!business) {
-      throw new Error("Business not found");
+      throw new Error("[ERR_BUSINESS_NOT_FOUND] Business not found.");
     }
 
     // RBAC: Check if user is owner or team member
     if (business.ownerId !== user._id && !business.teamMembers.includes(user._id)) {
-      throw new Error("Not authorized to update this initiative");
+      throw new Error("[ERR_FORBIDDEN] Not authorized to update this initiative.");
     }
 
     await ctx.db.patch(args.initiativeId, {
@@ -110,6 +120,15 @@ export const updateOnboarding = mutation({
       industry: args.profile.industry,
       businessModel: args.profile.businessModel,
       updatedAt: Date.now(),
+    });
+
+    // Audit
+    await ctx.runMutation(internal.audit.write, {
+      businessId: business._id,
+      type: "initiative.update_onboarding",
+      message: "Onboarding profile updated",
+      actorUserId: user._id,
+      data: { initiativeId: args.initiativeId },
     });
 
     return await ctx.db.get(args.initiativeId);
@@ -124,7 +143,7 @@ export const advancePhase = mutation({
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) {
-      throw new Error("Not authenticated");
+      throw new Error("[ERR_NOT_AUTHENTICATED] You must be signed in.");
     }
 
     const user = await ctx.db
@@ -133,33 +152,42 @@ export const advancePhase = mutation({
       .first();
     
     if (!user) {
-      throw new Error("User not found");
+      throw new Error("[ERR_USER_NOT_FOUND] User not found.");
     }
 
     const initiative = await ctx.db.get(args.initiativeId);
     if (!initiative) {
-      throw new Error("Initiative not found");
+      throw new Error("[ERR_INITIATIVE_NOT_FOUND] Initiative not found.");
     }
 
     const business = await ctx.db.get(initiative.businessId);
     if (!business) {
-      throw new Error("Business not found");
+      throw new Error("[ERR_BUSINESS_NOT_FOUND] Business not found.");
     }
 
     // RBAC: Check if user is owner or team member
     if (business.ownerId !== user._id && !business.teamMembers.includes(user._id)) {
-      throw new Error("Not authorized to update this initiative");
+      throw new Error("[ERR_FORBIDDEN] Not authorized to update this initiative.");
     }
 
     // Validate phase advancement (can only advance by 1 or stay same)
     const currentPhase = initiative.currentPhase ?? 0;
     if (args.toPhase > currentPhase + 1 || args.toPhase < currentPhase) {
-      throw new Error("Invalid phase transition");
+      throw new Error("[ERR_INVALID_PHASE] Invalid phase transition.");
     }
 
     await ctx.db.patch(args.initiativeId, {
       currentPhase: args.toPhase,
       updatedAt: Date.now(),
+    });
+
+    // Audit
+    await ctx.runMutation(internal.audit.write, {
+      businessId: business._id,
+      type: "initiative.advance_phase",
+      message: `Initiative phase advanced to ${args.toPhase}`,
+      actorUserId: user._id,
+      data: { initiativeId: args.initiativeId, from: currentPhase, to: args.toPhase },
     });
 
     return await ctx.db.get(args.initiativeId);
@@ -224,7 +252,7 @@ export const runPhase0Diagnostics = mutation({
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) {
-      throw new Error("Not authenticated");
+      throw new Error("[ERR_NOT_AUTHENTICATED] You must be signed in.");
     }
 
     const user = await ctx.db
@@ -233,7 +261,7 @@ export const runPhase0Diagnostics = mutation({
       .first();
     
     if (!user) {
-      throw new Error("User not found");
+      throw new Error("[ERR_USER_NOT_FOUND] User not found.");
     }
 
     // Ensure initiative exists WITHOUT calling same-file mutation through api.*
@@ -245,7 +273,7 @@ export const runPhase0Diagnostics = mutation({
     if (!initiative) {
       const business = await ctx.db.get(args.businessId);
       if (!business) {
-        throw new Error("Business not found");
+        throw new Error("[ERR_BUSINESS_NOT_FOUND] Business not found.");
       }
 
       const initiativeId = await ctx.db.insert("initiatives", {
@@ -265,10 +293,19 @@ export const runPhase0Diagnostics = mutation({
         updatedAt: Date.now(),
       });
       initiative = await ctx.db.get(initiativeId);
+
+      // Audit creation
+      await ctx.runMutation(internal.audit.write, {
+        businessId: args.businessId,
+        type: "initiative.create",
+        message: "Initiative created (during diagnostics)",
+        actorUserId: user._id,
+        data: { initiativeId },
+      });
     }
 
     if (!initiative) {
-      throw new Error("Failed to create or get initiative");
+      throw new Error("[ERR_INITIATIVE_CREATE_FAILED] Failed to create or get initiative.");
     }
 
     // Create a diagnostics record directly to avoid circular api references
@@ -291,6 +328,15 @@ export const runPhase0Diagnostics = mutation({
       runAt: Date.now(),
     });
 
+    // Audit diagnostics
+    await ctx.runMutation(internal.audit.write, {
+      businessId: args.businessId,
+      type: "diagnostics.run",
+      message: "Phase 0 diagnostics run",
+      actorUserId: user._id,
+      data: { diagnosticId, initiativeId: initiative._id },
+    });
+
     return diagnosticId;
   },
 });
@@ -306,7 +352,7 @@ export const seedForEmail = mutation({
       .first();
     
     if (!user) {
-      throw new Error("User not found");
+      throw new Error("[ERR_USER_NOT_FOUND] User not found.");
     }
 
     // Find or create business for user
@@ -329,10 +375,19 @@ export const seedForEmail = mutation({
         currentSolutions: ["Manual processes"],
       });
       business = await ctx.db.get(businessId);
+
+      // Audit
+      await ctx.runMutation(internal.audit.write, {
+        businessId: businessId,
+        type: "business.create",
+        message: "Business created (seed)",
+        actorUserId: user._id,
+        data: { seeded: true },
+      });
     }
 
     if (!business) {
-      throw new Error("Failed to create business");
+      throw new Error("[ERR_BUSINESS_CREATE_FAILED] Failed to create business.");
     }
 
     // Ensure initiative exists (direct, no api.* to same file)
@@ -359,6 +414,15 @@ export const seedForEmail = mutation({
         updatedAt: Date.now(),
       });
       initiative = await ctx.db.get(initiativeId);
+
+      // Audit
+      await ctx.runMutation(internal.audit.write, {
+        businessId: business._id,
+        type: "initiative.create",
+        message: "Initiative created (seed)",
+        actorUserId: user._id,
+        data: { initiativeId },
+      });
     }
 
     // Run diagnostics directly
@@ -381,9 +445,26 @@ export const seedForEmail = mutation({
       runAt: Date.now(),
     });
 
+    // Audit
+    await ctx.runMutation(internal.audit.write, {
+      businessId: business._id,
+      type: "diagnostics.run",
+      message: "Diagnostics seeded",
+      actorUserId: user._id,
+      data: { diagnosticId },
+    });
+
     // Advance to phase 1
     if (initiative) {
       await ctx.db.patch(initiative._id, { currentPhase: 1, updatedAt: Date.now() });
+
+      await ctx.runMutation(internal.audit.write, {
+        businessId: business._id,
+        type: "initiative.advance_phase",
+        message: "Initiative advanced to phase 1 (seed)",
+        actorUserId: user._id,
+        data: { initiativeId: initiative._id, to: 1 },
+      });
     }
 
     return {
