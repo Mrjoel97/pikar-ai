@@ -1,7 +1,7 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { mutation, query, internalMutation } from "./_generated/server";
 import { Doc, Id } from "./_generated/dataModel";
-// removed unused internal import
+import { internal } from "./_generated/api";
 
 // Query to get workflow steps assigned to a user
 export const getAssignedSteps = query({
@@ -87,6 +87,85 @@ export const getStepsDueSoon = query({
   },
 });
 
+// Add internal mutation to send due reminders (before/due/overdue)
+export const sendDueReminder = internalMutation({
+  args: {
+    stepId: v.id("workflowSteps"),
+    when: v.union(v.literal("before"), v.literal("due"), v.literal("overdue")),
+  },
+  handler: async (ctx, args) => {
+    const step = await ctx.db.get(args.stepId);
+    if (!step) {
+      return null;
+    }
+
+    // If completed, skip sending notifications
+    if (step.status === "completed") {
+      return null;
+    }
+
+    // Only send if there is an assignee
+    if (!step.assigneeId) {
+      return null;
+    }
+
+    // Build notification content
+    const titles = {
+      before: "Upcoming Due Task",
+      due: "Task Due Now",
+      overdue: "Task Overdue",
+    } as const;
+
+    const messages = {
+      before: `“${step.name}” is due soon. Please review and complete on time.`,
+      due: `“${step.name}” is now due. Please complete as soon as possible.`,
+      overdue: `“${step.name}” is overdue. Take action or update the status.`,
+    } as const;
+
+    // Insert in-app notification to the assignee
+    await ctx.db.insert("notifications", {
+      businessId: step.businessId,
+      userId: step.assigneeId,
+      type: args.when === "overdue" ? "sla_warning" : "assignment",
+      title: titles[args.when],
+      message: messages[args.when],
+      data: {
+        stepId: step._id,
+        workflowId: step.workflowId,
+        when: args.when,
+        dueDate: step.dueDate,
+      },
+      isRead: false,
+      priority: args.when === "overdue" ? "high" : "medium",
+      createdAt: Date.now(),
+      expiresAt: Date.now() + 7 * 24 * 60 * 60 * 1000,
+    });
+
+    // Optionally notify the assigner on overdue to increase visibility
+    if (args.when === "overdue" && step.assignedBy) {
+      await ctx.db.insert("notifications", {
+        businessId: step.businessId,
+        userId: step.assignedBy,
+        type: "sla_warning",
+        title: "Assigned Task Overdue",
+        message: `“${step.name}” assigned to a teammate is overdue.`,
+        data: {
+          stepId: step._id,
+          workflowId: step.workflowId,
+          assigneeId: step.assigneeId,
+          dueDate: step.dueDate,
+        },
+        isRead: false,
+        priority: "high",
+        createdAt: Date.now(),
+        expiresAt: Date.now() + 7 * 24 * 60 * 60 * 1000,
+      });
+    }
+
+    return null;
+  },
+});
+
 // Mutation to assign a step to a user
 export const assignStep = mutation({
   args: {
@@ -140,6 +219,49 @@ export const assignStep = mutation({
       createdAt: Date.now(),
       expiresAt: Date.now() + (7 * 24 * 60 * 60 * 1000),
     });
+
+    // Schedule due date reminders if a dueDate is present
+    if (args.dueDate) {
+      const now = Date.now();
+      const msUntilDue = args.dueDate - now;
+
+      // Only schedule future reminders
+      if (msUntilDue > 0) {
+        // Try 24 hours before due; if it's already passed, fallback to 1 hour before if possible
+        const twentyFourHours = 24 * 60 * 60 * 1000;
+        const oneHour = 60 * 60 * 1000;
+        const msUntil24hBefore = msUntilDue - twentyFourHours;
+
+        if (msUntil24hBefore > 0) {
+          await ctx.scheduler.runAfter(
+            msUntil24hBefore,
+            internal.workflowAssignments.sendDueReminder,
+            { stepId: args.stepId, when: "before" }
+          );
+        } else if (msUntilDue - oneHour > 0) {
+          // Fallback to 1 hour before if 24h window has passed
+          await ctx.scheduler.runAfter(
+            msUntilDue - oneHour,
+            internal.workflowAssignments.sendDueReminder,
+            { stepId: args.stepId, when: "before" }
+          );
+        }
+
+        // At due time
+        await ctx.scheduler.runAfter(
+          msUntilDue,
+          internal.workflowAssignments.sendDueReminder,
+          { stepId: args.stepId, when: "due" }
+        );
+
+        // 1 hour after due (overdue)
+        await ctx.scheduler.runAfter(
+          msUntilDue + oneHour,
+          internal.workflowAssignments.sendDueReminder,
+          { stepId: args.stepId, when: "overdue" }
+        );
+      }
+    }
 
     return args.stepId;
   },
