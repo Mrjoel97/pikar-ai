@@ -131,19 +131,19 @@ export default function Dashboard() {
   const businesses = useQuery(api.businesses.getByOwner);
   const agents = useQuery(
     api.aiAgents.getByBusiness,
-    currentBusiness ? { businessId: currentBusiness._id } : "skip"
+    currentBusiness ? { businessId: currentBusiness._id } : "skip" // use "skip" per Convex types
   );
   const workflows = useQuery(
     api.workflows.getByBusiness,
-    currentBusiness ? { businessId: currentBusiness._id } : "skip"
+    currentBusiness ? { businessId: currentBusiness._id } : "skip" // use "skip" per Convex types
   );
   const initiative = useQuery(
     api.initiatives.getByBusiness,
-    currentBusiness ? { businessId: currentBusiness._id } : "skip"
+    currentBusiness ? { businessId: currentBusiness._id } : "skip" // use "skip" per Convex types
   );
   const diagnostics = useQuery(
     api.diagnostics.getLatest,
-    currentBusiness ? { businessId: currentBusiness._id } : "skip"
+    currentBusiness ? { businessId: currentBusiness._id } : "skip" // use "skip" per Convex types
   );
 
   // Inspector state
