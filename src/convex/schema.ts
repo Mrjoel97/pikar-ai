@@ -379,33 +379,48 @@ export default defineSchema({
   // Marketing Suite Tables
   emailCampaigns: defineTable({
     businessId: v.id("businesses"),
-    name: v.string(),
-    content: v.object({
-      blocks: v.array(v.any()),
-      html: v.string(),
-      subject: v.string(),
-      preheader: v.optional(v.string()),
-    }),
-    scheduledAt: v.optional(v.number()),
-    status: v.union(v.literal("draft"), v.literal("scheduled"), v.literal("sending"), v.literal("sent"), v.literal("cancelled")),
     createdBy: v.id("users"),
-    createdAt: v.number(),
-    updatedAt: v.number(),
-    metrics: v.optional(v.object({
-      sent: v.number(),
-      delivered: v.number(),
-      opened: v.number(),
-      clicked: v.number(),
-      bounced: v.number(),
-      unsubscribed: v.number(),
-    })),
-    recipients: v.optional(v.array(v.string())),
-    testRecipients: v.optional(v.array(v.string())),
+    subject: v.string(),
+    from: v.string(),
+    previewText: v.optional(v.string()),
+    blocks: v.array(
+      v.object({
+        type: v.union(
+          v.literal("text"),
+          v.literal("button"),
+          v.literal("footer")
+        ),
+        content: v.optional(v.string()), // for text
+        label: v.optional(v.string()), // for button
+        url: v.optional(v.string()), // for button
+        includeUnsubscribe: v.optional(v.boolean()), // footer flag
+      })
+    ),
+    recipients: v.array(v.string()), // raw emails, comma-separated parsed
+    timezone: v.string(),
+    scheduledAt: v.number(), // UTC timestamp (ms)
+    status: v.union(
+      v.literal("draft"),
+      v.literal("scheduled"),
+      v.literal("sending"),
+      v.literal("sent"),
+      v.literal("failed"),
+      v.literal("canceled")
+    ),
+    sendIds: v.optional(v.array(v.string())), // resend message ids
+    lastError: v.optional(v.string()),
   })
-    .index("by_business", ["businessId"])
-    .index("by_status", ["status"])
-    .index("by_created_by", ["createdBy"])
-    .index("by_scheduled_at", ["scheduledAt"]),
+  .index("by_business_and_status", ["businessId", "status"]),
+
+  emailUnsubscribes: defineTable({
+    businessId: v.id("businesses"),
+    email: v.string(),
+    token: v.string(),
+    active: v.boolean(), // true means unsubscribed
+    createdAt: v.number(),
+  })
+    .index("by_token", ["token"])
+    .index("by_business_and_email", ["businessId", "email"]),
 
   seoSuggestions: defineTable({
     businessId: v.id("businesses"),
@@ -931,24 +946,7 @@ export default defineSchema({
     .index("by_user", ["userId"])
     .index("by_created_at", ["createdAt"]),
 
-  // Add KPIs for Dashboard snapshots (per-business, per-day)
-  dashboardKpis: defineTable({
-    businessId: v.id("businesses"),
-    date: v.string(), // YYYY-MM-DD
-    visitors: v.number(),
-    subscribers: v.number(),
-    engagement: v.number(), // percentage 0-100
-    revenue: v.number(),
-    // deltas for simple trend arrows
-    visitorsDelta: v.optional(v.number()),
-    subscribersDelta: v.optional(v.number()),
-    engagementDelta: v.optional(v.number()),
-    revenueDelta: v.optional(v.number()),
-  })
-    .index("by_business", ["businessId"])
-    .index("by_business_and_date", ["businessId", "date"]),
-
-  // Lightweight Tasks for "Today's Focus" (SNAP-inspired)
+  // Tasks table (added)
   tasks: defineTable({
     businessId: v.id("businesses"),
     initiativeId: v.optional(v.id("initiatives")),
@@ -966,7 +964,21 @@ export default defineSchema({
     updatedAt: v.number(),
     dueDate: v.optional(v.number()),
   })
-    .index("by_business", ["businessId"])
-    .index("by_status", ["status"])
-    .index("by_due_date", ["dueDate"]),
+    .index("by_business", ["businessId"]),
+
+  // Add KPIs for Dashboard snapshots (per-business, per-day)
+  dashboardKpis: defineTable({
+    businessId: v.id("businesses"),
+    date: v.string(), // YYYY-MM-DD
+    visitors: v.number(),
+    subscribers: v.number(),
+    engagement: v.number(), // percentage 0-100
+    revenue: v.number(),
+    visitorsDelta: v.optional(v.number()),
+    subscribersDelta: v.optional(v.number()),
+    engagementDelta: v.optional(v.number()),
+    revenueDelta: v.optional(v.number()),
+  })
+    .index("by_business_and_date", ["businessId", "date"])
+    .index("by_date", ["date"]),
 });

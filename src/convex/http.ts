@@ -1,11 +1,9 @@
 import { httpRouter } from "convex/server";
-import { auth } from "./auth";
 import { httpAction } from "./_generated/server";
+import { v } from "convex/values";
 import { api, internal } from "./_generated/api";
 
 const http = httpRouter();
-
-auth.addHttpRoutes(http);
 
 // Add webhook to trigger workflows externally
 http.route({
@@ -163,6 +161,43 @@ http.route({
       });
     } catch (e: any) {
       return new Response(JSON.stringify({ error: e?.message || "Failed to export audit logs" }), { status: 500 });
+    }
+  }),
+});
+
+// Unsubscribe endpoint: switch to internal mutation; require token, businessId, and email
+http.route({
+  path: "/api/unsubscribe",
+  method: "GET",
+  handler: httpAction(async (ctx, req) => {
+    const { searchParams } = new URL(req.url);
+    const token = searchParams.get("token");
+    const businessId = searchParams.get("businessId");
+    const email = searchParams.get("email");
+
+    if (!token || !businessId || !email) {
+      return new Response("Missing token, businessId, or email", { status: 400 });
+    }
+
+    try {
+      const result = await ctx.runMutation(internal.emails.setUnsubscribeActive, {
+        businessId: businessId as any, // Convex will validate as Id<"businesses">
+        email,
+        token,
+      });
+
+      if (!result.ok) {
+        const reason =
+          result.reason === "not_found" ? "Invalid token" :
+          result.reason === "token_mismatch" ? "Token mismatch" :
+          "Unable to unsubscribe";
+        return new Response(reason, { status: 400 });
+      }
+
+      const html = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Unsubscribed</title></head><body style="font-family: Arial, sans-serif; padding:24px;"><h1 style="margin-bottom:8px;">You have been unsubscribed</h1><p style="color:#475569;">We're sorry to see you go. You won't receive future marketing emails from us at ${email}.</p></body></html>`;
+      return new Response(html, { status: 200, headers: { "Content-Type": "text/html" } });
+    } catch (e: any) {
+      return new Response("Failed to process unsubscribe", { status: 500 });
     }
   }),
 });

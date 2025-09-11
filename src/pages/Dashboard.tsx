@@ -28,6 +28,10 @@ import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { Switch } from "@/components/ui/switch";
 import { CheckCircle2, XCircle, Flag, Clock } from "lucide-react";
+import { DialogFooter } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { useMemo } from "react";
 
 function JourneyBand() {
   const navigate = useNavigate();
@@ -208,6 +212,45 @@ export default function Dashboard() {
     ...baseItems,
     ...((tier && tierExtras[tier]) || []),
   ];
+
+  // Email campaigns: queries & actions
+  const campaigns = useQuery(
+    api.emails.listCampaignsByBusiness,
+    currentBusiness ? { businessId: currentBusiness._id } : "skip"
+  );
+  const sendTestEmail = useAction(api.emailsActions.sendTestEmail);
+  const createCampaign = useMutation(api.emails.createCampaign);
+  const [emailOpen, setEmailOpen] = useState(false);
+  const [emailSubject, setEmailSubject] = useState("");
+  const [emailFrom, setEmailFrom] = useState((user as any)?.email || "no-reply@yourdomain.com");
+  const [emailPreview, setEmailPreview] = useState("");
+  const [recipientsRaw, setRecipientsRaw] = useState("");
+  const [scheduledAt, setScheduledAt] = useState<string>("");
+  const tz = useMemo(() => Intl.DateTimeFormat().resolvedOptions().timeZone, []);
+  const [blocks, setBlocks] = useState<Array<any>>([
+    { type: "text", content: "Hi there," },
+    { type: "text", content: "Here is an update from our team." },
+    { type: "button", label: "Learn more", url: "https://example.com" },
+    { type: "footer", includeUnsubscribe: true },
+  ]);
+
+  const addBlock = (type: "text" | "button" | "footer") => {
+    if (type === "text") setBlocks((b) => [...b, { type: "text", content: "New text..." }]);
+    if (type === "button") setBlocks((b) => [...b, { type: "button", label: "Click me", url: "https://example.com" }]);
+    if (type === "footer") setBlocks((b) => [...b, { type: "footer", includeUnsubscribe: true }]);
+  };
+  const moveBlock = (i: number, dir: -1 | 1) => {
+    setBlocks((arr) => {
+      const copy = [...arr];
+      const j = i + dir;
+      if (j < 0 || j >= copy.length) return copy;
+      const tmp = copy[i];
+      copy[i] = copy[j];
+      copy[j] = tmp;
+      return copy;
+    });
+  };
+  const removeBlock = (i: number) => setBlocks((arr) => arr.filter((_, idx) => idx !== i));
 
   // Redirects
   useEffect(() => {
@@ -882,6 +925,256 @@ export default function Dashboard() {
               </Card>
             </TabsContent>
           </Tabs>
+
+          {/* Email Campaigns (Designer + Scheduler) */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Email Campaigns</CardTitle>
+              <CardDescription>Design, test, and schedule emails</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="text-sm text-muted-foreground">
+                  Recent: {(campaigns ?? []).length} scheduled/sent
+                </div>
+                <Dialog open={emailOpen} onOpenChange={setEmailOpen}>
+                  <DialogTrigger asChild>
+                    <Button>New Campaign</Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
+                    <DialogHeader>
+                      <DialogTitle>Create Email Campaign</DialogTitle>
+                    </DialogHeader>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                      {/* Editor */}
+                      <div className="space-y-4">
+                        <div className="grid gap-2">
+                          <Label>From</Label>
+                          <Input value={emailFrom} onChange={(e) => setEmailFrom(e.target.value)} />
+                        </div>
+                        <div className="grid gap-2">
+                          <Label>Subject</Label>
+                          <Input value={emailSubject} onChange={(e) => setEmailSubject(e.target.value)} />
+                        </div>
+                        <div className="grid gap-2">
+                          <Label>Preview Text</Label>
+                          <Input value={emailPreview} onChange={(e) => setEmailPreview(e.target.value)} />
+                        </div>
+                        <div className="grid gap-2">
+                          <Label>Recipients (comma-separated)</Label>
+                          <Textarea
+                            value={recipientsRaw}
+                            onChange={(e) => setRecipientsRaw(e.target.value)}
+                            placeholder="alice@example.com, bob@example.com"
+                          />
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="grid gap-2">
+                            <Label>Schedule (local)</Label>
+                            <Input
+                              type="datetime-local"
+                              value={scheduledAt}
+                              onChange={(e) => setScheduledAt(e.target.value)}
+                            />
+                          </div>
+                          <div className="grid gap-2">
+                            <Label>Timezone</Label>
+                            <Input value={tz} readOnly />
+                          </div>
+                        </div>
+
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <Label>Blocks</Label>
+                            <div className="flex gap-2">
+                              <Button size="sm" variant="outline" onClick={() => addBlock("text")}>Add Text</Button>
+                              <Button size="sm" variant="outline" onClick={() => addBlock("button")}>Add Button</Button>
+                              <Button size="sm" variant="outline" onClick={() => addBlock("footer")}>Add Footer</Button>
+                            </div>
+                          </div>
+                          <div className="space-y-2">
+                            {blocks.map((b, i) => (
+                              <div key={i} className="rounded-md border p-3 space-y-2">
+                                <div className="flex items-center justify-between">
+                                  <div className="text-xs uppercase tracking-wide text-muted-foreground">{b.type}</div>
+                                  <div className="flex gap-1">
+                                    <Button size="icon" variant="ghost" onClick={() => moveBlock(i, -1)}>↑</Button>
+                                    <Button size="icon" variant="ghost" onClick={() => moveBlock(i, 1)}>↓</Button>
+                                    <Button size="icon" variant="ghost" onClick={() => removeBlock(i)}>✕</Button>
+                                  </div>
+                                </div>
+                                {b.type === "text" && (
+                                  <Textarea
+                                    value={b.content ?? ""}
+                                    onChange={(e) =>
+                                      setBlocks((arr) => arr.map((x, idx) => (idx === i ? { ...x, content: e.target.value } : x)))
+                                    }
+                                  />
+                                )}
+                                {b.type === "button" && (
+                                  <div className="grid grid-cols-2 gap-2">
+                                    <Input
+                                      placeholder="Label"
+                                      value={b.label ?? ""}
+                                      onChange={(e) =>
+                                        setBlocks((arr) => arr.map((x, idx) => (idx === i ? { ...x, label: e.target.value } : x)))
+                                      }
+                                    />
+                                    <Input
+                                      placeholder="https://example.com"
+                                      value={b.url ?? ""}
+                                      onChange={(e) =>
+                                        setBlocks((arr) => arr.map((x, idx) => (idx === i ? { ...x, url: e.target.value } : x)))
+                                      }
+                                    />
+                                  </div>
+                                )}
+                                {b.type === "footer" && (
+                                  <div className="flex items-center gap-2 text-sm">
+                                    <Switch
+                                      checked={!!b.includeUnsubscribe}
+                                      onCheckedChange={(val) =>
+                                        setBlocks((arr) => arr.map((x, idx) => (idx === i ? { ...x, includeUnsubscribe: !!val } : x)))
+                                      }
+                                    />
+                                    <span>Include unsubscribe link</span>
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Preview */}
+                      <div className="space-y-3">
+                        <div className="rounded-md border p-3">
+                          <div className="text-sm text-muted-foreground mb-2">Preview</div>
+                          <div className="space-y-3">
+                            <div className="text-sm"><span className="font-medium">From:</span> {emailFrom}</div>
+                            <div className="text-sm"><span className="font-medium">Subject:</span> {emailSubject}</div>
+                            <div className="text-xs text-muted-foreground">{emailPreview}</div>
+                            <div className="h-px bg-border" />
+                            <div className="prose prose-sm max-w-none">
+                              {blocks.map((b, i) => (
+                                <div key={i} className="mb-3">
+                                  {b.type === "text" && <div dangerouslySetInnerHTML={{ __html: b.content || "" }} />}
+                                  {b.type === "button" && (
+                                    <a className="inline-block bg-foreground text-background px-3 py-2 rounded-md"
+                                       href={b.url || "#"} target="_blank" rel="noreferrer">
+                                      {b.label || "Button"}
+                                    </a>
+                                  )}
+                                  {b.type === "footer" && (
+                                    <div className="text-xs text-muted-foreground">
+                                      {b.includeUnsubscribe ? "Unsubscribe link will be included" : "No unsubscribe link"}
+                                    </div>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <DialogFooter className="gap-2">
+                      <Button
+                        variant="outline"
+                        onClick={async () => {
+                          try {
+                            const to = (user as any)?.email;
+                            if (!to) {
+                              toast("No user email to send test");
+                              return;
+                            }
+                            await sendTestEmail({
+                              from: emailFrom,
+                              to,
+                              subject: emailSubject || "(no subject)",
+                              previewText: emailPreview || "",
+                              businessId: currentBusiness._id,
+                              blocks,
+                            } as any);
+                            toast("Test email sent");
+                          } catch (e) {
+                            toast("Failed to send test");
+                          }
+                        }}
+                      >
+                        Send Test
+                      </Button>
+                      <Button
+                        onClick={async () => {
+                          try {
+                            if (!emailSubject || !emailFrom) {
+                              toast("From and Subject are required");
+                              return;
+                            }
+                            if (!scheduledAt) {
+                              toast("Select a schedule time");
+                              return;
+                            }
+                            const recipients = recipientsRaw
+                              .split(",")
+                              .map((s) => s.trim())
+                              .filter((s) => s.length > 0);
+                            if (recipients.length === 0) {
+                              toast("Add at least one recipient");
+                              return;
+                            }
+                            const local = new Date(scheduledAt);
+                            const scheduledUtcMs = local.getTime(); // assume input is local; stored as UTC ms
+                            await createCampaign({
+                              businessId: currentBusiness._id,
+                              createdBy: currentUserDoc!._id,
+                              subject: emailSubject,
+                              from: emailFrom,
+                              previewText: emailPreview || "",
+                              blocks,
+                              recipients,
+                              timezone: tz,
+                              scheduledAt: scheduledUtcMs,
+                            } as any);
+                            toast("Campaign scheduled");
+                            setEmailOpen(false);
+                            setEmailSubject("");
+                            setEmailPreview("");
+                            setRecipientsRaw("");
+                          } catch (e) {
+                            toast("Failed to schedule");
+                          }
+                        }}
+                      >
+                        Schedule
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              </div>
+
+              {/* Tiny list of recent campaigns */}
+              <div className="rounded-md border divide-y">
+                {(campaigns ?? []).length === 0 ? (
+                  <div className="text-sm text-muted-foreground p-3">No campaigns yet</div>
+                ) : (
+                  (campaigns ?? []).map((c: any) => (
+                    <div key={c._id} className="flex items-center justify-between p-3">
+                      <div className="min-w-0">
+                        <div className="text-sm font-medium truncate">{c.subject}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {new Date(c.scheduledAt).toLocaleString()} • {c.status}
+                        </div>
+                      </div>
+                      <Badge>{(c.status || "").toUpperCase()}</Badge>
+                    </div>
+                  ))
+                )}
+              </div>
+            </CardContent>
+          </Card>
 
           {/* System Health Inspector */}
           <Card className="mb-8">
