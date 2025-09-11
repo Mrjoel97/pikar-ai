@@ -28,6 +28,8 @@ export default function WorkflowsPage() {
   const [editedPipelines, setEditedPipelines] = useState<Record<string, any[]>>({});
   const [templateTierFilter, setTemplateTierFilter] = useState<string>("all");
   const [templateIndustryFilter, setTemplateIndustryFilter] = useState<string>("all");
+  const [templateSearch, setTemplateSearch] = useState<string>("");
+  const [templateSort, setTemplateSort] = useState<"recommended" | "newest" | "name">("recommended");
 
   const businesses = useQuery(api.businesses.getUserBusinesses, {});
   const firstBizId = businesses?.[0]?._id;
@@ -335,6 +337,15 @@ export default function WorkflowsPage() {
     }
   };
 
+  const recommendedScore = (template: any) => {
+    const biz = businesses?.[0];
+    const tags: string[] = template?.tags || [];
+    let score = 0;
+    if (biz?.tier && tags.includes(`tier:${biz.tier}`)) score += 2;
+    if (biz?.industry && tags.includes(`industry:${biz.industry}`)) score += 1;
+    return score;
+  };
+
   const handleSeed = async () => {
     if (!firstBizId) {
       toast.error("No business found. Complete onboarding first.");
@@ -621,7 +632,7 @@ export default function WorkflowsPage() {
         </TabsContent>
 
         <TabsContent value="templates" className="space-y-4">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <div className="text-sm text-muted-foreground">Filter:</div>
 
             <Select value={templateTierFilter} onValueChange={setTemplateTierFilter}>
@@ -634,6 +645,7 @@ export default function WorkflowsPage() {
                 <SelectItem value="enterprise">Enterprise</SelectItem>
               </SelectContent>
             </Select>
+
             <Select value={templateIndustryFilter} onValueChange={setTemplateIndustryFilter}>
               <SelectTrigger className="w-44"><SelectValue placeholder="Industry" /></SelectTrigger>
               <SelectContent>
@@ -644,7 +656,37 @@ export default function WorkflowsPage() {
                 <SelectItem value="other">Other</SelectItem>
               </SelectContent>
             </Select>
-            <div className="ml-auto">
+
+            <Input
+              value={templateSearch}
+              onChange={(e) => setTemplateSearch(e.target.value)}
+              placeholder="Search templates..."
+              className="w-56"
+            />
+
+            <Select value={templateSort} onValueChange={(v: any) => setTemplateSort(v)}>
+              <SelectTrigger className="w-44"><SelectValue placeholder="Sort by" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="recommended">Recommended</SelectItem>
+                <SelectItem value="newest">Newest</SelectItem>
+                <SelectItem value="name">Name (A–Z)</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setTemplateTierFilter("all");
+                setTemplateIndustryFilter("all");
+                setTemplateSearch("");
+                setTemplateSort("recommended");
+              }}
+            >
+              Clear
+            </Button>
+
+            <div className="ml-auto flex items-center gap-2">
               <Button variant="outline" size="sm" disabled={!firstBizId} onClick={async () => {
                 try {
                   const res = await seedBusinessTemplates({ businessId: firstBizId as any, perTier: 30 } as any);
@@ -655,44 +697,86 @@ export default function WorkflowsPage() {
               }}>Seed 120 templates</Button>
             </div>
           </div>
-          <div className="grid gap-4">
-            {templates?.filter((t: any) => {
-              const tags: string[] = t.tags || [];
-              const tierOk = templateTierFilter === "all" || tags.includes(`tier:${templateTierFilter}`);
-              const indOk = templateIndustryFilter === "all" || tags.includes(`industry:${templateIndustryFilter}`);
-              return tierOk && indOk;
-            }).map((template: any) => (
-              <Card key={template._id}>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <CardTitle className="text-lg">{template.name}</CardTitle>
-                      {template.description && (
-                        <CardDescription>{template.description}</CardDescription>
-                      )}
-                    </div>
-                    <Button onClick={() => handleCopyTemplate(template._id)}>
-                      <Copy className="h-4 w-4 mr-1" />
-                      Copy Template
-                    </Button>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                    <span>Steps: {template.pipeline.length}</span>
-                    <span>Trigger: {template.trigger.type}</span>
-                  </div>
-                  {template.tags.length > 0 && (
-                    <div className="flex gap-1 mt-2">
-                      {template.tags.map((tag: string) => (
-                        <Badge key={tag} variant="outline" className="text-xs">{tag}</Badge>
-                      ))}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+
+          {(() => {
+            const term = templateSearch.trim().toLowerCase();
+            const list: any[] = (templates || [])
+              .filter((t: any) => {
+                const tags: string[] = t.tags || [];
+                const tierOk = templateTierFilter === "all" || tags.includes(`tier:${templateTierFilter}`);
+                const indOk = templateIndustryFilter === "all" || tags.includes(`industry:${templateIndustryFilter}`);
+                if (!tierOk || !indOk) return false;
+                if (!term) return true;
+                const hay = [
+                  t.name || "",
+                  t.description || "",
+                  (t.trigger?.type || ""),
+                  ...(tags || []),
+                ].join(" ").toLowerCase();
+                return hay.includes(term);
+              })
+              .sort((a: any, b: any) => {
+                if (templateSort === "recommended") {
+                  const sa = recommendedScore(a);
+                  const sb = recommendedScore(b);
+                  if (sb !== sa) return sb - sa;
+                  // tie-breaker: newest first
+                  return (b._creationTime || 0) - (a._creationTime || 0);
+                }
+                if (templateSort === "newest") {
+                  return (b._creationTime || 0) - (a._creationTime || 0);
+                }
+                // name
+                return String(a.name || "").localeCompare(String(b.name || ""));
+              });
+
+            return (
+              <>
+                <div className="text-xs text-muted-foreground">
+                  {list.length} template{list.length === 1 ? "" : "s"} found
+                </div>
+                <div className="grid gap-4">
+                  {list.map((template: any) => {
+                    const score = recommendedScore(template);
+                    return (
+                      <Card key={template._id}>
+                        <CardHeader>
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <CardTitle className="text-lg">{template.name}</CardTitle>
+                                {score > 0 && <Badge>Recommended</Badge>}
+                              </div>
+                              {template.description && (
+                                <CardDescription>{template.description}</CardDescription>
+                              )}
+                            </div>
+                            <Button onClick={() => handleCopyTemplate(template._id)}>
+                              <Copy className="h-4 w-4 mr-1" />
+                              Copy Template
+                            </Button>
+                          </div>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                            <span>Steps: {template.pipeline.length}</span>
+                            <span>Trigger: {template.trigger.type}</span>
+                          </div>
+                          {template.tags.length > 0 && (
+                            <div className="flex gap-1 mt-2 flex-wrap">
+                              {template.tags.map((tag: string) => (
+                                <Badge key={tag} variant="outline" className="text-xs">{tag}</Badge>
+                              ))}
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              </>
+            );
+          })()}
         </TabsContent>
 
         <TabsContent value="suggested" className="space-y-4">
