@@ -27,7 +27,7 @@ import { WorkflowRow } from "@/components/dashboard/rows/WorkflowRow";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { Switch } from "@/components/ui/switch";
-import { CheckCircle2, XCircle, Flag } from "lucide-react";
+import { CheckCircle2, XCircle, Flag, Clock } from "lucide-react";
 
 function JourneyBand() {
   const navigate = useNavigate();
@@ -171,6 +171,13 @@ export default function Dashboard() {
   const toggleFlag = useMutation(api.featureFlags.toggleFeatureFlag);
   const processApproval = useMutation(api.approvals.processApproval);
   const trackEventMutation = useMutation(api.telemetry.trackEvent);
+
+  // Due Soon steps query (gate with "skip")
+  const currentUserDoc = useQuery(api.users.currentUser);
+  const dueSoonSteps = useQuery(
+    api.workflowAssignments.getStepsDueSoon,
+    currentUserDoc ? { userId: currentUserDoc._id, hoursAhead: 48 } : "skip"
+  );
 
   // Sidebar tier-specific items
   const tier = (currentBusiness as any)?.tier as string | undefined;
@@ -602,7 +609,7 @@ export default function Dashboard() {
               </div>
 
               {/* Compact widgets row: Approvals, Feature Flags, Telemetry Debug */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-6">
                 {/* Pending Approvals */}
                 <Card>
                   <CardHeader className="pb-3">
@@ -749,6 +756,40 @@ export default function Dashboard() {
                     >
                       Log Test Event
                     </Button>
+                  </CardContent>
+                </Card>
+
+                {/* Due Soon list */}
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <Clock className="h-4 w-4 text-blue-600" />
+                      Due Soon
+                    </CardTitle>
+                    <CardDescription>Steps due in the next 48 hours</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {(dueSoonSteps ?? []).length === 0 ? (
+                      <div className="text-sm text-muted-foreground">Nothing due soon</div>
+                    ) : (
+                      (dueSoonSteps ?? []).slice(0, 5).map((s: any) => (
+                        <div key={s._id} className="flex items-center justify-between rounded-md border p-2">
+                          <div className="min-w-0">
+                            <div className="text-sm font-medium truncate">{s.name}</div>
+                            <div className="text-xs text-muted-foreground">
+                              {s.workflow?.name ? `${s.workflow.name} • ` : ""}
+                              <span className="capitalize">{s.status?.replace("_", " ")}</span>
+                              {s.dueDate && (
+                                <>
+                                  {" • Due "}
+                                  {new Date(s.dueDate).toLocaleString()}
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    )}
                   </CardContent>
                 </Card>
               </div>
