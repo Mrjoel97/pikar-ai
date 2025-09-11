@@ -10,7 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/use-auth";
 import { api } from "@/convex/_generated/api";
-import { useQuery, useAction } from "convex/react";
+import { useQuery, useMutation, useAction } from "convex/react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { Input } from "@/components/ui/input";
@@ -25,6 +25,7 @@ import { StatCard } from "@/components/dashboard/StatCard";
 import { AgentRow } from "@/components/dashboard/rows/AgentRow";
 import { WorkflowRow } from "@/components/dashboard/rows/WorkflowRow";
 import { motion } from "framer-motion";
+import { toast } from "sonner";
 
 function JourneyBand() {
   const navigate = useNavigate();
@@ -151,6 +152,14 @@ export default function Dashboard() {
   const [isRunningInspection, setIsRunningInspection] = useState(false);
   const [inspectionReport, setInspectionReport] = useState<FullAppInspectionReport | null>(null);
   const runInspection = useAction(api.inspector.runInspection);
+
+  // Queries for Sprint 1 sections (keep hook order stable; gate by "skip")
+  const businessIdForQueries =
+    currentBusiness ? { businessId: currentBusiness._id } : "skip";
+  const kpi = useQuery(api.kpis.getSnapshot, businessIdForQueries);
+  const focusTasks = useQuery(api.tasks.listTopFocus, businessIdForQueries);
+  const nudges = useQuery(api.nudges.getUpgradeNudges, businessIdForQueries);
+  const updateTaskStatus = useMutation(api.tasks.updateStatus);
 
   // Sidebar tier-specific items
   const tier = (currentBusiness as any)?.tier as string | undefined;
@@ -356,6 +365,102 @@ export default function Dashboard() {
               </motion.div>
             ))}
           </motion.div>
+
+          {/* Today's Focus */}
+          <div className="mb-6 rounded-lg border p-4">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-semibold">Today's Focus</h3>
+              <span className="text-xs text-muted-foreground">
+                Top 3 tasks prioritized by urgency and priority
+              </span>
+            </div>
+            <div className="space-y-2">
+              {(focusTasks ?? []).length === 0 ? (
+                <div className="text-sm text-muted-foreground">No tasks yet. Great time to create a quick win.</div>
+              ) : (
+                (focusTasks ?? []).map((t) => (
+                  <div
+                    key={t._id}
+                    className="flex items-center justify-between rounded-md border px-3 py-2"
+                  >
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="checkbox"
+                        checked={t.status === "done"}
+                        onChange={async (e) => {
+                          try {
+                            await updateTaskStatus({
+                              taskId: t._id,
+                              status: e.target.checked ? "done" : "todo",
+                            });
+                            toast("Task updated");
+                          } catch (err: any) {
+                            toast("Failed to update task");
+                          }
+                        }}
+                      />
+                      <div>
+                        <div className="text-sm font-medium">{t.title}</div>
+                        {t.description && (
+                          <div className="text-xs text-muted-foreground">{t.description}</div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {t.urgent && (
+                        <span className="text-[10px] rounded bg-red-100 px-2 py-0.5 text-red-700">Urgent</span>
+                      )}
+                      <span className="text-[10px] rounded bg-slate-100 px-2 py-0.5 capitalize">
+                        {t.priority}
+                      </span>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+          {/* Performance Snapshot */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-6">
+            <StatCard
+              title="Visitors"
+              value={kpi?.visitors ?? 0}
+              delta={kpi?.visitorsDelta ?? 0}
+              suffix=""
+            />
+            <StatCard
+              title="Subscribers"
+              value={kpi?.subscribers ?? 0}
+              delta={kpi?.subscribersDelta ?? 0}
+              suffix=""
+            />
+            <StatCard
+              title="Engagement"
+              value={kpi?.engagement ?? 0}
+              delta={kpi?.engagementDelta ?? 0}
+              suffix="%"
+            />
+            <StatCard
+              title="Revenue"
+              value={kpi?.revenue ?? 0}
+              delta={kpi?.revenueDelta ?? 0}
+              prefix="$"
+            />
+          </div>
+
+          {/* Upgrade Nudges Banner */}
+          {Array.isArray(nudges) && nudges.length > 0 && (
+            <div className="mb-4 rounded-lg border bg-gradient-to-r from-amber-50 to-orange-50 p-4 text-sm">
+              <div className="font-medium mb-1">You're growing fast</div>
+              <ul className="list-disc pl-5 space-y-1">
+                {nudges.map((n) => (
+                  <li key={n.key}>
+                    {n.message}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           {/* Initiative Journey moved below greeting & stats (already positioned here) */}
           <JourneyBand />

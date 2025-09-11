@@ -930,4 +930,43 @@ export default defineSchema({
     .index("by_entity", ["entityType"])
     .index("by_user", ["userId"])
     .index("by_created_at", ["createdAt"]),
+
+  // Add KPIs for Dashboard snapshots (per-business, per-day)
+  dashboardKpis: defineTable({
+    businessId: v.id("businesses"),
+    date: v.string(), // YYYY-MM-DD
+    visitors: v.number(),
+    subscribers: v.number(),
+    engagement: v.number(), // percentage 0-100
+    revenue: v.number(),
+    // deltas for simple trend arrows
+    visitorsDelta: v.optional(v.number()),
+    subscribersDelta: v.optional(v.number()),
+    engagementDelta: v.optional(v.number()),
+    revenueDelta: v.optional(v.number()),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_business_and_date", ["businessId", "date"]),
+
+  // Lightweight Tasks for "Today's Focus" (SNAP-inspired)
+  tasks: defineTable({
+    businessId: v.id("businesses"),
+    initiativeId: v.optional(v.id("initiatives")),
+    title: v.string(),
+    description: v.optional(v.string()),
+    priority: v.union(v.literal("low"), v.literal("medium"), v.literal("high")),
+    urgent: v.boolean(),
+    status: v.union(
+      v.literal("todo"),
+      v.literal("in_progress"),
+      v.literal("blocked"),
+      v.literal("done")
+    ),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    dueDate: v.optional(v.number()),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_status", ["status"])
+    .index("by_due_date", ["dueDate"]),
 });

@@ -52,6 +52,53 @@ export const seedDemo: any = action({
       });
     }
 
+    // Seed KPIs + 3 SNAP tasks for Solopreneur testing if business exists
+    if (seeded?.businessId) {
+      const today = new Date();
+      const yyyyMmDd = today.toISOString().slice(0, 10);
+
+      // Upsert KPI snapshot with simple positive deltas
+      await ctx.runMutation(api.kpis.upsert, {
+        businessId: seeded.businessId,
+        date: yyyyMmDd,
+        visitors: 420,
+        subscribers: 180,
+        engagement: 62,
+        revenue: 12500,
+        visitorsDelta: 8,
+        subscribersDelta: 5,
+        engagementDelta: 3,
+        revenueDelta: 12,
+      });
+
+      // Create three focus tasks with varying priority/urgency
+      await ctx.runMutation(api.tasks.create, {
+        businessId: seeded.businessId,
+        initiativeId: seeded.initiativeId,
+        title: "Publish weekly newsletter",
+        description: "Send the curated newsletter to subscribers.",
+        priority: "high",
+        urgent: true,
+        dueDate: Date.now() + 24 * 60 * 60 * 1000,
+      });
+      await ctx.runMutation(api.tasks.create, {
+        businessId: seeded.businessId,
+        initiativeId: seeded.initiativeId,
+        title: "Schedule social posts",
+        description: "Queue 5 posts for the week.",
+        priority: "medium",
+        urgent: false,
+      });
+      await ctx.runMutation(api.tasks.create, {
+        businessId: seeded.businessId,
+        initiativeId: seeded.initiativeId,
+        title: "Review analytics snapshot",
+        description: "Check engagement trends and top content.",
+        priority: "low",
+        urgent: false,
+      });
+    }
+
     return {
       message: "Demo data seeded",
       ...seeded,
