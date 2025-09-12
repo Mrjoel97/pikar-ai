@@ -88,7 +88,187 @@ function JourneyBand({ initiative }: { initiative: any | null | undefined }) {
   );
 }
 
-// ... keep existing code (rest of file and beginning of Dashboard component)
+// Add: Solopreneur Quick Actions (minimal - Send Newsletter)
+function SolopreneurQuickActions({
+  businessId,
+  defaultFrom,
+}: {
+  businessId: string;
+  defaultFrom: string;
+}) {
+  const sendTestEmail = useAction(api.emailsActions.sendTestEmail);
+
+  const [open, setOpen] = useState(false);
+  const [to, setTo] = useState("");
+  const [subject, setSubject] = useState("Weekly newsletter");
+  const [preview, setPreview] = useState("This week's highlights");
+  const [from, setFrom] = useState(defaultFrom);
+
+  const onSend = async () => {
+    try {
+      if (!to) {
+        toast("Please enter a recipient email");
+        return;
+      }
+      await sendTestEmail({
+        from,
+        to,
+        subject,
+        previewText: preview || undefined,
+        businessId: businessId as any,
+        blocks: [
+          { type: "text", content: "Hello! Here are this week's highlights." },
+          { type: "button", label: "Read more", url: "https://pikar.ai" },
+          { type: "footer", includeUnsubscribe: true },
+        ],
+      });
+      toast("Email sent");
+      setOpen(false);
+    } catch (e: any) {
+      toast(`Failed to send: ${e?.message || String(e)}`);
+    }
+  };
+
+  return (
+    <Card className="border-dashed">
+      <CardHeader>
+        <CardTitle className="text-sm">Quick Actions</CardTitle>
+      </CardHeader>
+      <CardContent className="flex flex-wrap items-center gap-2">
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogTrigger asChild>
+            <Button size="sm" variant="default">Send Newsletter</Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Send test newsletter</DialogTitle>
+            </DialogHeader>
+            <div className="grid gap-3">
+              <div className="grid gap-1">
+                <label className="text-sm">From</label>
+                <Input value={from} onChange={(e) => setFrom(e.target.value)} placeholder="Acme <news@acme.com>" />
+              </div>
+              <div className="grid gap-1">
+                <label className="text-sm">To</label>
+                <Input value={to} onChange={(e) => setTo(e.target.value)} placeholder="you@example.com" />
+              </div>
+              <div className="grid gap-1">
+                <label className="text-sm">Subject</label>
+                <Input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Weekly newsletter" />
+              </div>
+              <div className="grid gap-1">
+                <label className="text-sm">Preview text</label>
+                <Input value={preview} onChange={(e) => setPreview(e.target.value)} placeholder="This week's highlights" />
+              </div>
+              <div className="grid gap-1">
+                <label className="text-sm">Body (auto-generated from blocks)</label>
+                <Textarea value={"Hello! Here are this week's highlights.\n\n[Read more]"} disabled />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button onClick={onSend}>Send</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+        {/* Stubs for other quick actions to be implemented later without breaking structure */}
+        <Button size="sm" variant="secondary" disabled>Post to Social (soon)</Button>
+        <Button size="sm" variant="secondary" disabled>Check Analytics (soon)</Button>
+      </CardContent>
+    </Card>
+  );
+}
+
+// Add: Today's Focus (Top 3 Tasks)
+function TodaysFocus({ businessId }: { businessId: string }) {
+  const tasks = useQuery(api.tasks.topThreeForBusiness, { businessId: businessId as any });
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-sm">Today's Focus</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {!tasks?.length ? (
+          <div className="text-sm text-muted-foreground">No tasks yet. Create your first focus task to get started.</div>
+        ) : (
+          tasks.map((t: any) => (
+            <div key={t._id} className="flex items-start justify-between border rounded-md p-3">
+              <div>
+                <div className="font-medium">{t.title}</div>
+                {t.description ? <div className="text-xs text-muted-foreground mt-1">{t.description}</div> : null}
+              </div>
+              <div className="text-xs px-2 py-1 rounded bg-secondary">
+                {t.urgent ? "Urgent" : t.priority}
+              </div>
+            </div>
+          ))
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// Add: Recent Activity (Notifications)
+function RecentActivity({ userId }: { userId: string }) {
+  const notifications = useQuery(api.notifications.getUserNotifications, { userId: userId as any, limit: 5 });
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-sm">Recent Activity</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {!notifications?.length ? (
+          <div className="text-sm text-muted-foreground">No recent activity yet.</div>
+        ) : (
+          notifications.map((n: any) => (
+            <div key={n._id} className="flex items-start justify-between border rounded-md p-3">
+              <div>
+                <div className="font-medium">{n.title}</div>
+                <div className="text-xs text-muted-foreground mt-1">{n.message}</div>
+              </div>
+              <div className="text-xs px-2 py-1 rounded bg-secondary">
+                {n.type}
+              </div>
+            </div>
+          ))
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// Add: Dev-only seed button (?debug=1)
+function DevSeedButton() {
+  const seedForCurrentUser = useAction(api.seed.seedForCurrentUser);
+  const [loading, setLoading] = useState(false);
+
+  const params = new URLSearchParams(typeof window !== "undefined" ? window.location.search : "");
+  const show = params.get("debug") === "1";
+
+  if (!show) return null;
+  return (
+    <Button
+      variant="outline"
+      size="sm"
+      onClick={async () => {
+        try {
+          setLoading(true);
+          await seedForCurrentUser({});
+          toast("Seeded demo data");
+        } catch (e: any) {
+          toast(`Seed failed: ${e?.message || String(e)}`);
+        } finally {
+          setLoading(false);
+        }
+      }}
+      disabled={loading}
+    >
+      {loading ? "Seeding..." : "Seed Demo Data"}
+    </Button>
+  );
+}
+
 export default function Dashboard() {
   const { isLoading: authLoading, isAuthenticated, user, signOut } = useAuth();
   const navigate = useNavigate();
@@ -696,8 +876,8 @@ export default function Dashboard() {
                   <CardContent>
                     <motion.div
                       className="space-y-4"
-                      initial="hidden"
-                      animate="show"
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
                       variants={{
                         hidden: { opacity: 0, y: 8 },
                         show: { opacity: 1, y: 0 },

@@ -155,3 +155,91 @@ export const seedDemo: any = action({
     };
   },
 });
+
+export const seedForCurrentUser = action({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity?.email) {
+      throw new Error("Not authenticated");
+    }
+
+    const email = identity.email;
+
+    // Ensure user
+    await ctx.runMutation(api.users.ensureSeedUser, { email });
+
+    // Seed business/initiative/diagnostics
+    const seeded: {
+      businessId?: Id<"businesses">;
+      initiativeId?: Id<"initiatives">;
+      diagnosticId?: Id<"diagnostics">;
+    } = await ctx.runMutation(api.initiatives.seedForEmail, { email });
+
+    // Seed AI agents (best effort)
+    if (seeded?.businessId) {
+      try {
+        await ctx.runMutation(internal.aiAgents.seedForBusinessInternal, {
+          businessId: seeded.businessId,
+        });
+      } catch {
+        // ignore
+      }
+    }
+
+    // KPIs + Focus tasks
+    if (seeded?.businessId) {
+      const today = new Date();
+      const yyyyMmDd = today.toISOString().slice(0, 10);
+
+      try {
+        await ctx.runMutation(api.kpis.upsert, {
+          businessId: seeded.businessId,
+          date: yyyyMmDd,
+          visitors: 420,
+          subscribers: 180,
+          engagement: 62,
+          revenue: 12500,
+          visitorsDelta: 8,
+          subscribersDelta: 5,
+          engagementDelta: 3,
+          revenueDelta: 12,
+        });
+      } catch {
+        // ignore
+      }
+
+      // Seed 3 tasks
+      await ctx.runMutation(api.tasks.create, {
+        businessId: seeded.businessId,
+        initiativeId: seeded.initiativeId,
+        title: "Publish weekly newsletter",
+        description: "Send the curated newsletter to subscribers.",
+        priority: "high",
+        urgent: true,
+        dueDate: Date.now() + 24 * 60 * 60 * 1000,
+      });
+      await ctx.runMutation(api.tasks.create, {
+        businessId: seeded.businessId,
+        initiativeId: seeded.initiativeId,
+        title: "Schedule social posts",
+        description: "Queue 5 posts for the week.",
+        priority: "medium",
+        urgent: false,
+      });
+      await ctx.runMutation(api.tasks.create, {
+        businessId: seeded.businessId,
+        initiativeId: seeded.initiativeId,
+        title: "Review analytics snapshot",
+        description: "Check engagement trends and top content.",
+        priority: "low",
+        urgent: false,
+      });
+    }
+
+    return {
+      message: "Seeded demo data for current user",
+      ...seeded,
+    };
+  },
+});
