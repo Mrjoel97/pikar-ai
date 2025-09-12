@@ -137,8 +137,16 @@ export default function Dashboard() {
   // Deduplicate user query: use a single currentUserDoc for all downstream usages
   const currentUserDoc = useQuery(api.users.currentUser);
 
-  const currentBusiness = useQuery(api.businesses.currentUserBusiness);
-  const businesses = useQuery(api.businesses.getByOwner);
+  // Gate business queries by auth to avoid unauthenticated errors
+  const currentBusiness = useQuery(
+    api.businesses.currentUserBusiness,
+    isAuthenticated ? {} : "skip"
+  );
+  const businesses = useQuery(
+    api.businesses.getByOwner,
+    isAuthenticated ? {} : "skip"
+  );
+
   const agents = useQuery(
     api.aiAgents.getByBusiness,
     currentBusiness ? { businessId: currentBusiness._id } : "skip" // use "skip" per Convex types
@@ -298,7 +306,7 @@ export default function Dashboard() {
     }
   }, [authLoading, isAuthenticated, businesses, navigate]);
 
-  if (authLoading) {
+  if (authLoading || currentBusiness === undefined) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin" />
@@ -306,7 +314,8 @@ export default function Dashboard() {
     );
   }
 
-  if (!isAuthenticated || !currentBusiness) {
+  // Only treat null as "no business"; don't blank the page during loading
+  if (!isAuthenticated) {
     return null;
   }
 
@@ -559,7 +568,7 @@ export default function Dashboard() {
             <div>
               <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
               <p className="text-muted-foreground">
-                Welcome back! Here's what's happening with {currentBusiness.name}.
+                Welcome back! Here's what's happening with {(currentBusiness?.name ?? "your business")}.
               </p>
             </div>
             <div className="flex gap-2">
@@ -617,8 +626,13 @@ export default function Dashboard() {
               size="sm"
               onClick={async () => {
                 try {
+                  const business = currentBusiness;
+                  if (!business) {
+                    toast("No business selected");
+                    return;
+                  }
                   await seedKpis({
-                    businessId: currentBusiness._id,
+                    businessId: business._id,
                     visitors: 1240,
                     subscribers: 86,
                     engagement: 37,
@@ -642,7 +656,12 @@ export default function Dashboard() {
               className="ml-2"
               onClick={async () => {
                 try {
-                  await seedTasks({ businessId: currentBusiness._id, count: 3 } as any);
+                  const business = currentBusiness;
+                  if (!business) {
+                    toast("No business selected");
+                    return;
+                  }
+                  await seedTasks({ businessId: business._id, count: 3 } as any);
                   toast("Seeded demo tasks");
                 } catch {
                   toast("Failed to seed tasks");
@@ -1000,8 +1019,13 @@ export default function Dashboard() {
                       variant="outline"
                       onClick={async () => {
                         try {
+                          const business = currentBusiness;
+                          if (!business) {
+                            toast("No business selected");
+                            return;
+                          }
                           await trackEventMutation({
-                            businessId: currentBusiness._id,
+                            businessId: business._id,
                             eventName: "debug_click",
                             eventData: { location: "dashboard_telemetry_debug" },
                           } as any);
@@ -1304,12 +1328,17 @@ export default function Dashboard() {
                               toast("No user email to send test");
                               return;
                             }
+                            const business = currentBusiness;
+                            if (!business) {
+                              toast("No business selected");
+                              return;
+                            }
                             await sendTestEmail({
                               from: emailFrom,
                               to,
                               subject: emailSubject || "(no subject)",
                               previewText: emailPreview || "",
-                              businessId: currentBusiness._id,
+                              businessId: business._id,
                               blocks,
                             } as any);
                             toast("Test email sent");
@@ -1340,9 +1369,14 @@ export default function Dashboard() {
                               return;
                             }
                             const local = new Date(scheduledAt);
-                            const scheduledUtcMs = local.getTime(); // assume input is local; stored as UTC ms
+                            const scheduledUtcMs = local.getTime();
+                            const business = currentBusiness;
+                            if (!business) {
+                              toast("No business selected");
+                              return;
+                            }
                             await createCampaign({
-                              businessId: currentBusiness._id,
+                              businessId: business._id,
                               createdBy: currentUserDoc!._id,
                               subject: emailSubject,
                               from: emailFrom,
