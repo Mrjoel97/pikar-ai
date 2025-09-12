@@ -134,6 +134,9 @@ export default function Dashboard() {
   const { isLoading: authLoading, isAuthenticated, user, signOut } = useAuth();
   const navigate = useNavigate();
 
+  // Deduplicate user query: use a single currentUserDoc for all downstream usages
+  const currentUserDoc = useQuery(api.users.currentUser);
+
   const currentBusiness = useQuery(api.businesses.currentUserBusiness);
   const businesses = useQuery(api.businesses.getByOwner);
   const agents = useQuery(
@@ -154,11 +157,10 @@ export default function Dashboard() {
   );
 
   // Add helper selectors near existing user/business context hooks
-  const currentUser = useQuery(api.users.currentUser);
   const pendingApprovals = useQuery(
     api.approvals.pendingByUser,
-    currentUser && currentBusiness
-      ? { userId: currentUser._id, businessId: currentBusiness._id, limit: 5 }
+    currentUserDoc && currentBusiness
+      ? { userId: currentUserDoc._id, businessId: currentBusiness._id, limit: 5 }
       : "skip"
   );
 
@@ -204,7 +206,6 @@ export default function Dashboard() {
   const trackEventMutation = useMutation(api.telemetry.trackEvent);
 
   // Due Soon steps query (gate with "skip")
-  const currentUserDoc = useQuery(api.users.currentUser);
   const dueSoonSteps = useQuery(
     api.workflowAssignments.getStepsDueSoon,
     currentUserDoc ? { userId: currentUserDoc._id, hoursAhead: 48 } : "skip"
@@ -462,7 +463,7 @@ export default function Dashboard() {
                   className="px-2 py-1 rounded bg-emerald-600 text-white text-xs"
                   onClick={async () => {
                     try {
-                      await approveApproval({ id: r._id, approvedBy: currentUser!._id });
+                      await approveApproval({ id: r._id, approvedBy: currentUserDoc!._id });
                       toast.success("Approved");
                     } catch (e: any) {
                       toast.error(e?.message ?? "Approve failed");
@@ -475,7 +476,7 @@ export default function Dashboard() {
                   className="px-2 py-1 rounded bg-rose-600 text-white text-xs"
                   onClick={async () => {
                     try {
-                      await rejectApproval({ id: r._id, rejectedBy: currentUser!._id });
+                      await rejectApproval({ id: r._id, rejectedBy: currentUserDoc!._id });
                       toast.success("Rejected");
                     } catch (e: any) {
                       toast.error(e?.message ?? "Reject failed");
