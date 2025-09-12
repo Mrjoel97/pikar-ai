@@ -33,103 +33,57 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useMemo } from "react";
 
-function JourneyBand() {
-  const navigate = useNavigate();
-  // Animation variants
-  const container = {
-    hidden: { opacity: 0 },
-    show: {
-      opacity: 1,
-      transition: { staggerChildren: 0.06, delayChildren: 0.05 },
-    },
-  };
-  const item = {
-    hidden: { opacity: 0, y: 8 },
-    show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 280, damping: 24, mass: 0.6 } },
-  };
-
-  const phases: Array<{ id: number; name: string; description: string; actions: Array<{ label: string; onClick: () => void }> }> = [
-    {
-      id: 0,
-      name: "Onboarding",
-      description: "Define industry, model, goals and connect integrations.",
-      actions: [{ label: "Guided Onboarding", onClick: () => navigate("/onboarding") }],
-    },
-    {
-      id: 1,
-      name: "Discovery",
-      description: "Analyze signals; clarify target customers.",
-      actions: [{ label: "Open Analytics", onClick: () => navigate("/analytics") }],
-    },
-    {
-      id: 2,
-      name: "Planning",
-      description: "Draft strategy; add checkpoints & assumptions.",
-      actions: [{ label: "Open Workflows", onClick: () => navigate("/workflows") }],
-    },
-    {
-      id: 3,
-      name: "Foundation",
-      description: "Baseline setup: domains, CRM, payments.",
-      actions: [{ label: "Onboarding Checks", onClick: () => navigate("/onboarding") }],
-    },
-    {
-      id: 4,
-      name: "Execution",
-      description: "Run campaigns and orchestrations.",
-      actions: [{ label: "Orchestrate", onClick: () => navigate("/workflows") }],
-    },
-    {
-      id: 5,
-      name: "Scale",
-      description: "Duplicate winners; expand markets.",
-      actions: [{ label: "Analytics", onClick: () => navigate("/analytics") }],
-    },
-    {
-      id: 6,
-      name: "Sustain",
-      description: "Continuous improvement & audits.",
-      actions: [{ label: "Compliance", onClick: () => window.scrollTo({ top: 0, behavior: "smooth" }) }],
-    },
-  ];
-
+// Add: simple Dev Debug Panel component (rendered only in dev or with ?debug=1)
+function DevDebugPanel(props: { data: Record<string, unknown> }) {
+  // ... keep existing code (none here, this is a new component)
+  const entries = Object.entries(props.data || {});
+  if (!entries.length) return null;
   return (
-    <Card className="mb-8">
-      <CardHeader className="pb-3">
-        <CardTitle className="text-lg">Initiative Journey</CardTitle>
-        <CardDescription>Track from setup to sustainability</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <motion.div
-          className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4"
-          variants={container}
-          initial="hidden"
-          animate="show"
-        >
-          {phases.map((p) => (
-            <motion.div
-              key={p.id}
-              variants={item}
-              whileHover={{ y: -2, scale: 1.01 }}
-              className="rounded-lg border p-4 bg-background hover:shadow-sm transition-shadow"
-            >
-              <div className="text-sm font-medium">{p.name}</div>
-              <div className="text-xs text-muted-foreground mb-3">{p.description}</div>
-              <div className="flex flex-wrap gap-2">
-                {p.actions.map((a, i) => (
-                  <Button key={i} variant="outline" size="sm" onClick={a.onClick}>
-                    {a.label}
-                  </Button>
-                ))}
-              </div>
-            </motion.div>
-          ))}
-        </motion.div>
-      </CardContent>
-    </Card>
+    <div className="fixed bottom-4 right-4 z-50 w-[320px] max-h-[50vh] overflow-auto rounded-lg border border-muted-foreground/20 bg-background/95 p-3 shadow-lg backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <div className="mb-2 text-xs font-semibold uppercase text-muted-foreground">Dev Debug</div>
+      <pre className="whitespace-pre-wrap break-words text-xs leading-snug">
+        {JSON.stringify(props.data, null, 2)}
+      </pre>
+      <div className="mt-2 text-[10px] text-muted-foreground">Tip: hide with ?debug=0</div>
+    </div>
   );
 }
 
+// Add: JourneyBand compact component used in Dashboard
+function JourneyBand() {
+  // ... keep existing code (none here; new component)
+  const steps = [
+    { key: "plan", label: "Plan", done: true },
+    { key: "build", label: "Build", done: true },
+    { key: "launch", label: "Launch", done: false },
+    { key: "iterate", label: "Iterate", done: false },
+  ];
+  return (
+    <div className="rounded-lg border p-4 bg-white/60 dark:bg-slate-900/60">
+      <div className="text-sm font-medium mb-2">Initiative Journey</div>
+      <div className="flex items-center gap-3 overflow-x-auto">
+        {steps.map((s, i) => (
+          <div key={s.key} className="flex items-center gap-3 shrink-0">
+            <div
+              className={`h-8 px-3 rounded-full text-xs flex items-center justify-center border ${
+                s.done
+                  ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                  : "bg-slate-50 text-slate-600 dark:bg-slate-800 dark:text-slate-300 border-slate-200 dark:border-slate-700"
+              }`}
+            >
+              {s.label}
+            </div>
+            {i < steps.length - 1 && (
+              <div className="w-6 h-px bg-border" />
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ... keep existing code (rest of file and beginning of Dashboard component)
 export default function Dashboard() {
   const { isLoading: authLoading, isAuthenticated, user, signOut } = useAuth();
   const navigate = useNavigate();
