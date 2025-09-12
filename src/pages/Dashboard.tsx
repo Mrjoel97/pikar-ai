@@ -49,33 +49,38 @@ function DevDebugPanel(props: { data: Record<string, unknown> }) {
   );
 }
 
-// Add: JourneyBand compact component used in Dashboard
-function JourneyBand() {
-  // ... keep existing code (none here; new component)
-  const steps = [
-    { key: "plan", label: "Plan", done: true },
-    { key: "build", label: "Build", done: true },
-    { key: "launch", label: "Launch", done: false },
-    { key: "iterate", label: "Iterate", done: false },
-  ];
+function JourneyBand({ initiative }: { initiative: any | null | undefined }) {
+  const phaseRaw = (initiative as any)?.phase ?? "not started";
+  const phases = ["not started", "planning", "execution", "review", "complete"] as const;
+  const currentIndex = Math.max(0, phases.indexOf(phaseRaw as any));
+  const percent = Math.round((currentIndex / (phases.length - 1)) * 100);
+
   return (
-    <div className="rounded-lg border p-4 bg-white/60 dark:bg-slate-900/60">
-      <div className="text-sm font-medium mb-2">Initiative Journey</div>
-      <div className="flex items-center gap-3 overflow-x-auto">
-        {steps.map((s, i) => (
-          <div key={s.key} className="flex items-center gap-3 shrink-0">
-            <div
-              className={`h-8 px-3 rounded-full text-xs flex items-center justify-center border ${
-                s.done
-                  ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                  : "bg-slate-50 text-slate-600 dark:bg-slate-800 dark:text-slate-300 border-slate-200 dark:border-slate-700"
+    <div className="rounded-lg border bg-white dark:bg-slate-900 p-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <div className="text-sm text-muted-foreground">Initiative Journey</div>
+          <div className="mt-1 flex items-center gap-2">
+            <div className="text-lg font-semibold capitalize">{phaseRaw}</div>
+            <Badge variant="secondary">{percent}%</Badge>
+          </div>
+        </div>
+        <div className="w-48 md:w-64">
+          <div className="h-2 w-full rounded bg-muted">
+            <div className="h-2 rounded bg-foreground" style={{ width: `${percent}%` }} />
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-2 flex flex-wrap gap-2 text-xs text-muted-foreground">
+        {phases.map((p, i) => (
+          <div key={p} className={`flex items-center gap-1 ${i <= currentIndex ? "text-foreground" : ""}`}>
+            <span
+              className={`inline-block h-2 w-2 rounded-full ${
+                i <= currentIndex ? "bg-foreground" : "bg-muted-foreground/30"
               }`}
-            >
-              {s.label}
-            </div>
-            {i < steps.length - 1 && (
-              <div className="w-6 h-px bg-border" />
-            )}
+            />
+            <span className="capitalize">{p}</span>
           </div>
         ))}
       </div>
@@ -669,7 +674,7 @@ export default function Dashboard() {
           )}
 
           {/* Initiative Journey moved below greeting & stats (already positioned here) */}
-          <JourneyBand />
+          <JourneyBand initiative={initiative} />
 
           {/* Main Content Tabs */}
           <Tabs defaultValue="overview" className="space-y-6">
@@ -823,7 +828,7 @@ export default function Dashboard() {
                     </CardHeader>
                     <CardContent className="flex items-center justify-between">
                       <div>
-                        <div className="text-sm text-muted-foreground mb-1">Phase</div>
+                        <div className="text-sm text-muted-foreground">Phase</div>
                         <div className="text-lg font-semibold capitalize">
                           {(initiative as any)?.phase || "not started"}
                         </div>
