@@ -124,7 +124,8 @@ export const seedEnhancedForBusiness = mutation({
       throw new Error("User must be authenticated");
     }
     const business = await ctx.db.get(args.businessId);
-    if (!business || (business.ownerId !== user._id && !business.teamMembers.includes(user._id))) {
+    // Fix: make teamMembers check safe if it's undefined
+    if (!business || (business.ownerId !== user._id && !(business.teamMembers || []).includes(user._id))) {
       throw new Error("Access denied");
     }
 
@@ -353,7 +354,8 @@ export const updateConfig = mutation({
       throw new Error("Agent not found");
     }
     const business = await ctx.db.get(agent.businessId);
-    if (!business || (business.ownerId !== user._id && !business.teamMembers.includes(user._id))) {
+    // Fix: make teamMembers check safe if it's undefined
+    if (!business || (business.ownerId !== user._id && !(business.teamMembers || []).includes(user._id))) {
       throw new Error("Access denied");
     }
 
