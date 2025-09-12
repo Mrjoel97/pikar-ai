@@ -4,7 +4,7 @@ import { InstrumentationProvider } from "@/instrumentation.tsx";
 import AuthPage from "@/pages/Auth.tsx";
 import { ConvexAuthProvider } from "@convex-dev/auth/react";
 import { ConvexReactClient } from "convex/react";
-import { StrictMode, useEffect } from "react";
+import React, { StrictMode, useEffect, Component } from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter, Route, Routes, useLocation } from "react-router";
 import "./index.css";
@@ -20,9 +20,54 @@ import WorkflowTemplatesPage from "@/pages/WorkflowTemplates.tsx";
 import BusinessPage from "@/pages/Business.tsx";
 import AnalyticsPage from "@/pages/Analytics.tsx";
 
-const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL as string);
+class ErrorBoundary extends Component<
+  { children: React.ReactNode },
+  { hasError: boolean; error?: any }
+> {
+  constructor(props: any) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError(error: any) {
+    return { hasError: true, error };
+  }
+  componentDidCatch(error: any) {
+    console.error("App crashed:", error);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen flex items-center justify-center p-6">
+          <div className="max-w-lg text-center">
+            <h1 className="text-2xl font-semibold mb-2">Something went wrong</h1>
+            <p className="text-sm text-muted-foreground">
+              Please refresh the page. If the issue persists, contact support.
+            </p>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
-
+function AppProviders({ children }: { children: React.ReactNode }) {
+  const convexUrl = import.meta.env.VITE_CONVEX_URL as string | undefined;
+  if (!convexUrl || convexUrl === "undefined") {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-6">
+        <div className="max-w-lg text-center">
+          <h1 className="text-2xl font-semibold mb-2">Configuration required</h1>
+          <p className="text-sm text-muted-foreground">
+            Missing VITE_CONVEX_URL. Set it in your environment and refresh.
+          </p>
+        </div>
+      </div>
+    );
+  }
+  const convex = new ConvexReactClient(convexUrl);
+  return <ConvexAuthProvider client={convex}>{children}</ConvexAuthProvider>;
+}
 
 function RouteSyncer() {
   const location = useLocation();
@@ -47,31 +92,32 @@ function RouteSyncer() {
   return null;
 }
 
-
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <VlyToolbar />
-    <InstrumentationProvider>
-      <ConvexAuthProvider client={convex}>
-        <BrowserRouter>
-          <RouteSyncer />
-          <Routes>
-            <Route path="/" element={<Landing />} />
-            <Route path="/auth" element={<AuthPage redirectAfterAuth="/dashboard" />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/onboarding" element={<Onboarding />} />
-            <Route path="/initiatives" element={<InitiativesPage />} />
-            <Route path="/agents" element={<AgentsPage />} />
-            <Route path="/ai-agents" element={<AgentsPage />} />
-            <Route path="/workflows" element={<WorkflowsPage />} />
-            <Route path="/workflows/templates" element={<WorkflowTemplatesPage />} />
-            <Route path="/business" element={<BusinessPage />} />
-            <Route path="/analytics" element={<AnalyticsPage />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-        <Toaster />
-      </ConvexAuthProvider>
-    </InstrumentationProvider>
+    <ErrorBoundary>
+      <VlyToolbar />
+      <InstrumentationProvider>
+        <AppProviders>
+          <BrowserRouter>
+            <RouteSyncer />
+            <Routes>
+              <Route path="/" element={<Landing />} />
+              <Route path="/auth" element={<AuthPage redirectAfterAuth="/dashboard" />} />
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/onboarding" element={<Onboarding />} />
+              <Route path="/initiatives" element={<InitiativesPage />} />
+              <Route path="/agents" element={<AgentsPage />} />
+              <Route path="/ai-agents" element={<AgentsPage />} />
+              <Route path="/workflows" element={<WorkflowsPage />} />
+              <Route path="/workflows/templates" element={<WorkflowTemplatesPage />} />
+              <Route path="/business" element={<BusinessPage />} />
+              <Route path="/analytics" element={<AnalyticsPage />} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </BrowserRouter>
+          <Toaster />
+        </AppProviders>
+      </InstrumentationProvider>
+    </ErrorBoundary>
   </StrictMode>,
 );
