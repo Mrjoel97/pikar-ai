@@ -269,6 +269,17 @@ function DevSeedButton() {
   );
 }
 
+// Add: helpers for query params and guest mode at top-level inside file
+function useGuestTier(): { isGuest: boolean; selectedTier: Tier } {
+  const search = typeof window !== "undefined" ? window.location.search : "";
+  const params = new URLSearchParams(search);
+  const isGuest = params.get("guest") === "1";
+  const t = (params.get("tier") || "solopreneur") as Tier;
+  const selectedTier: Tier =
+    t === "startup" || t === "sme" || t === "enterprise" ? t : "solopreneur";
+  return { isGuest, selectedTier };
+}
+
 export default function Dashboard() {
   const { isLoading: authLoading, isAuthenticated, user, signOut } = useAuth();
   const navigate = useNavigate();
@@ -358,7 +369,19 @@ export default function Dashboard() {
     currentUserDoc ? { userId: currentUserDoc._id, hoursAhead: 48 } : "skip"
   );
 
-  // Sidebar tier-specific items
+  // Add: guest mode detection (before computing sidebar items)
+  const { isGuest, selectedTier } = useGuestTier();
+
+  // Add: derive features for gating
+  const tierFeatures = useMemo(() => {
+    const tier = (currentBusiness as any)?.tier as Tier | undefined;
+    if (isGuest) return TierConfig[selectedTier].features;
+    if (tier && TierConfig[tier]) return TierConfig[tier].features;
+    // default to SME-ish balanced features if unknown
+    return TierConfig["sme"].features;
+  }, [isGuest, selectedTier, currentBusiness]);
+
+  // Sidebar tier-specific items (override in guest mode using config)
   const tier = (currentBusiness as any)?.tier as string | undefined;
   const baseItems: Array<{ label: string; icon: React.ComponentType<any>; to: string }> = [
     { label: "Dashboard", icon: BarChart3, to: "/dashboard" },
@@ -383,54 +406,62 @@ export default function Dashboard() {
       { label: "Business", icon: Building2, to: "/business" },
     ],
   };
-  const sidebarItems = [
-    ...baseItems,
-    ...((tier && tierExtras[tier]) || []),
-  ];
 
-  // Email campaigns: queries & actions
-  const campaigns = useQuery(
-    api.emails.listCampaignsByBusiness,
-    currentBusiness ? { businessId: currentBusiness._id } : "skip"
-  );
-  const sendTestEmail = useAction(api.emailsActions.sendTestEmail);
-  const createCampaign = useMutation(api.emails.createCampaign);
-  const [emailOpen, setEmailOpen] = useState(false);
-  const [emailSubject, setEmailSubject] = useState("");
-  const [emailFrom, setEmailFrom] = useState((user as any)?.email || "no-reply@yourdomain.com");
-  const [emailPreview, setEmailPreview] = useState("");
-  const [recipientsRaw, setRecipientsRaw] = useState("");
-  // Add schedule datetime state for email campaigns
-  const [scheduledAt, setScheduledAt] = useState("");
-  const tz = useMemo(() => Intl.DateTimeFormat().resolvedOptions().timeZone, []);
-  const [blocks, setBlocks] = useState<Array<any>>([
-    { type: "text", content: "Hi there," },
-    { type: "text", content: "Here is an update from our team." },
-    { type: "button", label: "Learn more", url: "https://example.com" },
-    { type: "footer", includeUnsubscribe: true },
-  ]);
+  // Add: effective data depending on guest mode
+  const demoAgents = useMemo(() => {
+    return [
+      { _id: "a1", name: "Inbox Assistant", status: "active", metrics: { totalRuns: 128, successRate: 78, lastRun: Date.now() - 3600_000 } },
+      { _id: "a2", name: "Lead Qualifier", status: "training", metrics: { totalRuns: 43, successRate: 62, lastRun: Date.now() - 7200_000 } },
+    ];
+  }, []);
+  const demoWorkflows = useMemo(() => {
+    return [
+      { _id: "w1", name: "Weekly Newsletter", status: "active" },
+      { _id: "w2", name: "Lead Nurture", status: "active" },
+    ];
+  }, []);
+  const demoKpi = useMemo(() => {
+    return { visitors: 1500, visitorsDelta: 8, subscribers: 120, subscribersDelta: 5, engagement: 42, engagementDelta: 3, revenue: 3450, revenueDelta: 11 };
+  }, []);
+  const demoTasks = useMemo(() => {
+    return [
+      { _id: "t1", title: "Draft newsletter", description: "Outline this week's content", urgent: true, priority: "high" },
+      { _id: "t2", title: "Review leads", description: "Check qualified leads", urgent: false, priority: "medium" },
+      { _id: "t3", title: "Post on socials", description: "", urgent: false, priority: "low" },
+    ];
+  }, []);
+  const demoNotifications = useMemo(() => {
+    return [
+      { _id: "n1", title: "Agent completed task", message: "Inbox Assistant triaged 20 emails", type: "agent" },
+      { _id: "n2", title: "Workflow run", message: "Weekly Newsletter sent to 120 subscribers", type: "workflow" },
+    ];
+  }, []);
+  const demoApprovals = useMemo(() => {
+    return [
+      { _id: "ap1", priority: "medium", status: "pending", comments: "Approve email copy v2" },
+    ];
+  }, []);
+  const demoDueSoon = useMemo(() => {
+    return [
+      { _id: "ds1", name: "Publish newsletter", status: "in_progress", dueDate: Date.now() + 6 * 3600_000, workflow: { name: "Weekly Newsletter" } },
+    ];
+  }, []);
+  const demoCampaigns = useMemo(() => {
+    return [
+      { _id: "c1", subject: "New product update", scheduledAt: Date.now() + 24 * 3600_000, status: "scheduled" },
+    ];
+  }, []);
 
-  const addBlock = (type: "text" | "button" | "footer") => {
-    if (type === "text") setBlocks((b) => [...b, { type: "text", content: "New text..." }]);
-    if (type === "button") setBlocks((b) => [...b, { type: "button", label: "Click me", url: "https://example.com" }]);
-    if (type === "footer") setBlocks((b) => [...b, { type: "footer", includeUnsubscribe: true }]);
-  };
-  const moveBlock = (i: number, dir: -1 | 1) => {
-    setBlocks((arr) => {
-      const copy = [...arr];
-      const j = i + dir;
-      if (j < 0 || j >= copy.length) return copy;
-      const tmp = copy[i];
-      copy[i] = copy[j];
-      copy[j] = tmp;
-      return copy;
-    });
-  };
-  const removeBlock = (i: number) => setBlocks((arr) => arr.filter((_, idx) => idx !== i));
-
-  // Add mutations for seeding
-  const seedTasks = useMutation(api.tasks.seedDemoTasksForBusiness);
-  const seedKpis = useMutation(api.kpis.seedDemoKpisSnapshot);
+  const agentsEffective = isGuest ? (demoAgents as any) : agents;
+  const workflowsEffective = isGuest ? (demoWorkflows as any) : workflows;
+  const kpiEffective = isGuest ? (demoKpi as any) : kpi;
+  const kpisLatestEffective = isGuest ? (demoKpi as any) : kpisLatest;
+  const topTasksEffective = isGuest ? (demoTasks as any) : topTasks;
+  const notificationsEffective = isGuest ? (demoNotifications as any) : undefined;
+  const approvalsEffective = isGuest ? (demoApprovals as any) : approvals;
+  const dueSoonEffective = isGuest ? (demoDueSoon as any) : dueSoonSteps;
+  const telemetryEffective = isGuest ? ({ totalEvents: 238, uniqueUsers: 17, uniqueSessions: 31 } as any) : telemetryAnalytics;
+  const campaignsEffective = isGuest ? (demoCampaigns as any) : campaigns;
 
   // Redirects
   useEffect(() => {
@@ -461,23 +492,23 @@ export default function Dashboard() {
   const stats = [
     {
       title: "Active Agents",
-      value: agents?.filter((a: any) => a.status === "active").length ?? 0,
+      value: (agentsEffective as any)?.filter((a: any) => a.status === "active").length ?? 0,
       icon: Bot,
       description: "AI agents running",
     },
     {
       title: "Workflows",
-      value: workflows?.filter((w: any) => w.status === "active").length ?? 0,
+      value: (workflowsEffective as any)?.filter((w: any) => w.status === "active").length ?? 0,
       icon: Brain,
       description: "Active workflows",
     },
     {
       title: "Success Rate",
       value:
-        agents && agents.length > 0
+        agentsEffective && (agentsEffective as any).length > 0
           ? Math.round(
-              agents.reduce((acc: number, a: any) => acc + (a.metrics?.successRate ?? 0), 0) /
-                agents.length
+              (agentsEffective as any).reduce((acc: number, a: any) => acc + (a.metrics?.successRate ?? 0), 0) /
+                (agentsEffective as any).length
             )
           : 0,
       icon: TrendingUp,
@@ -486,7 +517,7 @@ export default function Dashboard() {
     },
     {
       title: "Total Runs",
-      value: agents?.reduce((acc: number, a: any) => acc + (a.metrics?.totalRuns ?? 0), 0) ?? 0,
+      value: (agentsEffective as any)?.reduce((acc: number, a: any) => acc + (a.metrics?.totalRuns ?? 0), 0) ?? 0,
       icon: BarChart3,
       description: "Total executions",
     },
@@ -495,6 +526,10 @@ export default function Dashboard() {
   const isHelpEnabled = Array.isArray(flags) && flags.some((f: any) => f.flagName === "help_chat" && !!f.isEnabled);
 
   const handleRunInspection = async () => {
+    if (isGuest) {
+      toast("Sign in to use this feature");
+      return;
+    }
     setIsRunningInspection(true);
     try {
       const result = await runInspection({});
@@ -521,8 +556,8 @@ export default function Dashboard() {
   };
 
   const renderTodayFocus = () => {
-    if (topTasks === undefined) return null;
-    if (topTasks === null || topTasks.length === 0) {
+    if (topTasksEffective === undefined) return null;
+    if (topTasksEffective === null || topTasksEffective.length === 0) {
       return (
         <div className="rounded-lg border p-4">
           <div className="font-medium">Today's Focus</div>
@@ -534,7 +569,7 @@ export default function Dashboard() {
       <div className="rounded-lg border p-4">
         <div className="font-medium mb-2">Today's Focus</div>
         <ul className="space-y-2">
-          {topTasks.map((t: any) => (
+          {topTasksEffective.map((t: any) => (
             <li key={t._id} className="flex items-start justify-between">
               <div>
                 <div className="font-medium">{t.title}</div>
@@ -554,8 +589,8 @@ export default function Dashboard() {
   };
 
   const renderPerformanceSnapshot = () => {
-    if (kpisLatest === undefined) return null;
-    const k = kpisLatest;
+    if (kpisLatestEffective === undefined) return null;
+    const k = kpisLatestEffective;
     return (
       <div className="rounded-lg border p-4">
         <div className="font-medium mb-3">Performance Snapshot</div>
@@ -681,13 +716,50 @@ export default function Dashboard() {
     }
   };
 
+  // Add: top banner for guest mode
+  const GuestBanner = () => {
+    if (!isGuest) return null;
+    return (
+      <div className="rounded-md border bg-emerald-50 text-emerald-900 p-3 flex items-center justify-between">
+        <div className="text-sm">
+          Viewing: <span className="font-semibold">{TierConfig[selectedTier].label}</span> (Guest Mode)
+        </div>
+        <Button variant="outline" onClick={() => navigate("/auth")}>Sign in</Button>
+      </div>
+    );
+  };
+
+  // Patch: guard mutating actions in guest mode
+  const guardGuest = (fn: () => Promise<void> | void) => {
+    if (isGuest) {
+      toast("Sign in to use this feature");
+      return;
+    }
+    return fn();
+  };
+
   return (
     <div className="min-h-screen">
       {/* Sidebar extracted */}
       <Sidebar
-        items={sidebarItems}
+        items={isGuest
+          ? TierConfig[selectedTier].sidebar.map((i) => {
+              // map icon string to actual component using existing imports
+              const iconMap: Record<string, React.ComponentType<any>> = {
+                BarChart3,
+                Bot,
+                Brain,
+                TrendingUp,
+                Building2,
+              } as any;
+              return { label: i.label, icon: iconMap[i.icon] || BarChart3, to: i.to };
+            })
+          : [
+              ...baseItems,
+              ...((tier && tierExtras[tier]) || []),
+            ]}
         userDisplay={(user as any)?.name || (user as any)?.email || "User"}
-        planLabel={(tier || "Plan").toString().charAt(0).toUpperCase() + (tier || "Plan").toString().slice(1)}
+        planLabel={(isGuest ? TierConfig[selectedTier].label : (tier || "Plan")).toString().charAt(0).toUpperCase() + (isGuest ? TierConfig[selectedTier].label : (tier || "Plan")).toString().slice(1)}
         onNavigate={(to) => navigate(to)}
         onLogout={() => signOut()}
       />
@@ -695,6 +767,9 @@ export default function Dashboard() {
       {/* Main content shifted for sidebar on md+ */}
       <div className="md:pl-72 min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
         <div className="container mx-auto px-4 py-8 space-y-6">
+          {/* Guest tier banner */}
+          <GuestBanner />
+
           {renderTierHeader()}
 
           {/* Header with subtle entrance animation */}
@@ -756,14 +831,14 @@ export default function Dashboard() {
           </motion.div>
 
           {/* Today's Focus */}
-          {renderTodayFocus()}
+          {tierFeatures.showTodaysFocus ? renderTodayFocus() : null}
 
           {/* Compact action row */}
           <div className="flex items-center justify-end -mb-2">
             <Button
               variant="outline"
               size="sm"
-              onClick={async () => {
+              onClick={() => guardGuest(async () => {
                 try {
                   const business = currentBusiness;
                   if (!business) {
@@ -785,7 +860,7 @@ export default function Dashboard() {
                 } catch {
                   toast("Failed to seed KPIs");
                 }
-              }}
+              })}
             >
               Seed KPIs
             </Button>
@@ -793,7 +868,7 @@ export default function Dashboard() {
               variant="outline"
               size="sm"
               className="ml-2"
-              onClick={async () => {
+              onClick={() => guardGuest(async () => {
                 try {
                   const business = currentBusiness;
                   if (!business) {
@@ -805,7 +880,7 @@ export default function Dashboard() {
                 } catch {
                   toast("Failed to seed tasks");
                 }
-              }}
+              })}
             >
               Seed Tasks
             </Button>
@@ -815,26 +890,26 @@ export default function Dashboard() {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-6">
             <StatCard
               title="Visitors"
-              value={kpi?.visitors ?? 0}
-              delta={kpi?.visitorsDelta ?? 0}
+              value={kpiEffective?.visitors ?? 0}
+              delta={kpiEffective?.visitorsDelta ?? 0}
               suffix=""
             />
             <StatCard
               title="Subscribers"
-              value={kpi?.subscribers ?? 0}
-              delta={kpi?.subscribersDelta ?? 0}
+              value={kpiEffective?.subscribers ?? 0}
+              delta={kpiEffective?.subscribersDelta ?? 0}
               suffix=""
             />
             <StatCard
               title="Engagement"
-              value={kpi?.engagement ?? 0}
-              delta={kpi?.engagementDelta ?? 0}
+              value={kpiEffective?.engagement ?? 0}
+              delta={kpiEffective?.engagementDelta ?? 0}
               suffix="%"
             />
             <StatCard
               title="Revenue"
-              value={kpi?.revenue ?? 0}
-              delta={kpi?.revenueDelta ?? 0}
+              value={kpiEffective?.revenue ?? 0}
+              delta={kpiEffective?.revenueDelta ?? 0}
               prefix="$"
             />
           </div>
@@ -853,8 +928,8 @@ export default function Dashboard() {
             </div>
           )}
 
-          {/* Initiative Journey moved below greeting & stats (already positioned here) */}
-          <JourneyBand initiative={initiative} />
+          {/* Initiative Journey */}
+          {tierFeatures.showInitiativeJourney ? <JourneyBand initiative={initiative} /> : null}
 
           {/* Main Content Tabs */}
           <Tabs defaultValue="overview" className="space-y-6">
@@ -868,136 +943,133 @@ export default function Dashboard() {
             <TabsContent value="overview" className="space-y-6">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Recent Activity */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Recent Activity</CardTitle>
-                    <CardDescription>Latest updates from your AI agents</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <motion.div
-                      className="space-y-4"
-                      initial={{ opacity: 0, y: 8 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      variants={{
-                        hidden: { opacity: 0, y: 8 },
-                        show: { opacity: 1, y: 0 },
-                      }}
-                    >
-                      {agents?.slice(0, 5).map((agent: any) => (
-                        <motion.div
-                          key={agent._id}
-                          variants={{
-                            hidden: { opacity: 0, y: 8 },
-                            show: { opacity: 1, y: 0 },
-                          }}
-                        >
-                          <div className="flex items-center space-x-4">
-                            <div
-                              className={`w-2 h-2 rounded-full ${
-                                agent.status === "active"
-                                  ? "bg-green-500"
-                                  : agent.status === "training"
-                                  ? "bg-yellow-500"
-                                  : "bg-gray-500"
-                              }`}
-                            />
-                            {((agent.metrics?.successRate ?? 0) >= 60) ? (
-                              <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
-                            ) : (
-                              <XCircle className="h-4 w-4 text-red-600 shrink-0" />
-                            )}
-                            <div className="flex-1">
-                              <p className="text-sm font-medium">{agent.name}</p>
-                              <p className="text-xs text-muted-foreground">
-                                {(agent.metrics?.totalRuns ?? 0)} runs • {(agent.metrics?.successRate ?? 0)}% success
-                              </p>
+                {tierFeatures.showRecentActivity ? (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Recent Activity</CardTitle>
+                      <CardDescription>Latest updates from your AI agents</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <motion.div
+                        className="space-y-4"
+                        initial={{ opacity: 0, y: 8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        variants={{
+                          hidden: { opacity: 0, y: 8 },
+                          show: { opacity: 1, y: 0 },
+                        }}
+                      >
+                        {(agentsEffective as any)?.slice(0, 5).map((agent: any) => (
+                          <motion.div key={agent._id} variants={{ hidden: { opacity: 0, y: 8 }, show: { opacity: 1, y: 0 } }}>
+                            <div className="flex items-center space-x-4">
+                              <div
+                                className={`w-2 h-2 rounded-full ${
+                                  agent.status === "active"
+                                    ? "bg-green-500"
+                                    : agent.status === "training"
+                                    ? "bg-yellow-500"
+                                    : "bg-gray-500"
+                                }`}
+                              />
+                              {((agent.metrics?.successRate ?? 0) >= 60) ? (
+                                <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                              ) : (
+                                <XCircle className="h-4 w-4 text-red-600 shrink-0" />
+                              )}
+                              <div className="flex-1">
+                                <p className="text-sm font-medium">{agent.name}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  {(agent.metrics?.totalRuns ?? 0)} runs • {(agent.metrics?.successRate ?? 0)}% success
+                                </p>
+                              </div>
+                              <div className="text-xs text-muted-foreground">
+                                {agent.metrics?.lastRun
+                                  ? new Date(agent.metrics.lastRun).toLocaleDateString()
+                                  : "Never"}
+                              </div>
                             </div>
-                            <div className="text-xs text-muted-foreground">
-                              {agent.metrics?.lastRun
-                                ? new Date(agent.metrics.lastRun).toLocaleDateString()
-                                : "Never"}
-                            </div>
-                          </div>
-                        </motion.div>
-                      ))}
-                      {(!agents || agents.length === 0) && (
-                        <motion.div
-                          className="text-center py-8"
-                          initial={{ opacity: 0, scale: 0.98 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          transition={{ type: "spring", stiffness: 260, damping: 22 }}
-                        >
-                          <Bot className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                          <p className="text-sm text-muted-foreground">No agents created yet</p>
-                          <Button onClick={() => navigate("/agents")}>
-                            Create Your First Agent
-                          </Button>
-                        </motion.div>
-                      )}
-                    </motion.div>
-                  </CardContent>
-                </Card>
+                          </motion.div>
+                        ))}
+                        {(!agentsEffective || (agentsEffective as any).length === 0) && (
+                          <motion.div
+                            className="text-center py-8"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                          >
+                            <Bot className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                            <p className="text-sm text-muted-foreground mb-4">No agents created yet</p>
+                            <Button onClick={() => navigate("/agents")}>
+                              Create Your First Agent
+                            </Button>
+                          </motion.div>
+                        )}
+                      </motion.div>
+                    </CardContent>
+                  </Card>
+                ) : null}
 
                 {/* Quick Actions */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Quick Actions</CardTitle>
-                    <CardDescription>Common tasks and shortcuts</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <motion.div
-                      className="grid grid-cols-2 gap-4"
-                      initial="hidden"
-                      animate="show"
-                      variants={{
-                        hidden: { opacity: 0 },
-                        show: {
-                          opacity: 1,
-                          transition: { staggerChildren: 0.07, delayChildren: 0.05 },
-                        },
-                      }}
-                    >
-                      {[
-                        { icon: Bot, label: "New Agent", to: "/agents" },
-                        { icon: Brain, label: "New Workflow", to: "/workflows" },
-                        { icon: BarChart3, label: "View Analytics", to: "/analytics" },
-                        { icon: Building2, label: "Business Settings", to: "/business" },
-                      ].map((qa) => (
-                        <motion.div
-                          key={qa.label}
-                          variants={{ hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0 } }}
-                          whileHover={{ y: -2 }}
-                        >
-                          <Button
-                            variant="outline"
-                            className="h-24 flex-col"
-                            onClick={() => navigate(qa.to)}
+                {tierFeatures.showQuickActions ? (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Quick Actions</CardTitle>
+                      <CardDescription>Common tasks and shortcuts</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <motion.div
+                        className="grid grid-cols-2 gap-4"
+                        initial="hidden"
+                        animate="show"
+                        variants={{
+                          hidden: { opacity: 0 },
+                          show: {
+                            opacity: 1,
+                            transition: { staggerChildren: 0.07, delayChildren: 0.05 },
+                          },
+                        }}
+                      >
+                        {[
+                          { icon: Bot, label: "New Agent", to: "/agents" },
+                          { icon: Brain, label: "New Workflow", to: "/workflows" },
+                          { icon: BarChart3, label: "View Analytics", to: "/analytics" },
+                          { icon: Building2, label: "Business Settings", to: "/business" },
+                        ].map((qa) => (
+                          <motion.div
+                            key={qa.label}
+                            variants={{ hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0 } }}
+                            whileHover={{ y: -2 }}
                           >
-                            <qa.icon className="h-5 w-5 mb-2" />
-                            <span className="text-sm">{qa.label}</span>
-                          </Button>
-                        </motion.div>
-                      ))}
-                      {isHelpEnabled && (
-                        <motion.div
-                          variants={{ hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0 } }}
-                          whileHover={{ y: -2 }}
-                        >
-                          <Button
-                            variant="outline"
-                            className="h-24 flex-col"
-                            onClick={() => {
-                              toast("Connecting you to support…");
-                            }}
+                            <Button
+                              variant="outline"
+                              className="h-24 flex-col"
+                              onClick={() => navigate(qa.to)}
+                            >
+                              <qa.icon className="h-5 w-5 mb-2" />
+                              <span className="text-sm">{qa.label}</span>
+                            </Button>
+                          </motion.div>
+                        ))}
+                        {isHelpEnabled && (
+                          <motion.div
+                            variants={{ hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0 } }}
+                            whileHover={{ y: -2 }}
                           >
-                            <MessageSquare className="h-5 w-5 mb-2" />
-                            <span className="text-sm">Get Help</span>
-                          </Button>
-                        </motion.div>
-                      )}
-                    </motion.div>
-                  </CardContent>
-                </Card>
+                            <Button
+                              variant="outline"
+                              className="h-24 flex-col"
+                              onClick={() => {
+                                toast("Connecting you to support…");
+                              }}
+                            >
+                              <MessageSquare className="h-5 w-5 mb-2" />
+                              <span className="text-sm">Get Help</span>
+                            </Button>
+                          </motion.div>
+                        )}
+                      </motion.div>
+                    </CardContent>
+                  </Card>
+                ) : null}
 
                 {/* Initiative Status */}
                 <div className="grid grid-cols-1 gap-6">
@@ -1026,192 +1098,200 @@ export default function Dashboard() {
               {/* Compact widgets row: Approvals, Feature Flags, Telemetry Debug */}
               <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-6">
                 {/* Pending Approvals */}
-                <Card>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-base flex items-center gap-2">
-                      <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                      Pending Approvals
-                    </CardTitle>
-                    <CardDescription>Quick review of items awaiting action</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    {(approvals ?? []).length === 0 ? (
-                      <div className="text-sm text-muted-foreground">No pending items</div>
-                    ) : (
-                      (approvals ?? []).slice(0, 5).map((a: any) => (
-                        <div key={a._id} className="flex items-center justify-between rounded-md border p-2">
-                          <div className="min-w-0">
-                            <div className="text-sm font-medium truncate">{a.comments || "Approval Request"}</div>
-                            <div className="text-xs text-muted-foreground">
-                              Priority: <span className="capitalize">{a.priority}</span> • Status: {a.status}
+                {tierFeatures.showApprovals ? (
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-base flex items-center gap-2">
+                        <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                        Pending Approvals
+                      </CardTitle>
+                      <CardDescription>Quick review of items awaiting action</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      {(approvalsEffective ?? []).length === 0 ? (
+                        <div className="text-sm text-muted-foreground">No pending items</div>
+                      ) : (
+                        (approvalsEffective ?? []).slice(0, 5).map((a: any) => (
+                          <div key={a._id} className="flex items-center justify-between rounded-md border p-2">
+                            <div className="min-w-0">
+                              <div className="text-sm font-medium truncate">{a.comments || "Approval Request"}</div>
+                              <div className="text-xs text-muted-foreground">
+                                Priority: <span className="capitalize">{a.priority}</span> • Status: {a.status}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => guardGuest(async () => {
+                                  try {
+                                    await processApproval({ approvalId: a._id, action: "approve" });
+                                    toast("Approved");
+                                  } catch {
+                                    toast("Failed to approve");
+                                  }
+                                })}
+                              >
+                                Approve
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                onClick={() => guardGuest(async () => {
+                                  try {
+                                    await processApproval({ approvalId: a._id, action: "reject" });
+                                    toast("Rejected");
+                                  } catch {
+                                    toast("Failed to reject");
+                                  }
+                                })}
+                              >
+                                Reject
+                              </Button>
                             </div>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={async () => {
-                                try {
-                                  await processApproval({ approvalId: a._id, action: "approve" });
-                                  toast("Approved");
-                                } catch (e) {
-                                  toast("Failed to approve");
-                                }
-                              }}
-                            >
-                              Approve
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="destructive"
-                              onClick={async () => {
-                                try {
-                                  await processApproval({ approvalId: a._id, action: "reject" });
-                                  toast("Rejected");
-                                } catch (e) {
-                                  toast("Failed to reject");
-                                }
-                              }}
-                            >
-                              Reject
-                            </Button>
-                          </div>
-                        </div>
-                      ))
-                    )}
-                  </CardContent>
-                </Card>
+                        ))
+                      )}
+                    </CardContent>
+                  </Card>
+                ) : null}
 
                 {/* Feature Flags */}
-                <Card>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-base flex items-center gap-2">
-                      <Flag className="h-4 w-4 text-amber-600" />
-                      Feature Flags
-                    </CardTitle>
-                    <CardDescription>Toggle features scoped to this business</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    {(flags ?? []).length === 0 ? (
-                      <div className="text-sm text-muted-foreground">No flags configured</div>
-                    ) : (
-                      (flags ?? []).slice(0, 6).map((f: any) => (
-                        <div key={f._id} className="flex items-center justify-between rounded-md border p-2">
-                          <div className="min-w-0">
-                            <div className="text-sm font-medium truncate">{f.flagName}</div>
-                            <div className="text-xs text-muted-foreground">
-                              {f.rolloutPercentage}% rollout
-                              {f.conditions?.userTier && (
-                                <> • Users: {Array.isArray(f.conditions.userTier) ? f.conditions.userTier.join(", ") : ""}</>
-                              )}
-                              {f.conditions?.businessTier && (
-                                <> • Tiers: {Array.isArray(f.conditions.businessTier) ? f.conditions.businessTier.join(", ") : ""}</>
-                              )}
+                {tierFeatures.showFeatureFlags ? (
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-base flex items-center gap-2">
+                        <Flag className="h-4 w-4 text-amber-600" />
+                        Feature Flags
+                      </CardTitle>
+                      <CardDescription>Toggle features scoped to this business</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      {(flags ?? []).length === 0 ? (
+                        <div className="text-sm text-muted-foreground">No flags configured</div>
+                      ) : (
+                        (flags ?? []).slice(0, 6).map((f: any) => (
+                          <div key={f._id} className="flex items-center justify-between rounded-md border p-2">
+                            <div className="min-w-0">
+                              <div className="text-sm font-medium truncate">{f.flagName}</div>
+                              <div className="text-xs text-muted-foreground">
+                                {f.rolloutPercentage}% rollout
+                                {f.conditions?.userTier && (
+                                  <> • Users: {Array.isArray(f.conditions.userTier) ? f.conditions.userTier.join(", ") : ""}</>
+                                )}
+                                {f.conditions?.businessTier && (
+                                  <> • Tiers: {Array.isArray(f.conditions.businessTier) ? f.conditions.businessTier.join(", ") : ""}</>
+                                )}
+                              </div>
                             </div>
+                            <Switch
+                              checked={!!f.isEnabled}
+                              onCheckedChange={() => guardGuest(async () => {
+                                try {
+                                  await toggleFlag({ flagId: f._id });
+                                  toast(`Flag ${f.isEnabled ? "disabled" : "enabled"}`);
+                                } catch {
+                                  toast("Failed to toggle flag");
+                                }
+                              })}
+                            />
                           </div>
-                          <Switch
-                            checked={!!f.isEnabled}
-                            onCheckedChange={async () => {
-                              try {
-                                await toggleFlag({ flagId: f._id });
-                                toast(`Flag ${f.isEnabled ? "disabled" : "enabled"}`);
-                              } catch (e) {
-                                toast("Failed to toggle flag");
-                              }
-                            }}
-                          />
-                        </div>
-                      ))
-                    )}
-                  </CardContent>
-                </Card>
+                        ))
+                      )}
+                    </CardContent>
+                  </Card>
+                ) : null}
 
                 {/* Telemetry Debug */}
-                <Card>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-base">Telemetry Debug</CardTitle>
-                    <CardDescription>Quick stats and a test event logger</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="grid grid-cols-3 gap-3 text-center">
-                      <div className="rounded-md border p-2">
-                        <div className="text-xl font-semibold">
-                          {telemetryAnalytics?.totalEvents ?? 0}
+                {tierFeatures.showTelemetry ? (
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-base">Telemetry Debug</CardTitle>
+                      <CardDescription>Quick stats and a test event logger</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="grid grid-cols-3 gap-3 text-center">
+                        <div className="rounded-md border p-2">
+                          <div className="text-xl font-semibold">
+                            {telemetryEffective?.totalEvents ?? 0}
+                          </div>
+                          <div className="text-xs text-muted-foreground">Events</div>
                         </div>
-                        <div className="text-xs text-muted-foreground">Events</div>
-                      </div>
-                      <div className="rounded-md border p-2">
-                        <div className="text-xl font-semibold">
-                          {telemetryAnalytics?.uniqueUsers ?? 0}
+                        <div className="rounded-md border p-2">
+                          <div className="text-xl font-semibold">
+                            {telemetryEffective?.uniqueUsers ?? 0}
+                          </div>
+                          <div className="text-xs text-muted-foreground">Users</div>
                         </div>
-                        <div className="text-xs text-muted-foreground">Users</div>
-                      </div>
-                      <div className="rounded-md border p-2">
-                        <div className="text-xl font-semibold">
-                          {telemetryAnalytics?.uniqueSessions ?? 0}
+                        <div className="rounded-md border p-2">
+                          <div className="text-xl font-semibold">
+                            {telemetryEffective?.uniqueSessions ?? 0}
+                          </div>
+                          <div className="text-xs text-muted-foreground">Sessions</div>
                         </div>
-                        <div className="text-xs text-muted-foreground">Sessions</div>
                       </div>
-                    </div>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={async () => {
-                        try {
-                          const business = currentBusiness;
-                          if (!business) {
-                            toast("No business selected");
-                            return;
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => guardGuest(async () => {
+                          try {
+                            const business = currentBusiness;
+                            if (!business) {
+                              toast("No business selected");
+                              return;
+                            }
+                            await trackEventMutation({
+                              businessId: business._id,
+                              eventName: "debug_click",
+                              eventData: { location: "dashboard_telemetry_debug" },
+                            } as any);
+                            toast("Logged test event");
+                          } catch {
+                            toast("Failed to log event");
                           }
-                          await trackEventMutation({
-                            businessId: business._id,
-                            eventName: "debug_click",
-                            eventData: { location: "dashboard_telemetry_debug" },
-                          } as any);
-                          toast("Logged test event");
-                        } catch (e) {
-                          toast("Failed to log event");
-                        }
-                      }}
-                    >
-                      Log Test Event
-                    </Button>
-                  </CardContent>
-                </Card>
+                        })}
+                      >
+                        Log Test Event
+                      </Button>
+                    </CardContent>
+                  </Card>
+                ) : null}
 
                 {/* Due Soon list */}
-                <Card>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-base flex items-center gap-2">
-                      <Clock className="h-4 w-4 text-blue-600" />
-                      Due Soon
-                    </CardTitle>
-                    <CardDescription>Steps due in the next 48 hours</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    {(dueSoonSteps ?? []).length === 0 ? (
-                      <div className="text-sm text-muted-foreground">Nothing due soon</div>
-                    ) : (
-                      (dueSoonSteps ?? []).slice(0, 5).map((s: any) => (
-                        <div key={s._id} className="flex items-center justify-between rounded-md border p-2">
-                          <div className="min-w-0">
-                            <div className="text-sm font-medium truncate">{s.name}</div>
-                            <div className="text-xs text-muted-foreground">
-                              {s.workflow?.name ? `${s.workflow.name} • ` : ""}
-                              <span className="capitalize">{s.status?.replace("_", " ")}</span>
-                              {s.dueDate && (
-                                <>
-                                  {" • Due "}
-                                  {new Date(s.dueDate).toLocaleString()}
-                                </>
-                              )}
+                {tierFeatures.showDueSoon ? (
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-base flex items-center gap-2">
+                        <Clock className="h-4 w-4 text-blue-600" />
+                        Due Soon
+                      </CardTitle>
+                      <CardDescription>Steps due in the next 48 hours</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      {(dueSoonEffective ?? []).length === 0 ? (
+                        <div className="text-sm text-muted-foreground">Nothing due soon</div>
+                      ) : (
+                        (dueSoonEffective ?? []).slice(0, 5).map((s: any) => (
+                          <div key={s._id} className="flex items-center justify-between rounded-md border p-2">
+                            <div className="min-w-0">
+                              <div className="text-sm font-medium truncate">{s.name}</div>
+                              <div className="text-xs text-muted-foreground">
+                                {s.workflow?.name ? `${s.workflow.name} • ` : ""}
+                                <span className="capitalize">{s.status?.replace("_", " ")}</span>
+                                {s.dueDate && (
+                                  <>
+                                    {" • Due "}
+                                    {new Date(s.dueDate).toLocaleString()}
+                                  </>
+                                )}
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      ))
-                    )}
-                  </CardContent>
-                </Card>
+                        ))
+                      )}
+                    </CardContent>
+                  </Card>
+                ) : null}
               </div>
             </TabsContent>
 
@@ -1229,12 +1309,12 @@ export default function Dashboard() {
                     animate="show"
                     variants={{ hidden: { opacity: 1 }, show: { opacity: 1, transition: { staggerChildren: 0.07 } } }}
                   >
-                    {agents?.map((agent: any) => (
+                    {agentsEffective?.map((agent: any) => (
                       <motion.div key={agent._id} variants={{ hidden: { opacity: 0, y: 8 }, show: { opacity: 1, y: 0 } }}>
                         <AgentRow agent={agent} />
                       </motion.div>
                     ))}
-                    {(!agents || agents.length === 0) && (
+                    {(!agentsEffective || (agentsEffective as any).length === 0) && (
                       <motion.div
                         className="text-center py-8"
                         initial={{ opacity: 0 }}
@@ -1264,12 +1344,12 @@ export default function Dashboard() {
                     animate="show"
                     variants={{ hidden: { opacity: 1 }, show: { opacity: 1, transition: { staggerChildren: 0.07 } } }}
                   >
-                    {workflows?.map((workflow: any) => (
+                    {workflowsEffective?.map((workflow: any) => (
                       <motion.div key={workflow._id} variants={{ hidden: { opacity: 0, y: 8 }, show: { opacity: 1, y: 0 } }}>
                         <WorkflowRow workflow={workflow} />
                       </motion.div>
                     ))}
-                    {(!workflows || workflows.length === 0) && (
+                    {(!workflowsEffective || (workflowsEffective as any).length === 0) && (
                       <motion.div
                         className="text-center py-8"
                         initial={{ opacity: 0 }}
@@ -1304,149 +1384,120 @@ export default function Dashboard() {
           </Tabs>
 
           {/* Email Campaigns (Designer + Scheduler) */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Email Campaigns</CardTitle>
-              <CardDescription>Design, test, and schedule emails</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="text-sm text-muted-foreground">
-                  Recent: {(campaigns ?? []).length} scheduled/sent
-                </div>
-                <Dialog open={emailOpen} onOpenChange={setEmailOpen}>
-                  <DialogTrigger asChild>
-                    <Button>New Campaign</Button>
-                  </DialogTrigger>
-                  <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
-                    <DialogHeader>
-                      <DialogTitle>Create Email Campaign</DialogTitle>
-                    </DialogHeader>
+          {tierFeatures.showEmailCampaigns ? (
+            <Card>
+              <CardHeader>
+                <CardTitle>Email Campaigns</CardTitle>
+                <CardDescription>Design, test, and schedule emails</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="text-sm text-muted-foreground">
+                    Recent: {(campaignsEffective ?? []).length} scheduled/sent
+                  </div>
+                  <Dialog open={emailOpen} onOpenChange={setEmailOpen}>
+                    <DialogTrigger asChild>
+                      <Button>New Campaign</Button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
+                      <DialogHeader>
+                        <DialogTitle>Create Email Campaign</DialogTitle>
+                      </DialogHeader>
 
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                      {/* Editor */}
-                      <div className="space-y-4">
-                        <div className="grid gap-2">
-                          <Label>From</Label>
-                          <Input value={emailFrom} onChange={(e) => setEmailFrom(e.target.value)} />
-                        </div>
-                        <div className="grid gap-2">
-                          <Label>Subject</Label>
-                          <Input value={emailSubject} onChange={(e) => setEmailSubject(e.target.value)} />
-                        </div>
-                        <div className="grid gap-2">
-                          <Label>Preview Text</Label>
-                          <Input value={emailPreview} onChange={(e) => setEmailPreview(e.target.value)} />
-                        </div>
-                        <div className="grid gap-2">
-                          <Label>Recipients (comma-separated)</Label>
-                          <Textarea
-                            value={recipientsRaw}
-                            onChange={(e) => setRecipientsRaw(e.target.value)}
-                            placeholder="alice@example.com, bob@example.com"
-                          />
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-2">
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        {/* Editor */}
+                        <div className="space-y-4">
                           <div className="grid gap-2">
-                            <Label>Schedule (local)</Label>
-                            <Input
-                              type="datetime-local"
-                              value={scheduledAt}
-                              onChange={(e) => setScheduledAt(e.target.value)}
+                            <Label>From</Label>
+                            <Input value={emailFrom} onChange={(e) => setEmailFrom(e.target.value)} />
+                          </div>
+                          <div className="grid gap-2">
+                            <Label>Subject</Label>
+                            <Input value={emailSubject} onChange={(e) => setEmailSubject(e.target.value)} />
+                          </div>
+                          <div className="grid gap-2">
+                            <Label>Preview Text</Label>
+                            <Input value={emailPreview} onChange={(e) => setEmailPreview(e.target.value)} />
+                          </div>
+                          <div className="grid gap-2">
+                            <Label>Recipients (comma-separated)</Label>
+                            <Textarea
+                              value={recipientsRaw}
+                              onChange={(e) => setRecipientsRaw(e.target.value)}
+                              placeholder="alice@example.com, bob@example.com"
                             />
                           </div>
-                          <div className="grid gap-2">
-                            <Label>Timezone</Label>
-                            <Input value={tz} readOnly />
-                          </div>
-                        </div>
 
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-between">
-                            <Label>Blocks</Label>
-                            <div className="flex gap-2">
-                              <Button size="sm" variant="outline" onClick={() => addBlock("text")}>Add Text</Button>
-                              <Button size="sm" variant="outline" onClick={() => addBlock("button")}>Add Button</Button>
-                              <Button size="sm" variant="outline" onClick={() => addBlock("footer")}>Add Footer</Button>
+                          <div className="grid grid-cols-2 gap-2">
+                            <div className="grid gap-2">
+                              <Label>Schedule (local)</Label>
+                              <Input
+                                type="datetime-local"
+                                value={scheduledAt}
+                                onChange={(e) => setScheduledAt(e.target.value)}
+                              />
+                            </div>
+                            <div className="grid gap-2">
+                              <Label>Timezone</Label>
+                              <Input value={tz} readOnly />
                             </div>
                           </div>
-                          <div className="space-y-2">
-                            {blocks.map((b, i) => (
-                              <div key={i} className="rounded-md border p-3 space-y-2">
-                                <div className="flex items-center justify-between">
-                                  <div className="text-xs uppercase tracking-wide text-muted-foreground">{b.type}</div>
-                                  <div className="flex gap-1">
-                                    <Button size="icon" variant="ghost" onClick={() => moveBlock(i, -1)}>↑</Button>
-                                    <Button size="icon" variant="ghost" onClick={() => moveBlock(i, 1)}>↓</Button>
-                                    <Button size="icon" variant="ghost" onClick={() => removeBlock(i)}>✕</Button>
-                                  </div>
-                                </div>
-                                {b.type === "text" && (
-                                  <Textarea
-                                    value={b.content ?? ""}
-                                    onChange={(e) =>
-                                      setBlocks((arr) => arr.map((x, idx) => (idx === i ? { ...x, content: e.target.value } : x)))
-                                    }
-                                  />
-                                )}
-                                {b.type === "button" && (
-                                  <div className="grid grid-cols-2 gap-2">
-                                    <Input
-                                      placeholder="Label"
-                                      value={b.label ?? ""}
-                                      onChange={(e) =>
-                                        setBlocks((arr) => arr.map((x, idx) => (idx === i ? { ...x, label: e.target.value } : x)))
-                                      }
-                                    />
-                                    <Input
-                                      placeholder="https://example.com"
-                                      value={b.url ?? ""}
-                                      onChange={(e) =>
-                                        setBlocks((arr) => arr.map((x, idx) => (idx === i ? { ...x, url: e.target.value } : x)))
-                                      }
-                                    />
-                                  </div>
-                                )}
-                                {b.type === "footer" && (
-                                  <div className="flex items-center gap-2 text-sm">
-                                    <Switch
-                                      checked={!!b.includeUnsubscribe}
-                                      onCheckedChange={(val) =>
-                                        setBlocks((arr) => arr.map((x, idx) => (idx === i ? { ...x, includeUnsubscribe: !!val } : x)))
-                                      }
-                                    />
-                                    <span>Include unsubscribe link</span>
-                                  </div>
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
 
-                      {/* Preview */}
-                      <div className="space-y-3">
-                        <div className="rounded-md border p-3">
-                          <div className="text-sm text-muted-foreground mb-2">Preview</div>
-                          <div className="space-y-3">
-                            <div className="text-sm"><span className="font-medium">From:</span> {emailFrom}</div>
-                            <div className="text-sm"><span className="font-medium">Subject:</span> {emailSubject}</div>
-                            <div className="text-xs text-muted-foreground">{emailPreview}</div>
-                            <div className="h-px bg-border" />
-                            <div className="prose prose-sm max-w-none">
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between">
+                              <Label>Blocks</Label>
+                              <div className="flex gap-2">
+                                <Button size="sm" variant="outline" onClick={() => addBlock("text")}>Add Text</Button>
+                                <Button size="sm" variant="outline" onClick={() => addBlock("button")}>Add Button</Button>
+                                <Button size="sm" variant="outline" onClick={() => addBlock("footer")}>Add Footer</Button>
+                              </div>
+                            </div>
+                            <div className="space-y-2">
                               {blocks.map((b, i) => (
-                                <div key={i} className="mb-3">
-                                  {b.type === "text" && <div dangerouslySetInnerHTML={{ __html: b.content || "" }} />}
+                                <div key={i} className="rounded-md border p-3 space-y-2">
+                                  <div className="flex items-center justify-between">
+                                    <div className="text-xs uppercase tracking-wide text-muted-foreground">{b.type}</div>
+                                    <div className="flex gap-1">
+                                      <Button size="icon" variant="ghost" onClick={() => moveBlock(i, -1)}>↑</Button>
+                                      <Button size="icon" variant="ghost" onClick={() => moveBlock(i, 1)}>↓</Button>
+                                      <Button size="icon" variant="ghost" onClick={() => removeBlock(i)}>✕</Button>
+                                    </div>
+                                  </div>
+                                  {b.type === "text" && (
+                                    <Textarea
+                                      value={b.content ?? ""}
+                                      onChange={(e) =>
+                                        setBlocks((arr) => arr.map((x, idx) => (idx === i ? { ...x, content: e.target.value } : x)))
+                                      }
+                                    />
+                                  )}
                                   {b.type === "button" && (
-                                    <a className="inline-block bg-foreground text-background px-3 py-2 rounded-md"
-                                       href={b.url || "#"} target="_blank" rel="noreferrer">
-                                      {b.label || "Button"}
-                                    </a>
+                                    <div className="grid grid-cols-2 gap-2">
+                                      <Input
+                                        placeholder="Label"
+                                        value={b.label ?? ""}
+                                        onChange={(e) =>
+                                          setBlocks((arr) => arr.map((x, idx) => (idx === i ? { ...x, label: e.target.value } : x)))
+                                        }
+                                      />
+                                      <Input
+                                        placeholder="https://example.com"
+                                        value={b.url ?? ""}
+                                        onChange={(e) =>
+                                          setBlocks((arr) => arr.map((x, idx) => (idx === i ? { ...x, url: e.target.value } : x)))
+                                        }
+                                      />
+                                    </div>
                                   )}
                                   {b.type === "footer" && (
-                                    <div className="text-xs text-muted-foreground">
-                                      {b.includeUnsubscribe ? "Unsubscribe link will be included" : "No unsubscribe link"}
+                                    <div className="flex items-center gap-2 text-sm">
+                                      <Switch
+                                        checked={!!b.includeUnsubscribe}
+                                        onCheckedChange={(val) =>
+                                          setBlocks((arr) => arr.map((x, idx) => (idx === i ? { ...x, includeUnsubscribe: !!val } : x)))
+                                        }
+                                      />
+                                      <span>Include unsubscribe link</span>
                                     </div>
                                   )}
                                 </div>
@@ -1454,115 +1505,146 @@ export default function Dashboard() {
                             </div>
                           </div>
                         </div>
-                      </div>
-                    </div>
 
-                    <DialogFooter className="gap-2">
-                      <Button
-                        variant="outline"
-                        onClick={async () => {
-                          try {
-                            const to = (user as any)?.email;
-                            if (!to) {
-                              toast("No user email to send test");
-                              return;
-                            }
-                            const business = currentBusiness;
-                            if (!business) {
-                              toast("No business selected");
-                              return;
-                            }
-                            await sendTestEmail({
-                              from: emailFrom,
-                              to,
-                              subject: emailSubject || "(no subject)",
-                              previewText: emailPreview || "",
-                              businessId: business._id,
-                              blocks,
-                            } as any);
-                            toast("Test email sent");
-                          } catch (e) {
-                            toast("Failed to send test");
-                          }
-                        }}
-                      >
-                        Send Test
-                      </Button>
-                      <Button
-                        onClick={async () => {
-                          try {
-                            if (!emailSubject || !emailFrom) {
-                              toast("From and Subject are required");
-                              return;
-                            }
-                            if (!scheduledAt) {
-                              toast("Select a schedule time");
-                              return;
-                            }
-                            const recipients = recipientsRaw
-                              .split(",")
-                              .map((s) => s.trim())
-                              .filter((s) => s.length > 0);
-                            if (recipients.length === 0) {
-                              toast("Add at least one recipient");
-                              return;
-                            }
-                            const local = new Date(scheduledAt);
-                            const scheduledUtcMs = local.getTime();
-                            const business = currentBusiness;
-                            if (!business) {
-                              toast("No business selected");
-                              return;
-                            }
-                            await createCampaign({
-                              businessId: business._id,
-                              createdBy: currentUserDoc!._id,
-                              subject: emailSubject,
-                              from: emailFrom,
-                              previewText: emailPreview || "",
-                              blocks,
-                              recipients,
-                              timezone: tz,
-                              scheduledAt: scheduledUtcMs,
-                            } as any);
-                            toast("Campaign scheduled");
-                            setEmailOpen(false);
-                            setEmailSubject("");
-                            setEmailPreview("");
-                            setRecipientsRaw("");
-                            setScheduledAt("");
-                          } catch (e) {
-                            toast("Failed to schedule");
-                          }
-                        }}
-                      >
-                        Schedule
-                      </Button>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
-              </div>
-
-              {/* Tiny list of recent campaigns */}
-              <div className="rounded-md border divide-y">
-                {(campaigns ?? []).length === 0 ? (
-                  <div className="text-sm text-muted-foreground p-3">No campaigns yet</div>
-                ) : (
-                  (campaigns ?? []).map((c: any) => (
-                    <div key={c._id} className="flex items-center justify-between p-3">
-                      <div className="min-w-0">
-                        <div className="text-sm font-medium truncate">{c.subject}</div>
-                        <div className="text-xs text-muted-foreground">
-                          {new Date(c.scheduledAt).toLocaleString()} • {c.status}
+                        {/* Preview */}
+                        <div className="space-y-3">
+                          <div className="rounded-md border p-3">
+                            <div className="text-sm text-muted-foreground mb-2">Preview</div>
+                            <div className="space-y-3">
+                              <div className="text-sm"><span className="font-medium">From:</span> {emailFrom}</div>
+                              <div className="text-sm"><span className="font-medium">Subject:</span> {emailSubject}</div>
+                              <div className="text-xs text-muted-foreground">{emailPreview}</div>
+                              <div className="h-px bg-border" />
+                              <div className="prose prose-sm max-w-none">
+                                {blocks.map((b, i) => (
+                                  <div key={i} className="mb-3">
+                                    {b.type === "text" && <div dangerouslySetInnerHTML={{ __html: b.content || "" }} />}
+                                    {b.type === "button" && (
+                                      <a className="inline-block bg-foreground text-background px-3 py-2 rounded-md"
+                                         href={b.url || "#"} target="_blank" rel="noreferrer">
+                                        {b.label || "Button"}
+                                      </a>
+                                    )}
+                                    {b.type === "footer" && (
+                                      <div className="text-xs text-muted-foreground">
+                                        {b.includeUnsubscribe ? "Unsubscribe link will be included" : "No unsubscribe link"}
+                                      </div>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
                         </div>
                       </div>
-                      <Badge>{(c.status || "").toUpperCase()}</Badge>
-                    </div>
-                  ))
-                )}
-              </div>
-            </CardContent>
-          </Card>
+
+                      <DialogFooter className="gap-2">
+                        <Button
+                          variant="outline"
+                          onClick={() => guardGuest(async () => {
+                            try {
+                              const to = (user as any)?.email;
+                              if (!to) {
+                                toast("No user email to send test");
+                                return;
+                              }
+                              const business = currentBusiness;
+                              if (!business) {
+                                toast("No business selected");
+                                return;
+                              }
+                              await sendTestEmail({
+                                from: emailFrom,
+                                to,
+                                subject: emailSubject || "(no subject)",
+                                previewText: emailPreview || "",
+                                businessId: business._id,
+                                blocks,
+                              } as any);
+                              toast("Test email sent");
+                            } catch {
+                              toast("Failed to send test");
+                            }
+                          })}
+                        >
+                          Send Test
+                        </Button>
+                        <Button
+                          onClick={() => guardGuest(async () => {
+                            try {
+                              if (!emailSubject || !emailFrom) {
+                                toast("From and Subject are required");
+                                return;
+                              }
+                              if (!scheduledAt) {
+                                toast("Select a schedule time");
+                                return;
+                              }
+                              const recipients = recipientsRaw
+                                .split(",")
+                                .map((s) => s.trim())
+                                .filter((s) => s.length > 0);
+                              if (recipients.length === 0) {
+                                toast("Add at least one recipient");
+                                return;
+                              }
+                              const local = new Date(scheduledAt);
+                              const scheduledUtcMs = local.getTime();
+                              const business = currentBusiness;
+                              if (!business) {
+                                toast("No business selected");
+                                return;
+                              }
+                              await createCampaign({
+                                businessId: business._id,
+                                createdBy: currentUserDoc!._id,
+                                subject: emailSubject,
+                                from: emailFrom,
+                                previewText: emailPreview || "",
+                                blocks,
+                                recipients,
+                                timezone: tz,
+                                scheduledAt: scheduledUtcMs,
+                              } as any);
+                              toast("Campaign scheduled");
+                              setEmailOpen(false);
+                              setEmailSubject("");
+                              setEmailPreview("");
+                              setRecipientsRaw("");
+                              setScheduledAt("");
+                            } catch {
+                              toast("Failed to schedule");
+                            }
+                          })}
+                        >
+                          Schedule
+                        </Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
+                </div>
+
+                {/* Tiny list of recent campaigns */}
+                <div className="rounded-md border divide-y">
+                  {(campaignsEffective ?? []).length === 0 ? (
+                    <div className="text-sm text-muted-foreground p-3">No campaigns yet</div>
+                  ) : (
+                    (campaignsEffective ?? []).map((c: any) => (
+                      <div key={c._id} className="flex items-center justify-between p-3">
+                        <div className="min-w-0">
+                          <div className="text-sm font-medium truncate">{c.subject}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {new Date(c.scheduledAt).toLocaleString()} • {c.status}
+                          </div>
+                        </div>
+                        <Badge>{(c.status || "").toUpperCase()}</Badge>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          ) : null}
 
           {/* System Health Inspector */}
           <Card className="mb-8">
