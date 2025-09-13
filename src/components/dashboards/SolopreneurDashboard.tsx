@@ -172,6 +172,9 @@ export function SolopreneurDashboard({
   const [recipientsRaw, setRecipientsRaw] = React.useState("");
   const [recipientsList, setRecipientsList] = React.useState<string[]>([]);
   const [invalidList, setInvalidList] = React.useState<string[]>([]);
+  const [csvText, setCsvText] = React.useState("");
+  // Add: hidden file input ref for one-click upload & import
+  const uploadCsvInputRef = React.useRef<HTMLInputElement | null>(null);
 
   // Add: parse recipients utility
   const parseRecipients = React.useCallback((raw: string) => {
@@ -923,6 +926,57 @@ export function SolopreneurDashboard({
                     onChange={(e) => setCsvText(e.target.value)}
                     rows={6}
                   />
+                  {/* Added: CSV file upload */}
+                  <div className="flex items-center justify-between mt-2">
+                    <input
+                      ref={uploadCsvInputRef}
+                      type="file"
+                      accept=".csv"
+                      className="hidden"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        try {
+                          const text = await file.text();
+                          setCsvText(text);
+                          const lines = text.split(/\r?\n/).filter((l) => l.trim().length > 0);
+                          const rows = lines.length > 0 && lines[0].includes(",") ? Math.max(0, lines.length - 1) : lines.length;
+                          toast.success(`CSV loaded (${rows} row${rows === 1 ? "" : "s"})`);
+
+                          // Directly import to selected list
+                          if (!selectedListId) {
+                            toast.error("Select a list.");
+                            return;
+                          }
+                          if (!business?._id || !currentUser?._id) {
+                            toast.error("Business or user is not ready yet.");
+                            return;
+                          }
+                          const res = await importCsvToList({
+                            businessId: business._id,
+                            createdBy: currentUser._id,
+                            listId: selectedListId as any,
+                            csvText: text,
+                          } as any);
+                          toast.success(`Imported ${res?.added ?? 0} contacts`);
+                        } catch (err: any) {
+                          toast.error(err?.message || "Failed to read CSV");
+                        } finally {
+                          if (uploadCsvInputRef.current) uploadCsvInputRef.current.value = "";
+                        }
+                      }}
+                    />
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={() => uploadCsvInputRef.current?.click()}
+                    >
+                      Upload CSV file
+                    </Button>
+                    <div className="text-xs text-muted-foreground">
+                      You can paste or upload a .csv (email,name)
+                    </div>
+                  </div>
                   <div className="flex items-center justify-end gap-2 mt-2">
                     <Button
                       variant="ghost"

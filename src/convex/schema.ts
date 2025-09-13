@@ -411,10 +411,16 @@ export default defineSchema({
       v.literal("failed"),
       v.literal("canceled")
     ),
-    sendIds: v.optional(v.array(v.string())), // resend message ids
+    sendIds: v.optional(v.array(v.string())),
     lastError: v.optional(v.string()),
+
+    // Add: audience targeting
+    audienceType: v.optional(v.union(v.literal("direct"), v.literal("list"))),
+    audienceListId: v.optional(v.id("contactLists")),
   })
-  .index("by_business_and_status", ["businessId", "status"]),
+  .index("by_business_and_status", ["businessId", "status"])
+  .index("by_audience_type", ["audienceType"])
+  .index("by_audience_list_id", ["audienceListId"]),
 
   emailUnsubscribes: defineTable({
     businessId: v.id("businesses"),

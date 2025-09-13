@@ -134,10 +134,10 @@ export const sendCampaignInternal = internalAction({
       const recipientsSet = new Set<string>();
 
       // Expand from list if present
-      if (campaign.audienceType === "list" && campaign.audienceListId) {
-        const listEmails = await ctx.runQuery(internal.contacts.getListRecipientEmails, {
+      if ((campaign as any).audienceType === "list" && (campaign as any).audienceListId) {
+        const listEmails = await ctx.runQuery((internal as any).contacts.getListRecipientEmails, {
           businessId: campaign.businessId,
-          listId: campaign.audienceListId,
+          listId: (campaign as any).audienceListId,
         });
         for (const e of listEmails) recipientsSet.add(e.trim().toLowerCase());
       }

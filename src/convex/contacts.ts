@@ -1,5 +1,6 @@
 import { action, internalMutation, internalQuery, mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { internal, api } from "./_generated/api";
 
 // Helpers
 function normalizeEmail(e: string): string {
@@ -9,7 +10,7 @@ function normalizeEmail(e: string): string {
 async function getContactByEmail(ctx: any, businessId: any, email: string) {
   return await ctx.db
     .query("contacts")
-    .withIndex("by_business_and_email", q => q.eq("businessId", businessId).eq("email", email))
+    .withIndex("by_business_and_email", (q: any) => q.eq("businessId", businessId).eq("email", email))
     .unique()
     .catch(() => null);
 }
@@ -72,7 +73,7 @@ export const createList = mutation({
     // Prevent duplicate name within a business
     const dup = await ctx.db
       .query("contactLists")
-      .withIndex("by_business_and_name", q => q.eq("businessId", args.businessId).eq("name", args.name))
+      .withIndex("by_business_and_name", (q: any) => q.eq("businessId", args.businessId).eq("name", args.name))
       .unique()
       .catch(() => null);
     if (dup) return dup._id;
@@ -112,7 +113,7 @@ export const addContactsToList = internalMutation({
       if (!email || seen.has(email)) continue;
       seen.add(email);
 
-      const contactId = await ctx.runMutation(upsertContact, {
+      const contactId = await ctx.runMutation(internal.contacts.upsertContact, {
         businessId: args.businessId,
         email,
         createdBy: args.createdBy,
@@ -124,10 +125,10 @@ export const addContactsToList = internalMutation({
       // Skip if already a member
       const already = await ctx.db
         .query("contactListMembers")
-        .withIndex("by_business_and_contact", q => q.eq("businessId", args.businessId).eq("contactId", contactId))
+        .withIndex("by_business_and_contact", (q: any) => q.eq("businessId", args.businessId).eq("contactId", contactId))
         .collect();
 
-      const existsInList = already.some(m => m.listId === args.listId);
+      const existsInList = already.some((m: any) => m.listId === args.listId);
       if (!existsInList) {
         await ctx.db.insert("contactListMembers", {
           businessId: args.businessId,
@@ -145,7 +146,7 @@ export const addContactsToList = internalMutation({
 export const listContacts = query({
   args: { businessId: v.id("businesses") },
   handler: async (ctx, args) => {
-    return await ctx.db.query("contacts").withIndex("by_business", q => q.eq("businessId", args.businessId)).collect();
+    return await ctx.db.query("contacts").withIndex("by_business", (q: any) => q.eq("businessId", args.businessId)).collect();
   },
 });
 
@@ -153,7 +154,7 @@ export const listContacts = query({
 export const listLists = query({
   args: { businessId: v.id("businesses") },
   handler: async (ctx, args) => {
-    return await ctx.db.query("contactLists").withIndex("by_business", q => q.eq("businessId", args.businessId)).collect();
+    return await ctx.db.query("contactLists").withIndex("by_business", (q: any) => q.eq("businessId", args.businessId)).collect();
   },
 });
 
@@ -163,7 +164,7 @@ export const getListRecipientEmails = internalQuery({
   handler: async (ctx, args) => {
     const members = await ctx.db
       .query("contactListMembers")
-      .withIndex("by_business_and_list", q => q.eq("businessId", args.businessId).eq("listId", args.listId))
+      .withIndex("by_business_and_list", (q: any) => q.eq("businessId", args.businessId).eq("listId", args.listId))
       .collect();
 
     const emails: string[] = [];
@@ -223,28 +224,28 @@ export const bulkUploadCsv = action({
     // Create or find list
     let listId = null as any;
     if (args.listName && args.listName.trim()) {
-      listId = await ctx.runMutation(createList, {
+      listId = await ctx.runMutation(api.contacts.createList, {
         businessId: args.businessId,
         name: args.listName.trim(),
         createdBy: args.createdBy,
       });
     } else {
       const autoName = `Imports ${new Date().toISOString()}`;
-      listId = await ctx.runMutation(createList, {
+      listId = await ctx.runMutation(api.contacts.createList, {
         businessId: args.businessId,
         name: autoName,
         createdBy: args.createdBy,
       });
     }
 
-    // Upsert contacts with names, then add to list
+    // Upsert contacts with names
     const uniq = Array.from(new Set(emails));
     let added = 0;
     let skipped = 0;
 
     for (const email of uniq) {
       try {
-        await ctx.runMutation(upsertContact, {
+        await ctx.runMutation(internal.contacts.upsertContact, {
           businessId: args.businessId,
           email,
           name: namesByEmail[email],
@@ -259,7 +260,7 @@ export const bulkUploadCsv = action({
       }
     }
 
-    await ctx.runMutation(addContactsToList, {
+    await ctx.runMutation(internal.contacts.addContactsToList, {
       businessId: args.businessId,
       listId,
       emails: uniq,
@@ -322,7 +323,7 @@ export const importCsvToList = action({
 
     for (const email of uniq) {
       try {
-        await ctx.runMutation(upsertContact, {
+        await ctx.runMutation(internal.contacts.upsertContact, {
           businessId: args.businessId,
           email,
           name: namesByEmail[email],
@@ -337,7 +338,7 @@ export const importCsvToList = action({
       }
     }
 
-    await ctx.runMutation(addContactsToList, {
+    await ctx.runMutation(internal.contacts.addContactsToList, {
       businessId: args.businessId,
       listId: args.listId,
       emails: uniq,
@@ -367,14 +368,14 @@ export const seedContacts = action({
       emails.push(`${name.toLowerCase()}${i}@example.com`);
     }
 
-    const listId = await ctx.runMutation(createList, {
+    const listId = await ctx.runMutation(api.contacts.createList, {
       businessId: args.businessId,
       name: "Sample Contacts",
       createdBy: args.createdBy,
     });
 
     for (const email of emails) {
-      await ctx.runMutation(upsertContact, {
+      await ctx.runMutation(internal.contacts.upsertContact, {
         businessId: args.businessId,
         email,
         name: email.split("@")[0],
@@ -384,7 +385,7 @@ export const seedContacts = action({
       });
     }
 
-    await ctx.runMutation(addContactsToList, {
+    await ctx.runMutation(internal.contacts.addContactsToList, {
       businessId: args.businessId,
       listId,
       emails,
