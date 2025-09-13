@@ -130,26 +130,14 @@ export function StartupDashboard({
                 <h3 className="font-medium">{task.title}</h3>
                 <p className="text-sm text-muted-foreground">Due: {task.dueDate}</p>
                 <div className="flex gap-2 mt-3">
-                  <Button 
-                    size="sm" 
-                    onClick={isGuest ? onUpgrade : undefined}
-                    disabled={isGuest}
-                  >
-                    {isGuest ? "Sign in to approve" : "Approve"}
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={isGuest ? onUpgrade : undefined}
-                    disabled={isGuest}
-                  >
-                    {isGuest ? "Sign in to review" : "Review"}
-                  </Button>
+                  <Button size="sm">Approve</Button>
+                  <Button variant="outline" size="sm">Review</Button>
                 </div>
               </CardContent>
             </Card>
           ))}
-          <UpgradeCTA feature="Advanced Governance" />
+          {/* Hide upgrade prompt for guests */}
+          {!isGuest && <UpgradeCTA feature="Advanced Governance" />}
         </div>
       </section>
     </div>

@@ -8,11 +8,30 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { isGuestMode, getSelectedTier, getDemoData } from "@/lib/guestUtils";
 import { getTierConfig, canShowFeature, TierType } from "@/lib/tierConfig";
-import { SolopreneurDashboard } from "@/components/dashboards/SolopreneurDashboard";
-import { StartupDashboard } from "@/components/dashboards/StartupDashboard";
-import { SmeDashboard } from "@/components/dashboards/SmeDashboard";
-import { EnterpriseDashboard } from "@/components/dashboards/EnterpriseDashboard";
+import React, { Suspense, lazy } from "react";
 import { toast } from "sonner";
+
+// Add: lazy loaded dashboards to split bundles and fix undefined component refs
+const SolopreneurDashboard = lazy(() =>
+  import("@/components/dashboards/SolopreneurDashboard").then((m) => ({
+    default: m.SolopreneurDashboard,
+  })),
+);
+const StartupDashboard = lazy(() =>
+  import("@/components/dashboards/StartupDashboard").then((m) => ({
+    default: m.StartupDashboard,
+  })),
+);
+const SmeDashboard = lazy(() =>
+  import("@/components/dashboards/SmeDashboard").then((m) => ({
+    default: m.SmeDashboard,
+  })),
+);
+const EnterpriseDashboard = lazy(() =>
+  import("@/components/dashboards/EnterpriseDashboard").then((m) => ({
+    default: m.EnterpriseDashboard,
+  })),
+);
 
 export default function Dashboard() {
   const { isLoading, isAuthenticated, user, signOut } = useAuth();
@@ -63,10 +82,6 @@ export default function Dashboard() {
   }
 
   const handleNavigation = (to: string) => {
-    if (guestMode) {
-      toast("Sign in to access this feature");
-      return;
-    }
     navigate(to);
   };
 
@@ -142,8 +157,16 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Dashboard content */}
-        {renderDashboardContent()}
+        {/* Dashboard content (code-split) */}
+        <Suspense
+          fallback={
+            <div className="flex items-center justify-center h-40">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600" />
+            </div>
+          }
+        >
+          {renderDashboardContent()}
+        </Suspense>
       </main>
     </div>
   );

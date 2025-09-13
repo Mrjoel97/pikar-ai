@@ -77,13 +77,8 @@ export function SmeDashboard({
                   </Badge>
                 </div>
                 <p className="text-sm text-muted-foreground mb-3">Due: {task.dueDate}</p>
-                <Button 
-                  size="sm" 
-                  className="w-full"
-                  onClick={isGuest ? onUpgrade : undefined}
-                  disabled={isGuest}
-                >
-                  {isGuest ? "Sign in to approve" : "Review & Approve"}
+                <Button size="sm" className="w-full">
+                  Review & Approve
                 </Button>
               </CardContent>
             </Card>
@@ -149,7 +144,8 @@ export function SmeDashboard({
               </div>
             </CardContent>
           </Card>
-          <UpgradeCTA feature="Global Command Center" />
+          {/* Hide upgrade prompt for guests */}
+          {!isGuest && <UpgradeCTA feature="Global Command Center" />}
         </div>
       </section>
     </div>

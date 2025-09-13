@@ -36,7 +36,6 @@ import {
   Mail
 } from "lucide-react";
 import { toast } from "sonner";
-import { navigateToGuestDashboard } from "@/lib/guestUtils";
 
 export default function Landing() {
   const { isLoading, isAuthenticated } = useAuth();
@@ -647,24 +646,6 @@ export default function Landing() {
                       onClick={handleGetStarted}
                     >
                       Get Started
-                    </Button>
-                    {/* Continue as Guest */}
-                    <Button
-                      variant="outline"
-                      className="w-full mt-2 neu-flat rounded-xl"
-                      onClick={() =>
-                        navigateToGuestDashboard(
-                          index === 0
-                            ? "solopreneur"
-                            : index === 1
-                            ? "startup"
-                            : index === 2
-                            ? "sme"
-                            : "enterprise"
-                        )
-                      }
-                    >
-                      Continue as Guest
                     </Button>
                   </CardContent>
                 </Card>

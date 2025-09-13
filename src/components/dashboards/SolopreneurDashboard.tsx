@@ -97,16 +97,15 @@ export function SolopreneurDashboard({
             <CardContent className="p-4">
               <h3 className="font-medium mb-2">Send Newsletter</h3>
               <Button 
-                className="w-full" 
-                onClick={isGuest ? onUpgrade : undefined}
-                disabled={isGuest}
+                className="w-full"
               >
-                {isGuest ? "Sign in to use" : "Send Now"}
+                Send Now
               </Button>
             </CardContent>
           </Card>
-          <UpgradeCTA feature="Team Collaboration" />
-          <UpgradeCTA feature="Advanced Analytics" />
+          {/* Hide upgrade prompts for guests to allow full access */}
+          {!isGuest && <UpgradeCTA feature="Team Collaboration" />}
+          {!isGuest && <UpgradeCTA feature="Advanced Analytics" />}
         </div>
       </section>
 
