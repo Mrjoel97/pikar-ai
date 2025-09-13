@@ -339,12 +339,18 @@ export default function Landing() {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.8 }}
-      className="min-h-screen bg-gradient-to-br from-accent/10 via-background to-primary/5"
+      className="min-h-screen bg-gradient-to-br from-accent/10 via-background to-primary/5 overflow-x-hidden"
     >
+      {/* Add a skip link for accessibility at the top of the page */}
+      <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:rounded-md focus:bg-background focus:px-3 focus:py-2 focus:ring-2 focus:ring-ring">
+        Skip to content
+      </a>
+
       {/* Navigation */}
       <nav className="sticky top-0 z-50 backdrop-blur-lg bg-background/80 border-b border-border/50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
+          {/* Reduce navbar height on mobile for better fit */}
+          <div className="flex justify-between items-center h-14 sm:h-16">
             <motion.div 
               className="flex items-center space-x-3 cursor-pointer"
               onClick={() => navigate("/")}
@@ -352,9 +358,10 @@ export default function Landing() {
               whileTap={{ scale: 0.95 }}
             >
               <div className="neu-raised rounded-xl p-2 bg-primary/10">
-                <Brain className="h-8 w-8 text-primary" />
+                {/* Slightly smaller icon on mobile to avoid wrap */}
+                <Brain className="h-7 w-7 sm:h-8 sm:w-8 text-primary" />
               </div>
-              <span className="text-xl font-bold tracking-tight">Pikar AI</span>
+              <span className="text-lg sm:text-xl font-bold tracking-tight">Pikar AI</span>
             </motion.div>
 
             {/* Desktop nav */}
@@ -394,13 +401,23 @@ export default function Landing() {
               <Button
                 className="neu-flat rounded-xl bg-card/70 hover:bg-card text-foreground"
                 onClick={() => navigate("/auth")}
+                aria-label="Sign in"
               >
                 Sign In
               </Button>
-              <Button 
+              <Button
+                variant="outline"
+                className="neu-flat rounded-xl"
+                onClick={() => navigate("/workflows/templates")}
+                aria-label="Open templates demo"
+              >
+                Templates Demo
+              </Button>
+              <Button
                 className="neu-raised rounded-xl bg-primary hover:bg-primary/90"
                 onClick={handleGetStarted}
                 disabled={isLoading}
+                aria-label="Get started"
               >
                 {isLoading ? (
                   <span className="inline-flex items-center">
@@ -417,11 +434,16 @@ export default function Landing() {
             <div className="md:hidden">
               <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
                 <SheetTrigger asChild>
-                  <Button variant="outline" size="icon" className="neu-flat rounded-xl">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="neu-flat rounded-xl"
+                    aria-label="Open menu"
+                  >
                     <Menu className="h-5 w-5" />
                   </Button>
                 </SheetTrigger>
-                <SheetContent side="right" className="w-80 sm:w-96">
+                <SheetContent side="right" className="w-[92vw] sm:w-96 max-w-sm">
                   <div className="mt-6 space-y-6">
                     <div className="flex items-center space-x-3">
                       <div className="neu-raised rounded-xl p-2 bg-primary/10">
@@ -477,6 +499,7 @@ export default function Landing() {
                       </Button>
                     </div>
 
+                    {/* Actions */}
                     <div className="pt-2 space-y-3">
                       <Button
                         className="w-full neu-flat rounded-xl bg-card/70 hover:bg-card text-foreground"
@@ -484,16 +507,29 @@ export default function Landing() {
                           setMobileOpen(false);
                           navigate("/auth");
                         }}
+                        aria-label="Sign in"
                       >
                         Sign In
                       </Button>
-                      <Button 
+                      <Button
+                        variant="outline"
+                        className="w-full neu-flat rounded-xl"
+                        onClick={() => {
+                          setMobileOpen(false);
+                          navigate("/workflows/templates");
+                        }}
+                        aria-label="Open templates demo"
+                      >
+                        Templates Demo
+                      </Button>
+                      <Button
                         className="w-full neu-raised rounded-xl bg-[#1B5235] hover:bg-[#17452D] text-white"
                         onClick={() => {
                           setMobileOpen(false);
                           handleGetStarted();
                         }}
                         disabled={isLoading}
+                        aria-label="Get started"
                       >
                         {isLoading ? (
                           <span className="inline-flex items-center">
@@ -514,7 +550,10 @@ export default function Landing() {
       </nav>
 
       {/* Hero Section */}
-      <section className="relative pt-5 pb-12 sm:pt-10 sm:pb-20 lg:pt-10 lg:pb-24 px-4 sm:px-6 lg:px-8">
+      <section
+        id="main"
+        className="relative pt-5 pb-12 sm:pt-10 sm:pb-20 lg:pt-10 lg:pb-24 px-4 sm:px-6 lg:px-8"
+      >
         {/* Subtle white gradient overlay */}
         <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top,rgba(255,255,255,0.95),rgba(255,255,255,0.9)_45%,transparent_70%)]" />
         <div className="max-w-7xl mx-auto text-center">
@@ -540,16 +579,17 @@ export default function Landing() {
             </p>
             
             <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-center">
-              <Button 
-                size="lg" 
+              <Button
+                size="lg"
                 className="w-full sm:w-auto neu-raised rounded-xl bg-primary hover:bg-primary/90 px-8 py-4 text-lg"
                 onClick={handleGetStarted}
                 disabled={isLoading}
+                aria-label="Start free assessment"
               >
                 {isLoading ? (
                   <span className="inline-flex items-center">
                     <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                    Starting...
+                    Loading...
                   </span>
                 ) : (
                   <>
@@ -558,13 +598,23 @@ export default function Landing() {
                   </>
                 )}
               </Button>
-              <Button 
-                size="lg" 
+              <Button
+                size="lg"
                 className="w-full sm:w-auto neu-flat rounded-xl px-8 py-4 text-lg"
                 variant="outline"
                 onClick={() => setDemoOpen(true)}
+                aria-label="Watch demo"
               >
                 Watch Demo
+              </Button>
+              <Button
+                size="lg"
+                className="w-full sm:w-auto neu-flat rounded-xl px-8 py-4 text-lg"
+                variant="outline"
+                onClick={() => navigate("/workflows/templates")}
+                aria-label="Open templates demo"
+              >
+                Templates Demo
               </Button>
             </div>
           </motion.div>

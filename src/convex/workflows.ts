@@ -1774,7 +1774,7 @@ export const upsertRisk = mutation({
         impact: args.impact,
         status: args.status,
         ownerId: args.ownerId,
-        updatedAt: Date.now(),
+        
       });
       return args.riskId;
     }
@@ -1870,7 +1870,7 @@ export const upsertSop = mutation({
         status: args.status,
         requiresReview: args.requiresReview,
         updatedBy: args.updatedBy,
-        updatedAt: Date.now(),
+        
       });
       return existing[0]._id;
     }
@@ -1996,14 +1996,14 @@ export const upsertWorkflowTemplate = mutation({
         industryTags: doc.industryTags,
         tags: doc.tags,
         tier: doc.tier,
-        updatedAt: Date.now(),
+        
       });
       return existing._id;
     } else {
       return await ctx.db.insert("workflowTemplates", {
         ...doc,
         createdAt: Date.now(),
-        updatedAt: Date.now(),
+        
       });
     }
   },

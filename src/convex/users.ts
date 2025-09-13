@@ -55,3 +55,36 @@ export const ensureSeedUser = mutation({
     return id;
   },
 });
+
+// Get a single user by email (uses an index "by_email" if present; otherwise will scan at runtime)
+export const getByEmail = query({
+  args: { email: v.string() },
+  handler: async (ctx, args) => {
+    // Note: Using filter to avoid assuming an email index exists
+    return await ctx.db
+      .query("users")
+      .filter((q) => q.eq(q.field("email"), args.email))
+      .unique();
+  },
+});
+
+// Alias retained for compatibility
+export const findByEmail = query({
+  args: { email: v.string() },
+  handler: async (ctx, args) => {
+    // Same behavior as getByEmail; seed.ts references both
+    return await ctx.db
+      .query("users")
+      .filter((q) => q.eq(q.field("email"), args.email))
+      .unique();
+  },
+});
+
+// Return any user (useful for seeding fallbacks)
+export const getAny = query({
+  args: {},
+  handler: async (ctx) => {
+    const results = await ctx.db.query("users").take(1);
+    return results[0] ?? null;
+  },
+});
