@@ -206,6 +206,25 @@ export default function Dashboard() {
           </div>
         )}
 
+        {/* Add: Upgrade CTA for non-enterprise authenticated users */}
+        {!guestMode && effectiveTier !== "enterprise" && (
+          <Card className="mb-6 border-emerald-200 bg-emerald-50">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-emerald-800">Unlock more with a higher plan</CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+              <div className="text-sm text-emerald-900">
+                You're on {effectiveConfig.label}. Upgrade to access advanced automations, higher limits, and priority support.
+              </div>
+              <div>
+                <Button size="sm" onClick={() => navigate("/pricing")}>
+                  View plans
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Add: Progressive disclosure upgrade nudges (auth only) */}
         {!guestMode && nudges && nudges.showBanner && (
           <Card className="mb-6 border-amber-200 bg-amber-50">
