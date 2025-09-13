@@ -4,6 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useMutation } from "convex/react";
+import { toast } from "sonner";
 
 interface SmeDashboardProps {
   business: any;
@@ -46,6 +48,15 @@ export function SmeDashboard({
       ? "skip"
       : { businessId, limit: 5 }
   );
+
+  const approveSelf = useMutation(api.approvals.approveSelf);
+  const rejectSelf = useMutation(api.approvals.rejectSelf);
+
+  const featureFlags = useQuery(
+    api.featureFlags.getFeatureFlags,
+    isGuest || !businessId ? "skip" : { businessId }
+  );
+  const toggleFlag = useMutation(api.featureFlags.toggleFeatureFlag);
 
   const UpgradeCTA = ({ feature }: { feature: string }) => (
     <Card className="border-dashed border-2 border-gray-300">
@@ -135,13 +146,50 @@ export function SmeDashboard({
                       Step {String(a.stepId).slice(-6)} • Requested {new Date(a.createdAt).toLocaleDateString()}
                     </span>
                   </div>
-                  <Badge variant="outline" className={
-                    a.priority === "urgent" ? "border-red-300 text-red-700" :
-                    a.priority === "high" ? "border-amber-300 text-amber-700" :
-                    "border-slate-300 text-slate-700"
-                  }>
-                    {a.priority}
-                  </Badge>
+                  <div className="flex items-center gap-2">
+                    <Badge
+                      variant="outline"
+                      className={
+                        a.priority === "urgent" ? "border-red-300 text-red-700" :
+                        a.priority === "high" ? "border-amber-300 text-amber-700" :
+                        "border-slate-300 text-slate-700"
+                      }
+                    >
+                      {a.priority}
+                    </Badge>
+                    {!isGuest && (
+                      <>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={async () => {
+                            try {
+                              await approveSelf({ id: a._id });
+                              toast.success("Approved");
+                            } catch (e: any) {
+                              toast.error(e?.message || "Failed to approve");
+                            }
+                          }}
+                        >
+                          Approve
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={async () => {
+                            try {
+                              await rejectSelf({ id: a._id });
+                              toast.success("Rejected");
+                            } catch (e: any) {
+                              toast.error(e?.message || "Failed to reject");
+                            }
+                          }}
+                        >
+                          Reject
+                        </Button>
+                      </>
+                    )}
+                  </div>
                 </div>
               ))
             )}
@@ -349,6 +397,67 @@ export function SmeDashboard({
           </Card>
           {/* Hide upgrade prompt for guests */}
           {!isGuest && <UpgradeCTA feature="Global Command Center" />}
+        </div>
+      </section>
+
+      {/* Feature Toggles for SME */}
+      <section>
+        <h2 className="text-xl font-semibold mb-4">Feature Toggles</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Card>
+            <CardContent className="space-y-3 p-4">
+              {isGuest ? (
+                <div className="text-sm text-muted-foreground">
+                  Demo: Feature toggles visible. Sign in to manage.
+                </div>
+              ) : !featureFlags ? (
+                <div className="text-sm text-muted-foreground">Loading…</div>
+              ) : featureFlags.length === 0 ? (
+                <div className="text-sm text-muted-foreground">No feature flags configured.</div>
+              ) : (
+                featureFlags.slice(0, 8).map((f) => (
+                  <div key={f._id} className="flex items-center justify-between border rounded-md p-2">
+                    <div className="flex flex-col">
+                      <span className="text-sm font-medium">{f.flagName}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {f.isEnabled ? "Enabled" : "Disabled"} • Rollout: {f.rolloutPercentage}%
+                      </span>
+                    </div>
+                    {!isGuest && (
+                      <Button
+                        size="sm"
+                        variant={f.isEnabled ? "destructive" : "outline"}
+                        onClick={async () => {
+                          try {
+                            await toggleFlag({ flagId: f._id });
+                            toast.success(f.isEnabled ? "Flag disabled" : "Flag enabled");
+                          } catch (e: any) {
+                            toast.error(e?.message || "Failed to toggle flag");
+                          }
+                        }}
+                      >
+                        {f.isEnabled ? "Disable" : "Enable"}
+                      </Button>
+                    )}
+                  </div>
+                ))
+              )}
+              {!isGuest && featureFlags && featureFlags.length > 8 && (
+                <div className="text-xs text-muted-foreground">
+                  Showing 8 of {featureFlags.length} flags.
+                </div>
+              )}
+            </CardContent>
+          </Card>
+          {/* Secondary card for context/help */}
+          <Card className="border-dashed border-2 border-gray-300">
+            <CardContent className="p-4">
+              <h3 className="font-medium mb-2">About Feature Toggles</h3>
+              <p className="text-sm text-muted-foreground">
+                Use flags to safely roll out capabilities by department or percentage. Admins can enable or disable features instantly.
+              </p>
+            </CardContent>
+          </Card>
         </div>
       </section>
     </div>

@@ -6,6 +6,8 @@ import { useState } from "react";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Badge } from "@/components/ui/badge";
+import { useMutation } from "convex/react";
+import { toast } from "sonner";
 
 interface EnterpriseDashboardProps {
   business: any;
@@ -47,6 +49,16 @@ export function EnterpriseDashboard({
   const workflows = isGuest ? demoData?.workflows || [] : [];
   const kpis = isGuest ? (demoData?.kpis || {}) : (kpiDoc || {});
   const tasks = isGuest ? demoData?.tasks || [] : [];
+
+  const approveSelf = useMutation(api.approvals.approveSelf);
+  const rejectSelf = useMutation(api.approvals.rejectSelf);
+
+  // Add: Feature flags query and toggle mutation
+  const featureFlags = useQuery(
+    api.featureFlags.getFeatureFlags,
+    isGuest || !businessId ? "skip" : { businessId }
+  );
+  const toggleFlag = useMutation(api.featureFlags.toggleFeatureFlag);
 
   return (
     <div className="space-y-6">
@@ -286,7 +298,41 @@ export function EnterpriseDashboard({
                   approvals.slice(0, 3).map((a) => (
                     <div key={a._id} className="flex items-center justify-between border rounded-md p-2">
                       <span className="text-sm">WF {String(a.workflowId).slice(-6)}</span>
-                      <Badge variant="outline">{a.priority}</Badge>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline">{a.priority}</Badge>
+                        {!isGuest && (
+                          <>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={async () => {
+                                try {
+                                  await approveSelf({ id: a._id });
+                                  toast.success("Approved");
+                                } catch (e: any) {
+                                  toast.error(e?.message || "Failed to approve");
+                                }
+                              }}
+                            >
+                              Approve
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={async () => {
+                                try {
+                                  await rejectSelf({ id: a._id });
+                                  toast.success("Rejected");
+                                } catch (e: any) {
+                                  toast.error(e?.message || "Failed to reject");
+                                }
+                              }}
+                            >
+                              Reject
+                            </Button>
+                          </>
+                        )}
+                      </div>
                     </div>
                   ))
                 )}
@@ -307,6 +353,56 @@ export function EnterpriseDashboard({
                   ))
                 )}
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Feature Flags Management */}
+          <Card className="xl:col-span-1">
+            <CardHeader className="pb-2">
+              <CardTitle>Feature Flags</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {isGuest ? (
+                <div className="text-sm text-muted-foreground">
+                  Demo: Feature flags available for enterprise admins.
+                </div>
+              ) : !featureFlags ? (
+                <div className="text-sm text-muted-foreground">Loading…</div>
+              ) : featureFlags.length === 0 ? (
+                <div className="text-sm text-muted-foreground">No flags configured.</div>
+              ) : (
+                featureFlags.slice(0, 6).map((f) => (
+                  <div key={f._id} className="flex items-center justify-between border rounded-md p-2">
+                    <div className="flex flex-col">
+                      <span className="text-sm font-medium">{f.flagName}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {f.isEnabled ? "Enabled" : "Disabled"} • Rollout: {f.rolloutPercentage}%
+                      </span>
+                    </div>
+                    {!isGuest && (
+                      <Button
+                        size="sm"
+                        variant={f.isEnabled ? "destructive" : "outline"}
+                        onClick={async () => {
+                          try {
+                            await toggleFlag({ flagId: f._id });
+                            toast.success(f.isEnabled ? "Flag disabled" : "Flag enabled");
+                          } catch (e: any) {
+                            toast.error(e?.message || "Failed to toggle flag");
+                          }
+                        }}
+                      >
+                        {f.isEnabled ? "Disable" : "Enable"}
+                      </Button>
+                    )}
+                  </div>
+                ))
+              )}
+              {!isGuest && featureFlags && featureFlags.length > 6 && (
+                <div className="text-xs text-muted-foreground">
+                  Showing 6 of {featureFlags.length} flags.
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>

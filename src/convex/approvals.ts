@@ -507,3 +507,64 @@ export const reject = mutation({
     return true;
   },
 });
+
+// Add: Self-service approve mutation deriving user from identity
+export const approveSelf = mutation({
+  args: {
+    id: v.id("approvalQueue"),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Not authenticated");
+    }
+    const user = await ctx.db
+      .query("users")
+      .filter((q) => q.eq(q.field("email"), identity.email))
+      .first();
+    if (!user) {
+      throw new Error("User not found");
+    }
+    const now = Date.now();
+    await ctx.db.patch(args.id, {
+      status: "approved",
+      approvedAt: now,
+      approvedBy: user._id,
+      rejectionReason: undefined,
+      rejectedAt: undefined,
+      rejectedBy: undefined,
+    });
+    return true;
+  },
+});
+
+// Add: Self-service reject mutation deriving user from identity
+export const rejectSelf = mutation({
+  args: {
+    id: v.id("approvalQueue"),
+    reason: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Not authenticated");
+    }
+    const user = await ctx.db
+      .query("users")
+      .filter((q) => q.eq(q.field("email"), identity.email))
+      .first();
+    if (!user) {
+      throw new Error("User not found");
+    }
+    const now = Date.now();
+    await ctx.db.patch(args.id, {
+      status: "rejected",
+      rejectedAt: now,
+      rejectedBy: user._id,
+      rejectionReason: args.reason,
+      approvedAt: undefined,
+      approvedBy: undefined,
+    });
+    return true;
+  },
+});
