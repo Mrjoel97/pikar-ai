@@ -1,5 +1,5 @@
 import { Input } from "@/components/ui/input";
-import { LogOut } from "lucide-react";
+import { LogOut, CheckCircle } from "lucide-react";
 import React from "react";
 
 type NavItem = { label: string; icon: React.ComponentType<any>; to: string };
@@ -10,6 +10,7 @@ type SidebarProps = {
   planLabel?: string;
   onNavigate: (to: string) => void;
   onLogout: () => void;
+  featureHighlights?: string[];
 };
 
 export function Sidebar({
@@ -18,6 +19,7 @@ export function Sidebar({
   planLabel,
   onNavigate,
   onLogout,
+  featureHighlights,
 }: SidebarProps) {
   return (
     <aside className="hidden md:flex fixed left-0 top-0 bottom-0 w-72 bg-gradient-to-b from-emerald-900 to-emerald-800 text-white">
@@ -49,6 +51,23 @@ export function Sidebar({
             </button>
           ))}
         </nav>
+
+        {/* Plan features */}
+        {Array.isArray(featureHighlights) && featureHighlights.length > 0 && (
+          <div className="mt-4">
+            <div className="text-[11px] uppercase tracking-wider text-emerald-200/80 mb-2">
+              Your plan includes
+            </div>
+            <ul className="space-y-1.5">
+              {featureHighlights.slice(0, 6).map((feat, idx) => (
+                <li key={`${feat}-${idx}`} className="flex items-start gap-2 text-emerald-50/90">
+                  <CheckCircle className="h-3.5 w-3.5 mt-0.5 text-emerald-200/80 flex-shrink-0" />
+                  <span className="text-xs leading-snug">{feat}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
 
         {/* Spacer */}
         <div className="flex-1" />

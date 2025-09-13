@@ -31,6 +31,7 @@ export interface TierConfig {
   dashboardSections: string[];
   upgradeMessage: string;
   nextTier?: TierType;
+  featureHighlights: string[];
 }
 
 export const tierConfigs: Record<TierType, TierConfig> = {
@@ -61,7 +62,16 @@ export const tierConfigs: Record<TierType, TierConfig> = {
       "recent_activity"
     ],
     upgradeMessage: "Upgrade to Startup for team features and advanced workflows",
-    nextTier: "startup"
+    nextTier: "startup",
+    featureHighlights: [
+      "3 Core Agents",
+      "Complete Solo Biz Toolkit",
+      "Personal Brand Builder",
+      "Task Automation Suite",
+      "Learning Center: Solopreneur Courses",
+      "Templates & Market Research",
+      "Email Support",
+    ]
   },
   startup: {
     name: "startup",
@@ -92,7 +102,13 @@ export const tierConfigs: Record<TierType, TierConfig> = {
       "approvals_tray"
     ],
     upgradeMessage: "Upgrade to SME for governance and compliance features",
-    nextTier: "sme"
+    nextTier: "sme",
+    featureHighlights: [
+      "10 AI Agents",
+      "Advanced Analytics",
+      "Priority Support",
+      "Team Collaboration",
+    ]
   },
   sme: {
     name: "sme",
@@ -125,7 +141,13 @@ export const tierConfigs: Record<TierType, TierConfig> = {
       "compliance_summary"
     ],
     upgradeMessage: "Contact sales to upgrade to Enterprise command center",
-    nextTier: "enterprise"
+    nextTier: "enterprise",
+    featureHighlights: [
+      "Unlimited Agents",
+      "Custom Workflows",
+      "API Access",
+      "Dedicated Support",
+    ]
   },
   enterprise: {
     name: "enterprise",
@@ -160,7 +182,13 @@ export const tierConfigs: Record<TierType, TierConfig> = {
       "command_widgets"
     ],
     upgradeMessage: "You have access to all Enterprise features",
-    nextTier: undefined
+    nextTier: undefined,
+    featureHighlights: [
+      "White-label Solution",
+      "Custom Integrations",
+      "SLA Guarantee",
+      "On-premise Option",
+    ]
   }
 };
 

@@ -121,6 +121,7 @@ export default function Dashboard() {
         planLabel={planLabel}
         onNavigate={handleNavigation}
         onLogout={handleLogout}
+        featureHighlights={effectiveConfig.featureHighlights}
       />
       
       <main className="md:ml-72 p-6">
