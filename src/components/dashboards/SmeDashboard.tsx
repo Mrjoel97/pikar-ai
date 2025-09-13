@@ -1,9 +1,9 @@
+import { useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useQuery } from "convex/react";
-import { api } from "@/convex/_generated/api";
 
 interface SmeDashboardProps {
   business: any;
@@ -29,6 +29,23 @@ export function SmeDashboard({
   const workflows = isGuest ? demoData?.workflows || [] : [];
   const kpis = isGuest ? (demoData?.kpis || {}) : (kpiDoc || {});
   const tasks = isGuest ? demoData?.tasks || [] : [];
+
+  // Fix: derive businessId from current props (not `props`)
+  const businessId = !isGuest ? business?._id : null;
+
+  const pendingApprovals = useQuery(
+    api.approvals.getApprovalQueue,
+    isGuest || !businessId
+      ? "skip"
+      : { businessId, status: "pending" as const }
+  );
+
+  const auditHighlights = useQuery(
+    api.audit.listForBusiness,
+    isGuest || !businessId
+      ? "skip"
+      : { businessId, limit: 5 }
+  );
 
   const UpgradeCTA = ({ feature }: { feature: string }) => (
     <Card className="border-dashed border-2 border-gray-300">
@@ -93,6 +110,74 @@ export function SmeDashboard({
           ))}
         </div>
       </section>
+
+      {/* Governance & Audit data hooks */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle>Governance Panel</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {isGuest ? (
+              <div className="text-sm text-muted-foreground">
+                Demo: 3 pending approvals across departments.
+              </div>
+            ) : !pendingApprovals ? (
+              <div className="text-sm text-muted-foreground">Loading approvals…</div>
+            ) : pendingApprovals.length === 0 ? (
+              <div className="text-sm text-muted-foreground">No pending approvals.</div>
+            ) : (
+              pendingApprovals.slice(0, 6).map((a) => (
+                <div key={a._id} className="flex items-center justify-between border rounded-md p-2">
+                  <div className="flex flex-col">
+                    <span className="text-sm font-medium">Workflow {String(a.workflowId).slice(-6)}</span>
+                    <span className="text-xs text-muted-foreground">
+                      Step {String(a.stepId).slice(-6)} • Requested {new Date(a.createdAt).toLocaleDateString()}
+                    </span>
+                  </div>
+                  <Badge variant="outline" className={
+                    a.priority === "urgent" ? "border-red-300 text-red-700" :
+                    a.priority === "high" ? "border-amber-300 text-amber-700" :
+                    "border-slate-300 text-slate-700"
+                  }>
+                    {a.priority}
+                  </Badge>
+                </div>
+              ))
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Audit Trail Highlights */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle>Audit Trail Highlights</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {isGuest ? (
+              <div className="text-sm text-muted-foreground">
+                Demo: 5 latest policy and permission changes.
+              </div>
+            ) : !auditHighlights ? (
+              <div className="text-sm text-muted-foreground">Loading audit logs…</div>
+            ) : auditHighlights.length === 0 ? (
+              <div className="text-sm text-muted-foreground">No recent audit events.</div>
+            ) : (
+              auditHighlights.map((e) => (
+                <div key={e._id} className="flex items-start gap-3">
+                  <div className="text-xs text-muted-foreground mt-0.5">
+                    {new Date(e.createdAt).toLocaleDateString()}
+                  </div>
+                  <div className="flex-1">
+                    <div className="text-sm font-medium">{e.entityType}</div>
+                    <div className="text-xs text-muted-foreground">{e.action}</div>
+                  </div>
+                </div>
+              ))
+            )}
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Department Views (Tabbed Center Section) */}
       <section>

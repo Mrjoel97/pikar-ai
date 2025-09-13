@@ -95,6 +95,12 @@ export default function Dashboard() {
   // Demo data for guest mode
   const demoDataForTier = guestMode ? getDemoData(selectedTier) : null;
 
+  // Add: usage-based upgrade nudges (skip in guest mode)
+  const nudges = useQuery(
+    api.telemetry.getUpgradeNudges,
+    guestMode || !business?._id ? "skip" : { businessId: business._id }
+  );
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -175,7 +181,7 @@ export default function Dashboard() {
         onLogout={handleLogout}
         featureHighlights={effectiveConfig.featureHighlights}
       />
-      
+
       <main className="md:ml-72 p-6">
         {/* Guest mode header */}
         {guestMode && (
@@ -192,6 +198,33 @@ export default function Dashboard() {
               Sign In to Get Started
             </Button>
           </div>
+        )}
+
+        {/* Add: Progressive disclosure upgrade nudges (auth only) */}
+        {!guestMode && nudges && nudges.showBanner && (
+          <Card className="mb-6 border-amber-200 bg-amber-50">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-amber-800">Heads up</CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-3">
+              {nudges.nudges.map((n) => (
+                <div key={n.code} className="flex items-start gap-2">
+                  <Badge variant="outline" className={n.level === "warn" ? "border-amber-400 text-amber-700" : "border-emerald-400 text-emerald-700"}>
+                    {n.level === "warn" ? "Usage" : "Tip"}
+                  </Badge>
+                  <span className="text-sm text-slate-700">{n.message}</span>
+                </div>
+              ))}
+              <div className="text-xs text-slate-500">
+                Snapshot — Workflows: {nudges.snapshot.workflowsCount} • Runs: {nudges.snapshot.runsCount} • Agents: {nudges.snapshot.agentsCount}
+              </div>
+              <div>
+                <Button size="sm" onClick={() => navigate("/#pricing")}>
+                  View plans
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         )}
 
         {/* Dashboard content (code-split) */}

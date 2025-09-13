@@ -5,6 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useState } from "react";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
+import { Badge } from "@/components/ui/badge";
 
 interface EnterpriseDashboardProps {
   business: any;
@@ -28,6 +29,19 @@ export function EnterpriseDashboard({
   const kpiDoc = !isGuest && business?._id
     ? useQuery(api.kpis.getSnapshot, { businessId: business._id })
     : undefined;
+
+  // Add: derive businessId from props
+  const businessId = !isGuest ? business?._id : null;
+
+  const approvals = useQuery(
+    api.approvals.getApprovalQueue,
+    isGuest || !businessId ? "skip" : { businessId, status: "pending" as const }
+  );
+
+  const auditLatest = useQuery(
+    api.audit.listForBusiness,
+    isGuest || !businessId ? "skip" : { businessId, limit: 5 }
+  );
 
   const agents = isGuest ? demoData?.agents || [] : [];
   const workflows = isGuest ? demoData?.workflows || [] : [];
@@ -208,26 +222,91 @@ export function EnterpriseDashboard({
       {/* Enterprise Controls */}
       <section>
         <h2 className="text-xl font-semibold mb-4">Enterprise Controls</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card>
-            <CardContent className="p-4">
-              <h3 className="font-medium mb-2">User Management</h3>
-              <p className="text-sm text-muted-foreground mb-3">Manage roles and access</p>
-              <Button variant="outline" className="w-full">Open</Button>
+        <div className="mt-6 grid grid-cols-1 xl:grid-cols-3 gap-4">
+          <Card className="xl:col-span-1">
+            <CardHeader className="pb-2">
+              <CardTitle>Enterprise Controls</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-sm">SSO & RBAC</span>
+                <Button size="sm" disabled>Manage</Button>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm">API Access</span>
+                <Button size="sm" disabled>Configure</Button>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm">Integrations</span>
+                <Button size="sm" disabled>Open</Button>
+              </div>
+              <div className="text-xs text-muted-foreground">
+                Contact support to enable enterprise controls.
+              </div>
             </CardContent>
           </Card>
-          <Card>
-            <CardContent className="p-4">
-              <h3 className="font-medium mb-2">Security & Audit</h3>
-              <p className="text-sm text-muted-foreground mb-3">Configure policies & review logs</p>
-              <Button variant="outline" className="w-full">Review</Button>
+
+          {/* Integration Status (placeholder) */}
+          <Card className="xl:col-span-1">
+            <CardHeader className="pb-2">
+              <CardTitle>Integration Status</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-sm">CRM</span>
+                <Badge variant="outline" className="border-emerald-300 text-emerald-700">Connected</Badge>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm">Analytics</span>
+                <Badge variant="outline" className="border-amber-300 text-amber-700">Attention</Badge>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm">Billing</span>
+                <Badge variant="outline" className="border-slate-300 text-slate-700">Not linked</Badge>
+              </div>
+              <div className="text-xs text-muted-foreground">Integration health overview (static preview).</div>
             </CardContent>
           </Card>
-          <Card>
-            <CardContent className="p-4">
-              <h3 className="font-medium mb-2">Integrations</h3>
-              <p className="text-sm text-muted-foreground mb-3">Manage connected systems</p>
-              <Button variant="outline" className="w-full">Manage</Button>
+
+          {/* Approvals & Audit quick glance */}
+          <Card className="xl:col-span-1">
+            <CardHeader className="pb-2">
+              <CardTitle>Approvals & Audit</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <div className="text-sm font-medium mb-2">Pending Approvals</div>
+                {isGuest ? (
+                  <div className="text-sm text-muted-foreground">Demo: 4 pending enterprise approvals.</div>
+                ) : !approvals ? (
+                  <div className="text-sm text-muted-foreground">Loading…</div>
+                ) : approvals.length === 0 ? (
+                  <div className="text-sm text-muted-foreground">None pending.</div>
+                ) : (
+                  approvals.slice(0, 3).map((a) => (
+                    <div key={a._id} className="flex items-center justify-between border rounded-md p-2">
+                      <span className="text-sm">WF {String(a.workflowId).slice(-6)}</span>
+                      <Badge variant="outline">{a.priority}</Badge>
+                    </div>
+                  ))
+                )}
+              </div>
+              <div>
+                <div className="text-sm font-medium mb-2">Recent Audit</div>
+                {isGuest ? (
+                  <div className="text-sm text-muted-foreground">Demo: Policy update, Role change, Integration key rotated.</div>
+                ) : !auditLatest ? (
+                  <div className="text-sm text-muted-foreground">Loading…</div>
+                ) : auditLatest.length === 0 ? (
+                  <div className="text-sm text-muted-foreground">No recent events.</div>
+                ) : (
+                  auditLatest.slice(0, 3).map((e) => (
+                    <div key={e._id} className="text-xs text-muted-foreground">
+                      {new Date(e.createdAt).toLocaleDateString()} — {e.entityType}: {e.action}
+                    </div>
+                  ))
+                )}
+              </div>
             </CardContent>
           </Card>
         </div>
