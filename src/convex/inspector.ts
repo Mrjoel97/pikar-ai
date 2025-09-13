@@ -1,3 +1,4 @@
+"use node";
 import { action } from "./_generated/server";
 
 // Types for the inspection report

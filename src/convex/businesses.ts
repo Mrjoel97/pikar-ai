@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 import { query, mutation } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
-import { api, internal } from "./_generated/api";
+import { internal } from "./_generated/api";
 
 export const getUserBusinesses = query({
   args: {},

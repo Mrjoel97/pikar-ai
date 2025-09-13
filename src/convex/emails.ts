@@ -2,16 +2,14 @@ import { internalMutation, internalQuery, mutation, query } from "./_generated/s
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
 
-// Helper: safe HTML escape for text content
-function escapeHtml(input: string): string {
+export function escapeHtml(input: string): string {
   return input
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
 }
 
-// Basic renderer for blocks to HTML email
-function renderHtml(params: {
+export function renderHtml(params: {
   subject: string;
   previewText?: string;
   blocks: Array<{

@@ -172,7 +172,6 @@ export function SolopreneurDashboard({
   const [recipientsRaw, setRecipientsRaw] = React.useState("");
   const [recipientsList, setRecipientsList] = React.useState<string[]>([]);
   const [invalidList, setInvalidList] = React.useState<string[]>([]);
-  const [csvText, setCsvText] = React.useState("");
   // Add: hidden file input ref for one-click upload & import
   const uploadCsvInputRef = React.useRef<HTMLInputElement | null>(null);
 

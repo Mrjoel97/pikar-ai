@@ -1,6 +1,5 @@
 import { v } from "convex/values";
 import { mutation, query, internalMutation } from "./_generated/server";
-import { Doc, Id } from "./_generated/dataModel";
 // removed unused internal import
 
 // Query to get approval queue items
@@ -328,13 +327,14 @@ export const getApprovalAnalytics = query({
     // Group by assignee
     const assigneeStats: Record<string, { pending: number; approved: number; rejected: number }> = {};
     approvals.forEach(approval => {
-      const assigneeId = approval.assigneeId;
-      if (!assigneeStats[assigneeId]) {
-        assigneeStats[assigneeId] = { pending: 0, approved: 0, rejected: 0 };
+      // Use string key to satisfy TS index type
+      const key = String(approval.assigneeId);
+      if (!assigneeStats[key]) {
+        assigneeStats[key] = { pending: 0, approved: 0, rejected: 0 };
       }
-      if (approval.status === "pending") assigneeStats[assigneeId].pending++;
-      else if (approval.status === "approved") assigneeStats[assigneeId].approved++;
-      else if (approval.status === "rejected") assigneeStats[assigneeId].rejected++;
+      if (approval.status === "pending") assigneeStats[key].pending++;
+      else if (approval.status === "approved") assigneeStats[key].approved++;
+      else if (approval.status === "rejected") assigneeStats[key].rejected++;
     });
 
     return {
@@ -406,16 +406,13 @@ export const checkApprovalSLABreaches = internalMutation({
 
     for (const approval of approvalsNeedingWarning) {
       // Check if we already sent a warning for this approval
-      const existingWarning = await ctx.db
+      const userWarnings = await ctx.db
         .query("notifications")
         .withIndex("by_user", (q) => q.eq("userId", approval.assigneeId))
-        .filter((q) => 
-          q.and(
-            q.eq(q.field("type"), "sla_warning"),
-            q.eq(q.field("data.approvalId"), approval._id)
-          )
-        )
-        .first();
+        .filter((q) => q.eq(q.field("type"), "sla_warning"))
+        .collect();
+
+      const existingWarning = userWarnings.find(n => (n as any).data?.approvalId === approval._id);
 
       if (!existingWarning) {
         await ctx.db.insert("notifications", {

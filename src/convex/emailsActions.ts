@@ -4,7 +4,6 @@ import { action, internalAction } from "./_generated/server";
 import { v } from "convex/values";
 import { Resend } from "resend";
 import { internal, api } from "./_generated/api";
-import { internal as internalApi } from "./_generated/api"; // alias if needed
 
 // Helper: safe HTML escape for text content
 function escapeHtml(input: string): string {
@@ -89,7 +88,7 @@ export const sendTestEmail = action({
 
     const unsubscribeUrl = `${process.env.VITE_PUBLIC_BASE_URL || ""}/api/unsubscribe?token=${encodeURIComponent(
       token
-    )}&businessId=${encodeURIComponent(args.businessId)}&email=${encodeURIComponent(args.to)}`;
+    )}&businessId=${encodeURIComponent(String(args.businessId))}&email=${encodeURIComponent(args.to)}`;
 
     const html = renderHtml({
       subject: args.subject,
@@ -164,7 +163,7 @@ export const sendCampaignInternal = internalAction({
 
         const unsubscribeUrl = `${process.env.VITE_PUBLIC_BASE_URL || ""}/api/unsubscribe?token=${encodeURIComponent(
           token
-        )}&businessId=${encodeURIComponent(campaign.businessId)}&email=${encodeURIComponent(email)}`;
+        )}&businessId=${encodeURIComponent(String(campaign.businessId))}&email=${encodeURIComponent(email)}`;
 
         const html = renderHtml({
           subject: campaign.subject,
@@ -240,7 +239,7 @@ export const sendSalesInquiry = action({
       to: [inbox],
       subject,
       html,
-      replyTo: args.email,
+      reply_to: args.email,
     });
 
     if (error) {
