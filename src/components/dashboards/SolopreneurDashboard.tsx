@@ -1,5 +1,4 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { motion } from "framer-motion";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useQuery } from "convex/react";
@@ -62,6 +61,11 @@ export function SolopreneurDashboard({
   // Add: mutation to seed demo tasks into authenticated account if empty
   const seedTasks = useMutation(api.tasks.seedDemoTasksForBusiness);
 
+  // Add: query unified recent activity for authenticated users
+  const recentActivity = !isGuest && business?._id
+    ? useQuery(api.activity.getRecent, { businessId: business._id, limit: 8 } as any)
+    : undefined;
+
   // Compute tasks to show (guest uses demo; auth uses Convex)
   const tasksToShow = isGuest ? tasks : (topTasks ?? []);
 
@@ -115,6 +119,16 @@ export function SolopreneurDashboard({
   const engagementDelta =
     typeof (kpis?.engagementDelta) === "number"
       ? kpis.engagementDelta
+      : undefined;
+
+  const visitorsVal =
+    typeof (kpis?.visitors) === "number"
+      ? kpis.visitors
+      : 0;
+
+  const visitorsDelta =
+    typeof (kpis?.visitorsDelta) === "number"
+      ? kpis.visitorsDelta
       : undefined;
 
   const revenueTrend = mkTrend((kpis?.totalRevenue ? Math.min(100, (kpis.totalRevenue / 1000) % 100) : 60));
@@ -247,10 +261,9 @@ export function SolopreneurDashboard({
             delta={engagementDelta}
           />
           <StatCard
-            title="Tasks Done"
-            value={tasksDoneVal}
-            suffix="%"
-            delta={engagementDelta}
+            title="Visitors"
+            value={visitorsVal}
+            delta={visitorsDelta}
           />
         </div>
       </section>
@@ -381,16 +394,39 @@ export function SolopreneurDashboard({
         <Card>
           <CardContent className="p-4">
             <div className="space-y-3">
-              {(demoData?.notifications || []).slice(0, 5).map((notification: any) => (
-                <div key={notification.id} className="flex items-center gap-3 p-2 rounded border">
-                  <div className={`w-2 h-2 rounded-full ${
-                    notification.type === 'success' ? 'bg-green-500' :
-                    notification.type === 'warning' ? 'bg-yellow-500' :
-                    notification.type === 'urgent' ? 'bg-red-500' : 'bg-blue-500'
-                  }`} />
-                  <span className="text-sm">{notification.message}</span>
-                </div>
-              ))}
+              {(isGuest
+                ? (demoData?.notifications || [])
+                : (recentActivity || [])
+              ).slice(0, 8).map((item: any, idx: number) => {
+                // Normalize fields between demo notifications and unified activity items
+                const key = item._id || item.id || idx;
+                const type = item.type || item.kind || "info";
+                const message = item.message || item.title || "Activity";
+                const ts = item.time || item.createdAt || item._creationTime || null;
+
+                const color =
+                  type === "success" || type === "workflow_completion"
+                    ? "bg-green-500"
+                    : type === "warning" || type === "sla_warning"
+                    ? "bg-yellow-500"
+                    : type === "urgent" || type === "system_alert" || type === "integration_error" || item.priority === "high"
+                    ? "bg-red-500"
+                    : "bg-blue-500";
+
+                return (
+                  <div key={key} className="flex items-center justify-between gap-3 p-2 rounded border">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-2 h-2 rounded-full ${color}`} />
+                      <span className="text-sm">{message}</span>
+                    </div>
+                    {ts ? (
+                      <span className="text-xs text-muted-foreground">
+                        {new Date(ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                      </span>
+                    ) : null}
+                  </div>
+                );
+              })}
             </div>
           </CardContent>
         </Card>

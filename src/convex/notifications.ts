@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query, internalMutation } from "./_generated/server";
-import { Doc, Id } from "./_generated/dataModel";
+import { Id } from "./_generated/dataModel";
 // removed unused internal import
 
 // Query to get notifications for a user
@@ -16,20 +16,21 @@ export const getUserNotifications = query({
       throw new Error("Not authenticated");
     }
 
-    let query = ctx.db
+    // Rename local variable to avoid shadowing the imported `query`
+    let dbQuery = ctx.db
       .query("notifications")
       .withIndex("by_user", (q) => q.eq("userId", args.userId))
       .order("desc");
 
     if (args.unreadOnly) {
-      query = query.filter((q) => q.eq(q.field("isRead"), false));
+      dbQuery = dbQuery.filter((q) => q.eq(q.field("isRead"), false));
     }
 
     let notifications;
     if (args.limit) {
-      notifications = await query.take(args.limit);
+      notifications = await dbQuery.take(args.limit);
     } else {
-      notifications = await query.collect();
+      notifications = await dbQuery.collect();
     }
 
     // Filter out expired notifications
@@ -521,7 +522,7 @@ export const snoozeMyNotification = mutation({
   },
 });
 
-// Query to get notifications for a user
+// Query to get notifications for the authenticated user
 export const getMyNotifications = query({
   args: {
     limit: v.optional(v.number()),
@@ -540,16 +541,17 @@ export const getMyNotifications = query({
       throw new Error("User not found");
     }
 
-    let q = ctx.db
+    // Rename local variable to avoid shadowing within callbacks
+    let dbQuery = ctx.db
       .query("notifications")
       .withIndex("by_user", (q) => q.eq("userId", user._id))
       .order("desc");
 
     if (args.unreadOnly) {
-      q = q.filter((q) => q.eq(q.field("isRead"), false));
+      dbQuery = dbQuery.filter((q) => q.eq(q.field("isRead"), false));
     }
 
-    const rows = args.limit ? await q.take(args.limit) : await q.collect();
+    const rows = args.limit ? await dbQuery.take(args.limit) : await dbQuery.collect();
     const now = Date.now();
     return rows.filter(
       (n) =>
