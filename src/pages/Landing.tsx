@@ -14,7 +14,8 @@ import {
   Sparkles,
   CheckCircle,
   BadgeCheck,
-  Loader2
+  Loader2,
+  Bell
 } from "lucide-react";
 import { useNavigate } from "react-router";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -36,6 +37,8 @@ import {
   Mail
 } from "lucide-react";
 import { toast } from "sonner";
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
+import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
 
 export default function Landing() {
   const { isLoading, isAuthenticated } = useAuth();
@@ -60,6 +63,10 @@ export default function Landing() {
     },
   ]);
   const [newsletterEmail, setNewsletterEmail] = useState("");
+  const [notifOpen, setNotifOpen] = useState(false);
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
+  const [selectedTier, setSelectedTier] = useState<"solopreneur" | "startup" | "sme" | "enterprise">("startup");
+  const [unreadCount, setUnreadCount] = useState(3);
 
   const scrollTo = (id: string) => {
     const el = document.getElementById(id);
@@ -232,6 +239,43 @@ export default function Landing() {
   const upgradeTrigger =
     "$2,000+ MRR, 50+ customers, team expansion needs";
 
+  const sampleNotifications = [
+    { id: "n1", title: "Workflow completed", desc: "Lead onboarding flow ran successfully", type: "success", time: "2m" },
+    { id: "n2", title: "Approval requested", desc: "Budget increase requires approval", type: "warning", time: "1h" },
+    { id: "n3", title: "Incident resolved", desc: "Email deliverability stabilized", type: "info", time: "3h" },
+  ] as const;
+
+  const trendData = [
+    { month: "Jan", revenue: 12000, leads: 80, efficiency: 62 },
+    { month: "Feb", revenue: 14500, leads: 92, efficiency: 64 },
+    { month: "Mar", revenue: 16000, leads: 105, efficiency: 66 },
+    { month: "Apr", revenue: 17500, leads: 111, efficiency: 68 },
+    { month: "May", revenue: 19300, leads: 128, efficiency: 70 },
+    { month: "Jun", revenue: 20800, leads: 140, efficiency: 72 },
+  ];
+
+  const normalizeTier = (name: string): "solopreneur" | "startup" | "sme" | "enterprise" => {
+    const k = name.toLowerCase();
+    if (k.includes("solo")) return "solopreneur";
+    if (k.includes("start")) return "startup";
+    if (k.includes("sme")) return "sme";
+    return "enterprise";
+  };
+
+  const openUpgrade = (name?: string) => {
+    if (name) setSelectedTier(normalizeTier(name));
+    setUpgradeOpen(true);
+  };
+
+  const proceedUpgrade = () => {
+    toast(`Selected ${selectedTier} plan`);
+    if (isAuthenticated) {
+      navigate(`/dashboard?tier=${selectedTier}`);
+    } else {
+      navigate(`/auth?tier=${selectedTier}`);
+    }
+  };
+
   const handleStartPath = (lp: (typeof learningPaths)[number]) => {
     setLearningOpen(lp);
   };
@@ -347,6 +391,20 @@ export default function Landing() {
                   </span>
                 ) : (
                   "Get Started"
+                )}
+              </Button>
+              <Button
+                variant="outline"
+                size="icon"
+                className="neu-flat rounded-xl relative"
+                onClick={() => setNotifOpen(true)}
+                aria-label="Open notifications"
+              >
+                <Bell className="h-5 w-5" />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 inline-flex items-center justify-center h-4 min-w-4 px-1 rounded-full bg-red-500 text-white text-[10px]">
+                    {unreadCount}
+                  </span>
                 )}
               </Button>
             </div>
@@ -603,6 +661,59 @@ export default function Landing() {
         </div>
       </section>
 
+      {/* KPI Trends Preview */}
+      <section className="py-14 sm:py-20 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto">
+          <motion.div
+            initial={{ y: 50, opacity: 0 }}
+            whileInView={{ y: 0, opacity: 1 }}
+            transition={{ duration: 0.8 }}
+            viewport={{ once: true }}
+            className="text-center mb-12 sm:mb-16"
+          >
+            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight mb-3 sm:mb-4">
+              KPI Trends Preview
+            </h2>
+            <p className="text-base sm:text-xl text-muted-foreground max-w-2xl mx-auto px-2">
+              A glimpse of how your business trends evolve over time.
+            </p>
+          </motion.div>
+
+          <Card className="neu-raised rounded-2xl border-0">
+            <CardContent className="p-4 sm:p-6">
+              <ChartContainer
+                config={{
+                  revenue: { label: "Revenue", color: "oklch(62% 0.15 30)" },
+                  efficiency: { label: "Efficiency", color: "oklch(62% 0.15 150)" },
+                }}
+                className="rounded-xl bg-card/60"
+              >
+                <AreaChart data={trendData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="month" />
+                  <YAxis />
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <Area
+                    type="monotone"
+                    dataKey="revenue"
+                    stroke="var(--color-revenue)"
+                    fill="var(--color-revenue)"
+                    fillOpacity={0.15}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="efficiency"
+                    stroke="var(--color-efficiency)"
+                    fill="var(--color-efficiency)"
+                    fillOpacity={0.12}
+                  />
+                </AreaChart>
+              </ChartContainer>
+            </CardContent>
+          </Card>
+        </div>
+      </section>
+
       {/* Pricing Section */}
       <section id="pricing" className="py-14 sm:py-20 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
@@ -655,7 +766,7 @@ export default function Landing() {
                     <Button 
                       className="w-full neu-flat rounded-xl"
                       variant={index === 1 ? "default" : "outline"}
-                      onClick={handleGetStarted}
+                      onClick={() => openUpgrade(tier.name)}
                     >
                       Get Started
                     </Button>
@@ -730,7 +841,7 @@ export default function Landing() {
             <Button 
               size="lg" 
               className="w-full sm:w-auto neu-raised rounded-xl bg-primary hover:bg-primary/90 px-8 py-4 text-lg"
-              onClick={handleGetStarted}
+              onClick={() => openUpgrade()}
               disabled={isLoading}
             >
               {isLoading ? (
@@ -1059,6 +1170,91 @@ export default function Landing() {
               </div>
             </div>
           </motion.div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Notifications Drawer */}
+      <Sheet open={notifOpen} onOpenChange={setNotifOpen}>
+        <SheetContent side="right" className="w-80 sm:w-96">
+          <div className="mt-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold">Notifications</h3>
+              <Button variant="outline" size="sm" onClick={() => setUnreadCount(0)}>
+                Mark all read
+              </Button>
+            </div>
+            <div className="space-y-2">
+              {sampleNotifications.map((n) => (
+                <div
+                  key={n.id}
+                  className="neu-inset rounded-xl p-3 flex items-start gap-3 bg-card/60"
+                >
+                  <div
+                    className={`mt-1 h-2 w-2 rounded-full ${
+                      n.type === "success"
+                        ? "bg-green-500"
+                        : n.type === "warning"
+                        ? "bg-amber-500"
+                        : "bg-blue-500"
+                    }`}
+                  />
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-medium">{n.title}</p>
+                      <span className="text-[10px] text-muted-foreground">{n.time}</span>
+                    </div>
+                    <p className="text-sm text-muted-foreground">{n.desc}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      {/* Upgrade / Plan Selection */}
+      <Dialog open={upgradeOpen} onOpenChange={setUpgradeOpen}>
+        <DialogContent className="max-w-2xl w-[92vw] neu-raised rounded-2xl border-0 p-0 overflow-hidden">
+          <DialogHeader className="px-6 pt-6 pb-3">
+            <DialogTitle className="text-xl font-semibold tracking-tight">Choose your plan</DialogTitle>
+            <DialogDescription className="text-muted-foreground">
+              Select a plan to continue. You can change it anytime.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="px-6 pb-6 space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {tiers.map((t) => {
+                const slug = normalizeTier(t.name);
+                const isActive = selectedTier === slug;
+                return (
+                  <button
+                    key={slug}
+                    onClick={() => setSelectedTier(slug)}
+                    className={`text-left rounded-xl border p-4 transition-all ${
+                      isActive ? "border-primary bg-primary/5 ring-2 ring-primary/30" : "hover:bg-muted"
+                    }`}
+                    aria-label={`Select ${t.name}`}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-semibold">{t.name}</span>
+                      <span className={`text-xs ${isActive ? "text-primary" : "text-muted-foreground"}`}>
+                        {t.price}
+                      </span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">{t.description}</p>
+                  </button>
+                );
+              })}
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" className="neu-flat rounded-xl" onClick={() => setUpgradeOpen(false)}>
+                Cancel
+              </Button>
+              <Button className="neu-raised rounded-xl" onClick={proceedUpgrade}>
+                Continue
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
 

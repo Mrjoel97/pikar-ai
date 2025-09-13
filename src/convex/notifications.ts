@@ -379,3 +379,118 @@ export const cleanupExpiredNotifications = internalMutation({
     return expiredNotifications.length;
   },
 });
+
+// Query to get notifications for a user
+export const getMyNotifications = query({
+  args: {
+    limit: v.optional(v.number()),
+    unreadOnly: v.optional(v.boolean()),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Not authenticated");
+    }
+    const user = await ctx.db
+      .query("users")
+      .filter((q) => q.eq(q.field("email"), identity.email))
+      .first();
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    let q = ctx.db
+      .query("notifications")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .order("desc");
+
+    if (args.unreadOnly) {
+      q = q.filter((q) => q.eq(q.field("isRead"), false));
+    }
+
+    const rows = args.limit ? await q.take(args.limit) : await q.collect();
+    const now = Date.now();
+    return rows.filter((n) => !n.expiresAt || n.expiresAt > now);
+  },
+});
+
+// Query to get notification count
+export const getMyNotificationCount = query({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Not authenticated");
+    }
+    const user = await ctx.db
+      .query("users")
+      .filter((q) => q.eq(q.field("email"), identity.email))
+      .first();
+    if (!user) {
+      throw new Error("User not found");
+    }
+    const now = Date.now();
+    const unread = await ctx.db
+      .query("notifications")
+      .withIndex("by_user_and_read", (q) => q.eq("userId", user._id).eq("isRead", false))
+      .filter((q) =>
+        q.or(q.eq(q.field("expiresAt"), undefined), q.gt(q.field("expiresAt"), now)),
+      )
+      .collect();
+    return unread.length;
+  },
+});
+
+// Mutation to mark notification as read
+export const markMyNotificationRead = mutation({
+  args: { notificationId: v.id("notifications") },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Not authenticated");
+    }
+    const user = await ctx.db
+      .query("users")
+      .filter((q) => q.eq(q.field("email"), identity.email))
+      .first();
+    if (!user) {
+      throw new Error("User not found");
+    }
+    const notification = await ctx.db.get(args.notificationId);
+    if (!notification) {
+      throw new Error("Notification not found");
+    }
+    if (notification.userId !== user._id) {
+      throw new Error("Unauthorized");
+    }
+    await ctx.db.patch(args.notificationId, { isRead: true, readAt: Date.now() });
+    return true;
+  },
+});
+
+// Mutation to mark all notifications as read
+export const markAllMyNotificationsRead = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Not authenticated");
+    }
+    const user = await ctx.db
+      .query("users")
+      .filter((q) => q.eq(q.field("email"), identity.email))
+      .first();
+    if (!user) {
+      throw new Error("User not found");
+    }
+    const unread = await ctx.db
+      .query("notifications")
+      .withIndex("by_user_and_read", (q) => q.eq("userId", user._id).eq("isRead", false))
+      .collect();
+    const now = Date.now();
+    for (const n of unread) {
+      await ctx.db.patch(n._id, { isRead: true, readAt: now });
+    }
+    return unread.length;
+  },
+});

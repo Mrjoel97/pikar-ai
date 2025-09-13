@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { isGuestMode, getSelectedTier, getDemoData } from "@/lib/guestUtils";
 import { getTierConfig, canShowFeature, TierType } from "@/lib/tierConfig";
 import React, { Suspense, lazy } from "react";
+import { NotificationsCenter } from "@/components/NotificationsCenter";
 
 // Add: lazy-loaded tier dashboards (code-splitting)
 const SolopreneurDashboard = lazy(() =>
@@ -183,6 +184,11 @@ export default function Dashboard() {
       />
 
       <main className="md:ml-72 p-6">
+        {/* Top actions */}
+        <div className="mb-4 flex items-center justify-end">
+          <NotificationsCenter disabled={guestMode} />
+        </div>
+
         {/* Guest mode header */}
         {guestMode && (
           <div className="mb-6 flex items-center justify-between bg-white rounded-lg p-4 border border-emerald-200">
