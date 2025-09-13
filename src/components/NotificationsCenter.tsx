@@ -13,10 +13,15 @@ type Props = {
 
 export function NotificationsCenter({ disabled }: Props) {
   const [open, setOpen] = React.useState(false);
+  // Add: local filters
+  const [unreadOnlyLocal, setUnreadOnlyLocal] = React.useState(false);
+  const [typeFilter, setTypeFilter] = React.useState<string>("all");
+  const [query, setQuery] = React.useState<string>("");
+
   const count = useQuery(api.notifications.getMyNotificationCount, disabled ? "skip" : {});
   const notifications = useQuery(
     api.notifications.getMyNotifications,
-    disabled ? "skip" : { limit: 50, unreadOnly: false },
+    disabled ? "skip" : { limit: 50, unreadOnly: unreadOnlyLocal },
   );
   const markOne = useMutation(api.notifications.markMyNotificationRead);
   const markAll = useMutation(api.notifications.markAllMyNotificationsRead);
@@ -43,6 +48,22 @@ export function NotificationsCenter({ disabled }: Props) {
     return null;
   }
 
+  // Add: compute filtered list client-side for type + search
+  const filtered = React.useMemo(() => {
+    if (!notifications) return notifications;
+    const q = query.trim().toLowerCase();
+    return notifications.filter((n: any) => {
+      const matchType = typeFilter === "all" ? true : n.type === typeFilter;
+      const matchQuery =
+        q.length === 0
+          ? true
+          : (n.title?.toLowerCase?.().includes(q) ||
+             n.message?.toLowerCase?.().includes(q) ||
+             n.type?.toLowerCase?.().includes(q));
+      return matchType && matchQuery;
+    });
+  }, [notifications, typeFilter, query]);
+
   return (
     <Drawer open={open} onOpenChange={setOpen}>
       <DrawerTrigger asChild>
@@ -67,13 +88,54 @@ export function NotificationsCenter({ disabled }: Props) {
             </Button>
           </div>
         </DrawerHeader>
+
+        {/* Add: Filters row */}
+        <div className="px-4 pb-3 flex flex-col md:flex-row gap-2 md:items-center md:justify-between">
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant={unreadOnlyLocal ? "default" : "outline"}
+              onClick={() => setUnreadOnlyLocal((s) => !s)}
+            >
+              {unreadOnlyLocal ? "Showing Unread" : "Show Unread"}
+            </Button>
+            {/* Simple select using shadcn Select from ui/select */}
+            {/* We avoid importing here; create a minimal inline menu with buttons to keep dependencies stable */}
+            <div className="flex items-center gap-1">
+              <span className="text-xs text-muted-foreground">Type:</span>
+              <div className="flex rounded-md border overflow-hidden">
+                {["all", "sla_warning", "integration_error", "info"].map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => setTypeFilter(t)}
+                    className={`px-2 py-1 text-xs ${
+                      typeFilter === t ? "bg-emerald-600 text-white" : "bg-background text-foreground"
+                    }`}
+                  >
+                    {t === "all" ? "All" : t.replace("_", " ")}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+          <div className="flex-1 flex md:justify-end">
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search notifications…"
+              className="w-full md:w-72 px-3 py-2 border rounded-md text-sm"
+            />
+          </div>
+        </div>
+
         <div className="px-4 pb-4 space-y-3 overflow-y-auto">
-          {!notifications ? (
+          {!filtered ? (
             <div className="text-sm text-muted-foreground p-4">Loading…</div>
-          ) : notifications.length === 0 ? (
+          ) : filtered.length === 0 ? (
             <div className="text-sm text-muted-foreground p-4">No notifications.</div>
           ) : (
-            notifications.map((n: any) => (
+            filtered.map((n: any) => (
               <Card key={n._id} className={n.isRead ? "" : "border-emerald-200"}>
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between gap-3">
@@ -89,7 +151,7 @@ export function NotificationsCenter({ disabled }: Props) {
                               : "border-slate-300 text-slate-700"
                           }
                         >
-                          {n.type.replace("_", " ")}
+                          {n.type?.replace?.("_", " ") || "info"}
                         </Badge>
                         {!n.isRead && <Badge className="bg-emerald-600">New</Badge>}
                       </div>
@@ -99,11 +161,29 @@ export function NotificationsCenter({ disabled }: Props) {
                         {new Date(n.createdAt).toLocaleString()}
                       </div>
                     </div>
-                    {!n.isRead && (
-                      <Button size="sm" variant="outline" onClick={() => handleMarkOne(n._id)}>
-                        Mark read
-                      </Button>
-                    )}
+                    <div className="flex flex-col gap-2 items-end">
+                      {/* Optional deep-link open */}
+                      {n.link && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            try {
+                              window.location.href = n.link;
+                            } catch {
+                              // no-op
+                            }
+                          }}
+                        >
+                          Open
+                        </Button>
+                      )}
+                      {!n.isRead && (
+                        <Button size="sm" variant="outline" onClick={() => handleMarkOne(n._id)}>
+                          Mark read
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 </CardContent>
               </Card>

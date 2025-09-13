@@ -1,3 +1,4 @@
+import { useState, useMemo } from "react";
 import { useNavigate } from "react-router";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "convex/react";
@@ -8,6 +9,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 export default function AnalyticsPage() {
   const navigate = useNavigate();
   const { isLoading: authLoading, isAuthenticated } = useAuth();
+
+  // Add: period selector local state
+  const [period, setPeriod] = useState<"7d" | "30d" | "90d">("30d");
 
   const businesses = useQuery(api.businesses.getUserBusinesses, {});
   const firstBizId = businesses?.[0]?._id;
@@ -61,11 +65,40 @@ export default function AnalyticsPage() {
     { label: "Executions", value: workflowExecutions?.page?.length ?? 0 },
   ];
 
+  // Add: local multi-series sparkline generator (simple, no extra deps)
+  const mkTrend = (points: number) => {
+    const arr: number[] = [];
+    for (let i = 0; i < points; i++) {
+      const base = 60 + Math.sin(i / 2) * 10;
+      const jitter = (i % 3) * 2 - 2; // -2,0,2
+      arr.push(Math.max(5, Math.min(100, base + jitter)));
+    }
+    return arr;
+  };
+  const points = period === "7d" ? 7 : period === "30d" ? 12 : 18;
+  const revenueSeries = useMemo(() => mkTrend(points), [points]);
+  const efficiencySeries = useMemo(() => mkTrend(points).map((v, i) => Math.max(5, Math.min(100, v - (i % 2 === 0 ? 6 : -4)))), [points]);
+
+  const MultiSparkline = ({ a, b }: { a: number[]; b: number[] }) => (
+    <div className="flex items-end gap-1 h-20">
+      {a.map((v, i) => (
+        <div key={`a-${i}`} className="w-1.5 rounded-sm bg-emerald-600/70" style={{ height: `${v}%` }} />
+      ))}
+      {b.map((v, i) => (
+        <div key={`b-${i}`} className="w-1.5 rounded-sm bg-blue-600/60 -ml-1" style={{ height: `${v}%` }} />
+      ))}
+    </div>
+  );
+
   return (
     <div className="max-w-6xl mx-auto px-4 md:px-6 py-6 space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold">Analytics</h1>
-        <p className="text-sm text-muted-foreground">Overview metrics.</p>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold">Analytics</h1>
+          <p className="text-sm text-muted-foreground">Overview metrics.</p>
+        </div>
+        {/* Add: View Plans nudge */}
+        <Button variant="outline" onClick={() => navigate("/pricing")}>View Plans</Button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -81,6 +114,42 @@ export default function AnalyticsPage() {
           </Card>
         ))}
       </div>
+
+      {/* Add: KPI multi-series block with legends and period selector */}
+      <Card>
+        <CardHeader className="pb-2 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+          <div>
+            <CardTitle className="text-lg">Revenue vs Efficiency</CardTitle>
+            <CardDescription>Lightweight multi-series preview</CardDescription>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 text-xs">
+              <div className="w-3 h-3 rounded-sm bg-emerald-600/70" />
+              <span>Revenue</span>
+              <div className="w-3 h-3 rounded-sm bg-blue-600/60 ml-3" />
+              <span>Efficiency</span>
+            </div>
+            <div className="flex rounded-md border overflow-hidden">
+              {(["7d","30d","90d"] as const).map((p) => (
+                <button
+                  key={p}
+                  type="button"
+                  onClick={() => setPeriod(p)}
+                  className={`px-2 py-1 text-xs ${period === p ? "bg-emerald-600 text-white" : "bg-background text-foreground"}`}
+                >
+                  {p}
+                </button>
+              ))}
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <MultiSparkline a={revenueSeries} b={efficiencySeries} />
+          <div className="mt-2 text-[11px] text-muted-foreground">
+            Benchmarks and precise time-series can be enabled with data sources; this preview adapts to the selected period.
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
