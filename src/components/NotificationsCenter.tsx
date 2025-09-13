@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { useQuery as useConvexQuery, useMutation as useConvexMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { toast } from "sonner";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 type Props = {
   disabled?: boolean; // hide/disable for guest
@@ -13,6 +14,8 @@ type Props = {
 
 export function NotificationsCenter({ disabled }: Props) {
   const [open, setOpen] = React.useState(false);
+  // Add: preferences modal state
+  const [prefsOpen, setPrefsOpen] = React.useState(false);
   // Add: local filters
   const [unreadOnlyLocal, setUnreadOnlyLocal] = React.useState(false);
   const [typeFilter, setTypeFilter] = React.useState<string>("all");
@@ -20,9 +23,9 @@ export function NotificationsCenter({ disabled }: Props) {
 
   const count = useConvexQuery(api.notifications.getMyNotificationCount, disabled ? "skip" : {});
   const notifications = useConvexQuery(
-  api.notifications.getMyNotifications,
-  disabled ? "skip" : { limit: 50, unreadOnly: unreadOnlyLocal },
-);
+    api.notifications.getMyNotifications,
+    disabled ? "skip" : { limit: 50, unreadOnly: unreadOnlyLocal },
+  );
   const markOne = useConvexMutation(api.notifications.markMyNotificationRead);
   const markAll = useConvexMutation(api.notifications.markAllMyNotificationsRead);
 
@@ -125,6 +128,15 @@ export function NotificationsCenter({ disabled }: Props) {
             <Badge variant="outline" className="border-slate-300 text-slate-700">
               {typeof count === "number" ? `${count} unread` : "…"}
             </Badge>
+            {/* Add: Quick access Preferences modal */}
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setPrefsOpen(true)}
+              disabled={!businessId}
+            >
+              Preferences
+            </Button>
             <Button size="sm" variant="outline" onClick={handleMarkAll} disabled={!notifications || (notifications?.length ?? 0) === 0}>
               Mark all read
             </Button>
@@ -170,6 +182,116 @@ export function NotificationsCenter({ disabled }: Props) {
             />
           </div>
         </div>
+
+        <Dialog open={prefsOpen} onOpenChange={setPrefsOpen}>
+          <DialogContent className="sm:max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Notification Preferences</DialogTitle>
+            </DialogHeader>
+            {!prefsDraft ? (
+              <div className="text-sm text-muted-foreground">Loading preferences…</div>
+            ) : (
+              <div className="space-y-4">
+                <div className="flex gap-3 flex-wrap">
+                  <label className="flex items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={!!prefsDraft.emailEnabled}
+                      onChange={(e) => setPrefsDraft((p: any) => ({ ...p, emailEnabled: e.target.checked }))}
+                    />
+                    Email
+                  </label>
+                  <label className="flex items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={!!prefsDraft.pushEnabled}
+                      onChange={(e) => setPrefsDraft((p: any) => ({ ...p, pushEnabled: e.target.checked }))}
+                    />
+                    Push
+                  </label>
+                  <label className="flex items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={!!prefsDraft.smsEnabled}
+                      onChange={(e) => setPrefsDraft((p: any) => ({ ...p, smsEnabled: e.target.checked }))}
+                    />
+                    SMS
+                  </label>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    ["assignments", "Assignments"],
+                    ["approvals", "Approvals"],
+                    ["slaWarnings", "SLA Warnings"],
+                    ["integrationErrors", "Integration Errors"],
+                    ["workflowCompletions", "Workflow Completions"],
+                    ["systemAlerts", "System Alerts"],
+                  ].map(([key, label]) => (
+                    <label key={key} className="flex items-center gap-2 text-sm border rounded-md p-2">
+                      <input
+                        type="checkbox"
+                        checked={!!prefsDraft.preferences?.[key as keyof typeof prefsDraft.preferences]}
+                        onChange={(e) =>
+                          setPrefsDraft((p: any) => ({
+                            ...p,
+                            preferences: { ...p.preferences, [key]: e.target.checked },
+                          }))
+                        }
+                      />
+                      {label}
+                    </label>
+                  ))}
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="text-sm">
+                    <div className="text-xs text-muted-foreground mb-1">Max per hour</div>
+                    <input
+                      type="number"
+                      min={0}
+                      className="w-full px-3 py-2 border rounded-md text-sm"
+                      value={prefsDraft.rateLimits?.maxPerHour ?? 10}
+                      onChange={(e) =>
+                        setPrefsDraft((p: any) => ({
+                          ...p,
+                          rateLimits: { ...(p.rateLimits ?? {}), maxPerHour: Number(e.target.value) },
+                        }))
+                      }
+                    />
+                  </div>
+                  <div className="text-sm">
+                    <div className="text-xs text-muted-foreground mb-1">Max per day</div>
+                    <input
+                      type="number"
+                      min={0}
+                      className="w-full px-3 py-2 border rounded-md text-sm"
+                      value={prefsDraft.rateLimits?.maxPerDay ?? 50}
+                      onChange={(e) =>
+                        setPrefsDraft((p: any) => ({
+                          ...p,
+                          rateLimits: { ...(p.rateLimits ?? {}), maxPerDay: Number(e.target.value) },
+                        }))
+                      }
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+            <DialogFooter className="mt-4">
+              <Button variant="outline" onClick={() => setPrefsOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                onClick={async () => {
+                  await handleSavePrefs();
+                  setPrefsOpen(false);
+                }}
+                disabled={!prefsDraft || !businessId}
+              >
+                Save
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         <div className="px-4 pb-4 space-y-3 overflow-y-auto">
           {!filtered ? (
