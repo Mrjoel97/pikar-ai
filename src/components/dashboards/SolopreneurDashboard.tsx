@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
+import { StatCard } from "@/components/dashboard/StatCard";
 
 interface SolopreneurDashboardProps {
   business: any;
@@ -56,6 +57,47 @@ export function SolopreneurDashboard({
     return arr;
   };
 
+  const revenueVal =
+    typeof (kpis?.revenue) === "number"
+      ? kpis.revenue
+      : typeof (kpis?.totalRevenue) === "number"
+      ? kpis.totalRevenue
+      : 0;
+
+  const customersVal =
+    typeof (kpis?.activeCustomers) === "number"
+      ? kpis.activeCustomers
+      : typeof (kpis?.subscribers) === "number"
+      ? kpis.subscribers
+      : 0;
+
+  const conversionVal =
+    typeof (kpis?.conversionRate) === "number"
+      ? kpis.conversionRate
+      : typeof (kpis?.engagement) === "number"
+      ? kpis.engagement
+      : undefined;
+
+  const tasksDoneVal =
+    typeof (kpis?.taskCompletion) === "number"
+      ? kpis.taskCompletion
+      : typeof (kpis?.engagement) === "number"
+      ? kpis.engagement
+      : 0;
+
+  const revenueDelta =
+    typeof (kpis?.revenueDelta) === "number"
+      ? kpis.revenueDelta
+      : undefined;
+  const subscribersDelta =
+    typeof (kpis?.subscribersDelta) === "number"
+      ? kpis.subscribersDelta
+      : undefined;
+  const engagementDelta =
+    typeof (kpis?.engagementDelta) === "number"
+      ? kpis.engagementDelta
+      : undefined;
+
   const revenueTrend = mkTrend((kpis?.totalRevenue ? Math.min(100, (kpis.totalRevenue / 1000) % 100) : 60));
   const efficiencyTrend = mkTrend(kpis?.taskCompletion ?? 65);
 
@@ -97,30 +139,29 @@ export function SolopreneurDashboard({
       <section>
         <h2 className="text-xl font-semibold mb-4">Performance Snapshot</h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <Card>
-            <CardContent className="p-4">
-              <h3 className="text-sm font-medium text-muted-foreground">Revenue</h3>
-              <p className="text-2xl font-bold">${kpis.totalRevenue?.toLocaleString()}</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4">
-              <h3 className="text-sm font-medium text-muted-foreground">Customers</h3>
-              <p className="text-2xl font-bold">{kpis.activeCustomers}</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4">
-              <h3 className="text-sm font-medium text-muted-foreground">Conversion</h3>
-              <p className="text-2xl font-bold">{kpis.conversionRate}%</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4">
-              <h3 className="text-sm font-medium text-muted-foreground">Tasks Done</h3>
-              <p className="text-2xl font-bold">{kpis.taskCompletion}%</p>
-            </CardContent>
-          </Card>
+          <StatCard
+            title="Revenue"
+            value={typeof revenueVal === "number" ? revenueVal.toLocaleString() : revenueVal}
+            prefix="$"
+            delta={revenueDelta}
+          />
+          <StatCard
+            title="Customers"
+            value={customersVal}
+            delta={subscribersDelta}
+          />
+          <StatCard
+            title="Conversion"
+            value={typeof conversionVal === "number" ? conversionVal : 0}
+            suffix="%"
+            delta={engagementDelta}
+          />
+          <StatCard
+            title="Tasks Done"
+            value={tasksDoneVal}
+            suffix="%"
+            delta={engagementDelta}
+          />
         </div>
       </section>
 

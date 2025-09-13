@@ -78,8 +78,23 @@ export function EnterpriseDashboard({
     return arr;
   };
 
-  const revenueTrend = mkTrend((kpis?.totalRevenue ? Math.min(100, (kpis.totalRevenue / 5000) % 100) : 70));
-  const efficiencyTrend = mkTrend(kpis?.globalEfficiency ?? 75);
+  // Add: unify important KPI values for rendering across data sources
+  const unifiedRevenue =
+    typeof (kpis?.revenue) === "number"
+      ? kpis.revenue
+      : typeof (kpis?.totalRevenue) === "number"
+      ? kpis.totalRevenue
+      : 0;
+
+  const unifiedGlobalEfficiency =
+    typeof (kpis?.globalEfficiency) === "number"
+      ? kpis.globalEfficiency
+      : typeof (kpis?.engagement) === "number"
+      ? kpis.engagement
+      : 0;
+
+  const revenueTrend = mkTrend((unifiedRevenue ? Math.min(100, (unifiedRevenue / 5000) % 100) : 70));
+  const efficiencyTrend = mkTrend(unifiedGlobalEfficiency ?? 75);
 
   return (
     <div className="space-y-6">
@@ -123,14 +138,14 @@ export function EnterpriseDashboard({
           <Card>
             <CardContent className="p-4">
               <h3 className="text-sm font-medium text-muted-foreground">Revenue</h3>
-              <p className="text-2xl font-bold">${kpis.totalRevenue?.toLocaleString?.() ?? 0}</p>
+              <p className="text-2xl font-bold">${(unifiedRevenue as number)?.toLocaleString?.() ?? 0}</p>
               <p className="text-xs text-green-600">+12% YoY</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="p-4">
               <h3 className="text-sm font-medium text-muted-foreground">Global Efficiency</h3>
-              <p className="text-2xl font-bold">{kpis.globalEfficiency ?? 0}%</p>
+              <p className="text-2xl font-bold">{unifiedGlobalEfficiency ?? 0}%</p>
               <p className="text-xs text-green-600">+3% from last quarter</p>
             </CardContent>
           </Card>
@@ -159,7 +174,7 @@ export function EnterpriseDashboard({
             <CardContent className="p-4">
               <div className="flex items-center justify-between mb-2">
                 <h3 className="text-sm font-medium text-muted-foreground">Revenue (Global)</h3>
-                <span className="text-xs text-emerald-700">${kpis?.totalRevenue?.toLocaleString?.() ?? 0}</span>
+                <span className="text-xs text-emerald-700">${(unifiedRevenue as number)?.toLocaleString?.() ?? 0}</span>
               </div>
               <Sparkline values={revenueTrend} />
             </CardContent>
@@ -168,7 +183,7 @@ export function EnterpriseDashboard({
             <CardContent className="p-4">
               <div className="flex items-center justify-between mb-2">
                 <h3 className="text-sm font-medium text-muted-foreground">Global Efficiency</h3>
-                <span className="text-xs text-emerald-700">{kpis?.globalEfficiency ?? 0}%</span>
+                <span className="text-xs text-emerald-700">{unifiedGlobalEfficiency ?? 0}%</span>
               </div>
               <Sparkline values={efficiencyTrend} color="bg-emerald-500" />
             </CardContent>
