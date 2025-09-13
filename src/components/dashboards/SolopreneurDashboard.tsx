@@ -159,7 +159,56 @@ export function SolopreneurDashboard({
   const [body, setBody] = React.useState("Hello!\n\nHere's a quick update from our studio.");
   const sendTestEmail = useAction(api.emailsActions.sendTestEmail);
 
-  // Add: simple email format validator
+  // Add: bulk sending state & helpers
+  const [bulkMode, setBulkMode] = React.useState(false);
+  const [recipientsRaw, setRecipientsRaw] = React.useState("");
+  const [recipientsList, setRecipientsList] = React.useState<string[]>([]);
+  const [invalidList, setInvalidList] = React.useState<string[]>([]);
+
+  // Add: parse recipients utility
+  const parseRecipients = React.useCallback((raw: string) => {
+    const parts = raw
+      .split(/[\n,;]+/g)
+      .map((s) => s.trim())
+      .filter(Boolean);
+    const unique = Array.from(new Set(parts));
+    const valid: string[] = [];
+    const invalid: string[] = [];
+    unique.forEach((e) => {
+      if (emailFmtOk(e)) valid.push(e);
+      else invalid.push(e);
+    });
+    return { valid, invalid };
+  }, []);
+
+  // Add: handle recipients textarea change
+  const handleRecipientsChange = (val: string) => {
+    setRecipientsRaw(val);
+    const { valid, invalid } = parseRecipients(val);
+    setRecipientsList(valid);
+    setInvalidList(invalid);
+  };
+
+  // Add: CSV/TXT file upload parsing
+  const handleRecipientsFile = async (file?: File | null) => {
+    if (!file) return;
+    try {
+      const text = await file.text();
+      // Basic CSV extraction: look for "email" column or any emails in text
+      // Extract emails via regex to be robust
+      const emails = Array.from(
+        new Set(
+          (text.match(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g) || []).map((e) => e.trim())
+        )
+      );
+      const combinedRaw = [recipientsRaw, emails.join("\n")].filter(Boolean).join("\n");
+      handleRecipientsChange(combinedRaw);
+      toast.success(`Imported ${emails.length} emails`);
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to read file");
+    }
+  };
+
   const emailFmtOk = (val: string) => /^\S+@\S+\.\S+$/.test(val);
 
   const navigate = useNavigate();
@@ -210,13 +259,49 @@ export function SolopreneurDashboard({
         toast.error("Business is not ready yet. Please complete onboarding.");
         return;
       }
-      if (!toEmail || !fromEmail || !subject || !body) {
+      if (!fromEmail || !subject || !body) {
         toast.error("Please fill out all fields.");
         return;
       }
-      // Add: stronger email validation and verified sender hint
       if (!emailFmtOk(fromEmail)) {
         toast.error("From must be a valid email address and a verified sender in Resend.");
+        return;
+      }
+
+      // Bulk mode path
+      if (bulkMode) {
+        if (recipientsList.length === 0) {
+          toast.error("Provide at least one valid recipient.");
+          return;
+        }
+        const toSend = recipientsList.slice(0); // copy
+        toast(`Sending to ${toSend.length} recipient(s)...`);
+        const results = await Promise.allSettled(
+          toSend.map((to) =>
+            sendTestEmail({
+              from: fromEmail,
+              to,
+              subject,
+              previewText: "Quick update",
+              businessId: business._id,
+              blocks: [
+                { type: "text", content: body },
+                { type: "footer", includeUnsubscribe: true },
+              ],
+            } as any)
+          )
+        );
+        const successes = results.filter((r) => r.status === "fulfilled").length;
+        const failures = results.length - successes;
+        if (successes > 0) toast.success(`Sent ${successes} email${successes > 1 ? "s" : ""}`);
+        if (failures > 0) toast.error(`Failed ${failures} email${failures > 1 ? "s" : ""}`);
+        setOpenNewsletter(false);
+        return;
+      }
+
+      // Single recipient path
+      if (!toEmail) {
+        toast.error("Please fill out all fields.");
         return;
       }
       if (!emailFmtOk(toEmail)) {
@@ -508,17 +593,23 @@ export function SolopreneurDashboard({
                 <DialogTitle>Send Test Newsletter</DialogTitle>
               </DialogHeader>
               <div className="space-y-3">
-                <Input
-                  placeholder="To (recipient email)"
-                  value={toEmail}
-                  onChange={(e) => setToEmail(e.target.value)}
-                />
+                {/* Bulk mode toggle */}
+                <div className="flex items-center justify-between gap-3">
+                  <div className="text-sm font-medium">Bulk send</div>
+                  <button
+                    className={`px-2 py-1 rounded border text-xs ${bulkMode ? "bg-emerald-50 border-emerald-300 text-emerald-700" : ""}`}
+                    onClick={() => setBulkMode((b) => !b)}
+                  >
+                    {bulkMode ? "On" : "Off"}
+                  </button>
+                </div>
+
                 <Input
                   placeholder="From (must be a verified sender in Resend)"
                   value={fromEmail}
                   onChange={(e) => setFromEmail(e.target.value)}
                 />
-                {/* Add: verified sender hint and inline format feedback */}
+                {/* Verified sender hint and format feedback */}
                 <div className="text-xs text-muted-foreground">
                   Use a verified sender from your Resend account (Settings → Domains). Example: news@yourdomain.com
                 </div>
@@ -527,6 +618,39 @@ export function SolopreneurDashboard({
                     Enter a valid email format for the From address.
                   </div>
                 )}
+
+                {/* Recipients input - single vs bulk */}
+                {!bulkMode ? (
+                  <Input
+                    placeholder="To (recipient email)"
+                    value={toEmail}
+                    onChange={(e) => setToEmail(e.target.value)}
+                  />
+                ) : (
+                  <div className="space-y-2">
+                    <Textarea
+                      placeholder="Paste emails (comma, semicolon, or new line separated)"
+                      value={recipientsRaw}
+                      onChange={(e) => handleRecipientsChange(e.target.value)}
+                      rows={5}
+                    />
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="file"
+                        accept=".csv,.txt"
+                        onChange={(e) => handleRecipientsFile(e.target.files?.[0] || null)}
+                        className="text-sm"
+                      />
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {recipientsList.length} valid • {invalidList.length} invalid
+                      {invalidList.length > 0 && (
+                        <> — invalids ignored</>
+                      )}
+                    </div>
+                  </div>
+                )}
+
                 <Input
                   placeholder="Subject"
                   value={subject}
@@ -548,12 +672,14 @@ export function SolopreneurDashboard({
                   <button
                     className="px-3 py-2 rounded-md bg-emerald-600 text-white disabled:opacity-50"
                     onClick={handleSendNewsletter}
-                    // Add: disable until valid
+                    // Disable until valid
                     disabled={
                       !emailFmtOk(fromEmail) ||
-                      !emailFmtOk(toEmail) ||
                       subject.trim().length === 0 ||
-                      body.trim().length === 0
+                      body.trim().length === 0 ||
+                      (!bulkMode
+                        ? !emailFmtOk(toEmail)
+                        : recipientsList.length === 0)
                     }
                   >
                     Send
