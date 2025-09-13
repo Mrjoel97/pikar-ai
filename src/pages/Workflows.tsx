@@ -352,8 +352,8 @@ export default function WorkflowsPage() {
       return;
     }
     try {
-      toast.loading("Seeding 120 templates...", { id: "seed-templates" });
-      const res = await seedBusinessTemplates({ businessId: firstBizId as any, perTier: 30 } as any);
+      toast.loading("Seeding 480 templates...", { id: "seed-templates" });
+      const res = await seedBusinessTemplates({ businessId: firstBizId as any, perTier: 120 } as any);
       const inserted = (res as any)?.inserted ?? 0;
       toast.success(`Seeding complete. Inserted ${inserted} templates.`, { id: "seed-templates" });
     } catch (err: any) {
@@ -689,12 +689,12 @@ export default function WorkflowsPage() {
             <div className="ml-auto flex items-center gap-2">
               <Button variant="outline" size="sm" disabled={!firstBizId} onClick={async () => {
                 try {
-                  const res = await seedBusinessTemplates({ businessId: firstBizId as any, perTier: 30 } as any);
+                  const res = await seedBusinessTemplates({ businessId: firstBizId as any, perTier: 120 } as any);
                   toast.success("Templates seeded", { description: `${res?.inserted ?? 0} inserted` });
                 } catch (e: any) {
                   toast.error(e?.message || "Seeding failed");
                 }
-              }}>Seed 120 templates</Button>
+              }}>Seed 480 templates</Button>
             </div>
           </div>
 
@@ -859,7 +859,7 @@ export default function WorkflowsPage() {
         variant="default"
         disabled={!firstBizId}
       >
-        Seed 120 Templates
+        Seed 480 Templates
       </Button>
     </div>
   );

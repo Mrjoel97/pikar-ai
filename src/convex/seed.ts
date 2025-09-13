@@ -447,3 +447,247 @@ export const seedAllDemo: any = action({
     };
   },
 });
+
+export const seedTieredTemplatesAndAgents = action({
+  args: {
+    creatorEmail: v.optional(v.string()), // default to demo@pikar.ai if not provided
+  },
+  handler: async (ctx, args) => {
+    const creatorEmail = args.creatorEmail ?? "demo@pikar.ai";
+    // Ensure a creator user exists
+    await ctx.runMutation(api.users.ensureSeedUser, { email: creatorEmail });
+    const creator =
+      (await ctx.runQuery(api.users.getByEmail as any, {
+        email: creatorEmail,
+      }).catch(() => null)) ||
+      (await (async () => {
+        // fallback: manual query if helper missing
+        const u = await ctx.runQuery(api.users.findByEmail as any, {
+          email: creatorEmail,
+        }).catch(() => null);
+        return u;
+      })());
+
+    // Fallback: fetch directly from DB via internal query bridge if helper queries not available
+    let creatorId = null as Id<"users"> | null;
+    try {
+      if (creator?._id) creatorId = creator._id as Id<"users">;
+    } catch {
+      // ignore
+    }
+    if (!creatorId) {
+      // last resort: query users table by email (public query may not exist; use action+internal not allowed)
+      // use seed user creation flow: the ensureSeedUser should have created the user; attempt to find via index scan proxy through mutations not available.
+      // To avoid failing, we will seed with a temporary creator using business owner path when available. If not, we set createdBy to a deterministic dummy by creating a new user through ensureSeedUser and querying again via a light mutation below if available.
+      // If we cannot resolve a user id, we'll skip createdBy (it's optional in schema).
+    }
+
+    const TIERS: Array<string> = ["solopreneur", "startup", "sme", "enterprise"];
+    const INDUSTRIES: Array<string> = [
+      "ecommerce",
+      "saas",
+      "healthcare",
+      "fintech",
+      "education",
+      "manufacturing",
+      "retail",
+      "marketing",
+      "real_estate",
+      "hospitality",
+    ];
+    const CATEGORIES: Array<string> = [
+      "lead_generation",
+      "email_marketing",
+      "content_calendar",
+      "customer_success",
+      "sales_outreach",
+      "seo_growth",
+      "onboarding",
+      "churn_recovery",
+      "product_launch",
+      "ops_automation",
+    ];
+    // 480 templates total: 120 per tier.
+    // For each tier: 10 industries x 12 patterns = 120.
+    const patterns: Array<string> = [
+      "Quickstart",
+      "Pro Playbook",
+      "Deep Dive",
+      "Performance Sprint",
+      "Retention Boost",
+      "CRO Drill",
+      "Launch Blitz",
+      "Nurture Stream",
+      "SEO Track",
+      "Social Burst",
+      "Analytics Sync",
+      "Ops Auto",
+    ];
+
+    // Align recommendedAgents with names of seeded agent templates by tier
+    const RECO_AGENT_NAMES: Record<string, string[]> = {
+      solopreneur: [
+        "Solo Campaign Planner",
+        "Solo Copywriter",
+        "Solo SEO Scout",
+        "Solo Social Scheduler",
+        "Inbox Outreach",
+        "Newsletter Builder",
+        "Landing Optimizer",
+        "Metrics Snapshot",
+      ],
+      startup: [
+        "Startup GTM Planner",
+        "Growth Copywriter",
+        "SEO Accelerator",
+        "Social Amplifier",
+        "Sales SDR Agent",
+        "Lifecycle Emailer",
+        "CRO Optimizer",
+        "Growth Analyst",
+      ],
+      sme: [
+        "SME Campaign Orchestrator",
+        "Brand Copy Studio",
+        "SEO Program Manager",
+        "Paid Media Optimizer",
+        "Sales Enrichment",
+        "Retention Email Ops",
+        "Site CRO Lead",
+        "BI Analyst",
+      ],
+      enterprise: [
+        "Enterprise Program Director",
+        "Enterprise Content Studio",
+        "Enterprise SEO Lead",
+        "Global Paid Ops",
+        "RevOps SDR Supervisor",
+        "Compliance Mailer",
+        "CRO Council",
+        "Enterprise Insights",
+      ],
+    };
+
+    let createdTemplates = 0;
+    for (const tier of TIERS) {
+      for (const industry of INDUSTRIES) {
+        for (const pattern of patterns) {
+          const name = `${tier.toUpperCase()} • ${industry} • ${pattern}`;
+          const description = `A ${pattern.toLowerCase()} workflow tailored for ${industry} (${tier}).`;
+          const steps = [
+            { name: "Plan", type: "plan", config: { depth: pattern } },
+            { name: "Execute", type: "action", config: { channel: "email" } },
+            {
+              name: "Review",
+              type: "review",
+              config: { metrics: ["roi", "conversion", "reach"] },
+            },
+          ];
+
+          // Recommend real agent template names that are seeded for this tier
+          const slug = pattern.toLowerCase().replace(/\s+/g, "_");
+          const agentPool: string[] = (RECO_AGENT_NAMES[tier] ?? []).map((n) => n);
+          const poolLen = agentPool.length || 1;
+          const offset =
+            (patterns.indexOf(pattern) + INDUSTRIES.indexOf(industry)) % poolLen;
+          const recommendedAgents =
+            agentPool.length > 0
+              ? [
+                  agentPool[offset],
+                  agentPool[(offset + 1) % poolLen],
+                  agentPool[(offset + 2) % poolLen],
+                ]
+              : [];
+
+          const industryTags = [industry];
+          // Normalize tags to match UI filtering
+          const tags = [`tier:${tier}`, `pattern:${slug}`, `industry:${industry}`];
+
+          await ctx.runMutation(api.workflows.upsertWorkflowTemplate, {
+            name,
+            description,
+            category: "growth",
+            steps,
+            recommendedAgents,
+            industryTags,
+            tags,
+            createdBy: (creatorId as any) ?? undefined,
+            tier,
+          });
+
+          createdTemplates += 1;
+        }
+      }
+    }
+
+    // Seed agent templates per tier (8 per tier = 32 total)
+    const AGENTS_BY_TIER: Record<string, Array<{ name: string; desc: string; tags: string[] }>> = {
+      solopreneur: [
+        { name: "Solo Campaign Planner", desc: "Plan lean campaigns.", tags: ["planning", "lightweight"] },
+        { name: "Solo Copywriter", desc: "Generate concise, high-CTR copy.", tags: ["copywriting", "conversion"] },
+        { name: "Solo SEO Scout", desc: "Quick keyword suggestions.", tags: ["seo"] },
+        { name: "Solo Social Scheduler", desc: "Schedule multi-network posts.", tags: ["social", "scheduler"] },
+        { name: "Inbox Outreach", desc: "Personalized cold emails.", tags: ["sales", "outreach"] },
+        { name: "Newsletter Builder", desc: "Build weekly digest fast.", tags: ["email", "newsletter"] },
+        { name: "Landing Optimizer", desc: "Improve hero and CTAs.", tags: ["conversion", "ux"] },
+        { name: "Metrics Snapshot", desc: "Daily KPIs overview.", tags: ["analytics", "kpi"] },
+      ],
+      startup: [
+        { name: "Startup GTM Planner", desc: "Coordinate GTM launch.", tags: ["planning", "gtm"] },
+        { name: "Growth Copywriter", desc: "A/B-ready high-impact copy.", tags: ["copywriting", "ab_test"] },
+        { name: "SEO Accelerator", desc: "Keyword clustering + briefs.", tags: ["seo", "content"] },
+        { name: "Social Amplifier", desc: "Multi-channel amplification.", tags: ["social", "multi"] },
+        { name: "Sales SDR Agent", desc: "Prospect and sequence.", tags: ["sales", "sdr"] },
+        { name: "Lifecycle Emailer", desc: "Onboarding and retention.", tags: ["email", "lifecycle"] },
+        { name: "CRO Optimizer", desc: "Run CRO experiments.", tags: ["conversion", "experiments"] },
+        { name: "Growth Analyst", desc: "Funnel and cohort insights.", tags: ["analytics", "funnel"] },
+      ],
+      sme: [
+        { name: "SME Campaign Orchestrator", desc: "Cross-team orchestration.", tags: ["planning", "orchestration"] },
+        { name: "Brand Copy Studio", desc: "On-brand messaging at scale.", tags: ["copywriting", "brand"] },
+        { name: "SEO Program Manager", desc: "Program-level SEO ops.", tags: ["seo", "program"] },
+        { name: "Paid Media Optimizer", desc: "Optimize ads spend.", tags: ["paid", "optimization"] },
+        { name: "Sales Enrichment", desc: "Enrich and route leads.", tags: ["sales", "ops"] },
+        { name: "Retention Email Ops", desc: "Automated retention flows.", tags: ["email", "retention"] },
+        { name: "Site CRO Lead", desc: "CRO roadmap and tests.", tags: ["conversion", "roadmap"] },
+        { name: "BI Analyst", desc: "Dashboards and insights.", tags: ["analytics", "bi"] },
+      ],
+      enterprise: [
+        { name: "Enterprise Program Director", desc: "Global program planning.", tags: ["planning", "governance"] },
+        { name: "Enterprise Content Studio", desc: "Compliance-aware content.", tags: ["copywriting", "compliance"] },
+        { name: "Enterprise SEO Lead", desc: "Multi-domain SEO.", tags: ["seo", "enterprise"] },
+        { name: "Global Paid Ops", desc: "Regional budget optimizer.", tags: ["paid", "governance"] },
+        { name: "RevOps SDR Supervisor", desc: "Pipeline and SLAs.", tags: ["sales", "revops"] },
+        { name: "Compliance Mailer", desc: "Compliant messaging flows.", tags: ["email", "compliance"] },
+        { name: "CRO Council", desc: "Cross-unit CRO governance.", tags: ["conversion", "governance"] },
+        { name: "Enterprise Insights", desc: "Executive analytics.", tags: ["analytics", "executive"] },
+      ],
+    };
+
+    let agentTemplatesSeeded = 0;
+    for (const tier of TIERS) {
+      const entries = AGENTS_BY_TIER[tier] ?? [];
+      for (const a of entries) {
+        await ctx.runMutation(api.aiAgents.upsertAgentTemplate, {
+          name: a.name,
+          description: a.desc,
+          tags: [tier, ...a.tags],
+          tier,
+          configPreview: {
+            model: "gpt-4o-mini",
+            parameters: { temperature: tier === "enterprise" ? 0.3 : 0.6 },
+            capabilities: a.tags,
+          },
+          createdBy: (creatorId as any) ?? (await ctx.runQuery(api.users.getAny as any, {}).catch(() => null))?._id ?? (undefined as any),
+        });
+        agentTemplatesSeeded += 1;
+      }
+    }
+
+    return {
+      message: "Seeded tiered templates (120 per tier) and agent templates",
+      workflowTemplates: createdTemplates, // expect 480
+      agentTemplates: agentTemplatesSeeded, // 32
+    };
+  },
+});

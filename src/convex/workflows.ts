@@ -1955,7 +1955,60 @@ export const copyFromTemplate = mutation({
   },
 });
 
-// Keep internal.workflows.run available for http webhook usage, but simplify internals
+// Upsert a workflow template (idempotent by name)
+export const upsertWorkflowTemplate = mutation({
+  args: {
+    name: v.string(),
+    description: v.string(),
+    category: v.optional(v.string()),
+    steps: v.array(v.any()),
+    recommendedAgents: v.optional(v.array(v.string())),
+    industryTags: v.optional(v.array(v.string())),
+    tags: v.optional(v.array(v.string())),
+    createdBy: v.optional(v.id("users")),
+    tier: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const existing = await ctx.db
+      .query("workflowTemplates")
+      .withIndex("by_name", (q) => q.eq("name", args.name))
+      .first();
+
+    const doc = {
+      name: args.name,
+      description: args.description,
+      category: args.category,
+      steps: args.steps,
+      recommendedAgents: args.recommendedAgents,
+      industryTags: args.industryTags,
+      tags: args.tags,
+      createdBy: args.createdBy,
+      createdAt: existing ? existing.createdAt : Date.now(),
+      tier: args.tier,
+    } as any;
+
+    if (existing) {
+      await ctx.db.patch(existing._id, {
+        description: doc.description,
+        category: doc.category,
+        steps: doc.steps,
+        recommendedAgents: doc.recommendedAgents,
+        industryTags: doc.industryTags,
+        tags: doc.tags,
+        tier: doc.tier,
+        updatedAt: Date.now(),
+      });
+      return existing._id;
+    } else {
+      return await ctx.db.insert("workflowTemplates", {
+        ...doc,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      });
+    }
+  },
+});
+
 export const run: any = action({
   args: {
     workflowId: v.id("workflows"),

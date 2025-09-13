@@ -11,7 +11,7 @@ export default function WorkflowTemplatesPage() {
   const navigate = useNavigate();
   const { isLoading: authLoading, isAuthenticated } = useAuth();
   const seedTemplates = useMutation(api.workflows.seedTemplates);
-  const seedAllTierTemplates = useAction(api.aiAgents.seedAllTierTemplates);
+  const seedTieredTemplatesAndAgents = useAction(api.seed.seedTieredTemplatesAndAgents);
 
   if (authLoading) {
     return (
@@ -52,17 +52,17 @@ export default function WorkflowTemplatesPage() {
 
       <Card className="bg-white">
         <CardHeader>
-          <CardTitle>Seed 120 Agent Templates</CardTitle>
+          <CardTitle>Seed 480 Templates + Agents</CardTitle>
           <CardDescription>
-            Distributes 30 templates per tier (Solopreneur, Startup, SME, Enterprise). Safe to run multiple times — no duplicates.
+            Distributes 120 templates per tier (Solopreneur, Startup, SME, Enterprise) with matching agent templates. Safe to run multiple times — no duplicates.
           </CardDescription>
         </CardHeader>
         <CardContent className="flex gap-2">
           <Button
             onClick={async () => {
               try {
-                const res = await seedAllTierTemplates({});
-                toast(typeof res?.message === "string" ? res.message : "Seeded 120 templates across tiers.");
+                const res = await seedTieredTemplatesAndAgents({});
+                toast(typeof res?.message === "string" ? res.message : "Seeded 480 templates across tiers + agents.");
               } catch (e: any) {
                 toast(e?.message || "Failed to seed tier templates");
               }

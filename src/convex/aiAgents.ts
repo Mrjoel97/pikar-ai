@@ -1205,3 +1205,39 @@ export const seedAllTierTemplates = action({
     return { message: `Templates seeding complete. Created: ${created}.` };
   }),
 });
+
+export const upsertAgentTemplate = mutation({
+  args: {
+    name: v.string(),
+    description: v.string(),
+    tags: v.array(v.string()),
+    tier: v.string(),
+    configPreview: v.any(),
+    createdBy: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    const existing = await ctx.db
+      .query("agent_templates")
+      .withIndex("by_tier", (q) => q.eq("tier", args.tier))
+      .collect();
+
+    const found = existing.find((t) => t.name === args.name);
+    if (found) {
+      await ctx.db.patch(found._id, {
+        description: args.description,
+        tags: args.tags,
+        configPreview: args.configPreview,
+      });
+      return found._id;
+    }
+
+    return await ctx.db.insert("agent_templates", {
+      name: args.name,
+      description: args.description,
+      tags: args.tags,
+      tier: args.tier,
+      configPreview: args.configPreview,
+      createdBy: args.createdBy,
+    });
+  },
+});
