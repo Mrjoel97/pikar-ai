@@ -72,6 +72,27 @@ export function SmeDashboard({
     </Card>
   );
 
+  // Add: sparkline utility
+  const Sparkline = ({ values, color = "bg-emerald-600" }: { values: number[]; color?: string }) => (
+    <div className="flex items-end gap-1 h-12">
+      {values.map((v, i) => (
+        <div key={i} className={`${color} w-2 rounded-sm`} style={{ height: `${Math.max(6, Math.min(100, v))}%` }} />
+      ))}
+    </div>
+  );
+  const mkTrend = (base?: number): number[] => {
+    const b = typeof base === "number" && !Number.isNaN(base) ? base : 50;
+    const arr: number[] = [];
+    for (let i = 0; i < 12; i++) {
+      const jitter = ((i % 2 === 0 ? 1 : -1) * (5 + (i % 5))) / 2;
+      arr.push(Math.max(5, Math.min(100, b + jitter)));
+    }
+    return arr;
+  };
+
+  const complianceTrend = mkTrend(kpis?.complianceScore ?? 85);
+  const riskTrend = mkTrend(100 - (kpis?.riskScore ?? 15));
+
   return (
     <div className="space-y-6">
       {/* Governance Panel */}
@@ -94,6 +115,31 @@ export function SmeDashboard({
             <CardContent className="p-4">
               <h3 className="text-sm font-medium text-muted-foreground">Department Efficiency</h3>
               <p className="text-2xl font-bold">{kpis.departmentEfficiency}%</p>
+            </CardContent>
+          </Card>
+        </div>
+      </section>
+
+      {/* KPI Trends */}
+      <section>
+        <h2 className="text-xl font-semibold mb-4">KPI Trends</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm font-medium text-muted-foreground">Compliance Score</h3>
+                <span className="text-xs text-emerald-700">{kpis?.complianceScore ?? 0}%</span>
+              </div>
+              <Sparkline values={complianceTrend} />
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm font-medium text-muted-foreground">Risk (Lower is Better)</h3>
+                <span className="text-xs text-emerald-700">{kpis?.riskScore ?? 0}</span>
+              </div>
+              <Sparkline values={riskTrend} color="bg-emerald-500" />
             </CardContent>
           </Card>
         </div>

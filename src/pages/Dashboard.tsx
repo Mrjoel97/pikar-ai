@@ -225,7 +225,8 @@ export default function Dashboard() {
                 Snapshot — Workflows: {nudges.snapshot.workflowsCount} • Runs: {nudges.snapshot.runsCount} • Agents: {nudges.snapshot.agentsCount}
               </div>
               <div>
-                <Button size="sm" onClick={() => navigate("/#pricing")}>
+                {/* Route to dedicated pricing page */}
+                <Button size="sm" onClick={() => navigate("/pricing")}>
                   View plans
                 </Button>
               </div>

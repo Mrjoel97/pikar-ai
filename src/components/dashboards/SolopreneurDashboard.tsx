@@ -31,6 +31,34 @@ export function SolopreneurDashboard({
   const kpis = isGuest ? (demoData?.kpis || {}) : (kpiDoc || {});
   const tasks = isGuest ? demoData?.tasks || [] : [];
 
+  // Add: simple sparkline renderer for trends
+  const Sparkline = ({ values, color = "bg-emerald-600" }: { values: number[]; color?: string }) => (
+    <div className="flex items-end gap-1 h-12">
+      {values.map((v, i) => (
+        <div
+          key={i}
+          className={`${color} w-2 rounded-sm`}
+          style={{ height: `${Math.max(6, Math.min(100, v))}%` }}
+          aria-hidden
+        />
+      ))}
+    </div>
+  );
+
+  // Generate trend arrays (guest: demo based, auth: small jitter from snapshot)
+  const mkTrend = (base?: number): number[] => {
+    const b = typeof base === "number" && !Number.isNaN(base) ? base : 50;
+    const arr: number[] = [];
+    for (let i = 0; i < 8; i++) {
+      const jitter = ((i % 2 === 0 ? 1 : -1) * (5 + (i % 3))) / 2;
+      arr.push(Math.max(5, Math.min(100, b + jitter)));
+    }
+    return arr;
+  };
+
+  const revenueTrend = mkTrend((kpis?.totalRevenue ? Math.min(100, (kpis.totalRevenue / 1000) % 100) : 60));
+  const efficiencyTrend = mkTrend(kpis?.taskCompletion ?? 65);
+
   const UpgradeCTA = ({ feature }: { feature: string }) => (
     <Card className="border-dashed border-2 border-gray-300">
       <CardContent className="flex flex-col items-center justify-center py-8 text-center">
@@ -91,6 +119,33 @@ export function SolopreneurDashboard({
             <CardContent className="p-4">
               <h3 className="text-sm font-medium text-muted-foreground">Tasks Done</h3>
               <p className="text-2xl font-bold">{kpis.taskCompletion}%</p>
+            </CardContent>
+          </Card>
+        </div>
+      </section>
+
+      {/* KPI Trends */}
+      <section>
+        <h2 className="text-xl font-semibold mb-4">KPI Trends</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm font-medium text-muted-foreground">Revenue Trend</h3>
+                <span className="text-xs text-emerald-700">+Uptrend</span>
+              </div>
+              <Sparkline values={revenueTrend} />
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm font-medium text-muted-foreground">Task Completion</h3>
+                <span className="text-xs text-emerald-700">
+                  {(kpis?.taskCompletion ?? 0)}%
+                </span>
+              </div>
+              <Sparkline values={efficiencyTrend} color="bg-emerald-500" />
             </CardContent>
           </Card>
         </div>

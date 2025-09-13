@@ -18,6 +18,7 @@ import WorkflowsPage from "@/pages/Workflows.tsx";
 import WorkflowTemplatesPage from "@/pages/WorkflowTemplates.tsx";
 import BusinessPage from "@/pages/Business.tsx";
 import AnalyticsPage from "@/pages/Analytics.tsx";
+import PricingPage from "./pages/Pricing.tsx";
 
 class ErrorBoundary extends Component<
   { children: React.ReactNode },
@@ -110,6 +111,7 @@ createRoot(document.getElementById("root")!).render(
               <Route path="/workflows/templates" element={<WorkflowTemplatesPage />} />
               <Route path="/business" element={<BusinessPage />} />
               <Route path="/analytics" element={<AnalyticsPage />} />
+              <Route path="/pricing" element={<PricingPage />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
