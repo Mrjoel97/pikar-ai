@@ -79,11 +79,6 @@ export function EnterpriseDashboard({
                 <p className="text-xs text-muted-foreground">
                   {workflow.completionRate}% complete
                 </p>
-                {isGuest && (
-                  <p className="text-xs text-blue-600 mt-2">
-                    Sign in to manage initiative
-                  </p>
-                )}
               </CardContent>
             </Card>
           ))}
@@ -141,11 +136,9 @@ export function EnterpriseDashboard({
             <CardContent className="p-4 text-center">
               <h3 className="font-medium mb-2">Global Operations</h3>
               <Button 
-                className="w-full" 
-                onClick={isGuest ? onUpgrade : undefined}
-                disabled={isGuest}
+                className="w-full"
               >
-                {isGuest ? "Sign in to access" : "Manage"}
+                Manage
               </Button>
             </CardContent>
           </Card>
@@ -155,10 +148,8 @@ export function EnterpriseDashboard({
               <Button 
                 variant="outline" 
                 className="w-full"
-                onClick={isGuest ? onUpgrade : undefined}
-                disabled={isGuest}
               >
-                {isGuest ? "Sign in to access" : "Standby"}
+                Standby
               </Button>
             </CardContent>
           </Card>
@@ -167,10 +158,8 @@ export function EnterpriseDashboard({
               <h3 className="font-medium mb-2">Innovation Hub</h3>
               <Button 
                 className="w-full"
-                onClick={isGuest ? onUpgrade : undefined}
-                disabled={isGuest}
               >
-                {isGuest ? "Sign in to access" : "Explore"}
+                Explore
               </Button>
             </CardContent>
           </Card>
@@ -178,15 +167,13 @@ export function EnterpriseDashboard({
             <CardContent className="p-4 text-center">
               <h3 className="font-medium mb-2">Custom Widget</h3>
               <p className="text-xs text-muted-foreground mb-2">
-                Drag & drop available for authenticated users
+                Drag & drop available
               </p>
               <Button 
                 variant="outline" 
                 size="sm"
-                onClick={isGuest ? onUpgrade : undefined}
-                disabled={isGuest}
               >
-                {isGuest ? "Sign in" : "Customize"}
+                Customize
               </Button>
             </CardContent>
           </Card>

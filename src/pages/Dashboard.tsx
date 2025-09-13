@@ -9,9 +9,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { isGuestMode, getSelectedTier, getDemoData } from "@/lib/guestUtils";
 import { getTierConfig, canShowFeature, TierType } from "@/lib/tierConfig";
 import React, { Suspense, lazy } from "react";
-import { toast } from "sonner";
 
-// Add: lazy loaded dashboards to split bundles and fix undefined component refs
+// Add: lazy-loaded dashboard chunks for code splitting
 const SolopreneurDashboard = lazy(() =>
   import("@/components/dashboards/SolopreneurDashboard").then((m) => ({
     default: m.SolopreneurDashboard,
@@ -111,7 +110,8 @@ export default function Dashboard() {
       demoData: demoDataForTier,
       isGuest: guestMode,
       tier: effectiveTier,
-      onUpgrade: () => toast("Sign in to upgrade your plan")
+      // No-op in guest mode; guests have full access in demo
+      onUpgrade: () => {},
     };
 
     switch (effectiveTier) {
