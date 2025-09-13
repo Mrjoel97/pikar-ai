@@ -1,6 +1,9 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
+import { useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
+import { Badge } from "@/components/ui/badge";
 
 interface StartupDashboardProps {
   business: any;
@@ -21,6 +24,24 @@ export function StartupDashboard({
   const workflows = isGuest ? demoData?.workflows || [] : [];
   const kpis = isGuest ? demoData?.kpis || {} : {};
   const tasks = isGuest ? demoData?.tasks || [] : [];
+
+  const tierRank: Record<string, number> = { solopreneur: 1, startup: 2, sme: 3, enterprise: 4 };
+  const hasTier = (required: keyof typeof tierRank) => (tierRank[tier] ?? 1) >= tierRank[required];
+
+  const LockedRibbon = ({ label = "Higher tier feature" }: { label?: string }) => (
+    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+      <Badge variant="outline" className="border-amber-300 text-amber-700">Locked</Badge>
+      <span>{label}</span>
+      <Button size="sm" variant="outline" onClick={onUpgrade} className="ml-auto">
+        Upgrade
+      </Button>
+    </div>
+  );
+
+  const upgradeNudges = useQuery(
+    api.telemetry.getUpgradeNudges,
+    isGuest || !business?._id ? "skip" : { businessId: business._id }
+  );
 
   const UpgradeCTA = ({ feature }: { feature: string }) => (
     <Card className="border-dashed border-2 border-gray-300">
@@ -58,6 +79,19 @@ export function StartupDashboard({
 
   return (
     <div className="space-y-6">
+      {/* Add: Upgrade nudge banner */}
+      {!isGuest && upgradeNudges && upgradeNudges.showBanner && (
+        <div className="rounded-md border p-3 bg-amber-50 flex items-center gap-3">
+          <Badge variant="outline" className="border-amber-300 text-amber-700">Upgrade</Badge>
+          <div className="text-sm">
+            {upgradeNudges.nudges?.[0]?.message || "You're nearing usage limits—unlock more capacity."}
+          </div>
+          <div className="ml-auto">
+            <Button size="sm" variant="outline" onClick={onUpgrade}>See Plans</Button>
+          </div>
+        </div>
+      )}
+
       {/* Team Performance */}
       <section>
         <h2 className="text-xl font-semibold mb-4">Team Performance</h2>
@@ -186,7 +220,12 @@ export function StartupDashboard({
               <p className="text-sm text-muted-foreground mb-3">
                 Unblock initiatives awaiting review or sign-off.
               </p>
-              <Button variant="outline" size="sm">Open Approvals</Button>
+              <Button variant="outline" size="sm" disabled={!hasTier("sme")}>Open Approvals</Button>
+              {!hasTier("sme") && (
+                <div className="mt-3">
+                  <LockedRibbon label="Approvals panel is SME+" />
+                </div>
+              )}
             </CardContent>
           </Card>
           <Card>
@@ -196,6 +235,11 @@ export function StartupDashboard({
                 Align on goals, blockers, and next actions.
               </p>
               <Button variant="outline" size="sm">Schedule</Button>
+              {!hasTier("sme") && (
+                <div className="mt-3">
+                  <LockedRibbon label="Advanced collaboration is SME+" />
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -255,8 +299,12 @@ export function StartupDashboard({
               </CardContent>
             </Card>
           ))}
-          {/* Hide upgrade prompt for guests */}
           {!isGuest && <UpgradeCTA feature="Advanced Governance" />}
+          {!hasTier("sme") && (
+            <div className="md:col-span-2">
+              <LockedRibbon label="Full approvals workflow is SME+" />
+            </div>
+          )}
         </div>
       </section>
     </div>

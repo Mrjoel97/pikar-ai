@@ -3,62 +3,12 @@
 import { action, internalAction } from "./_generated/server";
 import { v } from "convex/values";
 import { Resend } from "resend";
+import { renderHtml, escapeHtml } from "./emails";
 import { internal, api } from "./_generated/api";
 
-// Helper: safe HTML escape for text content
-function escapeHtml(input: string): string {
-  return input
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
-}
+/* using escapeHtml from ./emails */
 
-// Basic renderer for blocks to HTML email
-function renderHtml(params: {
-  subject: string;
-  previewText?: string;
-  blocks: Array<{
-    type: "text" | "button" | "footer";
-    content?: string;
-    label?: string;
-    url?: string;
-    includeUnsubscribe?: boolean;
-  }>;
-  unsubscribeUrl?: string | null;
-}) {
-  const { subject, previewText, blocks, unsubscribeUrl } = params;
-  const parts: Array<string> = [];
-
-  parts.push(`<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>${escapeHtml(subject)}</title></head><body style="font-family: Arial, sans-serif; background-color:#f7f7f8; color:#0f172a; margin:0; padding:24px;">`);
-
-  if (previewText) {
-    parts.push(`<div style="display:none; max-height:0; overflow:hidden; opacity:0;">${escapeHtml(previewText)}</div>`);
-  }
-
-  parts.push(`<div style="max-width:640px; margin:0 auto; background:#ffffff; border:1px solid #e5e7eb; border-radius:12px; padding:24px;">`);
-
-  for (const b of blocks) {
-    if (b.type === "text" && b.content) {
-      parts.push(`<div style="margin-bottom:16px; line-height:1.6; font-size:14px;">${b.content}</div>`);
-    } else if (b.type === "button" && b.label && b.url) {
-      parts.push(
-        `<div style="margin:20px 0;"><a href="${b.url}" style="display:inline-block; background:#111827; color:#ffffff; text-decoration:none; padding:12px 18px; border-radius:8px; font-weight:600;">${escapeHtml(
-          b.label
-        )}</a></div>`
-      );
-    } else if (b.type === "footer") {
-      const unsubscribe = b.includeUnsubscribe && unsubscribeUrl
-        ? `<div style="font-size:12px; color:#6b7280; margin-top:24px;">If you no longer wish to receive these emails, you can <a href="${unsubscribeUrl}" style="color:#111827; text-decoration:underline;">unsubscribe here</a>.</div>`
-        : "";
-      parts.push(
-        `<hr style="border:none; border-top:1px solid #e5e7eb; margin:24px 0;" />${unsubscribe}`
-      );
-    }
-  }
-
-  parts.push(`</div></body></html>`);
-  return parts.join("");
-}
+/* using renderHtml from ./emails */
 
 const resend = new Resend(process.env.RESEND_API_KEY || "");
 
@@ -239,7 +189,7 @@ export const sendSalesInquiry = action({
       to: [inbox],
       subject,
       html,
-      reply_to: args.email,
+      replyTo: args.email,
     });
 
     if (error) {

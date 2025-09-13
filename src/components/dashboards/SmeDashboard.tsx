@@ -1,10 +1,9 @@
-import { useQuery } from "convex/react";
+import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useMutation } from "convex/react";
 import { toast } from "sonner";
 
 interface SmeDashboardProps {
@@ -93,8 +92,41 @@ export function SmeDashboard({
   const complianceTrend = mkTrend(kpis?.complianceScore ?? 85);
   const riskTrend = mkTrend(100 - (kpis?.riskScore ?? 15));
 
+  // Add: tier helper and LockedRibbon
+  const tierRank: Record<string, number> = { solopreneur: 1, startup: 2, sme: 3, enterprise: 4 };
+  const hasTier = (required: keyof typeof tierRank) => (tierRank[tier] ?? 1) >= tierRank[required];
+
+  const LockedRibbon = ({ label = "Higher tier feature" }: { label?: string }) => (
+    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+      <Badge variant="outline" className="border-amber-300 text-amber-700">Locked</Badge>
+      <span>{label}</span>
+      <Button size="sm" variant="outline" onClick={onUpgrade} className="ml-auto">
+        Upgrade
+      </Button>
+    </div>
+  );
+
+  // Add: telemetry-driven nudges banner
+  const upgradeNudges = useQuery(
+    api.telemetry.getUpgradeNudges,
+    isGuest || !business?._id ? "skip" : { businessId: business._id }
+  );
+
   return (
     <div className="space-y-6">
+      {/* Add: Upgrade nudge banner */}
+      {!isGuest && upgradeNudges && upgradeNudges.showBanner && (
+        <div className="rounded-md border p-3 bg-amber-50 flex items-center gap-3">
+          <Badge variant="outline" className="border-amber-300 text-amber-700">Upgrade</Badge>
+          <div className="text-sm">
+            {upgradeNudges.nudges?.[0]?.message || "Unlock more workflows and premium analytics."}
+          </div>
+          <div className="ml-auto">
+            <Button size="sm" variant="outline" onClick={onUpgrade}>See Plans</Button>
+          </div>
+        </div>
+      )}
+
       {/* Governance Panel */}
       <section>
         <h2 className="text-xl font-semibold mb-4">Governance Overview</h2>
@@ -238,6 +270,12 @@ export function SmeDashboard({
                   </div>
                 </div>
               ))
+            )}
+            {/* Add: gating ribbon if governance approval actions are Enterprise+ */}
+            {!isGuest && !hasTier("enterprise") && (
+              <div className="pt-2 border-t mt-2">
+                <LockedRibbon label="Advanced governance automation is Enterprise+" />
+              </div>
             )}
           </CardContent>
         </Card>
@@ -442,7 +480,17 @@ export function SmeDashboard({
             </CardContent>
           </Card>
           {/* Hide upgrade prompt for guests */}
-          {!isGuest && <UpgradeCTA feature="Global Command Center" />}
+          {!isGuest && (
+            <Card className="border-dashed border-2 border-gray-300">
+              <CardContent className="p-4">
+                <h3 className="font-medium mb-2">Executive Controls</h3>
+                <p className="text-sm text-muted-foreground mb-2">
+                  Generate executive reports and automate approvals.
+                </p>
+                <LockedRibbon label="Executive actions are Enterprise+" />
+              </CardContent>
+            </Card>
+          )}
         </div>
       </section>
 

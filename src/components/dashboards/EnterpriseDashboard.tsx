@@ -96,8 +96,41 @@ export function EnterpriseDashboard({
   const revenueTrend = mkTrend((unifiedRevenue ? Math.min(100, (unifiedRevenue / 5000) % 100) : 70));
   const efficiencyTrend = mkTrend(unifiedGlobalEfficiency ?? 75);
 
+  // Add: tier helper and LockedRibbon
+  const tierRank: Record<string, number> = { solopreneur: 1, startup: 2, sme: 3, enterprise: 4 };
+  const hasTier = (required: keyof typeof tierRank) => (tierRank[tier] ?? 1) >= tierRank[required];
+
+  const LockedRibbon = ({ label = "Enterprise feature" }: { label?: string }) => (
+    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+      <Badge variant="outline" className="border-amber-300 text-amber-700">Locked</Badge>
+      <span>{label}</span>
+      <Button size="sm" variant="outline" onClick={onUpgrade} className="ml-auto">
+        Upgrade
+      </Button>
+    </div>
+  );
+
+  // Add: telemetry-driven nudges banner
+  const upgradeNudges = useQuery(
+    api.telemetry.getUpgradeNudges,
+    isGuest || !businessId ? "skip" : { businessId }
+  );
+
   return (
     <div className="space-y-6">
+      {/* Add: Upgrade nudge banner */}
+      {!isGuest && upgradeNudges && upgradeNudges.showBanner && (
+        <div className="rounded-md border p-3 bg-amber-50 flex items-center gap-3">
+          <Badge variant="outline" className="border-amber-300 text-amber-700">Upgrade</Badge>
+          <div className="text-sm">
+            {upgradeNudges.nudges?.[0]?.message || "Unlock more capacity and premium features."}
+          </div>
+          <div className="ml-auto">
+            <Button size="sm" variant="outline" onClick={onUpgrade}>See Plans</Button>
+          </div>
+        </div>
+      )}
+
       {/* Global Overview Banner */}
       <section className="rounded-lg border p-4 bg-gradient-to-r from-emerald-50 to-blue-50">
         <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
@@ -218,6 +251,12 @@ export function EnterpriseDashboard({
               <h3 className="font-medium mb-2">Custom Widget</h3>
               <p className="text-xs text-muted-foreground mb-2">Drag & drop available</p>
               <Button variant="outline" size="sm">Customize</Button>
+              {/* Add: gating ribbon for non-enterprise roles */}
+              {!hasTier("enterprise") && (
+                <div className="mt-3">
+                  <LockedRibbon label="Custom widget grid is Enterprise+" />
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -316,6 +355,12 @@ export function EnterpriseDashboard({
               <div className="text-xs text-muted-foreground">
                 Contact support to enable enterprise controls.
               </div>
+              {/* Add: gating ribbon if not enterprise */}
+              {!hasTier("enterprise") && (
+                <div className="pt-2 border-t mt-2">
+                  <LockedRibbon label="Advanced controls are Enterprise+" />
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -459,9 +504,9 @@ export function EnterpriseDashboard({
                   </div>
                 ))
               )}
-              {!isGuest && featureFlags && featureFlags.length > 6 && (
-                <div className="text-xs text-muted-foreground">
-                  Showing 6 of {featureFlags.length} flags.
+              {!isGuest && featureFlags && !hasTier("enterprise") && (
+                <div className="pt-2 border-t mt-2">
+                  <LockedRibbon label="Full flag management is Enterprise+" />
                 </div>
               )}
             </CardContent>
