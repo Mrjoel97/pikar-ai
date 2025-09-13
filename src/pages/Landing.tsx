@@ -40,6 +40,7 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import { useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export default function Landing() {
   const { isLoading, isAuthenticated } = useAuth();
@@ -1173,6 +1174,99 @@ export default function Landing() {
               </div>
             </div>
           </motion.div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Upgrade Modal */}
+      <Dialog open={upgradeOpen} onOpenChange={setUpgradeOpen}>
+        <DialogContent className="max-w-xl w-[92vw] neu-raised rounded-2xl border-0 p-0 overflow-hidden">
+          <DialogHeader className="px-6 pt-6 pb-2">
+            <DialogTitle className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-primary" />
+              Upgrade Plan
+            </DialogTitle>
+            <DialogDescription>
+              Choose a plan to continue. You can change plans anytime.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="px-6 pb-6 space-y-4">
+            <div className="space-y-2">
+              <p className="text-sm font-medium">Select plan</p>
+              <Select
+                value={selectedTier}
+                onValueChange={(v: "solopreneur" | "startup" | "sme" | "enterprise") => setSelectedTier(v)}
+              >
+                <SelectTrigger className="neu-inset rounded-xl">
+                  <SelectValue placeholder="Choose a plan" />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl">
+                  <SelectItem value="solopreneur">Solopreneur — $99/mo</SelectItem>
+                  <SelectItem value="startup">Startup — $297/mo</SelectItem>
+                  <SelectItem value="sme">SME — $597/mo</SelectItem>
+                  <SelectItem value="enterprise">Enterprise — Custom</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="neu-inset rounded-xl p-4 bg-card/60">
+              <p className="text-sm font-semibold mb-1 capitalize">{selectedTier} highlights</p>
+              <ul className="text-sm text-muted-foreground list-disc pl-5 space-y-1">
+                {selectedTier === "solopreneur" && (
+                  <>
+                    <li>3 Essential AI Agents (Content, Marketing, Productivity)</li>
+                    <li>Launch professional campaigns in minutes</li>
+                    <li>Get 15+ hours back per week</li>
+                  </>
+                )}
+                {selectedTier === "startup" && (
+                  <>
+                    <li>10 AI Agents + Team Collaboration</li>
+                    <li>3x your lead generation</li>
+                    <li>Make data-driven decisions daily</li>
+                  </>
+                )}
+                {selectedTier === "sme" && (
+                  <>
+                    <li>Unlimited AI Agents + Custom Configurations</li>
+                    <li>95%+ compliance automation</li>
+                    <li>Scale across multiple brands/locations</li>
+                  </>
+                )}
+                {selectedTier === "enterprise" && (
+                  <>
+                    <li>Unlimited Custom AI Agents</li>
+                    <li>White-label and API access included</li>
+                    <li>Global governance and controls</li>
+                  </>
+                )}
+              </ul>
+            </div>
+
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="outline"
+                className="neu-flat rounded-xl"
+                onClick={() => setUpgradeOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                className="neu-raised rounded-xl bg-primary hover:bg-primary/90"
+                onClick={proceedUpgrade}
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <span className="inline-flex items-center">
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Processing...
+                  </span>
+                ) : (
+                  "Continue"
+                )}
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
 
