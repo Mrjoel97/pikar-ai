@@ -159,6 +159,9 @@ export function SolopreneurDashboard({
   const [body, setBody] = React.useState("Hello!\n\nHere's a quick update from our studio.");
   const sendTestEmail = useAction(api.emailsActions.sendTestEmail);
 
+  // Add: simple email format validator
+  const emailFmtOk = (val: string) => /^\S+@\S+\.\S+$/.test(val);
+
   const navigate = useNavigate();
 
   const [createOpen, setCreateOpen] = useState(false)
@@ -209,6 +212,15 @@ export function SolopreneurDashboard({
       }
       if (!toEmail || !fromEmail || !subject || !body) {
         toast.error("Please fill out all fields.");
+        return;
+      }
+      // Add: stronger email validation and verified sender hint
+      if (!emailFmtOk(fromEmail)) {
+        toast.error("From must be a valid email address and a verified sender in Resend.");
+        return;
+      }
+      if (!emailFmtOk(toEmail)) {
+        toast.error("Recipient email is invalid.");
         return;
       }
       await sendTestEmail({
@@ -506,6 +518,15 @@ export function SolopreneurDashboard({
                   value={fromEmail}
                   onChange={(e) => setFromEmail(e.target.value)}
                 />
+                {/* Add: verified sender hint and inline format feedback */}
+                <div className="text-xs text-muted-foreground">
+                  Use a verified sender from your Resend account (Settings → Domains). Example: news@yourdomain.com
+                </div>
+                {fromEmail.length > 0 && !emailFmtOk(fromEmail) && (
+                  <div className="text-xs text-red-500">
+                    Enter a valid email format for the From address.
+                  </div>
+                )}
                 <Input
                   placeholder="Subject"
                   value={subject}
@@ -525,8 +546,15 @@ export function SolopreneurDashboard({
                     Cancel
                   </button>
                   <button
-                    className="px-3 py-2 rounded-md bg-emerald-600 text-white"
+                    className="px-3 py-2 rounded-md bg-emerald-600 text-white disabled:opacity-50"
                     onClick={handleSendNewsletter}
+                    // Add: disable until valid
+                    disabled={
+                      !emailFmtOk(fromEmail) ||
+                      !emailFmtOk(toEmail) ||
+                      subject.trim().length === 0 ||
+                      body.trim().length === 0
+                    }
                   >
                     Send
                   </button>
