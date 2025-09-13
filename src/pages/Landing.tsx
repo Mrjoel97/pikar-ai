@@ -38,6 +38,8 @@ import {
 import { toast } from "sonner";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
+import { useAction } from "convex/react";
+import { api } from "@/convex/_generated/api";
 
 export default function Landing() {
   const { isLoading, isAuthenticated } = useAuth();
@@ -64,6 +66,7 @@ export default function Landing() {
   const [newsletterEmail, setNewsletterEmail] = useState("");
   const [upgradeOpen, setUpgradeOpen] = useState(false);
   const [selectedTier, setSelectedTier] = useState<"solopreneur" | "startup" | "sme" | "enterprise">("startup");
+  const [newsletterSubmitting, setNewsletterSubmitting] = useState(false);
 
   const scrollTo = (id: string) => {
     const el = document.getElementById(id);
@@ -301,7 +304,9 @@ export default function Landing() {
     }, 300);
   };
 
-  const handleSubscribe = (e: React.FormEvent) => {
+  const sendSalesInquiry = useAction(api.emailsActions.sendSalesInquiry);
+
+  const handleSubscribe = async (e: React.FormEvent) => {
     e.preventDefault();
     const email = newsletterEmail.trim();
     const valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -309,8 +314,23 @@ export default function Landing() {
       toast("Please enter a valid email address.");
       return;
     }
-    toast(`Subscribed with ${email}. Welcome to Pikar AI!`);
-    setNewsletterEmail("");
+    try {
+      setNewsletterSubmitting(true);
+      await sendSalesInquiry({
+        name: "Newsletter Subscriber",
+        email,
+        company: undefined,
+        plan: "newsletter",
+        message:
+          "Please add me to updates. This was submitted from the Pikar AI landing page newsletter form.",
+      });
+      toast(`Subscribed with ${email}. Welcome to Pikar AI!`);
+      setNewsletterEmail("");
+    } catch (err: any) {
+      toast(err?.message || "Subscription failed. Please try again later.");
+    } finally {
+      setNewsletterSubmitting(false);
+    }
   };
 
   return (
@@ -1184,8 +1204,16 @@ export default function Landing() {
                   <Button
                     type="submit"
                     className="neu-raised rounded-xl bg-primary text-primary-foreground hover:bg-primary/90"
+                    disabled={newsletterSubmitting}
                   >
-                    Subscribe
+                    {newsletterSubmitting ? (
+                      <span className="inline-flex items-center">
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Subscribing...
+                      </span>
+                    ) : (
+                      "Subscribe"
+                    )}
                   </Button>
                 </div>
               </form>
