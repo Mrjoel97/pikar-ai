@@ -185,3 +185,51 @@ export const sendCampaignInternal = internalAction({
     }
   },
 });
+
+// Add: Public action to send Sales inquiry via Resend
+export const sendSalesInquiry = action({
+  args: {
+    name: v.string(),
+    email: v.string(),
+    company: v.optional(v.string()),
+    plan: v.optional(v.string()),
+    message: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const inbox = process.env.SALES_INBOX || process.env.PUBLIC_SALES_INBOX || "";
+    if (!process.env.RESEND_API_KEY) {
+      throw new Error("Email service not configured");
+    }
+    if (!inbox) {
+      throw new Error("Sales inbox not configured");
+    }
+
+    const subject = `Sales Inquiry${args.plan ? ` - ${args.plan}` : ""} from ${args.name}`;
+    const html = `
+      <div style="font-family: Arial, sans-serif; font-size:14px; color:#0f172a;">
+        <h2 style="margin:0 0 8px 0;">New Sales Inquiry</h2>
+        <p><strong>Name:</strong> ${escapeHtml(args.name)}</p>
+        <p><strong>Email:</strong> ${escapeHtml(args.email)}</p>
+        ${args.company ? `<p><strong>Company:</strong> ${escapeHtml(args.company)}</p>` : ""}
+        ${args.plan ? `<p><strong>Plan:</strong> ${escapeHtml(args.plan)}</p>` : ""}
+        <p style="margin-top:12px;"><strong>Message:</strong></p>
+        <div style="white-space:pre-wrap; line-height:1.6; border:1px solid #e5e7eb; padding:12px; border-radius:8px;">
+          ${escapeHtml(args.message)}
+        </div>
+      </div>
+    `;
+
+    const { error } = await resend.emails.send({
+      from: inbox, // Resend requires verified from; often same as inbox
+      to: [inbox],
+      subject,
+      html,
+      replyTo: args.email,
+    });
+
+    if (error) {
+      throw new Error(error.message || "Failed to send inquiry");
+    }
+    return { ok: true as const };
+  },
+});

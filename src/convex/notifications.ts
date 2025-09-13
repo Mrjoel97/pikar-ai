@@ -380,6 +380,147 @@ export const cleanupExpiredNotifications = internalMutation({
   },
 });
 
+// Add: identity-based preferences (get)
+export const getMyNotificationPreferences = query({
+  args: { businessId: v.id("businesses") },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+
+    const user = await ctx.db
+      .query("users")
+      .filter((q) => q.eq(q.field("email"), identity.email))
+      .first();
+    if (!user) throw new Error("User not found");
+
+    const preferences = await ctx.db
+      .query("notificationPreferences")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .first();
+
+    if (!preferences) {
+      return {
+        userId: user._id,
+        businessId: args.businessId,
+        emailEnabled: true,
+        pushEnabled: true,
+        smsEnabled: false,
+        preferences: {
+          assignments: true,
+          approvals: true,
+          slaWarnings: true,
+          integrationErrors: true,
+          workflowCompletions: true,
+          systemAlerts: true,
+        },
+        rateLimits: {
+          maxPerHour: 10,
+          maxPerDay: 50,
+        },
+      };
+    }
+    return preferences;
+  },
+});
+
+// Add: identity-based preferences (update)
+export const updateMyNotificationPreferences = mutation({
+  args: {
+    businessId: v.id("businesses"),
+    emailEnabled: v.optional(v.boolean()),
+    pushEnabled: v.optional(v.boolean()),
+    smsEnabled: v.optional(v.boolean()),
+    preferences: v.optional(
+      v.object({
+        assignments: v.boolean(),
+        approvals: v.boolean(),
+        slaWarnings: v.boolean(),
+        integrationErrors: v.boolean(),
+        workflowCompletions: v.boolean(),
+        systemAlerts: v.boolean(),
+      })
+    ),
+    rateLimits: v.optional(
+      v.object({
+        maxPerHour: v.number(),
+        maxPerDay: v.number(),
+      })
+    ),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+
+    const user = await ctx.db
+      .query("users")
+      .filter((q) => q.eq(q.field("email"), identity.email))
+      .first();
+    if (!user) throw new Error("User not found");
+
+    const existing = await ctx.db
+      .query("notificationPreferences")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .first();
+
+    const payload = {
+      userId: user._id,
+      businessId: args.businessId,
+      emailEnabled: args.emailEnabled ?? (existing?.emailEnabled ?? true),
+      pushEnabled: args.pushEnabled ?? (existing?.pushEnabled ?? true),
+      smsEnabled: args.smsEnabled ?? (existing?.smsEnabled ?? false),
+      preferences:
+        args.preferences ??
+        (existing?.preferences ?? {
+          assignments: true,
+          approvals: true,
+          slaWarnings: true,
+          integrationErrors: true,
+          workflowCompletions: true,
+          systemAlerts: true,
+        }),
+      rateLimits:
+        args.rateLimits ??
+        (existing?.rateLimits ?? {
+          maxPerHour: 10,
+          maxPerDay: 50,
+        }),
+      updatedAt: Date.now(),
+    };
+
+    if (existing) {
+      await ctx.db.patch(existing._id, payload);
+      return existing._id;
+    }
+    return await ctx.db.insert("notificationPreferences", payload);
+  },
+});
+
+// Add: Snooze a notification (identity-safe)
+export const snoozeMyNotification = mutation({
+  args: {
+    notificationId: v.id("notifications"),
+    minutes: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+
+    const user = await ctx.db
+      .query("users")
+      .filter((q) => q.eq(q.field("email"), identity.email))
+      .first();
+    if (!user) throw new Error("User not found");
+
+    const n = await ctx.db.get(args.notificationId);
+    if (!n) throw new Error("Notification not found");
+    if (n.userId !== user._id) throw new Error("Unauthorized");
+
+    const until = Date.now() + Math.max(1, args.minutes) * 60 * 1000;
+    await ctx.db.patch(args.notificationId, { snoozeUntil: until });
+    return true;
+  },
+});
+
 // Query to get notifications for a user
 export const getMyNotifications = query({
   args: {
@@ -410,7 +551,11 @@ export const getMyNotifications = query({
 
     const rows = args.limit ? await q.take(args.limit) : await q.collect();
     const now = Date.now();
-    return rows.filter((n) => !n.expiresAt || n.expiresAt > now);
+    return rows.filter(
+      (n) =>
+        (!n.expiresAt || n.expiresAt > now) &&
+        (!(n as any).snoozeUntil || (n as any).snoozeUntil <= now)
+    );
   },
 });
 
@@ -432,9 +577,20 @@ export const getMyNotificationCount = query({
     const now = Date.now();
     const unread = await ctx.db
       .query("notifications")
-      .withIndex("by_user_and_read", (q) => q.eq("userId", user._id).eq("isRead", false))
+      .withIndex("by_user_and_read", (q) =>
+        q.eq("userId", user._id).eq("isRead", false)
+      )
       .filter((q) =>
-        q.or(q.eq(q.field("expiresAt"), undefined), q.gt(q.field("expiresAt"), now)),
+        q.and(
+          q.or(
+            q.eq(q.field("expiresAt"), undefined),
+            q.gt(q.field("expiresAt"), now)
+          ),
+          q.or(
+            q.eq(q.field("snoozeUntil"), undefined),
+            q.lte(q.field("snoozeUntil"), now)
+          )
+        )
       )
       .collect();
     return unread.length;

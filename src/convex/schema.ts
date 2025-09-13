@@ -327,12 +327,16 @@ export default defineSchema({
     createdAt: v.number(),
     readAt: v.optional(v.number()),
     expiresAt: v.optional(v.number()),
+    // Add: snooze support
+    snoozeUntil: v.optional(v.number()),
   })
     .index("by_user", ["userId"])
     .index("by_business", ["businessId"])
     .index("by_user_and_read", ["userId", "isRead"])
     .index("by_created_at", ["createdAt"])
-    .index("by_expires_at", ["expiresAt"]),
+    .index("by_expires_at", ["expiresAt"])
+    // Add: index for snooze queries
+    .index("by_snooze_until", ["snoozeUntil"]),
 
   // Notification Preferences
   notificationPreferences: defineTable({
