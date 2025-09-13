@@ -77,6 +77,10 @@ export const createCampaign = mutation({
     recipients: v.array(v.string()),
     timezone: v.string(),
     scheduledAt: v.number(), // UTC ms
+
+    // New optional audience targeting
+    audienceType: v.optional(v.union(v.literal("direct"), v.literal("list"))),
+    audienceListId: v.optional(v.id("contactLists")),
   },
   handler: async (ctx, args) => {
     const _id = await ctx.db.insert("emailCampaigns", {
@@ -91,6 +95,10 @@ export const createCampaign = mutation({
       scheduledAt: args.scheduledAt,
       status: "scheduled",
       sendIds: [],
+
+      // Persist audience fields
+      audienceType: args.audienceType ?? (args.recipients.length > 0 ? "direct" : "list"),
+      audienceListId: args.audienceListId,
     });
 
     const delayMs = Math.max(0, args.scheduledAt - Date.now());

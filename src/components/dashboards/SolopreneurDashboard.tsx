@@ -247,6 +247,29 @@ export function SolopreneurDashboard({
     return Number.isFinite(ms) ? ms : null;
   };
 
+  // Add: contact lists + schedule mode state
+  const lists = !isGuest && business?._id
+    ? useQuery((api as any).contacts?.listLists || ({} as any), { businessId: business._id } as any)
+    : undefined;
+  const [manageContactsOpen, setManageContactsOpen] = React.useState(false);
+  const [selectedListId, setSelectedListId] = React.useState<string>("");
+  const [newListName, setNewListName] = React.useState("");
+  const [csvText, setCsvText] = React.useState("");
+
+  React.useEffect(() => {
+    if (!selectedListId && Array.isArray(lists) && lists.length > 0) {
+      setSelectedListId(String(lists[0]._id));
+    }
+  }, [lists, selectedListId]);
+
+  // Mutations/actions for contacts
+  const createListMutation = useMutation((api as any).contacts?.createList || ({} as any));
+  const importCsvToList = useAction((api as any).contacts?.importCsvToList || ({} as any));
+  const seedContactsAction = useAction((api as any).contacts?.seedContacts || ({} as any));
+
+  // Add: schedule mode (direct vs list)
+  const [scheduleMode, setScheduleMode] = React.useState<"direct" | "list">("direct");
+
   // Add: handle schedule campaign submit
   const handleScheduleCampaign = async () => {
     try {
@@ -271,9 +294,24 @@ export function SolopreneurDashboard({
         toast.error("Pick a future date/time.");
         return;
       }
-      if (recipientsList.length === 0) {
-        toast.error("Provide at least one recipient.");
-        return;
+
+      // Audience handling
+      let audienceType: "direct" | "list" = scheduleMode;
+      let audienceListId: string | undefined;
+      let directRecipients: string[] = [];
+
+      if (scheduleMode === "list") {
+        if (!selectedListId) {
+          toast.error("Select a contact list.");
+          return;
+        }
+        audienceListId = selectedListId;
+      } else {
+        if (recipientsList.length === 0) {
+          toast.error("Provide at least one recipient (or switch to List).");
+          return;
+        }
+        directRecipients = recipientsList;
       }
 
       await createCampaign({
@@ -286,15 +324,15 @@ export function SolopreneurDashboard({
           { type: "text", content: campBody },
           { type: "footer", includeUnsubscribe: true },
         ] as any,
-        recipients: recipientsList,
+        recipients: directRecipients,
         timezone: campTz || "UTC",
         scheduledAt,
+        audienceType,
+        audienceListId: audienceListId as any,
       } as any);
 
       toast.success("Campaign scheduled");
       setOpenScheduleCampaign(false);
-      // Optional: reset fields lightly
-      // setRecipientsRaw(""); setRecipientsList([]); setInvalidList([]);
     } catch (e: any) {
       toast.error(e?.message || "Failed to schedule campaign");
     }
@@ -681,6 +719,18 @@ export function SolopreneurDashboard({
             </CardContent>
           </Card>
 
+          {/* Manage Contacts (auth only) */}
+          {!isGuest && (
+            <Card>
+              <CardContent className="p-4">
+                <h3 className="font-medium mb-2">Manage Contacts</h3>
+                <Button className="w-full" variant="outline" onClick={() => setManageContactsOpen(true)}>
+                  Open
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Hide upgrade prompts for guests to allow full access */}
           {!isGuest && <UpgradeCTA feature="Team Collaboration" />}
           {!isGuest && <UpgradeCTA feature="Advanced Analytics" />}
@@ -790,6 +840,188 @@ export function SolopreneurDashboard({
                   Note: Email delivery requires RESEND_API_KEY to be configured and a verified sender address.
                 </div>
               </div>
+            </DialogContent>
+          </Dialog>
+        )}
+
+        {/* Manage Contacts dialog (auth only) */}
+        {!isGuest && (
+          <Dialog open={manageContactsOpen} onOpenChange={setManageContactsOpen}>
+            <DialogContent className="max-w-2xl">
+              <DialogHeader>
+                <DialogTitle>Contacts & Lists</DialogTitle>
+                <DialogDescription>Create lists and import CSV to build your audience.</DialogDescription>
+              </DialogHeader>
+
+              <div className="space-y-4">
+                {/* Create list */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
+                  <div className="sm:col-span-2">
+                    <label className="text-sm mb-1 block">New list name</label>
+                    <Input
+                      placeholder="Newsletter Audience"
+                      value={newListName}
+                      onChange={(e) => setNewListName(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <Button
+                      className="w-full"
+                      onClick={async () => {
+                        try {
+                          if (!newListName.trim()) {
+                            toast.error("Enter a list name.");
+                            return;
+                          }
+                          if (!business?._id || !currentUser?._id) {
+                            toast.error("Business or user is not ready yet.");
+                            return;
+                          }
+                          const id = await createListMutation({
+                            businessId: business._id,
+                            name: newListName.trim(),
+                            createdBy: currentUser._id,
+                          } as any);
+                          setNewListName("");
+                          toast.success("List created");
+                          if (id) setSelectedListId(String(id));
+                        } catch (e: any) {
+                          toast.error(e?.message || "Failed to create list");
+                        }
+                      }}
+                    >
+                      Create List
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Select list */}
+                <div>
+                  <label className="text-sm mb-1 block">Select list</label>
+                  <select
+                    className="w-full border rounded-md px-3 py-2 bg-white text-sm"
+                    value={selectedListId}
+                    onChange={(e) => setSelectedListId(e.target.value)}
+                  >
+                    {(lists || []).map((l: any) => (
+                      <option key={String(l._id)} value={String(l._id)}>
+                        {l.name}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="text-xs text-muted-foreground mt-1">
+                    {(lists || []).length} lists
+                  </div>
+                </div>
+
+                {/* Import CSV */}
+                <div>
+                  <label className="text-sm mb-1 block">Import CSV (email,name)</label>
+                  <Textarea
+                    placeholder="email,name\njane@example.com,Jane\njohn@example.com,John"
+                    value={csvText}
+                    onChange={(e) => setCsvText(e.target.value)}
+                    rows={6}
+                  />
+                  <div className="flex items-center justify-end gap-2 mt-2">
+                    <Button
+                      variant="ghost"
+                      onClick={() => setCsvText("")}
+                    >
+                      Clear
+                    </Button>
+                    <Button
+                      onClick={async () => {
+                        try {
+                          if (!selectedListId) {
+                            toast.error("Select a list.");
+                            return;
+                          }
+                          if (!csvText.trim()) {
+                            toast.error("Paste CSV content.");
+                            return;
+                          }
+                          if (!business?._id || !currentUser?._id) {
+                            toast.error("Business or user is not ready yet.");
+                            return;
+                          }
+                          const res = await importCsvToList({
+                            businessId: business._id,
+                            createdBy: currentUser._id,
+                            listId: selectedListId as any,
+                            csvText,
+                          } as any);
+                          toast.success(`Imported ${res?.added ?? 0} contacts`);
+                        } catch (e: any) {
+                          toast.error(e?.message || "Failed to import");
+                        }
+                      }}
+                    >
+                      Import to List
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Seed sample contacts */}
+                <div className="flex items-center justify-between rounded-md border p-3">
+                  <div className="text-sm text-muted-foreground">
+                    Generate a sample contact list to try campaigns quickly.
+                  </div>
+                  <Button
+                    variant="secondary"
+                    onClick={async () => {
+                      try {
+                        if (!business?._id || !currentUser?._id) {
+                          toast.error("Business or user is not ready yet.");
+                          return;
+                        }
+                        const r = await seedContactsAction({
+                          businessId: business._id,
+                          createdBy: currentUser._id,
+                          count: 10,
+                        } as any);
+                        toast.success("Sample contacts created");
+                      } catch (e: any) {
+                        toast.error(e?.message || "Failed to seed contacts");
+                      }
+                    }}
+                  >
+                    Generate Samples
+                  </Button>
+                </div>
+
+                {/* Scheduler audience mode helper */}
+                <div className="rounded-md border p-3">
+                  <div className="text-sm font-medium mb-2">Campaign Audience</div>
+                  <div className="flex items-center gap-3 text-sm">
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="radio"
+                        name="audienceMode"
+                        checked={scheduleMode === "direct"}
+                        onChange={() => setScheduleMode("direct")}
+                      />
+                      Direct (paste recipients)
+                    </label>
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="radio"
+                        name="audienceMode"
+                        checked={scheduleMode === "list"}
+                        onChange={() => setScheduleMode("list")}
+                      />
+                      Contact List (selected above)
+                    </label>
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-1">
+                    The selected audience applies when you use "Schedule Email Campaign".
+                  </div>
+                </div>
+              </div>
+
+              <DialogFooter>
+                <Button variant="default" onClick={() => setManageContactsOpen(false)}>Close</Button>
+              </DialogFooter>
             </DialogContent>
           </Dialog>
         )}

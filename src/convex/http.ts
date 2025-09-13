@@ -165,40 +165,71 @@ http.route({
   }),
 });
 
-// Unsubscribe endpoint: switch to internal mutation; require token, businessId, and email
+// Add: Public unsubscribe endpoint
+// GET /api/unsubscribe?token=...&businessId=...&email=...
 http.route({
   path: "/api/unsubscribe",
   method: "GET",
   handler: httpAction(async (ctx, req) => {
-    const { searchParams } = new URL(req.url);
-    const token = searchParams.get("token");
-    const businessId = searchParams.get("businessId");
-    const email = searchParams.get("email");
+    const url = new URL(req.url);
+    const token = url.searchParams.get("token");
+    const businessId = url.searchParams.get("businessId");
+    const email = url.searchParams.get("email");
 
     if (!token || !businessId || !email) {
-      return new Response("Missing token, businessId, or email", { status: 400 });
-    }
-
-    try {
-      const result = await ctx.runMutation(internal.emails.setUnsubscribeActive, {
-        businessId: businessId as any, // Convex will validate as Id<"businesses">
-        email,
-        token,
+      return new Response("Missing parameters.", {
+        status: 400,
+        headers: { "content-type": "text/html; charset=utf-8" },
       });
-
-      if (!result.ok) {
-        const reason =
-          result.reason === "not_found" ? "Invalid token" :
-          result.reason === "token_mismatch" ? "Token mismatch" :
-          "Unable to unsubscribe";
-        return new Response(reason, { status: 400 });
-      }
-
-      const html = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Unsubscribed</title></head><body style="font-family: Arial, sans-serif; padding:24px;"><h1 style="margin-bottom:8px;">You have been unsubscribed</h1><p style="color:#475569;">We're sorry to see you go. You won't receive future marketing emails from us at ${email}.</p></body></html>`;
-      return new Response(html, { status: 200, headers: { "Content-Type": "text/html" } });
-    } catch (e: any) {
-      return new Response("Failed to process unsubscribe", { status: 500 });
     }
+
+    // Attempt to set unsubscribe active
+    const result = await ctx.runMutation(internal.emails.setUnsubscribeActive, {
+      businessId: businessId as any,
+      email,
+      token,
+    });
+
+    const ok = (result as any)?.ok === true;
+    const reason = (result as any)?.reason;
+
+    const body = `
+      <!doctype html>
+      <html>
+        <head>
+          <meta charset="utf-8" />
+          <meta name="viewport" content="width=device-width" />
+          <title>${ok ? "Unsubscribed" : "Unsubscribe Error"}</title>
+          <style>
+            body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; background:#f7f7f8; color:#0f172a; padding:32px; }
+            .card { max-width:560px; margin:0 auto; background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:24px; }
+            .title { font-size:20px; font-weight:600; margin:0 0 8px 0; }
+            .muted { color:#64748b; font-size:14px; }
+          </style>
+        </head>
+        <body>
+          <div class="card">
+            <h1 class="title">${ok ? "You're unsubscribed" : "We couldn't process your request"}</h1>
+            <p class="muted">
+              ${
+                ok
+                  ? "You won't receive further messages from this sender. You can resubscribe anytime within the app."
+                  : reason === "not_found"
+                    ? "We couldn't find a matching subscription for this email."
+                    : reason === "token_mismatch"
+                      ? "The token provided is invalid."
+                      : "Please try again later."
+              }
+            </p>
+          </div>
+        </body>
+      </html>
+    `.trim();
+
+    return new Response(body, {
+      status: ok ? 200 : 400,
+      headers: { "content-type": "text/html; charset=utf-8" },
+    });
   }),
 });
 

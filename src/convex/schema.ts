@@ -985,4 +985,46 @@ export default defineSchema({
   })
     .index("by_business_and_date", ["businessId", "date"])
     .index("by_date", ["date"]),
+
+  contacts: defineTable({
+    businessId: v.id("businesses"),
+    email: v.string(),
+    name: v.optional(v.string()),
+    tags: v.optional(v.array(v.string())),
+    status: v.union(
+      v.literal("subscribed"),
+      v.literal("unsubscribed"),
+      v.literal("bounced"),
+      v.literal("complained")
+    ),
+    source: v.optional(v.string()), // e.g., "import", "manual", "api"
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    lastEngagedAt: v.optional(v.number()),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_business_and_email", ["businessId", "email"])
+    .index("by_status", ["status"]),
+
+  contactLists: defineTable({
+    businessId: v.id("businesses"),
+    name: v.string(),
+    description: v.optional(v.string()),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_business_and_name", ["businessId", "name"]),
+
+  contactListMembers: defineTable({
+    businessId: v.id("businesses"),
+    listId: v.id("contactLists"),
+    contactId: v.id("contacts"),
+    addedAt: v.number(),
+    addedBy: v.id("users"),
+  })
+    .index("by_list", ["listId"])
+    .index("by_contact", ["contactId"])
+    .index("by_business_and_list", ["businessId", "listId"])
+    .index("by_business_and_contact", ["businessId", "contactId"]),
 });

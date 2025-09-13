@@ -4,6 +4,7 @@ import { action, internalAction } from "./_generated/server";
 import { v } from "convex/values";
 import { Resend } from "resend";
 import { internal, api } from "./_generated/api";
+import { internal as internalApi } from "./_generated/api"; // alias if needed
 
 // Helper: safe HTML escape for text content
 function escapeHtml(input: string): string {
@@ -122,7 +123,6 @@ export const sendCampaignInternal = internalAction({
     if (!campaign) return;
     if (campaign.status !== "scheduled") return;
 
-    // mark sending
     await ctx.runMutation(internal.emails.updateCampaignStatus, {
       campaignId: campaign._id,
       status: "sending",
@@ -131,10 +131,26 @@ export const sendCampaignInternal = internalAction({
 
     try {
       const sendIds: string[] = [];
-      for (const rawEmail of campaign.recipients) {
-        const email = rawEmail.trim();
-        if (!email) continue;
+      const recipientsSet = new Set<string>();
 
+      // Expand from list if present
+      if (campaign.audienceType === "list" && campaign.audienceListId) {
+        const listEmails = await ctx.runQuery(internal.contacts.getListRecipientEmails, {
+          businessId: campaign.businessId,
+          listId: campaign.audienceListId,
+        });
+        for (const e of listEmails) recipientsSet.add(e.trim().toLowerCase());
+      }
+
+      // Include any direct recipients defined
+      for (const rawEmail of campaign.recipients ?? []) {
+        const email = (rawEmail || "").trim().toLowerCase();
+        if (!email) continue;
+        recipientsSet.add(email);
+      }
+
+      for (const email of recipientsSet) {
+        // Honor global unsubscribe
         const unsub = await ctx.runQuery(api.emails.isUnsubscribedQuery, {
           businessId: campaign.businessId,
           email,
@@ -165,7 +181,7 @@ export const sendCampaignInternal = internalAction({
         });
 
         if (error) {
-          // continue sending to others; record error later
+          // continue sending to others; record failure later via lastError
           continue;
         }
         if (data?.id) sendIds.push(data.id);
