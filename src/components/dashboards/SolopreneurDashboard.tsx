@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { StatCard } from "@/components/dashboard/StatCard";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription, DrawerFooter, DrawerTrigger, DrawerClose } from "@/components/ui/drawer";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useAction } from "convex/react";
@@ -12,6 +13,7 @@ import { toast } from "sonner";
 import React from "react";
 import { useMutation } from "convex/react";
 import { useNavigate } from "react-router";
+import { useState } from "react"
 
 interface SolopreneurDashboardProps {
   business: any;
@@ -61,9 +63,10 @@ export function SolopreneurDashboard({
   // Add: mutation to seed demo tasks into authenticated account if empty
   const seedTasks = useMutation(api.tasks.seedDemoTasksForBusiness);
 
-  // Add: query unified recent activity for authenticated users
-  const recentActivity = !isGuest && business?._id
-    ? useQuery(api.activity.getRecent, { businessId: business._id, limit: 8 } as any)
+  // Add: query unified recent activity for authenticated users (safe ref)
+  const activityGetRecent = (api as any).activityFeed?.getRecent;
+  const recentActivity = !isGuest && business?._id && activityGetRecent
+    ? useQuery(activityGetRecent, { businessId: business._id, limit: 8 } as any)
     : undefined;
 
   // Compute tasks to show (guest uses demo; auth uses Convex)
@@ -158,6 +161,42 @@ export function SolopreneurDashboard({
 
   const navigate = useNavigate();
 
+  const [createOpen, setCreateOpen] = useState(false)
+  const [scheduleOpen, setScheduleOpen] = useState(false)
+  const [helpOpen, setHelpOpen] = useState(false)
+
+  const handleCreateContentSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    const form = new FormData(e.currentTarget)
+    const title = String(form.get("title") || "").trim()
+    const content = String(form.get("content") || "").trim()
+    const cta = String(form.get("cta") || "").trim()
+
+    if (!title || !content) {
+      toast.error("Please provide a title and content.")
+      return
+    }
+    // Simulate successful creation (can be wired to backend later)
+    toast.success("Content draft created")
+    setCreateOpen(false)
+  }
+
+  const handleScheduleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    const form = new FormData(e.currentTarget)
+    const post = String(form.get("post") || "").trim()
+    const when = String(form.get("when") || "").trim()
+    const channel = String(form.get("channel") || "").trim()
+
+    if (!post || !when || !channel) {
+      toast.error("Please fill all fields.")
+      return
+    }
+    // Simulate successful schedule
+    toast.success("Post scheduled")
+    setScheduleOpen(false)
+  }
+
   const handleSendNewsletter = async () => {
     try {
       if (isGuest) {
@@ -192,6 +231,119 @@ export function SolopreneurDashboard({
 
   return (
     <div className="space-y-6">
+      {/* Quick Actions */}
+      <div className="border bg-card/50 backdrop-blur supports-[backdrop-filter]:bg-card/60 rounded-xl p-4 mb-6">
+        <div className="flex flex-wrap items-center gap-3">
+          <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+            <DialogTrigger asChild>
+              <Button variant="default" size="sm">Create Content</Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Create content draft</DialogTitle>
+                <DialogDescription>Compose a quick newsletter or announcement.</DialogDescription>
+              </DialogHeader>
+              <form onSubmit={handleCreateContentSubmit} className="space-y-3">
+                <div>
+                  <label className="text-sm mb-1 block">Title</label>
+                  <Input name="title" placeholder="Weekly update" />
+                </div>
+                <div>
+                  <label className="text-sm mb-1 block">Content</label>
+                  <Textarea name="content" placeholder="Write your content..." className="min-h-28" />
+                </div>
+                <Card className="border-dashed">
+                  <CardContent className="pt-4 space-y-2">
+                    <div className="text-xs text-muted-foreground">Optional CTA</div>
+                    <Input name="cta" placeholder="https://example.com/learn-more" />
+                  </CardContent>
+                </Card>
+                <DialogFooter>
+                  <Button type="button" variant="ghost" onClick={() => setCreateOpen(false)}>Cancel</Button>
+                  <Button type="submit">Save Draft</Button>
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
+
+          <Dialog open={scheduleOpen} onOpenChange={setScheduleOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" size="sm">Schedule Posts</Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Schedule a post</DialogTitle>
+                <DialogDescription>Pick a time and channel.</DialogDescription>
+              </DialogHeader>
+              <form onSubmit={handleScheduleSubmit} className="space-y-3">
+                <div>
+                  <label className="text-sm mb-1 block">Post content</label>
+                  <Textarea name="post" placeholder="What's new?" className="min-h-24" />
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-sm mb-1 block">When</label>
+                    <Input name="when" type="datetime-local" />
+                  </div>
+                  <div>
+                    <label className="text-sm mb-1 block">Channel</label>
+                    <Input name="channel" placeholder="twitter | linkedin | email" />
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button type="button" variant="ghost" onClick={() => setScheduleOpen(false)}>Cancel</Button>
+                  <Button type="submit">Schedule</Button>
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
+
+          {/* View Analytics: use existing navigate if available; otherwise simple link */}
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => {
+              try {
+                if (typeof navigate === "function") navigate("/analytics")
+                else window.location.href = "/analytics"
+              } catch {
+                window.location.href = "/analytics"
+              }
+            }}
+          >
+            View Analytics
+          </Button>
+
+          <Drawer open={helpOpen} onOpenChange={setHelpOpen}>
+            <DrawerTrigger asChild>
+              <Button variant="ghost" size="sm">Get Help</Button>
+            </DrawerTrigger>
+            <DrawerContent>
+              <DrawerHeader>
+                <DrawerTitle>Need help?</DrawerTitle>
+                <DrawerDescription>Quick tips and links for Solopreneurs.</DrawerDescription>
+              </DrawerHeader>
+              <div className="px-4 pb-4 space-y-3">
+                <ul className="text-sm list-disc pl-5 space-y-2">
+                  <li>Start with top tasks prioritized on your dashboard.</li>
+                  <li>Use "Create Content" for newsletters or announcements.</li>
+                  <li>Schedule posts to maintain consistent engagement.</li>
+                  <li>Check Analytics for performance trends.</li>
+                </ul>
+                <div className="text-xs text-muted-foreground">
+                  For more assistance, reach out via the support channel in the app header.
+                </div>
+              </div>
+              <DrawerFooter>
+                <DrawerClose asChild>
+                  <Button variant="default">Close</Button>
+                </DrawerClose>
+              </DrawerFooter>
+            </DrawerContent>
+          </Drawer>
+        </div>
+      </div>
+
       {/* Today's Focus */}
       <section>
         <h2 className="text-xl font-semibold mb-4">Today's Focus</h2>
