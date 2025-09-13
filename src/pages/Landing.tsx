@@ -14,8 +14,7 @@ import {
   Sparkles,
   CheckCircle,
   BadgeCheck,
-  Loader2,
-  Bell
+  Loader2
 } from "lucide-react";
 import { useNavigate } from "react-router";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -63,10 +62,8 @@ export default function Landing() {
     },
   ]);
   const [newsletterEmail, setNewsletterEmail] = useState("");
-  const [notifOpen, setNotifOpen] = useState(false);
   const [upgradeOpen, setUpgradeOpen] = useState(false);
   const [selectedTier, setSelectedTier] = useState<"solopreneur" | "startup" | "sme" | "enterprise">("startup");
-  const [unreadCount, setUnreadCount] = useState(3);
 
   const scrollTo = (id: string) => {
     const el = document.getElementById(id);
@@ -391,20 +388,6 @@ export default function Landing() {
                   </span>
                 ) : (
                   "Get Started"
-                )}
-              </Button>
-              <Button
-                variant="outline"
-                size="icon"
-                className="neu-flat rounded-xl relative"
-                onClick={() => setNotifOpen(true)}
-                aria-label="Open notifications"
-              >
-                <Bell className="h-5 w-5" />
-                {unreadCount > 0 && (
-                  <span className="absolute -top-1 -right-1 inline-flex items-center justify-center h-4 min-w-4 px-1 rounded-full bg-red-500 text-white text-[10px]">
-                    {unreadCount}
-                  </span>
                 )}
               </Button>
             </div>
@@ -1170,91 +1153,6 @@ export default function Landing() {
               </div>
             </div>
           </motion.div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Notifications Drawer */}
-      <Sheet open={notifOpen} onOpenChange={setNotifOpen}>
-        <SheetContent side="right" className="w-80 sm:w-96">
-          <div className="mt-6 space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold">Notifications</h3>
-              <Button variant="outline" size="sm" onClick={() => setUnreadCount(0)}>
-                Mark all read
-              </Button>
-            </div>
-            <div className="space-y-2">
-              {sampleNotifications.map((n) => (
-                <div
-                  key={n.id}
-                  className="neu-inset rounded-xl p-3 flex items-start gap-3 bg-card/60"
-                >
-                  <div
-                    className={`mt-1 h-2 w-2 rounded-full ${
-                      n.type === "success"
-                        ? "bg-green-500"
-                        : n.type === "warning"
-                        ? "bg-amber-500"
-                        : "bg-blue-500"
-                    }`}
-                  />
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm font-medium">{n.title}</p>
-                      <span className="text-[10px] text-muted-foreground">{n.time}</span>
-                    </div>
-                    <p className="text-sm text-muted-foreground">{n.desc}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </SheetContent>
-      </Sheet>
-
-      {/* Upgrade / Plan Selection */}
-      <Dialog open={upgradeOpen} onOpenChange={setUpgradeOpen}>
-        <DialogContent className="max-w-2xl w-[92vw] neu-raised rounded-2xl border-0 p-0 overflow-hidden">
-          <DialogHeader className="px-6 pt-6 pb-3">
-            <DialogTitle className="text-xl font-semibold tracking-tight">Choose your plan</DialogTitle>
-            <DialogDescription className="text-muted-foreground">
-              Select a plan to continue. You can change it anytime.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="px-6 pb-6 space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {tiers.map((t) => {
-                const slug = normalizeTier(t.name);
-                const isActive = selectedTier === slug;
-                return (
-                  <button
-                    key={slug}
-                    onClick={() => setSelectedTier(slug)}
-                    className={`text-left rounded-xl border p-4 transition-all ${
-                      isActive ? "border-primary bg-primary/5 ring-2 ring-primary/30" : "hover:bg-muted"
-                    }`}
-                    aria-label={`Select ${t.name}`}
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-semibold">{t.name}</span>
-                      <span className={`text-xs ${isActive ? "text-primary" : "text-muted-foreground"}`}>
-                        {t.price}
-                      </span>
-                    </div>
-                    <p className="text-xs text-muted-foreground">{t.description}</p>
-                  </button>
-                );
-              })}
-            </div>
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" className="neu-flat rounded-xl" onClick={() => setUpgradeOpen(false)}>
-                Cancel
-              </Button>
-              <Button className="neu-raised rounded-xl" onClick={proceedUpgrade}>
-                Continue
-              </Button>
-            </div>
-          </div>
         </DialogContent>
       </Dialog>
 
