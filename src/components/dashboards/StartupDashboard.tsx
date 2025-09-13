@@ -120,7 +120,79 @@ export function StartupDashboard({
         </div>
       </section>
 
-      {/* Approvals Tray */}
+      {/* Quick Team Actions (Right Sidebar analogue) */}
+      <section>
+        <h2 className="text-xl font-semibold mb-4">Quick Team Actions</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Card>
+            <CardContent className="p-4">
+              <h3 className="font-medium mb-2">Start New Campaign</h3>
+              <p className="text-sm text-muted-foreground mb-3">
+                Assign owners, set objectives, and launch with a template.
+              </p>
+              <Button size="sm">Create Campaign</Button>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
+              <h3 className="font-medium mb-2">Review Pending Approvals</h3>
+              <p className="text-sm text-muted-foreground mb-3">
+                Unblock initiatives awaiting review or sign-off.
+              </p>
+              <Button variant="outline" size="sm">Open Approvals</Button>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
+              <h3 className="font-medium mb-2">Schedule Team Meeting</h3>
+              <p className="text-sm text-muted-foreground mb-3">
+                Align on goals, blockers, and next actions.
+              </p>
+              <Button variant="outline" size="sm">Schedule</Button>
+            </CardContent>
+          </Card>
+        </div>
+      </section>
+
+      {/* System Health (Bottom) */}
+      <section>
+        <h2 className="text-xl font-semibold mb-4">System Health</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Card>
+            <CardContent className="p-4">
+              <h3 className="text-sm font-medium text-muted-foreground">Integrations Status</h3>
+              <p className="text-2xl font-bold">
+                {(isGuest ? demoData?.integrationsOk : true) ? "Healthy" : "Issues"}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {(isGuest ? demoData?.integrationsCount ?? 5 : 5)} connected
+              </p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
+              <h3 className="text-sm font-medium text-muted-foreground">Automation Performance</h3>
+              <p className="text-2xl font-bold">
+                {(isGuest ? demoData?.automationSuccessRate ?? 97 : 97)}%
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">Success rate past 7 days</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
+              <h3 className="text-sm font-medium text-muted-foreground">Data Sync</h3>
+              <p className="text-2xl font-bold">
+                {(isGuest ? demoData?.dataSyncStatus ?? "Up-to-date" : "Up-to-date")}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Last sync: {(isGuest ? demoData?.lastSync ?? "2m ago" : "2m ago")}
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      </section>
+
+      {/* Pending Approvals */}
       <section>
         <h2 className="text-xl font-semibold mb-4">Pending Approvals</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

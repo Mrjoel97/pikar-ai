@@ -120,34 +120,46 @@ export default function Landing() {
     {
       name: "Solopreneur",
       price: "$99/mo",
-      description: "Enhanced solo business toolkit",
+      description: "Your AI-Powered Business Assistant",
       features: [
-        "3 Core Agents",
-        "Complete Solo Biz Toolkit",
-        "Personal Brand Builder",
-        "Task Automation Suite",
-        "Learning Center: Solopreneur Courses",
-        "Templates & Market Research",
-        "Email Support",
+        "Get 15+ hours back per week",
+        "Launch professional campaigns in minutes",
+        "Never miss a lead or opportunity again",
+        "3 Essential AI Agents (Content, Marketing, Productivity)",
       ],
     },
     {
       name: "Startup",
       price: "$297/mo",
-      description: "Ideal for growing teams",
-      features: ["10 AI Agents", "Advanced Analytics", "Priority Support", "Team Collaboration"]
+      description: "Scale Your Team's Impact",
+      features: [
+        "Coordinate your growing team effortlessly",
+        "3x your lead generation",
+        "Make data-driven decisions daily",
+        "10 AI Agents + Team Collaboration",
+      ],
     },
     {
       name: "SME",
       price: "$597/mo",
-      description: "For established businesses",
-      features: ["Unlimited Agents", "Custom Workflows", "API Access", "Dedicated Support"]
+      description: "Enterprise-Grade Business Orchestration",
+      features: [
+        "Unify all departments under one platform",
+        "Ensure 95%+ compliance automatically",
+        "Scale across multiple brands/locations",
+        "Unlimited AI Agents + Custom Configurations",
+      ],
     },
     {
       name: "Enterprise",
       price: "Custom",
-      description: "For large organizations",
-      features: ["White-label Solution", "Custom Integrations", "SLA Guarantee", "On-premise Option"]
+      description: "Global Business Transformation Platform",
+      features: [
+        "Transform operations across global teams",
+        "Custom AI agents for your unique needs",
+        "White-label and API access included",
+        "Unlimited Custom AI Agents",
+      ],
     }
   ];
 
