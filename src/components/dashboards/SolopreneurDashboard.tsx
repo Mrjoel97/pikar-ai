@@ -41,6 +41,14 @@ export function SolopreneurDashboard({
   const kpis = isGuest ? (demoData?.kpis || {}) : (kpiDoc || {});
   const tasks = isGuest ? demoData?.tasks || [] : [];
 
+  // Add: current user (for createCampaign.createdBy)
+  const currentUser = !isGuest ? useQuery((api as any).users?.currentUser || ({} as any), {}) : undefined;
+
+  // Add: list campaigns for this business
+  const campaigns = !isGuest && business?._id
+    ? useQuery(api.emails.listCampaignsByBusiness, { businessId: business._id })
+    : undefined;
+
   // Add: simple sparkline renderer for trends
   const Sparkline = ({ values, color = "bg-emerald-600" }: { values: number[]; color?: string }) => (
     <div className="flex items-end gap-1 h-12">
@@ -217,38 +225,129 @@ export function SolopreneurDashboard({
   const [scheduleOpen, setScheduleOpen] = useState(false)
   const [helpOpen, setHelpOpen] = useState(false)
 
+  const [openScheduleCampaign, setOpenScheduleCampaign] = React.useState(false);
+  const [campSubject, setCampSubject] = React.useState("Monthly update");
+  const [campFrom, setCampFrom] = React.useState("");
+  const [campBody, setCampBody] = React.useState("Hello,\n\nHere's what's new this month...");
+  const [campPreview, setCampPreview] = React.useState("This month's highlights");
+  const [campWhen, setCampWhen] = React.useState<string>("");
+  const defaultTz = React.useMemo(() => {
+    try { return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"; } catch { return "UTC"; }
+  }, []);
+  const [campTz, setCampTz] = React.useState<string>(defaultTz);
+
+  const createCampaign = useMutation(api.emails.createCampaign);
+
+  // Add: helper to convert datetime-local string into UTC ms
+  const datetimeLocalToMs = (val: string): number | null => {
+    if (!val) return null;
+    // val like "2025-09-13T12:30"
+    const d = new Date(val);
+    const ms = d.getTime();
+    return Number.isFinite(ms) ? ms : null;
+  };
+
+  // Add: handle schedule campaign submit
+  const handleScheduleCampaign = async () => {
+    try {
+      if (isGuest) {
+        toast("Please sign in to schedule a campaign.");
+        return;
+      }
+      if (!business?._id || !currentUser?._id) {
+        toast.error("Business or user is not ready yet.");
+        return;
+      }
+      if (!campSubject.trim() || !campFrom.trim() || !campBody.trim()) {
+        toast.error("Fill subject, from, and body.");
+        return;
+      }
+      if (!emailFmtOk(campFrom)) {
+        toast.error("From must be a valid email address (verified in Resend).");
+        return;
+      }
+      const scheduledAt = datetimeLocalToMs(campWhen);
+      if (!scheduledAt || scheduledAt < Date.now()) {
+        toast.error("Pick a future date/time.");
+        return;
+      }
+      if (recipientsList.length === 0) {
+        toast.error("Provide at least one recipient.");
+        return;
+      }
+
+      await createCampaign({
+        businessId: business._id,
+        createdBy: currentUser._id,
+        subject: campSubject,
+        from: campFrom,
+        previewText: campPreview || undefined,
+        blocks: [
+          { type: "text", content: campBody },
+          { type: "footer", includeUnsubscribe: true },
+        ] as any,
+        recipients: recipientsList,
+        timezone: campTz || "UTC",
+        scheduledAt,
+      } as any);
+
+      toast.success("Campaign scheduled");
+      setOpenScheduleCampaign(false);
+      // Optional: reset fields lightly
+      // setRecipientsRaw(""); setRecipientsList([]); setInvalidList([]);
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to schedule campaign");
+    }
+  };
+
+  // Add: handle Create Content submit
   const handleCreateContentSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
-    const form = new FormData(e.currentTarget)
-    const title = String(form.get("title") || "").trim()
-    const content = String(form.get("content") || "").trim()
-    const cta = String(form.get("cta") || "").trim()
+    e.preventDefault();
+    try {
+      const form = e.currentTarget;
+      const data = new FormData(form);
+      const title = String(data.get("title") || "").trim();
+      const content = String(data.get("content") || "").trim();
+      // optional
+      const cta = String(data.get("cta") || "").trim();
 
-    if (!title || !content) {
-      toast.error("Please provide a title and content.")
-      return
+      if (!title || !content) {
+        toast.error("Please fill out title and content.");
+        return;
+      }
+
+      // For now, simulate a save
+      toast.success("Draft saved");
+      setCreateOpen(false);
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to save draft");
     }
-    // Simulate successful creation (can be wired to backend later)
-    toast.success("Content draft created")
-    setCreateOpen(false)
-  }
+  };
 
+  // Add: handle Schedule Post submit
   const handleScheduleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
-    const form = new FormData(e.currentTarget)
-    const post = String(form.get("post") || "").trim()
-    const when = String(form.get("when") || "").trim()
-    const channel = String(form.get("channel") || "").trim()
+    e.preventDefault();
+    try {
+      const form = e.currentTarget;
+      const data = new FormData(form);
+      const post = String(data.get("post") || "").trim();
+      const when = String(data.get("when") || "");
+      const channel = String(data.get("channel") || "").trim();
 
-    if (!post || !when || !channel) {
-      toast.error("Please fill all fields.")
-      return
+      if (!post || !when || !channel) {
+        toast.error("Please fill out post, when, and channel.");
+        return;
+      }
+
+      // For now, simulate scheduling
+      toast.success("Post scheduled");
+      setScheduleOpen(false);
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to schedule post");
     }
-    // Simulate successful schedule
-    toast.success("Post scheduled")
-    setScheduleOpen(false)
-  }
+  };
 
+  // Add: handle Send Newsletter (single or bulk)
   const handleSendNewsletter = async () => {
     try {
       if (isGuest) {
@@ -256,73 +355,56 @@ export function SolopreneurDashboard({
         return;
       }
       if (!business?._id) {
-        toast.error("Business is not ready yet. Please complete onboarding.");
-        return;
-      }
-      if (!fromEmail || !subject || !body) {
-        toast.error("Please fill out all fields.");
+        toast.error("Business is not ready yet.");
         return;
       }
       if (!emailFmtOk(fromEmail)) {
-        toast.error("From must be a valid email address and a verified sender in Resend.");
+        toast.error("From must be a valid email address (verified in Resend).");
         return;
       }
 
-      // Bulk mode path
-      if (bulkMode) {
-        if (recipientsList.length === 0) {
-          toast.error("Provide at least one valid recipient.");
-          return;
-        }
-        const toSend = recipientsList.slice(0); // copy
-        toast(`Sending to ${toSend.length} recipient(s)...`);
-        const results = await Promise.allSettled(
-          toSend.map((to) =>
-            sendTestEmail({
-              from: fromEmail,
-              to,
-              subject,
-              previewText: "Quick update",
-              businessId: business._id,
-              blocks: [
-                { type: "text", content: body },
-                { type: "footer", includeUnsubscribe: true },
-              ],
-            } as any)
-          )
-        );
-        const successes = results.filter((r) => r.status === "fulfilled").length;
-        const failures = results.length - successes;
-        if (successes > 0) toast.success(`Sent ${successes} email${successes > 1 ? "s" : ""}`);
-        if (failures > 0) toast.error(`Failed ${failures} email${failures > 1 ? "s" : ""}`);
+      const recipients = bulkMode
+        ? recipientsList
+        : (emailFmtOk(toEmail) ? [toEmail] : []);
+
+      if (recipients.length === 0) {
+        toast.error("Provide at least one valid recipient.");
+        return;
+      }
+      if (!subject.trim() || !body.trim()) {
+        toast.error("Subject and message are required.");
+        return;
+      }
+
+      const blocks = [
+        { type: "text", content: body },
+        { type: "footer", includeUnsubscribe: true },
+      ] as any;
+
+      const results = await Promise.allSettled(
+        recipients.map((to) =>
+          sendTestEmail({
+            from: fromEmail,
+            to,
+            subject,
+            previewText: undefined,
+            businessId: business._id,
+            blocks,
+          })
+        )
+      );
+
+      const succeeded = results.filter((r) => r.status === "fulfilled").length;
+      const failed = results.length - succeeded;
+
+      if (succeeded > 0) {
+        toast.success(`Sent to ${succeeded}${failed ? ` • Failed: ${failed}` : ""}`);
         setOpenNewsletter(false);
-        return;
+      } else {
+        toast.error("All sends failed. Check From address and try again.");
       }
-
-      // Single recipient path
-      if (!toEmail) {
-        toast.error("Please fill out all fields.");
-        return;
-      }
-      if (!emailFmtOk(toEmail)) {
-        toast.error("Recipient email is invalid.");
-        return;
-      }
-      await sendTestEmail({
-        from: fromEmail,
-        to: toEmail,
-        subject,
-        previewText: "Quick update",
-        businessId: business._id,
-        blocks: [
-          { type: "text", content: body },
-          { type: "footer", includeUnsubscribe: true },
-        ],
-      } as any);
-      toast.success("Test email sent!");
-      setOpenNewsletter(false);
     } catch (e: any) {
-      toast.error(e?.message || "Failed to send email");
+      toast.error(e?.message || "Failed to send");
     }
   };
 
@@ -566,6 +648,25 @@ export function SolopreneurDashboard({
             </CardContent>
           </Card>
 
+          {/* Add: Schedule Email Campaign quick action card (authenticated only) */}
+          {!isGuest && (
+            <Card>
+              <CardContent className="p-4">
+                <h3 className="font-medium mb-2">Schedule Email Campaign</h3>
+                <Button
+                  className="w-full"
+                  onClick={() => {
+                    setOpenScheduleCampaign(true);
+                    // initialize recipients view from existing bulk state
+                    if (!bulkMode) setBulkMode(true);
+                  }}
+                >
+                  Open Scheduler
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Add: View Analytics quick action */}
           <Card>
             <CardContent className="p-4">
@@ -737,6 +838,47 @@ export function SolopreneurDashboard({
           </CardContent>
         </Card>
       </section>
+
+      {/* Add: Campaigns section (authenticated only) */}
+      {!isGuest && (
+        <section>
+          <h2 className="text-xl font-semibold mb-4">Email Campaigns</h2>
+          <Card>
+            <CardContent className="p-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {(campaigns || []).map((c: any) => {
+                  const when =
+                    typeof c.scheduledAt === "number"
+                      ? new Date(c.scheduledAt).toLocaleString()
+                      : "—";
+                  const count = Array.isArray(c.recipients) ? c.recipients.length : 0;
+                  const sent = Array.isArray(c.sendIds) ? c.sendIds.length : 0;
+                  return (
+                    <div key={String(c._id)} className="border rounded-lg p-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="font-medium truncate" title={c.subject}>{c.subject}</div>
+                        <Badge variant={c.status === "scheduled" ? "secondary" : (c.status === "sent" ? "default" : "outline")}>
+                          {c.status}
+                        </Badge>
+                      </div>
+                      <div className="text-sm text-muted-foreground space-y-1">
+                        <div>When: {when}</div>
+                        <div>Recipients: {count}</div>
+                        <div>Sent IDs: {sent}</div>
+                      </div>
+                    </div>
+                  );
+                })}
+                {(campaigns && campaigns.length === 0) && (
+                  <div className="text-sm text-muted-foreground">
+                    No campaigns yet. Schedule your first campaign above.
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </section>
+      )}
     </div>
   );
 }
