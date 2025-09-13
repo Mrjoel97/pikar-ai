@@ -33,6 +33,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useMemo } from "react";
 
+// Add: TierConfig + Tier
+import { TierConfig, type Tier } from "@/lib/tierConfig";
+
 // Add: simple Dev Debug Panel component (rendered only in dev or with ?debug=1)
 function DevDebugPanel(props: { data: Record<string, unknown> }) {
   // ... keep existing code (none here, this is a new component)
@@ -358,6 +361,73 @@ export default function Dashboard() {
   const approvals = useQuery(api.approvals.getApprovalQueue, businessIdForQueries);
   const flags = useQuery(api.featureFlags.getFeatureFlags, businessIdForQueries);
   const telemetryAnalytics = useQuery(api.telemetry.getEventAnalytics, businessIdForQueries);
+
+  const campaigns = useQuery(
+    api.emails.listCampaigns,
+    businessIdForQueries
+  );
+
+  const sendTestEmail = useAction(api.emailsActions.sendTestEmail);
+  const createCampaign = useMutation(api.emails.createCampaign);
+
+  // Seed helpers (actions) used by compact action row
+  const seedKpis = useAction(api.seed.seedForCurrentUser);
+  const seedTasks = useAction(api.seed.seedForCurrentUser);
+
+  // Email editor state
+  const [emailOpen, setEmailOpen] = useState(false);
+  const [emailFrom, setEmailFrom] = useState<string>(() => {
+    const name = (currentBusiness as any)?.name ?? "Pikar AI";
+    return `${name} <no-reply@pikar.ai>`;
+  });
+  const [emailSubject, setEmailSubject] = useState<string>("");
+  const [emailPreview, setEmailPreview] = useState<string>("");
+  const [recipientsRaw, setRecipientsRaw] = useState<string>("");
+
+  // Schedule/timezone
+  const [scheduledAt, setScheduledAt] = useState<string>("");
+  const tz = useMemo(
+    () => Intl.DateTimeFormat().resolvedOptions().timeZone,
+    []
+  );
+
+  // Blocks editor
+  type Block =
+    | { type: "text"; content?: string }
+    | { type: "button"; label?: string; url?: string }
+    | { type: "footer"; includeUnsubscribe?: boolean };
+
+  const [blocks, setBlocks] = useState<Array<Block>>([
+    { type: "text", content: "Hello! Welcome to our newsletter." },
+  ]);
+
+  const addBlock = (type: Block["type"]) => {
+    setBlocks((arr) => {
+      const next: Block =
+        type === "text"
+          ? { type: "text", content: "" }
+          : type === "button"
+          ? { type: "button", label: "Read more", url: "" }
+          : { type: "footer", includeUnsubscribe: true };
+      return [...arr, next];
+    });
+  };
+
+  const moveBlock = (index: number, delta: number) => {
+    setBlocks((arr) => {
+      if (arr.length < 2) return arr;
+      const next = arr.slice();
+      const newIndex = Math.max(0, Math.min(arr.length - 1, index + delta));
+      if (newIndex === index) return arr;
+      const [item] = next.splice(index, 1);
+      next.splice(newIndex, 0, item);
+      return next;
+    });
+  };
+
+  const removeBlock = (index: number) => {
+    setBlocks((arr) => arr.filter((_, i) => i !== index));
+  };
 
   const toggleFlag = useMutation(api.featureFlags.toggleFeatureFlag);
   const processApproval = useMutation(api.approvals.processApproval);

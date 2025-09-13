@@ -243,3 +243,207 @@ export const seedForCurrentUser = action({
     };
   },
 });
+
+export const seedKpis: any = action({
+  args: {},
+  handler: async (ctx): Promise<any> => {
+    const res: any = await ctx.runAction(api.seed.seedForCurrentUser, {});
+    return { message: "KPIs seeded (via seedForCurrentUser)", ...res };
+  },
+});
+
+export const seedTasks: any = action({
+  args: {},
+  handler: async (ctx): Promise<any> => {
+    const res: any = await ctx.runAction(api.seed.seedForCurrentUser, {});
+    return { message: "Tasks seeded (via seedForCurrentUser)", ...res };
+  },
+});
+
+export const seedFeatureFlagsPreset = action({
+  args: {
+    businessId: v.optional(v.id("businesses")),
+  },
+  handler: async (ctx, args) => {
+    const now = Date.now();
+    const flags: Array<{
+      businessId?: Id<"businesses">;
+      flagName: string;
+      isEnabled: boolean;
+      rolloutPercentage: number;
+      conditions?: {
+        userTier?: string[];
+        businessTier?: string[];
+      };
+    }> = [
+      {
+        businessId: args.businessId,
+        flagName: "solopreneur_quick_actions",
+        isEnabled: true,
+        rolloutPercentage: 100,
+        conditions: { userTier: ["solopreneur"] },
+      },
+      {
+        businessId: args.businessId,
+        flagName: "solopreneur_focus_panel",
+        isEnabled: true,
+        rolloutPercentage: 100,
+        conditions: { userTier: ["solopreneur"] },
+      },
+      {
+        businessId: args.businessId,
+        flagName: "startup_growth_panels",
+        isEnabled: true,
+        rolloutPercentage: 100,
+        conditions: { userTier: ["startup"] },
+      },
+      {
+        businessId: args.businessId,
+        flagName: "sme_insights",
+        isEnabled: true,
+        rolloutPercentage: 100,
+        conditions: { businessTier: ["sme"] },
+      },
+      {
+        businessId: args.businessId,
+        flagName: "enterprise_governance",
+        isEnabled: true,
+        rolloutPercentage: 100,
+        conditions: { businessTier: ["enterprise"] },
+      },
+      {
+        businessId: args.businessId,
+        flagName: "guest_mode_demo",
+        isEnabled: true,
+        rolloutPercentage: 100,
+      },
+      {
+        businessId: args.businessId,
+        flagName: "email_campaigns_basic",
+        isEnabled: true,
+        rolloutPercentage: 100,
+      },
+    ];
+
+    // Upsert each flag via public mutation
+    for (const f of flags) {
+      await ctx.runMutation(api.featureFlags.upsertFeatureFlag, {
+        businessId: f.businessId,
+        flagName: f.flagName,
+        isEnabled: f.isEnabled,
+        rolloutPercentage: f.rolloutPercentage,
+        conditions: f.conditions
+          ? {
+              userTier: f.conditions.userTier,
+              businessTier: f.conditions.businessTier,
+            }
+          : undefined,
+      });
+    }
+
+    return { message: "Feature flags seeded", count: flags.length, businessId: args.businessId, ts: now };
+  },
+});
+
+export const seedAllDemo: any = action({
+  args: {
+    email: v.string(),
+  },
+  handler: async (ctx, args): Promise<{
+    message: string;
+    email: string;
+    businessId?: Id<"businesses">;
+    globalFlags: any;
+    businessFlags: any;
+  }> => {
+    // Ensure a user exists for the provided email before seeding
+    await ctx.runMutation(api.users.ensureSeedUser, { email: args.email });
+
+    // Create or find business + initiative for the email
+    const seeded: {
+      businessId?: Id<"businesses">;
+      initiativeId?: Id<"initiatives">;
+      diagnosticId?: Id<"diagnostics">;
+    } = await ctx.runMutation(api.initiatives.seedForEmail, {
+      email: args.email,
+    });
+
+    // Seed AI agents bypassing RBAC using an internal mutation (best effort)
+    if (seeded?.businessId) {
+      try {
+        await ctx.runMutation(internal.aiAgents.seedForBusinessInternal, {
+          businessId: seeded.businessId,
+        });
+      } catch {
+        // ignore
+      }
+    }
+
+    // Seed KPIs + 3 SNAP tasks for Solopreneur testing if business exists
+    if (seeded?.businessId) {
+      const today = new Date();
+      const yyyyMmDd = today.toISOString().slice(0, 10);
+
+      try {
+        await ctx.runMutation(api.kpis.upsert, {
+          businessId: seeded.businessId,
+          date: yyyyMmDd,
+          visitors: 420,
+          subscribers: 180,
+          engagement: 62,
+          revenue: 12500,
+          visitorsDelta: 8,
+          subscribersDelta: 5,
+          engagementDelta: 3,
+          revenueDelta: 12,
+        });
+      } catch {
+        // best-effort
+      }
+
+      await ctx.runMutation(api.tasks.create, {
+        businessId: seeded.businessId,
+        initiativeId: seeded.initiativeId,
+        title: "Publish weekly newsletter",
+        description: "Send the curated newsletter to subscribers.",
+        priority: "high",
+        urgent: true,
+        dueDate: Date.now() + 24 * 60 * 60 * 1000,
+      });
+      await ctx.runMutation(api.tasks.create, {
+        businessId: seeded.businessId,
+        initiativeId: seeded.initiativeId,
+        title: "Schedule social posts",
+        description: "Queue 5 posts for the week.",
+        priority: "medium",
+        urgent: false,
+      });
+      await ctx.runMutation(api.tasks.create, {
+        businessId: seeded.businessId,
+        initiativeId: seeded.initiativeId,
+        title: "Review analytics snapshot",
+        description: "Check engagement trends and top content.",
+        priority: "low",
+        urgent: false,
+      });
+    }
+
+    // Seed global feature flags
+    const globalFlags: any = await ctx.runAction(api.seed.seedFeatureFlagsPreset, {});
+
+    // If business available, also seed business-scoped flags
+    let businessFlags: any = null;
+    const businessId: Id<"businesses"> | undefined = seeded?.businessId;
+    if (businessId) {
+      businessFlags = await ctx.runAction(api.seed.seedFeatureFlagsPreset, { businessId }).catch(() => null);
+    }
+
+    return {
+      message: "All demo data + flags seeded",
+      email: args.email,
+      businessId,
+      globalFlags,
+      businessFlags,
+    };
+  },
+});

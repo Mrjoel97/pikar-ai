@@ -61,6 +61,13 @@ export default function Landing() {
   ]);
   const [newsletterEmail, setNewsletterEmail] = useState("");
 
+  const scrollTo = (id: string) => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  };
+
   const heroStats = [
     { label: "Active Users", value: "8.2k+" },
     { label: "Avg. ROI Increase", value: "34%" },
@@ -278,10 +285,34 @@ export default function Landing() {
 
             {/* Desktop nav */}
             <div className="hidden md:flex items-center gap-6 text-sm">
-              <button className="text-muted-foreground hover:text-foreground transition-colors">Home</button>
-              <button className="text-muted-foreground hover:text-foreground transition-colors">Features</button>
-              <button className="text-muted-foreground hover:text-foreground transition-colors">Pricing</button>
-              <button className="text-muted-foreground hover:text-foreground transition-colors">Docs</button>
+              <button
+                className="text-muted-foreground hover:text-foreground transition-colors"
+                onClick={() => navigate("/")}
+                aria-label="Go to Home"
+              >
+                Home
+              </button>
+              <button
+                className="text-muted-foreground hover:text-foreground transition-colors"
+                onClick={() => scrollTo("features")}
+                aria-label="View Features"
+              >
+                Features
+              </button>
+              <button
+                className="text-muted-foreground hover:text-foreground transition-colors"
+                onClick={() => scrollTo("pricing")}
+                aria-label="View Pricing"
+              >
+                Pricing
+              </button>
+              <button
+                className="text-muted-foreground hover:text-foreground transition-colors"
+                onClick={() => scrollTo("docs")}
+                aria-label="View Docs"
+              >
+                Docs
+              </button>
             </div>
 
             {/* Desktop actions */}
@@ -326,16 +357,48 @@ export default function Landing() {
                     </div>
 
                     <div className="grid grid-cols-1 gap-3">
-                      <Button variant="ghost" className="justify-start" onClick={() => setMobileOpen(false)}>
+                      <Button
+                        variant="ghost"
+                        className="justify-start"
+                        onClick={() => {
+                          setMobileOpen(false);
+                          navigate("/");
+                        }}
+                        aria-label="Go to Home"
+                      >
                         Home
                       </Button>
-                      <Button variant="ghost" className="justify-start" onClick={() => setMobileOpen(false)}>
+                      <Button
+                        variant="ghost"
+                        className="justify-start"
+                        onClick={() => {
+                          setMobileOpen(false);
+                          setTimeout(() => scrollTo("features"), 50);
+                        }}
+                        aria-label="View Features"
+                      >
                         Features
                       </Button>
-                      <Button variant="ghost" className="justify-start" onClick={() => setMobileOpen(false)}>
+                      <Button
+                        variant="ghost"
+                        className="justify-start"
+                        onClick={() => {
+                          setMobileOpen(false);
+                          setTimeout(() => scrollTo("pricing"), 50);
+                        }}
+                        aria-label="View Pricing"
+                      >
                         Pricing
                       </Button>
-                      <Button variant="ghost" className="justify-start" onClick={() => setMobileOpen(false)}>
+                      <Button
+                        variant="ghost"
+                        className="justify-start"
+                        onClick={() => {
+                          setMobileOpen(false);
+                          setTimeout(() => scrollTo("docs"), 50);
+                        }}
+                        aria-label="View Docs"
+                      >
                         Docs
                       </Button>
                     </div>
@@ -487,7 +550,7 @@ export default function Landing() {
       </section>
 
       {/* Features Section */}
-      <section className="py-14 sm:py-20 px-4 sm:px-6 lg:px-8 bg-accent/5">
+      <section id="features" className="py-14 sm:py-20 px-4 sm:px-6 lg:px-8 bg-accent/5">
         <div className="max-w-7xl mx-auto">
           <motion.div
             initial={{ y: 50, opacity: 0 }}
@@ -529,7 +592,7 @@ export default function Landing() {
       </section>
 
       {/* Pricing Section */}
-      <section className="py-14 sm:py-20 px-4 sm:px-6 lg:px-8">
+      <section id="pricing" className="py-14 sm:py-20 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
           <motion.div
             initial={{ y: 50, opacity: 0 }}
@@ -700,7 +763,7 @@ export default function Landing() {
       </section>
 
       {/* KnowledgeHub & Learning Paths */}
-      <section className="py-14 sm:py-20 px-4 sm:px-6 lg:px-8">
+      <section id="docs" className="py-14 sm:py-20 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
           <motion.div
             initial={{ y: 50, opacity: 0 }}
@@ -822,7 +885,7 @@ export default function Landing() {
       {/* Floating AI Guide button */}
       <button
         aria-label="Open AI Guide"
-        className="fixed bottom-6 right-6 z-50 neu-raised rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 transition-colors p-4"
+        className="fixed right-6 z-50 neu-raised rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 transition-colors p-4 bottom-[calc(1.5rem+env(safe-area-inset-bottom))]"
         onClick={() => setAiGuideOpen(true)}
       >
         <MessageCircleQuestion className="h-6 w-6" />

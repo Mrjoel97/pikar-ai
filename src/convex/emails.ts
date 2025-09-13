@@ -183,6 +183,34 @@ export const ensureTokenMutation = internalMutation({
 });
 
 // Public query: list recent campaigns for a business (for UI)
+export const listCampaigns = query({
+  args: { businessId: v.id("businesses") },
+  handler: async (ctx, args) => {
+    const scheduled = await ctx.db
+      .query("emailCampaigns")
+      .withIndex("by_business_and_status", (q) =>
+        q.eq("businessId", args.businessId).eq("status", "scheduled")
+      )
+      .collect();
+
+    const sending = await ctx.db
+      .query("emailCampaigns")
+      .withIndex("by_business_and_status", (q) =>
+        q.eq("businessId", args.businessId).eq("status", "sending")
+      )
+      .collect();
+
+    const sent = await ctx.db
+      .query("emailCampaigns")
+      .withIndex("by_business_and_status", (q) =>
+        q.eq("businessId", args.businessId).eq("status", "sent")
+      )
+      .collect();
+
+    return [...scheduled, ...sending, ...sent].slice(0, 10);
+  },
+});
+
 export const listCampaignsByBusiness = query({
   args: { businessId: v.id("businesses") },
   handler: async (ctx, args) => {
