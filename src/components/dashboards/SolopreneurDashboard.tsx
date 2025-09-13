@@ -5,6 +5,12 @@ import { Button } from "@/components/ui/button";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { StatCard } from "@/components/dashboard/StatCard";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { useAction } from "convex/react";
+import { toast } from "sonner";
+import React from "react";
 
 interface SolopreneurDashboardProps {
   business: any;
@@ -115,6 +121,46 @@ export function SolopreneurDashboard({
     </Card>
   );
 
+  // Newsletter dialog state (auth users only; guest will get a toast)
+  const [openNewsletter, setOpenNewsletter] = React.useState(false);
+  const [toEmail, setToEmail] = React.useState("");
+  const [fromEmail, setFromEmail] = React.useState("");
+  const [subject, setSubject] = React.useState("Your monthly update");
+  const [body, setBody] = React.useState("Hello!\n\nHere's a quick update from our studio.");
+  const sendTestEmail = useAction(api.emailsActions.sendTestEmail);
+
+  const handleSendNewsletter = async () => {
+    try {
+      if (isGuest) {
+        toast("Please sign in to send a test email.");
+        return;
+      }
+      if (!business?._id) {
+        toast.error("Business is not ready yet. Please complete onboarding.");
+        return;
+      }
+      if (!toEmail || !fromEmail || !subject || !body) {
+        toast.error("Please fill out all fields.");
+        return;
+      }
+      await sendTestEmail({
+        from: fromEmail,
+        to: toEmail,
+        subject,
+        previewText: "Quick update",
+        businessId: business._id,
+        blocks: [
+          { type: "text", content: body },
+          { type: "footer", includeUnsubscribe: true },
+        ],
+      } as any);
+      toast.success("Test email sent!");
+      setOpenNewsletter(false);
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to send email");
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Today's Focus */}
@@ -201,6 +247,13 @@ export function SolopreneurDashboard({
               <h3 className="font-medium mb-2">Send Newsletter</h3>
               <Button 
                 className="w-full"
+                onClick={() => {
+                  if (isGuest) {
+                    toast("Please sign in to send a test email.");
+                  } else {
+                    setOpenNewsletter(true);
+                  }
+                }}
               >
                 Send Now
               </Button>
@@ -210,6 +263,57 @@ export function SolopreneurDashboard({
           {!isGuest && <UpgradeCTA feature="Team Collaboration" />}
           {!isGuest && <UpgradeCTA feature="Advanced Analytics" />}
         </div>
+
+        {/* Newsletter Dialog */}
+        {!isGuest && (
+          <Dialog open={openNewsletter} onOpenChange={setOpenNewsletter}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Send Test Newsletter</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-3">
+                <Input
+                  placeholder="To (recipient email)"
+                  value={toEmail}
+                  onChange={(e) => setToEmail(e.target.value)}
+                />
+                <Input
+                  placeholder="From (must be a verified sender in Resend)"
+                  value={fromEmail}
+                  onChange={(e) => setFromEmail(e.target.value)}
+                />
+                <Input
+                  placeholder="Subject"
+                  value={subject}
+                  onChange={(e) => setSubject(e.target.value)}
+                />
+                <Textarea
+                  placeholder="Message"
+                  value={body}
+                  onChange={(e) => setBody(e.target.value)}
+                  rows={6}
+                />
+                <div className="flex items-center justify-end gap-2">
+                  <button
+                    className="px-3 py-2 border rounded-md"
+                    onClick={() => setOpenNewsletter(false)}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    className="px-3 py-2 rounded-md bg-emerald-600 text-white"
+                    onClick={handleSendNewsletter}
+                  >
+                    Send
+                  </button>
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  Note: Email delivery requires RESEND_API_KEY to be configured and a verified sender address.
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
+        )}
       </section>
 
       {/* Recent Activity */}
