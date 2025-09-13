@@ -10,7 +10,7 @@ import { isGuestMode, getSelectedTier, getDemoData } from "@/lib/guestUtils";
 import { getTierConfig, canShowFeature, TierType } from "@/lib/tierConfig";
 import React, { Suspense, lazy } from "react";
 
-// Add: lazy-loaded dashboard chunks for code splitting
+// Add: lazy-loaded tier dashboards (code-splitting)
 const SolopreneurDashboard = lazy(() =>
   import("@/components/dashboards/SolopreneurDashboard").then((m) => ({
     default: m.SolopreneurDashboard,
@@ -35,7 +35,45 @@ const EnterpriseDashboard = lazy(() =>
 export default function Dashboard() {
   const { isLoading, isAuthenticated, user, signOut } = useAuth();
   const navigate = useNavigate();
-  
+
+  // Add: Stabilize lazy components locally to ensure they are always defined
+  const SolopreneurDashboard = React.useMemo(
+    () =>
+      lazy(() =>
+        import("@/components/dashboards/SolopreneurDashboard").then((m) => ({
+          default: m.SolopreneurDashboard,
+        })),
+      ),
+    [],
+  );
+  const StartupDashboard = React.useMemo(
+    () =>
+      lazy(() =>
+        import("@/components/dashboards/StartupDashboard").then((m) => ({
+          default: m.StartupDashboard,
+        })),
+      ),
+    [],
+  );
+  const SmeDashboard = React.useMemo(
+    () =>
+      lazy(() =>
+        import("@/components/dashboards/SmeDashboard").then((m) => ({
+          default: m.SmeDashboard,
+        })),
+      ),
+    [],
+  );
+  const EnterpriseDashboard = React.useMemo(
+    () =>
+      lazy(() =>
+        import("@/components/dashboards/EnterpriseDashboard").then((m) => ({
+          default: m.EnterpriseDashboard,
+        })),
+      ),
+    [],
+  );
+
   // Guest mode detection
   const guestMode = isGuestMode();
   const selectedTier = getSelectedTier();
@@ -110,7 +148,6 @@ export default function Dashboard() {
       demoData: demoDataForTier,
       isGuest: guestMode,
       tier: effectiveTier,
-      // No-op in guest mode; guests have full access in demo
       onUpgrade: () => {},
     };
 

@@ -108,10 +108,12 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
     setError(null);
     try {
       await signIn("anonymous");
+      // Persist tier override for dashboard
       try {
         localStorage.setItem("tierOverride", guestTier);
       } catch {}
       toast("Signed in as guest");
+      // Ensure dashboard treats this as guest mode
       const redirect = "/dashboard?guest=1&tier=" + encodeURIComponent(guestTier);
       navigate(redirect);
     } catch (error) {
