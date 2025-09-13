@@ -2,6 +2,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { motion } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
 
 interface SolopreneurDashboardProps {
   business: any;
@@ -18,10 +20,15 @@ export function SolopreneurDashboard({
   tier, 
   onUpgrade 
 }: SolopreneurDashboardProps) {
+  // Use Convex KPI snapshot when authenticated; fallback to demo data for guests
+  const kpiDoc = !isGuest && business?._id
+    ? useQuery(api.kpis.getSnapshot, { businessId: business._id })
+    : undefined;
+
   // Use demo data when in guest mode
   const agents = isGuest ? demoData?.agents || [] : [];
   const workflows = isGuest ? demoData?.workflows || [] : [];
-  const kpis = isGuest ? demoData?.kpis || {} : {};
+  const kpis = isGuest ? (demoData?.kpis || {}) : (kpiDoc || {});
   const tasks = isGuest ? demoData?.tasks || [] : [];
 
   const UpgradeCTA = ({ feature }: { feature: string }) => (

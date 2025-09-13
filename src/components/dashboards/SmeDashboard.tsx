@@ -1,6 +1,9 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
 
 interface SmeDashboardProps {
   business: any;
@@ -17,9 +20,14 @@ export function SmeDashboard({
   tier, 
   onUpgrade 
 }: SmeDashboardProps) {
+  // Fetch latest KPI snapshot when authenticated
+  const kpiDoc = !isGuest && business?._id
+    ? useQuery(api.kpis.getSnapshot, { businessId: business._id })
+    : undefined;
+
   const agents = isGuest ? demoData?.agents || [] : [];
   const workflows = isGuest ? demoData?.workflows || [] : [];
-  const kpis = isGuest ? demoData?.kpis || {} : {};
+  const kpis = isGuest ? (demoData?.kpis || {}) : (kpiDoc || {});
   const tasks = isGuest ? demoData?.tasks || [] : [];
 
   const UpgradeCTA = ({ feature }: { feature: string }) => (
@@ -84,6 +92,116 @@ export function SmeDashboard({
             </Card>
           ))}
         </div>
+      </section>
+
+      {/* Department Views (Tabbed Center Section) */}
+      <section>
+        <h2 className="text-xl font-semibold mb-4">Department Views</h2>
+        <Tabs defaultValue="marketing" className="w-full">
+          <TabsList className="grid grid-cols-4 max-w-full">
+            <TabsTrigger value="marketing">Marketing</TabsTrigger>
+            <TabsTrigger value="sales">Sales</TabsTrigger>
+            <TabsTrigger value="operations">Operations</TabsTrigger>
+            <TabsTrigger value="finance">Finance</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="marketing" className="mt-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <Card>
+                <CardContent className="p-4">
+                  <h3 className="text-sm font-medium text-muted-foreground">Campaign Performance</h3>
+                  <p className="text-2xl font-bold">94%</p>
+                  <p className="text-xs text-green-600">+2% from last month</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4">
+                  <h3 className="text-sm font-medium text-muted-foreground">Brand Consistency</h3>
+                  <p className="text-2xl font-bold">91%</p>
+                  <p className="text-xs text-green-600">+1% from last month</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4">
+                  <h3 className="text-sm font-medium text-muted-foreground">Content Calendar</h3>
+                  <p className="text-sm text-muted-foreground">Upcoming: 7 scheduled posts</p>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="sales" className="mt-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <Card>
+                <CardContent className="p-4">
+                  <h3 className="text-sm font-medium text-muted-foreground">Pipeline Health</h3>
+                  <p className="text-2xl font-bold">$240k</p>
+                  <p className="text-xs text-green-600">+5% QoQ</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4">
+                  <h3 className="text-sm font-medium text-muted-foreground">Conversion Rate</h3>
+                  <p className="text-2xl font-bold">12.4%</p>
+                  <p className="text-xs text-green-600">+0.6% WoW</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4">
+                  <h3 className="text-sm font-medium text-muted-foreground">Territory Performance</h3>
+                  <p className="text-sm text-muted-foreground">Top: West Coast</p>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="operations" className="mt-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <Card>
+                <CardContent className="p-4">
+                  <h3 className="text-sm font-medium text-muted-foreground">Process Efficiency</h3>
+                  <p className="text-2xl font-bold">88%</p>
+                  <p className="text-xs text-yellow-600">-1% from last month</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4">
+                  <h3 className="text-sm font-medium text-muted-foreground">Automation Status</h3>
+                  <p className="text-sm text-muted-foreground">Active automations: 14</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4">
+                  <h3 className="text-sm font-medium text-muted-foreground">Resource Utilization</h3>
+                  <p className="text-2xl font-bold">72%</p>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="finance" className="mt-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <Card>
+                <CardContent className="p-4">
+                  <h3 className="text-sm font-medium text-muted-foreground">Budget vs. Actual</h3>
+                  <p className="text-sm text-muted-foreground">Within 3% of plan</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4">
+                  <h3 className="text-sm font-medium text-muted-foreground">ROI by Initiative</h3>
+                  <p className="text-2xl font-bold">1.8x</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4">
+                  <h3 className="text-sm font-medium text-muted-foreground">Cost Center Analysis</h3>
+                  <p className="text-sm text-muted-foreground">Top variance: Ops</p>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+        </Tabs>
       </section>
 
       {/* Department Performance */}
