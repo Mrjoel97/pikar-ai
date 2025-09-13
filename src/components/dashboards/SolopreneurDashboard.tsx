@@ -11,6 +11,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { useAction } from "convex/react";
 import { toast } from "sonner";
 import React from "react";
+import { useMutation } from "convex/react";
+import { useNavigate } from "react-router";
 
 interface SolopreneurDashboardProps {
   business: any;
@@ -51,6 +53,17 @@ export function SolopreneurDashboard({
       ))}
     </div>
   );
+
+  // Add: query top 3 prioritized tasks for authenticated users
+  const topTasks = !isGuest && business?._id
+    ? useQuery(api.tasks.topThreeForBusiness, { businessId: business._id })
+    : undefined;
+
+  // Add: mutation to seed demo tasks into authenticated account if empty
+  const seedTasks = useMutation(api.tasks.seedDemoTasksForBusiness);
+
+  // Compute tasks to show (guest uses demo; auth uses Convex)
+  const tasksToShow = isGuest ? tasks : (topTasks ?? []);
 
   // Generate trend arrays (guest: demo based, auth: small jitter from snapshot)
   const mkTrend = (base?: number): number[] => {
@@ -129,6 +142,8 @@ export function SolopreneurDashboard({
   const [body, setBody] = React.useState("Hello!\n\nHere's a quick update from our studio.");
   const sendTestEmail = useAction(api.emailsActions.sendTestEmail);
 
+  const navigate = useNavigate();
+
   const handleSendNewsletter = async () => {
     try {
       if (isGuest) {
@@ -166,18 +181,47 @@ export function SolopreneurDashboard({
       {/* Today's Focus */}
       <section>
         <h2 className="text-xl font-semibold mb-4">Today's Focus</h2>
+
+        {/* Add: Seed button when authenticated and no tasks yet */}
+        {!isGuest && business?._id && (Array.isArray(tasksToShow) && tasksToShow.length === 0) && (
+          <div className="mb-3">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={async () => {
+                try {
+                  await seedTasks({ businessId: business._id, count: 3 } as any);
+                  toast.success("Sample tasks generated.");
+                } catch (e: any) {
+                  toast.error(e?.message || "Failed to generate tasks");
+                }
+              }}
+            >
+              Generate sample tasks
+            </Button>
+          </div>
+        )}
+
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {tasks.slice(0, 3).map((task: any) => (
-            <Card key={task.id}>
-              <CardContent className="p-4">
-                <h3 className="font-medium">{task.title}</h3>
-                <p className="text-sm text-muted-foreground">Due: {task.dueDate}</p>
-                <Badge variant={task.priority === 'high' ? 'destructive' : 'secondary'}>
-                  {task.priority}
-                </Badge>
-              </CardContent>
-            </Card>
-          ))}
+          {tasksToShow.slice(0, 3).map((task: any) => {
+            const key = task._id || task.id;
+            const due =
+              typeof task.dueDate === "number"
+                ? new Date(task.dueDate).toLocaleDateString()
+                : (task.dueDate || "—");
+            const priority = task.priority || "low";
+            return (
+              <Card key={key}>
+                <CardContent className="p-4">
+                  <h3 className="font-medium">{task.title}</h3>
+                  <p className="text-sm text-muted-foreground">Due: {due}</p>
+                  <Badge variant={priority === "high" ? "destructive" : "secondary"}>
+                    {priority}
+                  </Badge>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       </section>
 
@@ -259,6 +303,21 @@ export function SolopreneurDashboard({
               </Button>
             </CardContent>
           </Card>
+
+          {/* Add: View Analytics quick action */}
+          <Card>
+            <CardContent className="p-4">
+              <h3 className="font-medium mb-2">View Analytics</h3>
+              <Button
+                className="w-full"
+                variant="secondary"
+                onClick={() => navigate("/analytics")}
+              >
+                Open Analytics
+              </Button>
+            </CardContent>
+          </Card>
+
           {/* Hide upgrade prompts for guests to allow full access */}
           {!isGuest && <UpgradeCTA feature="Team Collaboration" />}
           {!isGuest && <UpgradeCTA feature="Advanced Analytics" />}
