@@ -52,23 +52,6 @@ export function Sidebar({
           ))}
         </nav>
 
-        {/* Plan features */}
-        {Array.isArray(featureHighlights) && featureHighlights.length > 0 && (
-          <div className="mt-4">
-            <div className="text-[11px] uppercase tracking-wider text-emerald-200/80 mb-2">
-              Your plan includes
-            </div>
-            <ul className="space-y-1.5">
-              {featureHighlights.slice(0, 6).map((feat, idx) => (
-                <li key={`${feat}-${idx}`} className="flex items-start gap-2 text-emerald-50/90">
-                  <CheckCircle className="h-3.5 w-3.5 mt-0.5 text-emerald-200/80 flex-shrink-0" />
-                  <span className="text-xs leading-snug">{feat}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-
         {/* Spacer */}
         <div className="flex-1" />
 
