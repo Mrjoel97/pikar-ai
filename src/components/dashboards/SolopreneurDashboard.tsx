@@ -67,7 +67,7 @@ export function SolopreneurDashboard({
 
   // Add: query unified recent activity for authenticated users (safe ref)
   const activityGetRecent = (api as any).activityFeed?.getRecent;
-  const recentActivity = !isGuest && business?._id && activityGetRecent
+  const activityFeed = !isGuest && business?._id && activityGetRecent
     ? useQuery(activityGetRecent, { businessId: business._id, limit: 8 } as any)
     : undefined;
 
@@ -442,7 +442,11 @@ export function SolopreneurDashboard({
     }
   };
 
-  const snapshot = useQuery(api.kpis.getSnapshot, { period: "7d" } as any) ?? {
+  const snapshot = (
+    !isGuest && business?._id
+      ? useQuery(api.kpis.getSnapshot, { businessId: business._id })
+      : null
+  ) ?? {
     visitors: 0,
     subscribers: 0,
     engagement: 0,
@@ -461,21 +465,95 @@ export function SolopreneurDashboard({
   const [focusInput, setFocusInput] = useState("");
   const [focusTasks, setFocusTasks] = useState<FocusTask[]>([]);
 
+  // Map server task -> SNAP badge for UI consistency
+  const toSnapLetter = (urgent?: boolean, priority?: "low" | "medium" | "high"): "S" | "N" | "A" | "P" => {
+    if (urgent) return "S";
+    if (priority === "high") return "N";
+    if (priority === "medium") return "A";
+    return "P";
+  };
+
+  // Compute display list for Today's Focus
+  const displayFocus = isGuest
+    ? (() => {
+        // local top3 using existing logic
+        const snapWeight: Record<"S" | "N" | "A" | "P", number> = { S: 4, N: 3, A: 2, P: 1 };
+        return [...focusTasks]
+          .sort((a, b) => snapWeight[b.snap] - snapWeight[a.snap])
+          .slice(0, 3);
+      })()
+    : (tasksToShow ?? []).map((t: any) => ({
+        id: String(t._id),
+        title: t.title as string,
+        snap: toSnapLetter(Boolean(t.urgent), t.priority as any),
+        done: t.status === "done",
+        _raw: t,
+      }));
+
+  const createTask = useMutation(api.tasks.create);
+  const updateTaskStatus = useMutation(api.tasks.updateStatus);
+
   function addFocusTask(title: string) {
-    const snapLetters: Array<FocusTask["snap"]> = ["S", "N", "A", "P"];
-    const snap = snapLetters[(title.length + focusTasks.length) % 4]!;
-    const task: FocusTask = {
-      id: crypto.randomUUID(),
-      title: title.trim(),
-      snap,
-      done: false,
-    };
-    setFocusTasks((prev) => [task, ...prev].slice(0, 10));
-    toast.success("Task added");
+    if (isGuest || !business?._id) {
+      // Guest mode: keep the existing local behavior
+      const snapLetters: Array<"S" | "N" | "A" | "P"> = ["S", "N", "A", "P"];
+      const snap = snapLetters[(title.length + focusTasks.length) % 4]!;
+      const task = {
+        id: crypto.randomUUID(),
+        title: title.trim(),
+        snap,
+        done: false,
+      };
+      setFocusTasks((prev) => [task as any, ...prev].slice(0, 10));
+      toast.success("Task added");
+      return;
+    }
+
+    // Auth: persist via Convex
+    const clean = title.trim();
+    if (!clean) return;
+
+    // Derive SNAP for UI and map to server fields
+    const snapLetters: Array<"S" | "N" | "A" | "P"> = ["S", "N", "A", "P"];
+    const snap = snapLetters[(title.length + (tasksToShow?.length ?? 0)) % 4]!;
+    const urgent = snap === "S";
+    const priority = snap === "S" || snap === "N" ? "high" : snap === "A" ? "medium" : "low";
+
+    createTask({
+      businessId: business._id,
+      title: clean,
+      description: undefined,
+      priority: priority as any,
+      urgent,
+      dueDate: undefined,
+      initiativeId: undefined as any,
+    })
+      .then(() => {
+        toast.success("Task added");
+      })
+      .catch((e: any) => {
+        toast.error(e?.message ?? "Failed to add task");
+      });
   }
 
   function toggleTask(id: string) {
-    setFocusTasks((prev) => prev.map((t) => (t.id === id ? { ...t, done: !t.done } : t)));
+    if (isGuest) {
+      setFocusTasks((prev) => prev.map((t) => (t.id === id ? { ...t, done: !t.done } : t)));
+      return;
+    }
+
+    // Auth: find the task and toggle status via Convex
+    const t = (tasksToShow ?? []).find((row: any) => String(row._id) === id);
+    if (!t) return;
+    const nextStatus = t.status === "done" ? "todo" : "done";
+    updateTaskStatus({ taskId: t._id, status: nextStatus })
+      .then(() => {
+        // toast for feedback; UI auto-updates via subscription
+        toast.success(nextStatus === "done" ? "Marked done" : "Marked todo");
+      })
+      .catch((e: any) => {
+        toast.error(e?.message ?? "Failed to update task");
+      });
   }
 
   const snapWeight: Record<FocusTask["snap"], number> = { S: 4, N: 3, A: 2, P: 1 };
@@ -483,15 +561,19 @@ export function SolopreneurDashboard({
     .sort((a, b) => snapWeight[b.snap] - snapWeight[a.snap])
     .slice(0, 3);
 
-  const recentActivityFallback = (builtIns as any[]).slice(0, 5).map((t) => ({
+  // Build recent activity items: feed data if available, else fallback to template metadata
+  const fallbackActivity = (builtIns as any[]).slice(0, 5).map((t) => ({
     id: t._id,
     title: t.name,
     meta: `Trigger: ${t.trigger?.type ?? "manual"}`,
   }));
-  const recentActivityDisplay =
-    Array.isArray(recentActivity) && (recentActivity as any[]).length > 0
-      ? (recentActivity as any[])
-      : recentActivityFallback;
+  const recentActivityItems = Array.isArray(activityFeed) && (activityFeed as any[]).length > 0
+    ? (activityFeed as any[]).map((a: any) => ({
+        id: String(a._id ?? a.id ?? Math.random()),
+        title: String(a.title ?? a.event ?? a.type ?? "Activity"),
+        meta: String(a.meta ?? a.message ?? a.description ?? a.details ?? ""),
+      }))
+    : fallbackActivity;
 
   return (
     <div className="space-y-6">
@@ -525,7 +607,7 @@ export function SolopreneurDashboard({
             </Button>
           </div>
           <div className="grid sm:grid-cols-3 gap-2">
-            {top3.map((t) => (
+            {displayFocus.map((t: any) => (
               <div
                 key={t.id}
                 className={`flex items-center justify-between rounded-md border px-3 py-2 ${t.done ? "opacity-60" : ""}`}
@@ -539,7 +621,7 @@ export function SolopreneurDashboard({
                 </Button>
               </div>
             ))}
-            {top3.length === 0 && <div className="text-sm text-muted-foreground">Add tasks to see your top 3 priorities.</div>}
+            {displayFocus.length === 0 && <div className="text-sm text-muted-foreground">Add tasks to see your top 3 priorities.</div>}
           </div>
         </CardContent>
       </Card>
@@ -589,7 +671,7 @@ export function SolopreneurDashboard({
             <CardDescription>Last 5 items</CardDescription>
           </CardHeader>
           <CardContent className="space-y-2">
-            {(recentActivityDisplay || []).map((a: any) => (
+            {recentActivityItems.map((a: any) => (
               <div key={a.id} className="flex items-center justify-between rounded-md border px-3 py-2">
                 <div className="min-w-0">
                   <div className="truncate text-sm font-medium">{a.title}</div>
@@ -598,7 +680,7 @@ export function SolopreneurDashboard({
                 <Badge variant="outline">Log</Badge>
               </div>
             ))}
-            {((recentActivityDisplay || []).length === 0) && (
+            {recentActivityItems.length === 0 && (
               <div className="text-sm text-muted-foreground">No recent activity yet.</div>
             )}
           </CardContent>
