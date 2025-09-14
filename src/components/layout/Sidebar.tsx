@@ -1,5 +1,5 @@
 import { Input } from "@/components/ui/input";
-import { LogOut, CheckCircle } from "lucide-react";
+import { LogOut, CheckCircle, Target, ListChecks } from "lucide-react";
 import React from "react";
 
 type NavItem = { label: string; icon: React.ComponentType<any>; to: string };

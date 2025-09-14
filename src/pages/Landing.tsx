@@ -406,14 +406,6 @@ export default function Landing() {
                 Sign In
               </Button>
               <Button
-                variant="outline"
-                className="neu-flat rounded-xl"
-                onClick={() => navigate("/workflows/templates")}
-                aria-label="Open templates demo"
-              >
-                Templates Demo
-              </Button>
-              <Button
                 className="neu-raised rounded-xl bg-primary hover:bg-primary/90"
                 onClick={handleGetStarted}
                 disabled={isLoading}
@@ -512,17 +504,6 @@ export default function Landing() {
                         Sign In
                       </Button>
                       <Button
-                        variant="outline"
-                        className="w-full neu-flat rounded-xl"
-                        onClick={() => {
-                          setMobileOpen(false);
-                          navigate("/workflows/templates");
-                        }}
-                        aria-label="Open templates demo"
-                      >
-                        Templates Demo
-                      </Button>
-                      <Button
                         className="w-full neu-raised rounded-xl bg-[#1B5235] hover:bg-[#17452D] text-white"
                         onClick={() => {
                           setMobileOpen(false);
@@ -606,15 +587,6 @@ export default function Landing() {
                 aria-label="Watch demo"
               >
                 Watch Demo
-              </Button>
-              <Button
-                size="lg"
-                className="w-full sm:w-auto neu-flat rounded-xl px-8 py-4 text-lg"
-                variant="outline"
-                onClick={() => navigate("/workflows/templates")}
-                aria-label="Open templates demo"
-              >
-                Templates Demo
               </Button>
             </div>
           </motion.div>
