@@ -68,9 +68,32 @@ export const createList = mutation({
     businessId: v.id("businesses"),
     name: v.string(),
     description: v.optional(v.string()),
-    createdBy: v.id("users"),
+    // Add: tags optional; schema requires array so default to []
+    tags: v.optional(v.array(v.string())),
   },
   handler: async (ctx, args) => {
+    // Auth
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Not authenticated");
+    }
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_email", (q) => q.eq("email", identity.email!))
+      .first();
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    // RBAC
+    const business = await ctx.db.get(args.businessId);
+    if (!business) {
+      throw new Error("Business not found");
+    }
+    if (business.ownerId !== user._id && !business.teamMembers.includes(user._id)) {
+      throw new Error("Unauthorized");
+    }
+
     // Prevent duplicate name within a business
     const dup = await ctx.db
       .query("contactLists")
@@ -82,10 +105,11 @@ export const createList = mutation({
     return await ctx.db.insert("contactLists", {
       businessId: args.businessId,
       name: args.name,
-      description: args.description ?? undefined,
-      createdBy: args.createdBy,
+      description: args.description,
+      createdBy: user._id,
+      // Ensure tags always exists
+      tags: Array.isArray(args.tags) ? args.tags : [],
       createdAt: Date.now(),
-      tags: [], // add required field per schema
     });
   },
 });
@@ -409,3 +433,18 @@ export const seedContacts = action({
     return { ok: true as const, listId, count: emails.length };
   },
 });
+
+// In any code path that creates a new contact list (e.g., bulkUploadCsv creating a new list)
+// ensure tags is provided as an empty array if not specified.
+async function createListIfNeeded(ctx: any, params: { businessId: Id<"businesses">; name: string; description?: string; createdBy: Id<"users"> }) {
+  const listId = await ctx.db.insert("contactLists", {
+    businessId: params.businessId,
+    name: params.name,
+    description: params.description,
+    createdBy: params.createdBy,
+    // Add: required by schema
+    tags: [],
+    createdAt: Date.now(),
+  });
+  return listId;
+}

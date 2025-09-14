@@ -96,7 +96,7 @@ function RouteSyncer() {
 }
 
 function EnvHealth() {
-  const env = useQuery(api.init.getEnvStatus, {});
+  const env = useQuery(api.health.envStatus, {});
   const warnedRef = useRef(false);
 
   React.useEffect(() => {
@@ -131,7 +131,7 @@ createRoot(document.getElementById("root")!).render(
         <AppProviders>
           <BrowserRouter>
             <RouteSyncer />
-            <EnvHealth />
+            {/* <EnvHealth /> */}
             <Routes>
               <Route path="/" element={<Landing />} />
               <Route path="/auth" element={<AuthPage redirectAfterAuth="/dashboard" />} />

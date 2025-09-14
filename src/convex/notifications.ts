@@ -3,6 +3,17 @@ import { mutation, query, internalMutation } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
 // removed unused internal import
 
+// Add: central validator for notification types to match schema union
+const notificationTypeValidator = v.union(
+  v.literal("approval"),
+  v.literal("assignment"), 
+  v.literal("sla_warning"),
+  v.literal("sla_overdue"),
+  v.literal("integration_error"),
+  v.literal("workflow_completion"),
+  v.literal("system_alert"),
+);
+
 // Query to get notifications for a user
 export const getUserNotifications = query({
   args: { 
@@ -139,14 +150,7 @@ export const createNotification = internalMutation({
   args: {
     businessId: v.id("businesses"),
     userId: v.id("users"),
-    type: v.union(
-      v.literal("assignment"),
-      v.literal("approval"),
-      v.literal("sla_warning"),
-      v.literal("integration_error"),
-      v.literal("workflow_completion"),
-      v.literal("system_alert")
-    ),
+    type: notificationTypeValidator,
     title: v.string(),
     message: v.string(),
     data: v.optional(v.any()),
@@ -653,12 +657,13 @@ export const markAllMyNotificationsRead = mutation({
   },
 });
 
-// Internal mutation to create a notification (used by other services)
+// Internal mutation to create a notification if not duplicate recently
 export const sendIfPermitted = internalMutation({
   args: {
     userId: v.id("users"),
     businessId: v.id("businesses"),
-    type: v.string(),
+    // Align type with schema union to satisfy insert type-check
+    type: notificationTypeValidator,
     title: v.string(),
     message: v.string(),
     data: v.optional(v.any()),
@@ -669,7 +674,7 @@ export const sendIfPermitted = internalMutation({
     const recentSimilar = await ctx.db
       .query("notifications")
       .withIndex("by_user", (q) => q.eq("userId", args.userId))
-      .filter((q) => 
+      .filter((q) =>
         q.and(
           q.gte(q.field("_creationTime"), oneHourAgo),
           q.eq(q.field("type"), args.type),
