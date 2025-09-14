@@ -6,6 +6,9 @@ import { Button } from "@/components/ui/button";
 import { useMutation } from "convex/react";
 import { toast } from "sonner";
 import { useMemo } from "react";
+import { useState } from "react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import CampaignComposer from "@/components/email/CampaignComposer";
 
 interface StartupDashboardProps {
   business: any;
@@ -94,6 +97,15 @@ export function StartupDashboard({
         Upgrade
       </Button>
     </div>
+  );
+
+  // Add: composer modal state
+  const [showComposer, setShowComposer] = useState(false);
+
+  // Add: recent campaigns list
+  const recentCampaigns = useQuery(
+    api.emails.listCampaignsByBusiness,
+    isGuest || !business?._id ? "skip" : { businessId: business._id }
   );
 
   return (
@@ -230,7 +242,8 @@ export function StartupDashboard({
               <p className="text-sm text-muted-foreground mb-3">
                 Assign owners, set objectives, and launch with a template.
               </p>
-              <Button size="sm">Create Campaign</Button>
+              {/* Open composer modal */}
+              <Button size="sm" onClick={() => setShowComposer(true)}>Create Campaign</Button>
             </CardContent>
           </Card>
           <Card>
@@ -292,6 +305,44 @@ export function StartupDashboard({
           </Card>
         </div>
       </section>
+
+      {/* Email Campaigns */}
+      {!isGuest && business?._id && (
+        <section>
+          <h2 className="text-xl font-semibold mb-4">Email Campaigns</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {(Array.isArray(recentCampaigns) ? recentCampaigns : []).map((c: any) => (
+              <Card key={String(c._id)}>
+                <CardContent className="p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <h3 className="font-medium">{c.subject}</h3>
+                      <p className="text-xs text-muted-foreground">From: {c.from}</p>
+                    </div>
+                    <Badge variant="outline">{c.status}</Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    {c.recipients?.length ?? 0} recipients • Scheduled {new Date(c.scheduledAt).toLocaleString?.()}
+                  </p>
+                </CardContent>
+              </Card>
+            ))}
+            {(!recentCampaigns || (Array.isArray(recentCampaigns) && recentCampaigns.length === 0)) && (
+              <Card className="border-dashed">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="font-medium">No campaigns yet</h3>
+                      <p className="text-sm text-muted-foreground">Create your first campaign to see it here.</p>
+                    </div>
+                    <Button size="sm" variant="outline" onClick={() => setShowComposer(true)}>New Campaign</Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        </section>
+      )}
 
       {/* System Health (Bottom) */}
       <section>
@@ -420,6 +471,23 @@ export function StartupDashboard({
           </CardContent>
         </Card>
       </div>
+
+      {/* Campaign Composer Modal */}
+      <Dialog open={showComposer} onOpenChange={setShowComposer}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Create Email Campaign</DialogTitle>
+          </DialogHeader>
+          <CampaignComposer
+            businessId={business?._id}
+            onClose={() => setShowComposer(false)}
+            onCreated={() => {
+              setShowComposer(false);
+              toast.success("Campaign scheduled");
+            }}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
