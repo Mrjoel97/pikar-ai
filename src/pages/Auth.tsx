@@ -59,6 +59,7 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
       await signIn("email-otp", formData);
       setStep({ email: formData.get("email") as string });
       setIsLoading(false);
+      toast.success(`Verification code sent to ${String(formData.get("email"))}`);
     } catch (error) {
       console.error("Email sign-in error:", error);
       setError(
@@ -67,6 +68,7 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
           : "Failed to send verification code. Please try again.",
       );
       setIsLoading(false);
+      toast.error("Failed to send verification code");
     }
   };
 
@@ -81,6 +83,7 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
       console.log("signed in");
 
       const redirect = redirectAfterAuth || "/";
+      toast.success("Signed in");
       navigate(redirect);
     } catch (error) {
       console.error("OTP verification error:", error);
@@ -89,6 +92,7 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
       setIsLoading(false);
 
       setOtp("");
+      toast.error("Incorrect verification code");
     }
   };
 
@@ -126,10 +130,12 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
   const handleGoogleLogin = () => {
     setIsLoading(true);
     setError(null);
+    toast("Redirecting to Google…");
     signIn("google").catch((err) => {
       console.error("Google sign-in error:", err);
       setError("Google sign-in failed. Please try again.");
       setIsLoading(false);
+      toast.error("Google sign-in failed");
     });
   };
 

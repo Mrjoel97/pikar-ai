@@ -4,7 +4,7 @@ import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { toast } from "sonner";
 import { useState, type ChangeEvent } from "react";
-import { Play, BarChart3, Clock, Webhook } from "lucide-react";
+import { Play, BarChart3, Clock, Webhook, Search } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
@@ -46,6 +46,11 @@ export default function WorkflowsPage() {
   const [templateSort, setTemplateSort] = useState<"recommended" | "newest" | "name">("recommended");
   const guestMode = isGuestMode();
   const selectedTier = getSelectedTier();
+  const [templatesOpen, setTemplatesOpen] = useState(false);
+  const [tplSearch, setTplSearch] = useState<string>("");
+  const [tplTier, setTplTier] = useState<string>("all");
+  const [isCopyingId, setIsCopyingId] = useState<string | null>(null);
+  const [isSeeding, setIsSeeding] = useState(false);
 
   const businesses = useQuery(api.businesses.getUserBusinesses, {});
   const firstBizId = businesses?.[0]?._id;
@@ -55,7 +60,7 @@ export default function WorkflowsPage() {
   const simulateWorkflowAction = useAction(api.workflows.simulateWorkflow);
   const complianceScanAction = useAction(api.workflows.checkMarketingCompliance);
   const guestTemplates = useQuery(
-    api.workflowTemplates.getBuiltInTemplates,
+    ((api as any).workflowTemplates?.getBuiltInTemplates) || ({} as any),
     guestMode ? { tier: selectedTier as any, search: null } : "skip"
   );
   const executions = useQuery(api.workflows.getExecutions,
@@ -65,6 +70,69 @@ export default function WorkflowsPage() {
     } : "skip");
 
   const upsertWorkflow = useMutation(api.workflows.upsertWorkflow);
+  const copyBuiltInTemplate = useMutation(((api as any).workflowTemplates?.copyBuiltInTemplate) || ({} as any));
+  const seedTasksForBiz = useMutation(api.tasks.seedDemoTasksForBusiness);
+  const seedContactsAction = useAction(((api as any).contacts?.seedContacts) || ({} as any));
+  const seedKpisForBiz = useMutation((api as any).kpis?.seedDemoForBusiness || ({} as any));
+
+  const handleCopyTemplate = async (template: any) => {
+    if (!firstBizId) {
+      toast.error("No business found. Complete onboarding first.");
+      return;
+    }
+    try {
+      setIsCopyingId(String(template._id));
+      await copyBuiltInTemplate({ businessId: firstBizId as any, key: template._id });
+      toast.success("Template copied to your workflows");
+      setTemplatesOpen(false);
+      navigate("/workflows");
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to copy template");
+    } finally {
+      setIsCopyingId(null);
+    }
+  };
+
+  const handleSeedDemoData = async () => {
+    if (!firstBizId) {
+      toast.error("No business found. Complete onboarding first.");
+      return;
+    }
+    try {
+      setIsSeeding(true);
+      toast("Seeding demo data…");
+      const results = await Promise.allSettled([
+        seedTasksForBiz({ businessId: firstBizId as any }),
+        seedContactsAction({ businessId: firstBizId as any }),
+        // KPI seeding may not exist in some builds; guard call and swallow error
+        (async () => {
+          try {
+            if ((api as any).kpis?.seedDemoForBusiness) {
+              await seedKpisForBiz({ businessId: firstBizId as any });
+            }
+          } catch {
+            // ignore optional KPI seed errors
+          }
+        })(),
+      ]);
+      const failed = results.filter(r => r.status === "rejected").length;
+      if (failed === 0) {
+        toast.success("Demo data seeded");
+      } else {
+        toast.error(`Some seeding steps failed (${failed}). Check logs and retry.`);
+      }
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to seed demo data");
+    } finally {
+      setIsSeeding(false);
+    }
+  };
+
+  const modalTemplates = useQuery(
+    ((api as any).workflowTemplates?.getBuiltInTemplates) || ({} as any),
+    { tier: tplTier === "all" ? null : (tplTier as any), search: tplSearch || null }
+  );
+
   const handleCreateWorkflow = async () => {
     if (!firstBizId || !formData.name.trim()) {
       toast.error("Name is required");
@@ -380,6 +448,14 @@ export default function WorkflowsPage() {
           <DialogTrigger asChild>
             <Button>New Workflow</Button>
           </DialogTrigger>
+          <div className="hidden md:flex items-center gap-2 ml-2">
+            <Button variant="outline" onClick={() => setTemplatesOpen(true)}>
+              Browse Templates
+            </Button>
+            <Button variant="secondary" onClick={handleSeedDemoData} disabled={isSeeding}>
+              {isSeeding ? "Seeding…" : "Seed Demo Data"}
+            </Button>
+          </div>
           <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Create New Workflow</DialogTitle>
@@ -505,6 +581,76 @@ export default function WorkflowsPage() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        <Dialog open={templatesOpen} onOpenChange={setTemplatesOpen}>
+          <DialogContent className="max-w-3xl">
+            <DialogHeader>
+              <DialogTitle>Templates</DialogTitle>
+              <DialogDescription>Search and copy a template into your workspace</DialogDescription>
+            </DialogHeader>
+
+            <div className="flex flex-col md:flex-row gap-2">
+              <div className="flex-1 relative">
+                <Input
+                  value={tplSearch}
+                  onChange={(e) => setTplSearch(e.target.value)}
+                  placeholder="Search templates..."
+                />
+                <Search className="h-4 w-4 text-muted-foreground absolute right-3 top-1/2 -translate-y-1/2" />
+              </div>
+              <Select value={tplTier} onValueChange={setTplTier}>
+                <SelectTrigger className="w-full md:w-40">
+                  <SelectValue placeholder="Tier" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Tiers</SelectItem>
+                  <SelectItem value="solopreneur">Solopreneur</SelectItem>
+                  <SelectItem value="startup">Startup</SelectItem>
+                  <SelectItem value="sme">SME</SelectItem>
+                  <SelectItem value="enterprise">Enterprise</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="text-xs text-muted-foreground">
+              {modalTemplates ? modalTemplates.length : 0} template{(modalTemplates?.length || 0) === 1 ? "" : "s"} found
+            </div>
+
+            <div className="space-y-3 max-h-[50vh] overflow-y-auto pr-1">
+              {(modalTemplates || []).map((t: any) => (
+                <div key={t._id} className="border rounded-md p-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="font-medium truncate">{t.name}</div>
+                      {t.description && <div className="text-xs text-muted-foreground truncate">{t.description}</div>}
+                    </div>
+                    <Button
+                      size="sm"
+                      onClick={() => handleCopyTemplate(t)}
+                      disabled={!firstBizId || isCopyingId === String(t._id)}
+                    >
+                      {isCopyingId === String(t._id) ? "Copying…" : "Copy"}
+                    </Button>
+                  </div>
+                  <div className="mt-2 text-xs text-muted-foreground flex items-center gap-3">
+                    <span>Steps: {t.pipeline?.length ?? 0}</span>
+                    <span>Trigger: {t.trigger?.type ?? "manual"}</span>
+                  </div>
+                  {Array.isArray(t.tags) && t.tags.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-1">
+                      {t.tags.slice(0, 6).map((tag: string) => (
+                        <Badge key={tag} variant="outline" className="text-[10px]">{tag}</Badge>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+              {(modalTemplates || []).length === 0 && (
+                <div className="text-sm text-muted-foreground">No templates match your search.</div>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
 
       <Tabs defaultValue="all" className="space-y-4">
@@ -552,7 +698,7 @@ export default function WorkflowsPage() {
                     {workflow.trigger.eventKey && <span>Event: {workflow.trigger.eventKey}</span>}
                     {workflow.approval.required && <span>Approval Required</span>}
                   </div>
-                    {workflow.tags?.length > 0 && (
+                  {workflow.tags?.length > 0 && (
                     <div className="flex gap-1 mt-2">
                       {(workflow.tags ?? []).map((tag: string) => (
                         <Badge key={tag} variant="outline" className="text-xs">{tag}</Badge>

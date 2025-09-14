@@ -457,9 +457,9 @@ export function SolopreneurDashboard({
     revenueDelta: 0,
   };
 
-  const builtIns = useQuery(api.workflowTemplates.getBuiltInTemplates, { tier: "solopreneur", search: null } as any) ?? [];
+  const builtIns = useQuery((api as any).workflowTemplates?.getBuiltInTemplates || ({} as any), { tier: "solopreneur", search: null } as any) ?? [];
 
-  const copyBuiltIn = useMutation(api.workflowTemplates.copyBuiltInTemplate);
+  const copyBuiltIn = useMutation(((api as any).workflowTemplates?.copyBuiltInTemplate) || ({} as any));
 
   type FocusTask = { id: string; title: string; snap: "S" | "N" | "A" | "P"; done: boolean };
   const [focusInput, setFocusInput] = useState("");

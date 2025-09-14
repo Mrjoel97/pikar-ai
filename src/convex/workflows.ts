@@ -1078,8 +1078,7 @@ export const ensureTemplateCount = mutation({
 });
 
 // Register queries/mutations for built-in workflow templates
-import { query, mutation } from "./_generated/server";
-import { v } from "convex/values";
+/* removed duplicate imports at file bottom */
 import * as templatesData from "./templatesData";
 
 // Helper to collect built-in templates from templatesData in a resilient way
