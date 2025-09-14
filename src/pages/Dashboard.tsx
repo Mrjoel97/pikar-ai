@@ -207,6 +207,28 @@ export default function Dashboard() {
           </div>
         )}
 
+        {/* Add: Solopreneur quick-start card */}
+        {effectiveTier === "solopreneur" && (
+          <Card className="mb-6 border-emerald-200 bg-white">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-emerald-800">Get set up in 2 minutes</CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+              <div className="text-sm text-slate-700">
+                Quick wins: copy a Brand Booster template or head to Workflows to start automating.
+              </div>
+              <div className="flex gap-2">
+                <Button size="sm" variant="outline" onClick={() => navigate("/workflows")}>
+                  Browse Templates
+                </Button>
+                <Button size="sm" onClick={() => navigate("/workflows")}>
+                  Go to Workflows
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Add: Upgrade CTA for non-enterprise authenticated users */}
         {!guestMode && effectiveTier !== "enterprise" && (
           <Card className="mb-6 border-emerald-200 bg-emerald-50">

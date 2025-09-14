@@ -31,6 +31,15 @@ function getTriggerIcon(type: string) {
   }
 }
 
+function estimateRoiBadge(wf: any): { label: string; variant: "default" | "secondary" | "destructive" } {
+  const steps = Array.isArray(wf?.pipeline) ? wf.pipeline.length : 0;
+  const approvals = (wf?.pipeline || []).filter((s: any) => (s?.kind || s?.type) === "approval").length;
+  const score = steps + approvals * 1.5;
+  if (score >= 6) return { label: "Est. ROI: High", variant: "default" };
+  if (score >= 3) return { label: "Est. ROI: Medium", variant: "secondary" };
+  return { label: "Est. ROI: Quick Win", variant: "secondary" };
+}
+
 export default function WorkflowsPage() {
   const navigate = useNavigate();
   const { isLoading: authLoading, isAuthenticated } = useAuth();
@@ -51,6 +60,26 @@ export default function WorkflowsPage() {
   const [tplTier, setTplTier] = useState<string>("all");
   const [isCopyingId, setIsCopyingId] = useState<string | null>(null);
   const [isSeeding, setIsSeeding] = useState(false);
+
+  const [formData, setFormData] = useState({
+    name: "",
+    description: "",
+    triggerType: "manual" as "manual" | "schedule" | "webhook",
+    cron: "",
+    eventKey: "",
+    approvalRequired: false,
+    approvalThreshold: 1,
+    pipeline: JSON.stringify(
+      [
+        { kind: "agent", input: "Process request" },
+        { kind: "approval", approverRole: "manager" },
+      ],
+      null,
+      2
+    ),
+    tags: "",
+    saveAsTemplate: false,
+  });
 
   const businesses = useQuery(api.businesses.getUserBusinesses, {});
   const firstBizId = businesses?.[0]?._id;
@@ -74,6 +103,8 @@ export default function WorkflowsPage() {
   const seedTasksForBiz = useMutation(api.tasks.seedDemoTasksForBusiness);
   const seedContactsAction = useAction(((api as any).contacts?.seedContacts) || ({} as any));
   const seedKpisForBiz = useMutation((api as any).kpis?.seedDemoForBusiness || ({} as any));
+
+  // formData hook moved above to keep hook order consistent
 
   const handleCopyTemplate = async (template: any) => {
     if (!firstBizId) {
@@ -279,22 +310,6 @@ export default function WorkflowsPage() {
       </div>
     );
   }
-
-  const [formData, setFormData] = useState({
-    name: "",
-    description: "",
-    triggerType: "manual" as "manual" | "schedule" | "webhook",
-    cron: "",
-    eventKey: "",
-    approvalRequired: false,
-    approvalThreshold: 1,
-    pipeline: JSON.stringify([
-      { kind: "agent", input: "Process request" },
-      { kind: "approval", approverRole: "manager" }
-    ], null, 2),
-    tags: "",
-    saveAsTemplate: false,
-  });
 
   const handleSimulate = async (workflow: any) => {
     try {
@@ -697,6 +712,13 @@ export default function WorkflowsPage() {
                     {workflow.trigger.cron && <span>Schedule: {workflow.trigger.cron}</span>}
                     {workflow.trigger.eventKey && <span>Event: {workflow.trigger.eventKey}</span>}
                     {workflow.approval.required && <span>Approval Required</span>}
+                  </div>
+                  {/* Add: ROI badge */}
+                  <div className="mt-2">
+                    {(() => {
+                      const roi = estimateRoiBadge(workflow);
+                      return <Badge variant={roi.variant}>{roi.label}</Badge>;
+                    })()}
                   </div>
                   {workflow.tags?.length > 0 && (
                     <div className="flex gap-1 mt-2">

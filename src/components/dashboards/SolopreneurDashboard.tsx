@@ -457,7 +457,7 @@ export function SolopreneurDashboard({
     revenueDelta: 0,
   };
 
-  const builtIns = useQuery((api as any).workflowTemplates?.getBuiltInTemplates || ({} as any), { tier: "solopreneur", search: null } as any) ?? [];
+  const builtIns = useQuery((api as any).workflowTemplates?.getBuiltInTemplates || ({} as any), { tier, search: null } as any) ?? [];
 
   const copyBuiltIn = useMutation(((api as any).workflowTemplates?.copyBuiltInTemplate) || ({} as any));
 
@@ -574,6 +574,69 @@ export function SolopreneurDashboard({
         meta: String(a.meta ?? a.message ?? a.description ?? a.details ?? ""),
       }))
     : fallbackActivity;
+
+  // Add: simple ROI estimator for templates based on pipeline length
+  const estimateRoi = React.useCallback((steps?: number) => {
+    const n = Math.max(1, Number(steps ?? 0));
+    const mins = Math.max(2, n * 2); // 2 min per automated step as a heuristic
+    return `~${mins} min/run`;
+  }, []);
+
+  // Add: one-click seed demo data (tasks, contacts, KPIs if available)
+  const seedKpis = useMutation(((api as any).kpis?.seedDemoSnapshot) || ({} as any));
+  const handleSeedDemoData = async () => {
+    try {
+      if (isGuest) {
+        toast("Sign in to seed demo data into your workspace.");
+        return;
+      }
+      if (!business?._id) {
+        toast.error("Business context missing. Complete onboarding first.");
+        return;
+      }
+      const ops: Array<Promise<any>> = [];
+
+      // Tasks
+      ops.push(
+        seedTasks({ businessId: business._id }).catch((e: any) => {
+          console.warn("Seed tasks failed:", e);
+          return null;
+        }),
+      );
+
+      // Contacts (best-effort; shape may vary)
+      if (typeof seedContactsAction === "function") {
+        ops.push(
+          seedContactsAction({ businessId: business._id, count: 50 } as any).catch((e: any) => {
+            console.warn("Seed contacts failed:", e);
+            return null;
+          }),
+        );
+      }
+
+      // KPIs (best-effort)
+      if (typeof seedKpis === "function") {
+        ops.push(
+          (seedKpis as any)({ businessId: business._id }).catch((e: any) => {
+            console.warn("Seed KPIs failed:", e);
+            return null;
+          }),
+        );
+      }
+
+      const results = await Promise.allSettled(ops);
+      const ok = results.filter((r) => r.status === "fulfilled").length;
+      const total = results.length;
+
+      if (ok > 0) {
+        toast.success(`Seeded demo data (${ok}/${total} ops succeeded)`);
+      } else {
+        toast.error("Seeding failed. Try again or contact support.");
+      }
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to seed demo data");
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -698,6 +761,11 @@ export function SolopreneurDashboard({
           <Button className="w-full" variant="outline" onClick={() => navigate("/workflows")}><Zap className="mr-2 h-4 w-4" />Schedule Posts</Button>
           <Button className="w-full" variant="outline" onClick={() => navigate("/analytics")}><BarChart3 className="mr-2 h-4 w-4" />View Analytics</Button>
           <Button className="w-full" variant="secondary" onClick={() => setHelpOpen(true)}><HelpCircle className="mr-2 h-4 w-4" />Get Help</Button>
+          {/* Add: One-click Seed Demo Data */}
+          <Button className="w-full" variant="outline" onClick={handleSeedDemoData}>
+            <Zap className="mr-2 h-4 w-4" />
+            Seed Demo Data
+          </Button>
         </CardContent>
       </Card>
 
@@ -734,6 +802,8 @@ export function SolopreneurDashboard({
               <div className="mt-2 flex items-center gap-3 text-xs text-muted-foreground">
                 <span>Steps: {t.pipeline?.length ?? 0}</span>
                 <span>Trigger: {t.trigger?.type ?? "manual"}</span>
+                {/* Add: ROI indicator */}
+                <span className="text-emerald-700">ROI: {estimateRoi(t.pipeline?.length)}</span>
               </div>
               {Array.isArray(t.tags) && t.tags.length > 0 && (
                 <div className="mt-2 flex flex-wrap gap-1">

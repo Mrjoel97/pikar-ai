@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 export default function WorkflowTemplatesPage() {
   const navigate = useNavigate();
@@ -28,6 +28,14 @@ export default function WorkflowTemplatesPage() {
   const firstBizId = businesses?.[0]?._id;
 
   const copyBuiltIn = useMutation(((api as any).workflowTemplates?.copyBuiltInTemplate) || ({} as any));
+
+  // Add: Default the tier filter to the user's business tier once loaded
+  useEffect(() => {
+    const bizTier = (businesses && businesses[0]?.tier) as string | undefined;
+    if (tierFilter === "all" && bizTier && ["solopreneur", "startup", "sme", "enterprise"].includes(bizTier)) {
+      setTierFilter(bizTier);
+    }
+  }, [businesses, tierFilter]);
 
   if (authLoading) {
     return (

@@ -36,7 +36,7 @@ const TIER_LABEL: Record<Tier, string> = {
 };
 
 const TIER_TAGS: Record<Tier, string[]> = {
-  solopreneur: ["content", "newsletter", "seo", "email", "brand", "solo"],
+  solopreneur: ["content", "newsletter", "seo", "email", "brand", "solo", "quick-win", "roi", "brand-booster"],
   startup: ["growth", "activation", "retention", "analytics", "team", "scale"],
   sme: ["governance", "compliance", "workflow", "process", "risk", "dept"],
   enterprise: ["enterprise", "global", "command", "security", "ops", "slo"],
@@ -105,6 +105,46 @@ function generateTemplatesForTier(tier: Tier, count = COUNT_PER_TIER): BuiltInTe
   const label = TIER_LABEL[tier];
   const tags = TIER_TAGS[tier];
   const out: BuiltInTemplate[] = [];
+
+  // Add: Tier-specific micro-templates (Quick Wins)
+  if (tier === "solopreneur") {
+    out.push({
+      _id: "builtin:solopreneur:brand-booster",
+      name: `${label} • Brand Booster • Quick Win`,
+      description: "Create a weekly LinkedIn post and email draft with a quick human review. Designed for immediate value and minimal setup.",
+      tier,
+      tags: Array.from(new Set(["brand-booster", "quick-win", "roi", "email", "social", "brand"])),
+      trigger: { type: "manual" },
+      approval: { required: true, threshold: 1 },
+      pipeline: [
+        {
+          step: 1,
+          type: "collect",
+          name: "Collect recent wins and updates",
+          config: { variant: "referral", intensity: 0 },
+        },
+        {
+          step: 2,
+          type: "generate",
+          name: "Draft LinkedIn post + email blurb",
+          config: { variant: "social", intensity: 1 },
+        },
+        {
+          step: 3,
+          type: "review",
+          name: "Quick human review",
+          config: { approverRole: "Owner" },
+        },
+        {
+          step: 4,
+          type: "publish",
+          name: "Publish & schedule",
+          config: { variant: "email", intensity: 0 },
+        },
+      ],
+    });
+  }
+
   for (let i = 1; i <= count; i++) {
     const idx = i - 1;
     const cat = pick(CATEGORIES, idx);
