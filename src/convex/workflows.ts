@@ -6,6 +6,9 @@ import { Id } from "./_generated/dataModel";
 import { withErrorHandling } from "./utils";
 import { paginationOptsValidator } from "convex/server";
 
+// Add imports for built-in templates
+import { getAllBuiltInTemplates, getBuiltInTemplateByKey } from "./templatesData";
+
 // Queries
 export const listWorkflows = query({
   args: {
@@ -1074,56 +1077,50 @@ export const ensureTemplateCount = mutation({
   }),
 });
 
-// Add: seedTemplatesPerTier mutation to clone templates across tiers
-export const seedTemplatesPerTier = mutation({
-  args: {},
-  handler: withErrorHandling(async (ctx) => {
-    const tiers = ["solopreneur", "startup", "sme", "enterprise"] as const;
-
-    const templates = await ctx.db.query("workflowTemplates").collect();
-    let created = 0;
-
-    for (const tpl of templates) {
-      for (const tier of tiers) {
-        const tierSuffix = ` (${tier.charAt(0).toUpperCase()}${tier.slice(1)})`;
-        const tieredName = String(tpl.name).endsWith(")")
-          ? `${tpl.name}${tierSuffix}` // in case original already has a suffix-like format, still append for uniqueness
-          : `${tpl.name}${tierSuffix}`;
-
-        // Skip if already exists
-        const existing = await ctx.db
-          .query("workflowTemplates")
-          .withSearchIndex?.("search_name", (q: any) => q.search("name", tieredName)) // optional if a search index exists
-          .collect()
-          .catch(async () => {
-            // Fallback to manual scan if no search index
-            const all: any[] = [];
-            for await (const t of ctx.db.query("workflowTemplates")) {
-              all.push(t);
-            }
-            return all.filter((t) => String(t.name) === tieredName);
-          });
-
-        if (existing && existing.length > 0) continue;
-
-        const mergedTags: Array<string> = Array.isArray((tpl as any).industryTags)
-          ? Array.from(new Set([...(tpl as any).industryTags, `tier:${tier}`]))
-          : [`tier:${tier}`];
-
-        await ctx.db.insert("workflowTemplates", {
-          name: tieredName,
-          category: (tpl as any).category,
-          description: (tpl as any).description,
-          steps: (tpl as any).steps,
-          recommendedAgents: (tpl as any).recommendedAgents ?? [],
-          industryTags: mergedTags,
-        });
-        created++;
+// Add: List built-in templates with optional tier + search filtering
+export const getBuiltInTemplates = query({
+  args: {
+    tier: v.union(v.string(), v.null()),
+    search: v.union(v.string(), v.null()),
+  },
+  handler: async (ctx, args) => {
+    const items = getAllBuiltInTemplates();
+    const filtered = items.filter((t) => {
+      if (args.tier && t.tier !== args.tier) return false;
+      if (args.search) {
+        const q = args.search.toLowerCase();
+        const hay = `${t.name} ${t.description ?? ""} ${(t.tags ?? []).join(" ")}`.toLowerCase();
+        return hay.includes(q);
       }
-    }
+      return true;
+    });
+    return filtered;
+  },
+});
 
-    return { created };
-  }),
+// Add: Copy a built-in template into a business as a draft workflow
+export const copyBuiltInTemplate = mutation({
+  args: {
+    businessId: v.id("businesses"),
+    key: v.string(), // matches template._id
+  },
+  handler: async (ctx, args) => {
+    const tmpl = getBuiltInTemplateByKey(args.key);
+    if (!tmpl) throw new Error("Template not found");
+
+    const workflowId = await ctx.db.insert("workflows", {
+      name: tmpl.name,
+      description: tmpl.description,
+      businessId: args.businessId,
+      trigger: tmpl.trigger as any,
+      approval: tmpl.approval as any,
+      pipeline: tmpl.pipeline as any,
+      template: false,
+      tags: tmpl.tags ?? [],
+      status: "draft",
+    });
+    return workflowId;
+  },
 });
 
 // Actions

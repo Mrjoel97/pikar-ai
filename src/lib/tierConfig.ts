@@ -12,7 +12,7 @@ import {
   CheckCircle,
   AlertTriangle,
   Building,
-  Workflow
+  GitBranch
 } from "lucide-react";
 
 export type TierType = "solopreneur" | "startup" | "sme" | "enterprise";
@@ -90,7 +90,7 @@ export const tierConfigs: Record<TierType, TierConfig> = {
       { label: "Dashboard", icon: BarChart3, to: "/dashboard" },
       { label: "Team Performance", icon: Users, to: "/analytics", feature: "team_performance" },
       { label: "AI Agents", icon: Zap, to: "/agents", feature: "advanced_agents" },
-      { label: "Workflows", icon: Workflow, to: "/workflows", feature: "team_workflows" },
+      { label: "Workflows", icon: GitBranch, to: "/workflows", feature: "team_workflows" },
       { label: "Initiatives", icon: Target, to: "/initiatives", feature: "active_initiatives" },
       { label: "Approvals", icon: CheckCircle, to: "/dashboard", feature: "approvals_tray" },
       { label: "Analytics", icon: TrendingUp, to: "/analytics", feature: "basic_analytics" }
@@ -127,7 +127,7 @@ export const tierConfigs: Record<TierType, TierConfig> = {
       { label: "Dashboard", icon: BarChart3, to: "/dashboard" },
       { label: "Governance", icon: Shield, to: "/dashboard", feature: "governance_panel" },
       { label: "AI Agents", icon: Zap, to: "/agents" },
-      { label: "Workflows", icon: Workflow, to: "/workflows", feature: "advanced_workflows" },
+      { label: "Workflows", icon: GitBranch, to: "/workflows", feature: "advanced_workflows" },
       { label: "Initiatives", icon: Target, to: "/initiatives" },
       { label: "Approvals", icon: CheckCircle, to: "/dashboard", feature: "pending_approvals" },
       { label: "Departments", icon: Building, to: "/business", feature: "department_tabs" },
@@ -167,7 +167,7 @@ export const tierConfigs: Record<TierType, TierConfig> = {
       { label: "Command Center", icon: Globe, to: "/dashboard" },
       { label: "Global Overview", icon: BarChart3, to: "/dashboard", feature: "global_overview" },
       { label: "AI Agents", icon: Zap, to: "/agents" },
-      { label: "Workflows", icon: Workflow, to: "/workflows", feature: "custom_workflows" },
+      { label: "Workflows", icon: GitBranch, to: "/workflows", feature: "custom_workflows" },
       { label: "Initiatives", icon: Target, to: "/initiatives", feature: "strategic_initiatives" },
       { label: "Governance", icon: Shield, to: "/dashboard", feature: "advanced_governance" },
       { label: "Business Units", icon: Building, to: "/business" },

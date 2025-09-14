@@ -4,7 +4,7 @@ import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { toast } from "sonner";
 import { useState, type ChangeEvent } from "react";
-import { Play, Copy, BarChart3, Clock, Webhook } from "lucide-react";
+import { Play, BarChart3, Clock, Webhook } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
@@ -16,6 +16,19 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+
+function getTriggerIcon(type: string) {
+  switch (type) {
+    case "manual":
+      return <Play className="h-4 w-4 text-muted-foreground" />;
+    case "schedule":
+      return <Clock className="h-4 w-4 text-muted-foreground" />;
+    case "webhook":
+      return <Webhook className="h-4 w-4 text-muted-foreground" />;
+    default:
+      return <Play className="h-4 w-4 text-muted-foreground" />;
+  }
+}
 
 export default function WorkflowsPage() {
   const navigate = useNavigate();
@@ -38,10 +51,8 @@ export default function WorkflowsPage() {
     firstBizId ? { businessId: firstBizId } : "skip");
   const simulateWorkflowAction = useAction(api.workflows.simulateWorkflow);
   const complianceScanAction = useAction(api.workflows.checkMarketingCompliance);
-  const templates = useQuery(api.workflows.getTemplates,
-    firstBizId ? { businessId: firstBizId } : "skip");
-  const suggested = useQuery(api.workflows.suggested,
-    firstBizId ? { businessId: firstBizId } : "skip");
+  // Removed unused templates query
+  // Removed unused suggested query
   const executions = useQuery(api.workflows.getExecutions,
     selectedWorkflow ? {
       workflowId: selectedWorkflow as any,
@@ -49,10 +60,10 @@ export default function WorkflowsPage() {
     } : "skip");
 
   const upsertWorkflow = useMutation(api.workflows.upsertWorkflow);
-  const copyFromTemplate = useMutation(api.workflows.copyFromTemplate);
-  const updateTrigger = useMutation(api.workflows.updateTrigger);
-  const seedBusinessTemplates = useMutation(api.workflows.seedBusinessWorkflowTemplates);
-  const seedAllTierTemplates = useAction(api.aiAgents.seedAllTierTemplates);
+  // Removed unused copyFromTemplate mutation
+  // Removed unused updateTrigger mutation
+  // Removed unused seedBusinessWorkflowTemplates mutation
+  // Removed unused seedAllTierTemplates action
 
   const [formData, setFormData] = useState({
     name: "",
@@ -157,15 +168,6 @@ export default function WorkflowsPage() {
       });
     } catch (error) {
       toast.error("Failed to create workflow");
-    }
-  };
-
-  const handleCopyTemplate = async (templateId: string) => {
-    try {
-      await copyFromTemplate({ templateId: templateId as any });
-      toast.success("Template copied successfully");
-    } catch (error) {
-      toast.error("Failed to copy template");
     }
   };
 
@@ -306,59 +308,6 @@ export default function WorkflowsPage() {
       toast.success("Pipeline saved");
     } catch (e: any) {
       toast.error(e?.message || "Failed to save pipeline");
-    }
-  };
-
-  const handleCreateFromSuggestion = async (suggestion: any) => {
-    if (!firstBizId) return;
-
-    try {
-      await upsertWorkflow({
-        businessId: firstBizId,
-        name: suggestion.name,
-        description: suggestion.description,
-        trigger: suggestion.trigger,
-        approval: { required: false, threshold: 0 },
-        pipeline: suggestion.pipeline,
-        template: false,
-        tags: suggestion.tags
-      });
-      toast.success("Workflow created from suggestion");
-    } catch (error) {
-      toast.error("Failed to create workflow");
-    }
-  };
-
-  const getTriggerIcon = (type: string) => {
-    switch (type) {
-      case "schedule": return <Clock className="h-4 w-4" />;
-      case "webhook": return <Webhook className="h-4 w-4" />;
-      default: return <Play className="h-4 w-4" />;
-    }
-  };
-
-  const recommendedScore = (template: any) => {
-    const biz = businesses?.[0];
-    const tags: string[] = template?.tags || [];
-    let score = 0;
-    if (biz?.tier && tags.includes(`tier:${biz.tier}`)) score += 2;
-    if (biz?.industry && tags.includes(`industry:${biz.industry}`)) score += 1;
-    return score;
-  };
-
-  const handleSeed = async () => {
-    if (!firstBizId) {
-      toast.error("No business found. Complete onboarding first.");
-      return;
-    }
-    try {
-      toast.loading("Seeding 480 templates...", { id: "seed-templates" });
-      const res = await seedBusinessTemplates({ businessId: firstBizId as any, perTier: 120 } as any);
-      const inserted = (res as any)?.inserted ?? 0;
-      toast.success(`Seeding complete. Inserted ${inserted} templates.`, { id: "seed-templates" });
-    } catch (err: any) {
-      console.error(err);
-      toast.error(err?.message || "Failed to seed templates. Please try again.", { id: "seed-templates" });
     }
   };
 
@@ -504,8 +453,6 @@ export default function WorkflowsPage() {
       <Tabs defaultValue="all" className="space-y-4">
         <TabsList>
           <TabsTrigger value="all">All Workflows</TabsTrigger>
-          <TabsTrigger value="templates">Templates</TabsTrigger>
-          <TabsTrigger value="suggested">Suggested</TabsTrigger>
           <TabsTrigger value="analytics">Analytics</TabsTrigger>
         </TabsList>
 
@@ -542,15 +489,15 @@ export default function WorkflowsPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                    <span>Steps: {workflow.pipeline.length}</span>
+                    <span>Steps: {workflow.pipeline?.length ?? 0}</span>
                     <span>Trigger: {workflow.trigger.type}</span>
                     {workflow.trigger.cron && <span>Schedule: {workflow.trigger.cron}</span>}
                     {workflow.trigger.eventKey && <span>Event: {workflow.trigger.eventKey}</span>}
                     {workflow.approval.required && <span>Approval Required</span>}
                   </div>
-                  {workflow.tags.length > 0 && (
+                    {workflow.tags?.length > 0 && (
                     <div className="flex gap-1 mt-2">
-                      {workflow.tags.map((tag: string) => (
+                      {(workflow.tags ?? []).map((tag: string) => (
                         <Badge key={tag} variant="outline" className="text-xs">{tag}</Badge>
                       ))}
                     </div>
@@ -631,185 +578,6 @@ export default function WorkflowsPage() {
           </div>
         </TabsContent>
 
-        <TabsContent value="templates" className="space-y-4">
-          <div className="flex items-center gap-2 flex-wrap">
-            <div className="text-sm text-muted-foreground">Filter:</div>
-
-            <Select value={templateTierFilter} onValueChange={setTemplateTierFilter}>
-              <SelectTrigger className="w-36"><SelectValue placeholder="Tier" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Tiers</SelectItem>
-                <SelectItem value="solopreneur">Solopreneur</SelectItem>
-                <SelectItem value="startup">Startup</SelectItem>
-                <SelectItem value="sme">SME</SelectItem>
-                <SelectItem value="enterprise">Enterprise</SelectItem>
-              </SelectContent>
-            </Select>
-
-            <Select value={templateIndustryFilter} onValueChange={setTemplateIndustryFilter}>
-              <SelectTrigger className="w-44"><SelectValue placeholder="Industry" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Industries</SelectItem>
-                <SelectItem value="software">Software</SelectItem>
-                <SelectItem value="services">Services</SelectItem>
-                <SelectItem value="retail">Retail</SelectItem>
-                <SelectItem value="other">Other</SelectItem>
-              </SelectContent>
-            </Select>
-
-            <Input
-              value={templateSearch}
-              onChange={(e) => setTemplateSearch(e.target.value)}
-              placeholder="Search templates..."
-              className="w-56"
-            />
-
-            <Select value={templateSort} onValueChange={(v: any) => setTemplateSort(v)}>
-              <SelectTrigger className="w-44"><SelectValue placeholder="Sort by" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="recommended">Recommended</SelectItem>
-                <SelectItem value="newest">Newest</SelectItem>
-                <SelectItem value="name">Name (A–Z)</SelectItem>
-              </SelectContent>
-            </Select>
-
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                setTemplateTierFilter("all");
-                setTemplateIndustryFilter("all");
-                setTemplateSearch("");
-                setTemplateSort("recommended");
-              }}
-            >
-              Clear
-            </Button>
-
-            <div className="ml-auto flex items-center gap-2">
-              <Button variant="outline" size="sm" disabled={!firstBizId} onClick={async () => {
-                try {
-                  const res = await seedBusinessTemplates({ businessId: firstBizId as any, perTier: 120 } as any);
-                  toast.success("Templates seeded", { description: `${res?.inserted ?? 0} inserted` });
-                } catch (e: any) {
-                  toast.error(e?.message || "Seeding failed");
-                }
-              }}>Seed 480 templates</Button>
-            </div>
-          </div>
-
-          {(() => {
-            const term = templateSearch.trim().toLowerCase();
-            const list: any[] = (templates || [])
-              .filter((t: any) => {
-                const tags: string[] = t.tags || [];
-                const tierOk = templateTierFilter === "all" || tags.includes(`tier:${templateTierFilter}`);
-                const indOk = templateIndustryFilter === "all" || tags.includes(`industry:${templateIndustryFilter}`);
-                if (!tierOk || !indOk) return false;
-                if (!term) return true;
-                const hay = [
-                  t.name || "",
-                  t.description || "",
-                  (t.trigger?.type || ""),
-                  ...(tags || []),
-                ].join(" ").toLowerCase();
-                return hay.includes(term);
-              })
-              .sort((a: any, b: any) => {
-                if (templateSort === "recommended") {
-                  const sa = recommendedScore(a);
-                  const sb = recommendedScore(b);
-                  if (sb !== sa) return sb - sa;
-                  // tie-breaker: newest first
-                  return (b._creationTime || 0) - (a._creationTime || 0);
-                }
-                if (templateSort === "newest") {
-                  return (b._creationTime || 0) - (a._creationTime || 0);
-                }
-                // name
-                return String(a.name || "").localeCompare(String(b.name || ""));
-              });
-
-            return (
-              <>
-                <div className="text-xs text-muted-foreground">
-                  {list.length} template{list.length === 1 ? "" : "s"} found
-                </div>
-                <div className="grid gap-4">
-                  {list.map((template: any) => {
-                    const score = recommendedScore(template);
-                    return (
-                      <Card key={template._id}>
-                        <CardHeader>
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <div className="flex items-center gap-2">
-                                <CardTitle className="text-lg">{template.name}</CardTitle>
-                                {score > 0 && <Badge>Recommended</Badge>}
-                              </div>
-                              {template.description && (
-                                <CardDescription>{template.description}</CardDescription>
-                              )}
-                            </div>
-                            <Button onClick={() => handleCopyTemplate(template._id)}>
-                              <Copy className="h-4 w-4 mr-1" />
-                              Copy Template
-                            </Button>
-                          </div>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                            <span>Steps: {template.pipeline.length}</span>
-                            <span>Trigger: {template.trigger.type}</span>
-                          </div>
-                          {template.tags.length > 0 && (
-                            <div className="flex gap-1 mt-2 flex-wrap">
-                              {template.tags.map((tag: string) => (
-                                <Badge key={tag} variant="outline" className="text-xs">{tag}</Badge>
-                              ))}
-                            </div>
-                          )}
-                        </CardContent>
-                      </Card>
-                    );
-                  })}
-                </div>
-              </>
-            );
-          })()}
-        </TabsContent>
-
-        <TabsContent value="suggested" className="space-y-4">
-          <div className="grid gap-4">
-            {suggested?.map((suggestion: any, index: number) => (
-              <Card key={index}>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <CardTitle className="text-lg">{suggestion.name}</CardTitle>
-                      <CardDescription>{suggestion.description}</CardDescription>
-                    </div>
-                    <Button onClick={() => handleCreateFromSuggestion(suggestion)}>
-                      Create Workflow
-                    </Button>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                    <span>Steps: {suggestion.pipeline.length}</span>
-                    <span>Trigger: {suggestion.trigger.type}</span>
-                  </div>
-                  <div className="flex gap-1 mt-2">
-                    {suggestion.tags.map((tag: string) => (
-                      <Badge key={tag} variant="outline" className="text-xs">{tag}</Badge>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </TabsContent>
-
         <TabsContent value="analytics" className="space-y-4">
           {selectedWorkflow && executions && (
             <Card>
@@ -852,15 +620,6 @@ export default function WorkflowsPage() {
           )}
         </TabsContent>
       </Tabs>
-
-      <Button
-        onClick={handleSeed}
-        className="fixed bottom-6 right-6 z-50 shadow-lg"
-        variant="default"
-        disabled={!firstBizId}
-      >
-        Seed 480 Templates
-      </Button>
     </div>
   );
 }

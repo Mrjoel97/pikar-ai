@@ -1,17 +1,33 @@
 import { useNavigate } from "react-router";
 import { useAuth } from "@/hooks/use-auth";
-import { useMutation } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { useAction } from "convex/react";
+import { useState } from "react";
 
 export default function WorkflowTemplatesPage() {
   const navigate = useNavigate();
   const { isLoading: authLoading, isAuthenticated } = useAuth();
-  const seedTemplates = useMutation(api.workflows.seedTemplates);
-  const seedTieredTemplatesAndAgents = useAction(api.seed.seedTieredTemplatesAndAgents);
+
+  // Optional filters
+  const [tierFilter, setTierFilter] = useState<string>("all");
+  const [search, setSearch] = useState<string>("");
+
+  const builtIns = useQuery(api.workflows.getBuiltInTemplates, {
+    tier: tierFilter === "all" ? null : (tierFilter as any),
+    search: search || null,
+  });
+
+  // To copy into a workspace, need a businessId. Reuse user's first business if exists.
+  const businesses = useQuery(api.businesses.getUserBusinesses, {});
+  const firstBizId = businesses?.[0]?._id;
+
+  const copyBuiltIn = useMutation(api.workflows.copyBuiltInTemplate);
 
   if (authLoading) {
     return (
@@ -32,7 +48,7 @@ export default function WorkflowTemplatesPage() {
         <Card className="max-w-md w-full">
           <CardHeader>
             <CardTitle>Welcome</CardTitle>
-            <CardDescription>Sign in to manage templates.</CardDescription>
+            <CardDescription>Sign in to view templates.</CardDescription>
           </CardHeader>
           <CardContent className="flex gap-3">
             <Button onClick={() => navigate("/auth")}>Sign In</Button>
@@ -44,59 +60,89 @@ export default function WorkflowTemplatesPage() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto px-4 md:px-6 py-6 space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold">Workflow Templates</h1>
-        <p className="text-sm text-muted-foreground">Seed ready-made automations.</p>
+    <div className="max-w-6xl mx-auto px-4 md:px-6 py-6 space-y-6">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div>
+          <h1 className="text-2xl font-semibold">Workflow Templates</h1>
+          <p className="text-sm text-muted-foreground">Browse 120 curated templates per tier. Copy any into your workspace.</p>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Select value={tierFilter} onValueChange={setTierFilter}>
+            <SelectTrigger className="w-40">
+              <SelectValue placeholder="Tier" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Tiers</SelectItem>
+              <SelectItem value="solopreneur">Solopreneur</SelectItem>
+              <SelectItem value="startup">Startup</SelectItem>
+              <SelectItem value="sme">SME</SelectItem>
+              <SelectItem value="enterprise">Enterprise</SelectItem>
+            </SelectContent>
+          </Select>
+          <Input
+            className="w-56"
+            placeholder="Search templates..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+          <Button variant="outline" onClick={() => { setTierFilter("all"); setSearch(""); }}>
+            Clear
+          </Button>
+        </div>
       </div>
 
-      <Card className="bg-white">
-        <CardHeader>
-          <CardTitle>Seed 480 Templates + Agents</CardTitle>
-          <CardDescription>
-            Distributes 120 templates per tier (Solopreneur, Startup, SME, Enterprise) with matching agent templates. Safe to run multiple times — no duplicates.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="flex gap-2">
-          <Button
-            onClick={async () => {
-              try {
-                const res = await seedTieredTemplatesAndAgents({});
-                toast(typeof res?.message === "string" ? res.message : "Seeded 480 templates across tiers + agents.");
-              } catch (e: any) {
-                toast(e?.message || "Failed to seed tier templates");
-              }
-            }}
-          >
-            Seed 120 Templates
-          </Button>
-        </CardContent>
-      </Card>
+      <div className="text-xs text-muted-foreground">
+        {builtIns ? builtIns.length : 0} template{(builtIns?.length || 0) === 1 ? "" : "s"} found
+      </div>
 
-      <Card className="bg-white">
-        <CardHeader>
-          <CardTitle>Seed Templates</CardTitle>
-          <CardDescription>Safe to run multiple times. No duplicates.</CardDescription>
-        </CardHeader>
-        <CardContent className="flex gap-2">
-          <Button
-            onClick={async () => {
-              try {
-                await seedTemplates({});
-                toast("Templates seeded. View them under Workflows → All.");
-                navigate("/workflows");
-              } catch (e: any) {
-                toast(e?.message || "Failed to seed templates");
-              }
-            }}
-          >
-            Seed Templates
-          </Button>
-          <Button variant="outline" onClick={() => navigate("/workflows")}>
-            View All Workflows
-          </Button>
-        </CardContent>
-      </Card>
+      <div className="grid gap-4">
+        {(builtIns || []).map((template: any) => (
+          <Card key={template._id}>
+            <CardHeader>
+              <div className="flex items-center justify-between gap-2">
+                <div>
+                  <CardTitle className="text-lg">{template.name}</CardTitle>
+                  {template.description && (
+                    <CardDescription>{template.description}</CardDescription>
+                  )}
+                </div>
+                <Button
+                  disabled={!firstBizId}
+                  onClick={async () => {
+                    if (!firstBizId) {
+                      toast.error("No business found. Complete onboarding first.");
+                      return;
+                    }
+                    try {
+                      await copyBuiltIn({ businessId: firstBizId as any, key: template._id });
+                      toast.success("Template copied to your workflows");
+                      navigate("/workflows");
+                    } catch (e: any) {
+                      toast.error(e?.message || "Failed to copy template");
+                    }
+                  }}
+                >
+                  Copy to Workflows
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                <span>Steps: {template.pipeline.length}</span>
+                <span>Trigger: {template.trigger.type}</span>
+              </div>
+              {template.tags?.length > 0 && (
+                <div className="flex gap-1 mt-2 flex-wrap">
+                  {template.tags.map((tag: string) => (
+                    <Badge key={tag} variant="outline" className="text-xs">{tag}</Badge>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        ))}
+      </div>
     </div>
   );
 }

@@ -457,12 +457,11 @@ export const seedTieredTemplatesAndAgents = action({
     // Ensure a creator user exists
     await ctx.runMutation(api.users.ensureSeedUser, { email: creatorEmail });
     const creator =
-      (await ctx.runQuery(api.users.getByEmail as any, {
+      (await ctx.runQuery(((api as any).users?.getByEmail) as any, {
         email: creatorEmail,
       }).catch(() => null)) ||
       (await (async () => {
-        // fallback: manual query if helper missing
-        const u = await ctx.runQuery(api.users.findByEmail as any, {
+        const u = await ctx.runQuery(((api as any).users?.findByEmail) as any, {
           email: creatorEmail,
         }).catch(() => null);
         return u;
@@ -603,7 +602,7 @@ export const seedTieredTemplatesAndAgents = action({
           // Normalize tags to match UI filtering
           const tags = [`tier:${tier}`, `pattern:${slug}`, `industry:${industry}`];
 
-          await ctx.runMutation(api.workflows.upsertWorkflowTemplate, {
+          await ctx.runMutation(((api as any).workflows?.upsertWorkflowTemplate) as any, {
             name,
             description,
             category: "growth",
@@ -668,7 +667,7 @@ export const seedTieredTemplatesAndAgents = action({
     for (const tier of TIERS) {
       const entries = AGENTS_BY_TIER[tier] ?? [];
       for (const a of entries) {
-        await ctx.runMutation(api.aiAgents.upsertAgentTemplate, {
+        await ctx.runMutation(((api as any).aiAgents?.upsertAgentTemplate) as any, {
           name: a.name,
           description: a.desc,
           tags: [tier, ...a.tags],
@@ -678,7 +677,7 @@ export const seedTieredTemplatesAndAgents = action({
             parameters: { temperature: tier === "enterprise" ? 0.3 : 0.6 },
             capabilities: a.tags,
           },
-          createdBy: (creatorId as any) ?? (await ctx.runQuery(api.users.getAny as any, {}).catch(() => null))?._id ?? (undefined as any),
+          createdBy: (creatorId as any) ?? (await ctx.runQuery(((api as any).users?.getAny) as any, {}).catch(() => null))?._id ?? (undefined as any),
         });
         agentTemplatesSeeded += 1;
       }
