@@ -33,6 +33,37 @@ export default function InitiativesPage() {
   const [selectedBusinessId, setSelectedBusinessId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
 
+  const guestMode = !isAuthenticated;
+  const demoInitiatives: Array<{
+    _id: string;
+    title: string;
+    status: "draft" | "active" | "paused" | "completed";
+    priority: "low" | "medium" | "high" | "urgent";
+    metrics: { targetROI: number; currentROI: number; completionRate: number };
+  }> = [
+    {
+      _id: "demo1",
+      title: "Launch Email Outreach Campaign",
+      status: "active",
+      priority: "high",
+      metrics: { targetROI: 120, currentROI: 86, completionRate: 70 },
+    },
+    {
+      _id: "demo2",
+      title: "Revamp Onboarding Flow",
+      status: "paused",
+      priority: "medium",
+      metrics: { targetROI: 90, currentROI: 40, completionRate: 35 },
+    },
+    {
+      _id: "demo3",
+      title: "Enterprise Lead Nurture",
+      status: "draft",
+      priority: "urgent",
+      metrics: { targetROI: 150, currentROI: 0, completionRate: 5 },
+    },
+  ];
+
   useEffect(() => {
     if (!selectedBusinessId && (userBusinesses?.length || 0) > 0) {
       setSelectedBusinessId(userBusinesses![0]._id);
@@ -57,24 +88,9 @@ export default function InitiativesPage() {
     );
   }
 
-  if (!isAuthenticated) {
-    return (
-      <div className="min-h-[60vh] flex items-center justify-center px-6">
-        <Card className="max-w-md w-full">
-          <CardHeader>
-            <CardTitle>Welcome</CardTitle>
-            <CardDescription>Sign in to view your initiatives.</CardDescription>
-          </CardHeader>
-          <CardContent className="flex gap-3">
-            <Button onClick={() => navigate("/auth")}>Sign In</Button>
-            <Button variant="outline" onClick={() => navigate("/")}>Go Home</Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  const iList = Array.isArray(initiatives) ? initiatives : (initiatives ? [initiatives] : []);
+  const iList = guestMode
+    ? demoInitiatives
+    : Array.isArray(initiatives) ? initiatives : (initiatives ? [initiatives] : []);
   const filtered = iList.filter((i) => {
     const q = searchQuery.trim().toLowerCase();
     if (!q) return true;

@@ -26,6 +26,14 @@ export default function BusinessPage() {
 
   const [selectedBusinessId, setSelectedBusinessId] = useState<string | null>(null);
 
+  const guestMode = !isAuthenticated;
+  const demoBusiness: Business = {
+    _id: "guest_demo_business",
+    name: "Acme Demo Inc.",
+    tier: "startup",
+    industry: "Software",
+  };
+
   useEffect(() => {
     if (!selectedBusinessId && (userBusinesses?.length || 0) > 0) {
       setSelectedBusinessId(userBusinesses![0]._id);
@@ -59,26 +67,10 @@ export default function BusinessPage() {
     );
   }
 
-  if (!isAuthenticated) {
-    return (
-      <div className="min-h-[60vh] flex items-center justify-center px-6">
-        <Card className="max-w-md w-full">
-          <CardHeader>
-            <CardTitle>Welcome</CardTitle>
-            <CardDescription>Sign in to manage your business.</CardDescription>
-          </CardHeader>
-          <CardContent className="flex gap-3">
-            <Button onClick={() => navigate("/auth")}>Sign In</Button>
-            <Button variant="outline" onClick={() => navigate("/")}>Go Home</Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  const hasBusinesses = (userBusinesses?.length || 0) > 0;
-  // Use inferred types from Convex and avoid strict local typing here
-  const selectedBusiness = userBusinesses?.find((b) => b._id === selectedBusinessId);
+  const hasBusinesses = guestMode || (userBusinesses?.length || 0) > 0;
+  const selectedBusiness = guestMode
+    ? demoBusiness
+    : userBusinesses?.find((b) => b._id === selectedBusinessId);
 
   const handleQuickCreateBusiness = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();

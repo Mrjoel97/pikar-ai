@@ -285,6 +285,9 @@ function MyAgentsTab({
   const [visibility, setVisibility] = useState<"private" | "team" | "market">("private");
   const [riskLevel, setRiskLevel] = useState<"low" | "medium" | "high">("low");
 
+  // Add: guest mode
+  const guestMode = !userId;
+
   const handleSeed = async () => {
     if (!businessId) {
       toast("No business linked to your account yet.");
@@ -344,66 +347,71 @@ function MyAgentsTab({
         </div>
 
         <div className="flex flex-wrap gap-2">
-          <Button variant="secondary" onClick={handleSeed} disabled={!businessId}>
-            Add Pikar AI App Agents
-          </Button>
-          <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="w-4 h-4 mr-2" />
-                Create Custom Agent
+          {/* Hide actions that require auth in guest mode */}
+          {!guestMode && (
+            <>
+              <Button variant="secondary" onClick={handleSeed} disabled={!businessId}>
+                Add Pikar AI App Agents
               </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Create Custom Agent</DialogTitle>
-                <DialogDescription>Start from a blank slate without using a template.</DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label>Name</Label>
-                  <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g., Outreach Assistant" />
-                </div>
-                <div className="space-y-2">
-                  <Label>Description</Label>
-                  <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="What does this agent do?" />
-                </div>
-                <div className="space-y-2">
-                  <Label>Tags (comma separated)</Label>
-                  <Input value={tags} onChange={(e) => setTags(e.target.value)} placeholder="sales, outreach, email" />
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div className="space-y-2">
-                    <Label>Visibility</Label>
-                    <Select value={visibility} onValueChange={(v) => setVisibility(v as any)}>
-                      <SelectTrigger><SelectValue placeholder="Select visibility" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="private">Private</SelectItem>
-                        <SelectItem value="team">Team</SelectItem>
-                        <SelectItem value="market">Market</SelectItem>
-                      </SelectContent>
-                    </Select>
+              <Dialog open={open} onOpenChange={setOpen}>
+                <DialogTrigger asChild>
+                  <Button>
+                    <Plus className="w-4 h-4 mr-2" />
+                    Create Custom Agent
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Create Custom Agent</DialogTitle>
+                    <DialogDescription>Start from a blank slate without using a template.</DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label>Name</Label>
+                      <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g., Outreach Assistant" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Description</Label>
+                      <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="What does this agent do?" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Tags (comma separated)</Label>
+                      <Input value={tags} onChange={(e) => setTags(e.target.value)} placeholder="sales, outreach, email" />
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div className="space-y-2">
+                        <Label>Visibility</Label>
+                        <Select value={visibility} onValueChange={(v) => setVisibility(v as any)}>
+                          <SelectTrigger><SelectValue placeholder="Select visibility" /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="private">Private</SelectItem>
+                            <SelectItem value="team">Team</SelectItem>
+                            <SelectItem value="market">Market</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Risk Level</Label>
+                        <Select value={riskLevel} onValueChange={(v) => setRiskLevel(v as any)}>
+                          <SelectTrigger><SelectValue placeholder="Select risk level" /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="low">Low</SelectItem>
+                            <SelectItem value="medium">Medium</SelectItem>
+                            <SelectItem value="high">High</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label>Risk Level</Label>
-                    <Select value={riskLevel} onValueChange={(v) => setRiskLevel(v as any)}>
-                      <SelectTrigger><SelectValue placeholder="Select risk level" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="low">Low</SelectItem>
-                        <SelectItem value="medium">Medium</SelectItem>
-                        <SelectItem value="high">High</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-              </div>
-              <DialogFooter>
-                <Button onClick={handleCreateCustom} disabled={!userId || !businessId}>
-                  Create
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+                  <DialogFooter>
+                    <Button onClick={handleCreateCustom} disabled={!userId || !businessId}>
+                      Create
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            </>
+          )}
         </div>
       </div>
 
