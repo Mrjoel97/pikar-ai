@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useMutation } from "convex/react";
 import { toast } from "sonner";
+import { useMemo } from "react";
 
 interface StartupDashboardProps {
   business: any;
@@ -27,19 +28,6 @@ export function StartupDashboard({
   const tasks = isGuest ? demoData?.tasks || [] : [];
 
   const runDiagnostics = useMutation(api.initiatives.runPhase0Diagnostics);
-
-  const tierRank: Record<string, number> = { solopreneur: 1, startup: 2, sme: 3, enterprise: 4 };
-  const hasTier = (required: keyof typeof tierRank) => (tierRank[tier] ?? 1) >= tierRank[required];
-
-  const LockedRibbon = ({ label = "Higher tier feature" }: { label?: string }) => (
-    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-      <Badge variant="outline" className="border-amber-300 text-amber-700">Locked</Badge>
-      <span>{label}</span>
-      <Button size="sm" variant="outline" onClick={onUpgrade} className="ml-auto">
-        Upgrade
-      </Button>
-    </div>
-  );
 
   const upgradeNudges = useQuery(
     api.telemetry.getUpgradeNudges,
@@ -77,12 +65,36 @@ export function StartupDashboard({
     return arr;
   };
 
-  const revenueTrend = mkTrend((kpis?.totalRevenue ? Math.min(100, (kpis.totalRevenue / 2000) % 100) : 55));
-  const productivityTrend = mkTrend(kpis?.teamProductivity ?? 70);
+  const revenueTrend = useMemo(
+    () => mkTrend((kpis?.totalRevenue ? Math.min(100, (kpis.totalRevenue / 2000) % 100) : 55)),
+    [kpis?.totalRevenue]
+  );
+  const productivityTrend = useMemo(
+    () => mkTrend(kpis?.teamProductivity ?? 70),
+    [kpis?.teamProductivity]
+  );
 
-  const pendingApprovals = !isGuest && business?._id
-    ? useQuery(api.approvals.pendingForBusiness, { businessId: business._id, limit: 6 })
-    : undefined;
+  const pendingApprovals = useQuery(
+    api.approvals.pendingForBusiness,
+    isGuest || !business?._id ? "skip" : { businessId: business._id, limit: 6 }
+  );
+
+  const approveSelf = useMutation(api.approvals.approveSelf);
+  const rejectSelf = useMutation(api.approvals.rejectSelf);
+
+  const tierRank: Record<string, number> = { solopreneur: 1, startup: 2, sme: 3, enterprise: 4 };
+  const hasTier = (required: keyof typeof tierRank) =>
+    (tierRank[tier as keyof typeof tierRank] ?? 1) >= tierRank[required];
+
+  const LockedRibbon = ({ label = "Feature requires upgrade" }: { label?: string }) => (
+    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+      <Badge variant="outline" className="border-amber-300 text-amber-700">Locked</Badge>
+      <span>{label}</span>
+      <Button size="sm" variant="outline" onClick={onUpgrade} className="ml-auto">
+        Upgrade
+      </Button>
+    </div>
+  );
 
   return (
     <div className="space-y-6">
@@ -346,8 +358,34 @@ export function StartupDashboard({
                   <h3 className="font-medium">{title}</h3>
                   <p className="text-sm text-muted-foreground">{sub}</p>
                   <div className="flex gap-2 mt-3">
-                    <Button size="sm">Approve</Button>
-                    <Button variant="outline" size="sm">
+                    <Button
+                      size="sm"
+                      onClick={async () => {
+                        if (!item?._id) {
+                          toast.info("This is demo data");
+                          return;
+                        }
+                        try {
+                          await approveSelf({ id: item._id });
+                          toast.success("Approved");
+                        } catch (e: any) {
+                          toast.error(e?.message || "Failed to approve");
+                        }
+                      }}
+                    >
+                      Approve
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        try {
+                          window.location.href = "/workflows";
+                        } catch {
+                          // no-op
+                        }
+                      }}
+                    >
                       Review
                     </Button>
                   </div>

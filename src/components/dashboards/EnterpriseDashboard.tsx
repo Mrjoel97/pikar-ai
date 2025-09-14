@@ -2,7 +2,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Badge } from "@/components/ui/badge";
@@ -96,8 +96,15 @@ export function EnterpriseDashboard({
       ? kpis.engagement
       : 0;
 
-  const revenueTrend = mkTrend((unifiedRevenue ? Math.min(100, (unifiedRevenue / 5000) % 100) : 70));
-  const efficiencyTrend = mkTrend(unifiedGlobalEfficiency ?? 75);
+  // Memoize trends to avoid recompute on each render
+  const revenueTrend = useMemo(
+    () => mkTrend((unifiedRevenue ? Math.min(100, (unifiedRevenue / 5000) % 100) : 70)),
+    [unifiedRevenue]
+  );
+  const efficiencyTrend = useMemo(
+    () => mkTrend(unifiedGlobalEfficiency ?? 75),
+    [unifiedGlobalEfficiency]
+  );
 
   // Add: tier helper and LockedRibbon
   const tierRank: Record<string, number> = { solopreneur: 1, startup: 2, sme: 3, enterprise: 4 };
@@ -121,7 +128,10 @@ export function EnterpriseDashboard({
 
   const enforceGovernanceForBiz = useMutation(api.governance.enforceGovernanceForBusiness);
   // Fetch SLA summary (skip in guest / when no business)
-  const slaSummary = business ? useConvexQuery(api.approvals.getSlaSummary, { businessId: business._id }) : "skip";
+  const slaSummary = useConvexQuery(
+    api.approvals.getSlaSummary,
+    isGuest || !businessId ? "skip" : { businessId }
+  );
 
   return (
     <div className="space-y-6">
