@@ -13,6 +13,9 @@ import {
 } from "@/components/ui/dialog";
 import { ChevronDown, ExternalLink } from "lucide-react";
 import React, { useEffect, useState } from "react";
+import { useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
+import { toast } from "sonner";
 
 type SyncError = {
   error: string;
@@ -173,6 +176,42 @@ export function InstrumentationProvider({
   children: React.ReactNode;
 }) {
   const [error, setError] = useState<GenericError | null>(null);
+
+  // Add: environment precheck to surface actionable toasts once
+  const envStatus = useQuery(api.health.envStatus as any, {} as any);
+  const [envToastsShown, setEnvToastsShown] = useState(false);
+
+  useEffect(() => {
+    if (!envStatus || envToastsShown) return;
+    try {
+      const hasResend = Boolean((envStatus as any)?.hasResend);
+      const hasSalesInbox = Boolean((envStatus as any)?.hasSalesInbox);
+      const hasBaseUrl = Boolean((envStatus as any)?.hasBaseUrl);
+      const devSafeEmails = Boolean((envStatus as any)?.devSafeEmails);
+
+      if (!hasResend) {
+        console.warn("[ENV] RESEND_API_KEY is missing. Email delivery is disabled.");
+        // Use generic toast to avoid any type/version issues
+        toast("Email delivery is disabled (missing RESEND_API_KEY). Enable it or set DEV_SAFE_EMAILS=true to stub.");
+      }
+      if (!hasSalesInbox) {
+        console.warn("[ENV] SALES_INBOX/PUBLIC_SALES_INBOX is missing. Sales inquiries cannot be delivered.");
+        toast("Sales inbox is not configured. Set SALES_INBOX or PUBLIC_SALES_INBOX.");
+      }
+      if (!hasBaseUrl) {
+        console.warn("[ENV] VITE_PUBLIC_BASE_URL is missing. Unsubscribe links may be invalid.");
+        toast("Public base URL missing. Set VITE_PUBLIC_BASE_URL for correct unsubscribe links.");
+      }
+      if (devSafeEmails) {
+        console.info("[ENV] DEV_SAFE_EMAILS enabled. Outbound emails will be stubbed.");
+        toast("DEV safe mode is ON. Emails are stubbed, not sent.");
+      }
+    } catch (e) {
+      console.error("Failed to show env toasts:", e);
+    } finally {
+      setEnvToastsShown(true);
+    }
+  }, [envStatus, envToastsShown]);
 
   useEffect(() => {
     const handleError = async (event: ErrorEvent) => {

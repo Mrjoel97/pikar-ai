@@ -84,6 +84,30 @@ export const createCampaign = mutation({
       console.warn("Recipients list capped to 5000 for direct campaign");
     }
 
+    // Add entitlement guard for per-campaign recipients
+    if (args.audienceType === "direct" && recipients && recipients.length > 0) {
+      const gate = await ctx.runQuery(internal.entitlements.checkEntitlement, {
+        businessId: args.businessId,
+        action: "emails.createCampaign",
+        context: { recipientsCount: recipients.length },
+      });
+      if (!gate.allowed) {
+        await ctx.runMutation(internal.audit.write, {
+          businessId: args.businessId,
+          action: "entitlement_block",
+          entityType: "email_campaign",
+          entityId: "new",
+          details: {
+            reason: gate.reason,
+            recipientsCount: recipients.length,
+            tier: gate.tier,
+            limit: gate.limit,
+          },
+        });
+        throw new Error(gate.reason || "Action not permitted by your plan");
+      }
+    }
+
     const campaignId = await ctx.db.insert("emails", {
       businessId: args.businessId,
       type: "campaign",
@@ -101,7 +125,6 @@ export const createCampaign = mutation({
       createdAt: Date.now(),
     });
 
-    // If immediate send, schedule it
     if (!args.scheduledAt || args.scheduledAt <= Date.now() + 60000) {
       await ctx.scheduler.runAfter(0, internal.emailsActions.sendCampaignInternal, { campaignId });
     }
@@ -285,15 +308,20 @@ export const listDueScheduledCampaigns = internalQuery({
   args: {},
   handler: async (ctx) => {
     const now = Date.now();
-    const campaigns = await ctx.db
+    const due: Array<Id<"emails">> = [];
+
+    const query = ctx.db
       .query("emails")
-      .withIndex("by_business")
-      .collect();
-    
-    return campaigns
-      .filter(c => c.status === "scheduled" && c.scheduledAt && c.scheduledAt <= now)
-      .map(c => c._id)
-      .slice(0, 50); // Cap to prevent overload
+      .withIndex("by_status", (q) => q.eq("status", "scheduled"))
+      .order("asc");
+
+    for await (const c of query) {
+      if (!c.scheduledAt || c.scheduledAt > now) continue;
+      due.push(c._id);
+      if (due.length >= 50) break; // Cap to prevent overload
+    }
+
+    return due;
   },
 });
 
