@@ -55,7 +55,7 @@ export default function WorkflowsPage() {
   const simulateWorkflowAction = useAction(api.workflows.simulateWorkflow);
   const complianceScanAction = useAction(api.workflows.checkMarketingCompliance);
   const guestTemplates = useQuery(
-    api.workflows.getBuiltInTemplates,
+    api.workflowTemplates.getBuiltInTemplates,
     guestMode ? { tier: selectedTier as any, search: null } : "skip"
   );
   const executions = useQuery(api.workflows.getExecutions,

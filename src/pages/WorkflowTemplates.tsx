@@ -18,7 +18,7 @@ export default function WorkflowTemplatesPage() {
   const [tierFilter, setTierFilter] = useState<string>("all");
   const [search, setSearch] = useState<string>("");
 
-  const builtIns = useQuery(api.workflows.getBuiltInTemplates, {
+  const builtIns = useQuery(api.workflowTemplates.getBuiltInTemplates, {
     tier: tierFilter === "all" ? null : (tierFilter as any),
     search: search || null,
   });
@@ -27,7 +27,7 @@ export default function WorkflowTemplatesPage() {
   const businesses = useQuery(api.businesses.getUserBusinesses, {});
   const firstBizId = businesses?.[0]?._id;
 
-  const copyBuiltIn = useMutation(api.workflows.copyBuiltInTemplate);
+  const copyBuiltIn = useMutation(api.workflowTemplates.copyBuiltInTemplate);
 
   if (authLoading) {
     return (

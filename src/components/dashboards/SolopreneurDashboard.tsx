@@ -457,9 +457,9 @@ export function SolopreneurDashboard({
     revenueDelta: 0,
   };
 
-  const builtIns = useQuery(api.workflows.getBuiltInTemplates, { tier: "solopreneur", search: null } as any) ?? [];
+  const builtIns = useQuery(api.workflowTemplates.getBuiltInTemplates, { tier: "solopreneur", search: null } as any) ?? [];
 
-  const copyBuiltIn = useMutation(api.workflows.copyBuiltInTemplate);
+  const copyBuiltIn = useMutation(api.workflowTemplates.copyBuiltInTemplate);
 
   type FocusTask = { id: string; title: string; snap: "S" | "N" | "A" | "P"; done: boolean };
   const [focusInput, setFocusInput] = useState("");
@@ -720,7 +720,7 @@ export function SolopreneurDashboard({
                   onClick={async () => {
                     try {
                       // Reuse existing copy path; relies on server using user's first business internally if applicable
-                      await copyBuiltIn({ businessId: undefined as any, key: t._id });
+                      await copyBuiltIn({ businessId: business?._id as any, key: t._id });
                       toast.success("Template copied to your workflows");
                       navigate("/workflows");
                     } catch (e: any) {

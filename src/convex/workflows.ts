@@ -1077,7 +1077,38 @@ export const ensureTemplateCount = mutation({
   }),
 });
 
-// Public query: fetch built-in templates for the dashboard
+// Register queries/mutations for built-in workflow templates
+import { query, mutation } from "./_generated/server";
+import { v } from "convex/values";
+import * as templatesData from "./templatesData";
+
+// Helper to collect built-in templates from templatesData in a resilient way
+function collectAllTemplates(): any[] {
+  try {
+    const fn = (templatesData as any).getAllBuiltInTemplates;
+    if (typeof fn === "function") {
+      const out = fn();
+      if (Array.isArray(out)) return out;
+    }
+  } catch {}
+  const arrays: any[] = [];
+  for (const val of Object.values(templatesData as any)) {
+    if (Array.isArray(val)) arrays.push(...val);
+  }
+  // Dedupe by a stable key
+  const seen = new Set<string>();
+  const out: any[] = [];
+  for (const t of arrays) {
+    const k = String((t as any)._id ?? (t as any).id ?? (t as any).key ?? (t as any).name ?? Math.random()).toLowerCase();
+    if (!seen.has(k)) {
+      seen.add(k);
+      out.push(t);
+    }
+  }
+  return out;
+}
+
+// Public: fetch built-in workflow templates with optional tier and search filters
 export const getBuiltInTemplates = query({
   args: {
     tier: v.union(
@@ -1085,64 +1116,95 @@ export const getBuiltInTemplates = query({
       v.literal("startup"),
       v.literal("sme"),
       v.literal("enterprise"),
+      v.null()
     ),
-    limit: v.optional(v.number()),
+    search: v.union(v.string(), v.null()),
   },
   handler: async (ctx, args) => {
-    const { getAllBuiltInTemplates } = await import("./templatesData");
-    const all = getAllBuiltInTemplates();
-    const filtered = args.tier ? all.filter((t) => t.tier === args.tier) : all;
-    const limit = args.limit && args.limit > 0 ? Math.min(args.limit, 60) : 12;
-    return filtered.slice(0, limit);
+    let list = collectAllTemplates();
+
+    if (args.tier !== null) {
+      const t = args.tier as string;
+      list = list.filter((row: any) => {
+        const tier = (row.tier ?? row.industryTier ?? row.plan) as string | undefined;
+        return !t || tier === t;
+      });
+    }
+
+    const q = args.search && typeof args.search === "string" ? args.search.trim().toLowerCase() : "";
+    if (q) {
+      list = list.filter((t: any) => {
+        const name = String(t.name ?? "").toLowerCase();
+        const desc = String(t.description ?? "").toLowerCase();
+        const tags: string[] = Array.isArray(t.tags) ? t.tags : [];
+        return (
+          name.includes(q) ||
+          desc.includes(q) ||
+          tags.some((tag) => String(tag).toLowerCase().includes(q))
+        );
+      });
+    }
+
+    // Normalize minimal shape expected by the UI
+    return list.map((t: any) => ({
+      _id: String(t._id ?? t.id ?? t.key ?? t.name),
+      name: String(t.name ?? "Template"),
+      description: t.description ? String(t.description) : "",
+      pipeline: Array.isArray(t.pipeline) ? t.pipeline : [],
+      trigger: typeof t.trigger === "object" && t.trigger ? t.trigger : { type: "manual" as const },
+      tags: Array.isArray(t.tags) ? t.tags : [],
+    }));
   },
 });
 
-// Add: mutation to copy a built-in template into a business as a draft workflow
+// Public: copy a built-in template into the user's workspace as a draft workflow
 export const copyBuiltInTemplate = mutation({
   args: {
-    businessId: v.id("businesses"),
     key: v.string(),
-    status: v.optional(
-      v.union(
-        v.literal("draft"),
-        v.literal("active"),
-        v.literal("paused")
-      )
-    ),
+    businessId: v.optional(v.id("businesses")),
   },
   handler: async (ctx, args) => {
-    const { getBuiltInTemplateByKey } = await import("./templatesData");
-    const tpl = getBuiltInTemplateByKey(args.key);
+    const all = collectAllTemplates().map((t: any) => ({
+      _id: String(t._id ?? t.id ?? t.key ?? t.name),
+      name: String(t.name ?? "Template"),
+      description: t.description ? String(t.description) : "",
+      pipeline: Array.isArray(t.pipeline) ? t.pipeline : [],
+      trigger: typeof t.trigger === "object" && t.trigger ? t.trigger : { type: "manual" as const },
+      tags: Array.isArray(t.tags) ? t.tags : [],
+    }));
+    const tpl = (all as any[]).find((t) => String(t._id) === args.key);
     if (!tpl) {
       throw new Error("Template not found");
     }
 
-    const doc = {
+    // Prefer provided businessId or fall back to any existing business
+    let businessId = args.businessId ?? null;
+    if (!businessId) {
+      const anyBiz = await ctx.db.query("businesses").order("asc").take(1);
+      if (!anyBiz || anyBiz.length === 0) {
+        throw new Error("No business found. Complete onboarding first.");
+      }
+      businessId = anyBiz[0]!._id;
+    }
+
+    const insertedId = await ctx.db.insert("workflows", {
       name: tpl.name,
-      description: tpl.description,
-      businessId: args.businessId,
-      trigger: {
-        type: tpl.trigger.type,
-        ...(tpl.trigger.cron ? { cron: tpl.trigger.cron } : {}),
-        ...(tpl.trigger.eventKey ? { eventKey: tpl.trigger.eventKey } : {}),
-      },
-      approval: {
-        required: tpl.approval.required,
-        threshold: tpl.approval.threshold,
-      },
-      pipeline: tpl.pipeline.map((s) => ({
-        step: s.step,
-        type: s.type,
-        name: s.name,
-        config: s.config,
-      })),
+      description: tpl.description || "",
+      businessId,
+      region: undefined,
+      unit: undefined,
+      channel: undefined,
+      trigger: tpl.trigger ?? { type: "manual" as const },
+      approval: { required: false, threshold: 1 },
+      pipeline: Array.isArray(tpl.pipeline) ? tpl.pipeline : [],
       template: false,
       tags: Array.isArray(tpl.tags) ? tpl.tags : [],
-      status: args.status ?? "draft",
-    };
+      createdBy: undefined,
+      status: "draft",
+      metrics: undefined,
+    });
 
-    const id = await ctx.db.insert("workflows", doc);
-    return id;
+    return insertedId;
   },
 });
 
