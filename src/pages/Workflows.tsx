@@ -16,6 +16,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { isGuestMode, getSelectedTier } from "@/lib/guestUtils";
 
 function getTriggerIcon(type: string) {
   switch (type) {
@@ -43,6 +44,8 @@ export default function WorkflowsPage() {
   const [templateIndustryFilter, setTemplateIndustryFilter] = useState<string>("all");
   const [templateSearch, setTemplateSearch] = useState<string>("");
   const [templateSort, setTemplateSort] = useState<"recommended" | "newest" | "name">("recommended");
+  const guestMode = isGuestMode();
+  const selectedTier = getSelectedTier();
 
   const businesses = useQuery(api.businesses.getUserBusinesses, {});
   const firstBizId = businesses?.[0]?._id;
@@ -51,8 +54,10 @@ export default function WorkflowsPage() {
     firstBizId ? { businessId: firstBizId } : "skip");
   const simulateWorkflowAction = useAction(api.workflows.simulateWorkflow);
   const complianceScanAction = useAction(api.workflows.checkMarketingCompliance);
-  // Removed unused templates query
-  // Removed unused suggested query
+  const guestTemplates = useQuery(
+    api.workflows.getBuiltInTemplates,
+    guestMode ? { tier: selectedTier as any, search: null } : "skip"
+  );
   const executions = useQuery(api.workflows.getExecutions,
     selectedWorkflow ? {
       workflowId: selectedWorkflow as any,
@@ -60,56 +65,6 @@ export default function WorkflowsPage() {
     } : "skip");
 
   const upsertWorkflow = useMutation(api.workflows.upsertWorkflow);
-  // Removed unused copyFromTemplate mutation
-  // Removed unused updateTrigger mutation
-  // Removed unused seedBusinessWorkflowTemplates mutation
-  // Removed unused seedAllTierTemplates action
-
-  const [formData, setFormData] = useState({
-    name: "",
-    description: "",
-    triggerType: "manual" as "manual" | "schedule" | "webhook",
-    cron: "",
-    eventKey: "",
-    approvalRequired: false,
-    approvalThreshold: 1,
-    pipeline: JSON.stringify([
-      { kind: "agent", input: "Process request" },
-      { kind: "approval", approverRole: "manager" }
-    ], null, 2),
-    tags: "",
-    saveAsTemplate: false,
-  });
-
-  if (authLoading) {
-    return (
-      <div className="max-w-6xl mx-auto p-6">
-        <div className="animate-pulse h-8 w-40 rounded bg-muted mb-4" />
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="h-32 rounded-lg bg-muted" />
-          <div className="h-32 rounded-lg bg-muted" />
-        </div>
-      </div>
-    );
-  }
-
-  if (!isAuthenticated) {
-    return (
-      <div className="min-h-[60vh] flex items-center justify-center px-6">
-        <Card className="max-w-md w-full">
-          <CardHeader>
-            <CardTitle>Welcome</CardTitle>
-            <CardDescription>Sign in to manage workflows.</CardDescription>
-          </CardHeader>
-          <CardContent className="flex gap-3">
-            <Button onClick={() => navigate("/auth")}>Sign In</Button>
-            <Button variant="outline" onClick={() => navigate("/")}>Go Home</Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
   const handleCreateWorkflow = async () => {
     if (!firstBizId || !formData.name.trim()) {
       toast.error("Name is required");
@@ -170,6 +125,108 @@ export default function WorkflowsPage() {
       toast.error("Failed to create workflow");
     }
   };
+
+  if (authLoading) {
+    return (
+      <div className="max-w-6xl mx-auto p-6">
+        <div className="animate-pulse h-8 w-40 rounded bg-muted mb-4" />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="h-32 rounded-lg bg-muted" />
+          <div className="h-32 rounded-lg bg-muted" />
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated && !guestMode) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center px-6">
+        <Card className="max-w-md w-full">
+          <CardHeader>
+            <CardTitle>Welcome</CardTitle>
+            <CardDescription>Sign in to manage workflows.</CardDescription>
+          </CardHeader>
+          <CardContent className="flex gap-3">
+            <Button onClick={() => navigate("/auth")}>Sign In</Button>
+            <Button variant="outline" onClick={() => navigate("/")}>Go Home</Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (guestMode) {
+    return (
+      <div className="max-w-6xl mx-auto px-4 md:px-6 py-6 space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-semibold">Orchestration & Workflows (Demo)</h1>
+            <p className="text-sm text-muted-foreground">
+              Viewing demo workflows for your selected tier. Sign in to create and run workflows.
+            </p>
+          </div>
+        </div>
+
+        <div className="text-xs text-muted-foreground">
+          {guestTemplates ? guestTemplates.length : 0} demo workflow{(guestTemplates?.length || 0) === 1 ? "" : "s"} found
+        </div>
+
+        <div className="grid gap-4">
+          {(guestTemplates || []).map((template: any) => (
+            <Card key={template._id}>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    {getTriggerIcon(template.trigger.type)}
+                    <CardTitle className="text-lg">{template.name}</CardTitle>
+                    <Badge variant="secondary">Demo</Badge>
+                  </div>
+                </div>
+                {template.description && (
+                  <CardDescription>{template.description}</CardDescription>
+                )}
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                  <span>Steps: {template.pipeline?.length ?? 0}</span>
+                  <span>Trigger: {template.trigger.type}</span>
+                  {template.trigger.cron && <span>Schedule: {template.trigger.cron}</span>}
+                  {template.trigger.eventKey && <span>Event: {template.trigger.eventKey}</span>}
+                  {template.approval?.required && <span>Approval Required</span>}
+                </div>
+                {template.tags?.length > 0 && (
+                  <div className="flex gap-1 mt-2 flex-wrap">
+                    {template.tags.map((tag: string) => (
+                      <Badge key={tag} variant="outline" className="text-xs">{tag}</Badge>
+                    ))}
+                  </div>
+                )}
+                <div className="mt-3 text-xs text-muted-foreground">
+                  Actions like simulate, compliance scan, and editing require signing in.
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  const [formData, setFormData] = useState({
+    name: "",
+    description: "",
+    triggerType: "manual" as "manual" | "schedule" | "webhook",
+    cron: "",
+    eventKey: "",
+    approvalRequired: false,
+    approvalThreshold: 1,
+    pipeline: JSON.stringify([
+      { kind: "agent", input: "Process request" },
+      { kind: "approval", approverRole: "manager" }
+    ], null, 2),
+    tags: "",
+    saveAsTemplate: false,
+  });
 
   const handleSimulate = async (workflow: any) => {
     try {
