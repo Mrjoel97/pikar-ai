@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { isGuestMode, getSelectedTier, getDemoData } from "@/lib/guestUtils";
-import { getTierConfig, canShowFeature, TierType } from "@/lib/tierConfig";
+import { getTierConfig, TierType } from "@/lib/tierConfig";
 import React, { Suspense, lazy } from "react";
 import { NotificationsCenter } from "@/components/NotificationsCenter";
 
@@ -37,43 +37,7 @@ export default function Dashboard() {
   const { isLoading, isAuthenticated, user, signOut } = useAuth();
   const navigate = useNavigate();
 
-  // Add: Stabilize lazy components locally to ensure they are always defined
-  const SolopreneurDashboard = React.useMemo(
-    () =>
-      lazy(() =>
-        import("@/components/dashboards/SolopreneurDashboard").then((m) => ({
-          default: m.SolopreneurDashboard,
-        })),
-      ),
-    [],
-  );
-  const StartupDashboard = React.useMemo(
-    () =>
-      lazy(() =>
-        import("@/components/dashboards/StartupDashboard").then((m) => ({
-          default: m.StartupDashboard,
-        })),
-      ),
-    [],
-  );
-  const SmeDashboard = React.useMemo(
-    () =>
-      lazy(() =>
-        import("@/components/dashboards/SmeDashboard").then((m) => ({
-          default: m.SmeDashboard,
-        })),
-      ),
-    [],
-  );
-  const EnterpriseDashboard = React.useMemo(
-    () =>
-      lazy(() =>
-        import("@/components/dashboards/EnterpriseDashboard").then((m) => ({
-          default: m.EnterpriseDashboard,
-        })),
-      ),
-    [],
-  );
+  // Local lazy dashboard re-definitions removed; using module-scoped lazy components.
 
   // Guest mode detection
   const guestMode = isGuestMode();
@@ -83,8 +47,8 @@ export default function Dashboard() {
   // Data fetching - skip in guest mode
   const business = useQuery(
     api.businesses.currentUserBusiness,
-    // Skip query if in guest mode or not authenticated to prevent server errors
-    guestMode || !isAuthenticated ? undefined : {}
+    // Use "skip" to avoid type mismatch when skipping
+    guestMode || !isAuthenticated ? "skip" : {}
   );
   
   // Determine which tier to use
@@ -100,7 +64,7 @@ export default function Dashboard() {
   // Add: usage-based upgrade nudges (skip in guest mode)
   const nudges = useQuery(
     api.telemetry.getUpgradeNudges,
-    guestMode || !business?._id ? undefined : { businessId: business._id }
+    guestMode || !business?._id ? "skip" : { businessId: business._id }
   );
 
   if (isLoading) {
