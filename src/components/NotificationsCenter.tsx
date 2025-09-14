@@ -9,6 +9,8 @@ import { toast } from "sonner";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useEffect, useState } from "react";
+import { useQuery } from "convex/react";
 
 type Props = {
   disabled?: boolean; // hide/disable for guest
@@ -110,21 +112,23 @@ export function NotificationsCenter({ disabled }: Props) {
     return () => clearTimeout(timer);
   }, [searchFilter]);
 
-  // Add: compute filtered list client-side for type + search
-  const filtered = React.useMemo(() => {
-    if (!notifications) return notifications;
+  // Replace previous 'filtered' memo with a correct 'visible' list derived from notifications.page
+  const visible = React.useMemo(() => {
+    if (!notifications) return undefined;
+    const items = notifications.page ?? [];
     const q = query.trim().toLowerCase();
-    return notifications.filter((n: any) => {
+    return items.filter((n: any) => {
       const matchType = typeFilter === "all" ? true : n.type === typeFilter;
       const matchQuery =
         q.length === 0
           ? true
-          : (n.title?.toLowerCase?.().includes(q) ||
-             n.message?.toLowerCase?.().includes(q) ||
-             n.type?.toLowerCase?.().includes(q));
-      return matchType && matchQuery;
+          : (String(n.title ?? "").toLowerCase().includes(q) ||
+             String(n.message ?? "").toLowerCase().includes(q) ||
+             String(n.type ?? "").toLowerCase().includes(q));
+      const matchUnread = unreadOnlyLocal ? !n.isRead : true;
+      return matchType && matchQuery && matchUnread;
     });
-  }, [notifications, typeFilter, query]);
+  }, [notifications, typeFilter, query, unreadOnlyLocal]);
 
   return (
     <Drawer open={open} onOpenChange={setOpen}>
@@ -336,13 +340,15 @@ export function NotificationsCenter({ disabled }: Props) {
                   </div>
                 ))}
               </div>
-            ) : notifications.page?.length === 0 ? (
+            ) : (visible && visible.length === 0) ? (
               <div className="p-6 text-center text-sm text-muted-foreground">
-                {debouncedSearch ? "No matching notifications" : "No notifications"}
+                {debouncedSearch || query || unreadOnlyLocal || typeFilter !== "all"
+                  ? "No matching notifications"
+                  : "No notifications"}
               </div>
             ) : (
               <>
-                {notifications.page?.map((notification) => (
+                {(visible || []).map((notification: any) => (
                   <Card key={notification._id} className={notification.isRead ? "" : "border-emerald-200"}>
                     <CardContent className="p-4">
                       <div className="flex items-start justify-between gap-3">

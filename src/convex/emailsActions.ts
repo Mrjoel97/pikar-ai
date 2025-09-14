@@ -174,7 +174,7 @@ export const sendCampaignInternal = internalAction({
             let htmlContent = (campaign.body || campaign.htmlContent || "") as string;
             if (campaign.buttons && campaign.buttons.length > 0) {
               const buttonsHtml = campaign.buttons
-                .map(btn => `<a href="${btn.url}" style="display: inline-block; padding: 10px 20px; background-color: #059669; color: white; text-decoration: none; border-radius: 5px; margin: 5px;">${btn.text}</a>`)
+                .map((btn: any) => `<a href="${btn.url}" style="display: inline-block; padding: 10px 20px; background-color: #059669; color: white; text-decoration: none; border-radius: 5px; margin: 5px;">${btn.text}</a>`)
                 .join("");
               htmlContent += `<div style="margin: 20px 0;">${buttonsHtml}</div>`;
             }

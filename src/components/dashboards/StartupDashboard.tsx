@@ -350,7 +350,7 @@ export function StartupDashboard({
               </div>
             ) : (
               <div className="space-y-3">
-                {campaigns.slice(0, 5).map((campaign) => (
+                {campaigns.slice(0, 5).map((campaign: any) => (
                   <Card key={campaign._id}>
                     <CardContent className="p-4">
                       <div className="flex items-start justify-between gap-3">

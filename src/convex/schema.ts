@@ -18,9 +18,7 @@ export default defineSchema({
     onboardingCompleted: v.optional(v.boolean()),
     // Add optional businessId to satisfy consumers that reference it
     businessId: v.optional(v.id("businesses")),
-  }).index("email", ["email"]), // Add trailing comma to separate table entries
-  // Remove duplicate email index to avoid conflict
-  // Removed: .index("by_email", ["email"]),
+  }).index("by_email", ["email"]),
 
   businesses: defineTable({
     name: v.string(),
@@ -302,7 +300,7 @@ export default defineSchema({
     title: v.string(),
     description: v.string(),
     status: v.union(v.literal("pending"), v.literal("approved"), v.literal("rejected")),
-    priority: v.union(v.literal("low"), v.literal("medium"), v.literal("high")),
+    priority: v.union(v.literal("low"), v.literal("medium"), v.literal("high"), v.literal("urgent")),
     slaDeadline: v.optional(v.number()),
     createdBy: v.string(),
     reviewedBy: v.optional(v.string()),
@@ -324,7 +322,8 @@ export default defineSchema({
       v.literal("sla_warning"),
       v.literal("integration_error"),
       v.literal("workflow_completion"),
-      v.literal("system_alert")
+      v.literal("system_alert"),
+      v.literal("sla_overdue")
     ),
     title: v.string(),
     message: v.string(),
@@ -1058,7 +1057,7 @@ export default defineSchema({
     htmlContent: v.optional(v.string()),
     body: v.optional(v.string()),
     textContent: v.optional(v.string()),
-    recipients: v.array(v.string()),
+    recipients: v.optional(v.array(v.string())), // make optional to support "list" campaigns
     audienceType: v.optional(v.union(v.literal("direct"), v.literal("list"))),
     audienceListId: v.optional(v.id("contactLists")),
     scheduledAt: v.optional(v.number()),
@@ -1073,13 +1072,18 @@ export default defineSchema({
     ),
     lastError: v.optional(v.string()),
     sendIds: v.optional(v.array(v.string())),
-    createdBy: v.id("users"),
-    createdAt: v.number(),
-    buttons: v.optional(v.array(v.object({
-      text: v.string(),
-      url: v.string(),
-      style: v.optional(v.string()),
-    }))),
+    createdBy: v.optional(v.id("users")), // make optional to match current inserts
+    createdAt: v.optional(v.number()), // make optional to match current inserts
+
+    // Add: buttons used by campaign sends (optional)
+    buttons: v.optional(
+      v.array(
+        v.object({
+          text: v.string(),
+          url: v.string(),
+        })
+      )
+    ),
   })
     .index("by_business", ["businessId"])
     .index("by_campaign", ["campaignId"])

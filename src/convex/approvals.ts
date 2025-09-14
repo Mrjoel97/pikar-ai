@@ -169,36 +169,28 @@ export const processApproval = mutation({
       throw new Error("Approval request not found");
     }
 
-    // Check if user is authorized to process this approval
+    // Authorization
     if (approval.assigneeId !== user._id) {
       throw new Error("Not authorized to process this approval");
     }
-
     if (approval.status !== "pending") {
       throw new Error("Approval request has already been processed");
     }
 
     const now = Date.now();
-    const updateData: any = {
+
+    // Only patch schema-supported fields
+    await ctx.db.patch(args.approvalId, {
       status: args.action === "approve" ? "approved" : "rejected",
       comments: args.comments,
-    };
+      reviewedBy: identity.subject,
+      reviewedAt: now,
+    });
 
-    if (args.action === "approve") {
-      updateData.approvedAt = now;
-      updateData.approvedBy = user._id;
-    } else {
-      updateData.rejectedAt = now;
-      updateData.rejectedBy = user._id;
-      updateData.rejectionReason = args.comments;
-    }
-
-    await ctx.db.patch(args.approvalId, updateData);
-
-    // Create notification for requester
+    // Notification for the assignee (or requester); keep type safe
     await ctx.db.insert("notifications", {
       businessId: approval.businessId,
-      userId: approval.assigneeId,
+      userId: approval.assigneeId!,
       type: "approval",
       title: `Approval ${args.action === "approve" ? "Approved" : "Rejected"}`,
       message: `Your approval request has been ${args.action}d by ${user.name || user.email}.`,
@@ -212,10 +204,10 @@ export const processApproval = mutation({
       isRead: false,
       priority: args.action === "reject" ? "high" : "medium",
       createdAt: now,
-      expiresAt: now + (7 * 24 * 60 * 60 * 1000),
+      expiresAt: now + 7 * 24 * 60 * 60 * 1000,
     });
 
-    // Track telemetry event
+    // Telemetry
     await ctx.db.insert("telemetryEvents", {
       businessId: approval.businessId,
       userId: user._id,
@@ -265,14 +257,14 @@ export const getApprovalAnalytics = query({
     const processedApprovals = approvals.filter(a => a.status !== "pending");
     const slaBreaches = processedApprovals.filter(a => {
       if (!a.slaDeadline) return false;
-      const processedAt = a.approvedAt || a.rejectedAt || Date.now();
+      const processedAt = Date.now();
       return processedAt > a.slaDeadline;
     }).length;
 
     // Calculate average processing time
     const avgProcessingTime = processedApprovals.length > 0
       ? processedApprovals.reduce((sum, a) => {
-          const processedAt = a.approvedAt || a.rejectedAt || Date.now();
+          const processedAt = Date.now();
           return sum + (processedAt - a._creationTime);
         }, 0) / processedApprovals.length
       : 0;
@@ -370,7 +362,7 @@ export const checkApprovalSLABreaches = internalMutation({
       // Check if we already sent a warning for this approval
       const userWarnings = await ctx.db
         .query("notifications")
-        .withIndex("by_user", (q) => q.eq("userId", approval.assigneeId))
+        .withIndex("by_user", (q) => q.eq("userId", approval.assigneeId!))
         .filter((q) => q.eq(q.field("type"), "sla_warning"))
         .collect();
 
@@ -379,7 +371,7 @@ export const checkApprovalSLABreaches = internalMutation({
       if (!existingWarning) {
         await ctx.db.insert("notifications", {
           businessId: approval.businessId,
-          userId: approval.assigneeId,
+          userId: approval.assigneeId!,
           type: "sla_warning",
           title: "Approval SLA Warning",
           message: `Approval request is approaching SLA deadline in less than 2 hours.`,
@@ -434,14 +426,14 @@ export const approve = mutation({
     approvedBy: v.id("users"),
   },
   handler: async (ctx, args) => {
-    const now = Date.now();
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Not authenticated");
+    }
     await ctx.db.patch(args.id, {
       status: "approved",
-      approvedAt: now,
-      approvedBy: args.approvedBy,
-      rejectionReason: undefined,
-      rejectedAt: undefined,
-      rejectedBy: undefined,
+      reviewedBy: identity.subject,
+      reviewedAt: Date.now(),
     });
     return true;
   },
@@ -455,14 +447,15 @@ export const reject = mutation({
     reason: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const now = Date.now();
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Not authenticated");
+    }
     await ctx.db.patch(args.id, {
       status: "rejected",
-      rejectedAt: now,
-      rejectedBy: args.rejectedBy,
-      rejectionReason: args.reason,
-      approvedAt: undefined,
-      approvedBy: undefined,
+      comments: args.reason,
+      reviewedBy: identity.subject,
+      reviewedAt: Date.now(),
     });
     return true;
   },
@@ -485,14 +478,10 @@ export const approveSelf = mutation({
     if (!user) {
       throw new Error("User not found");
     }
-    const now = Date.now();
     await ctx.db.patch(args.id, {
       status: "approved",
-      approvedAt: now,
-      approvedBy: user._id,
-      rejectionReason: undefined,
-      rejectedAt: undefined,
-      rejectedBy: undefined,
+      reviewedBy: identity.subject,
+      reviewedAt: Date.now(),
     });
     return true;
   },
@@ -516,14 +505,11 @@ export const rejectSelf = mutation({
     if (!user) {
       throw new Error("User not found");
     }
-    const now = Date.now();
     await ctx.db.patch(args.id, {
       status: "rejected",
-      rejectedAt: now,
-      rejectedBy: user._id,
-      rejectionReason: args.reason,
-      approvedAt: undefined,
-      approvedBy: undefined,
+      comments: args.reason,
+      reviewedBy: identity.subject,
+      reviewedAt: Date.now(),
     });
     return true;
   },

@@ -1,3 +1,6 @@
+import { Suspense } from "react";
+import { Skeleton } from "@/components/ui/skeleton";
+import type { Id } from "@/convex/_generated/dataModel";
 import { useNavigate } from "react-router";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useMutation, useAction } from "convex/react";
@@ -19,6 +22,19 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { isGuestMode, getSelectedTier } from "@/lib/guestUtils";
 import { getAllBuiltInTemplates } from "@/lib/templatesClient";
+
+type FormDataState = {
+  name: string;
+  description: string;
+  triggerType: "manual" | "schedule" | "webhook";
+  cron: string;
+  eventKey: string;
+  approvalRequired: boolean;
+  approvalThreshold: number;
+  pipeline: string; // JSON string
+  tags: string;
+  saveAsTemplate: boolean;
+};
 
 function getTriggerIcon(type: string) {
   switch (type) {
@@ -174,7 +190,7 @@ export default function WorkflowsPage() {
 
   const handleComplianceCheck = async (workflowId: Id<"workflows">) => {
     try {
-      const workflow = workflows?.find(w => w._id === workflowId);
+      const workflow = workflows?.find((w: any) => w._id === workflowId);
       if (!workflow) return;
       
       const result = await checkCompliance({
@@ -184,7 +200,7 @@ export default function WorkflowsPage() {
         content: `${workflow.name} ${workflow.description || ""} ${JSON.stringify(workflow.pipeline)}`,
       });
       
-      const highIssues = result.findings.filter(f => f.severity === "high").length;
+      const highIssues = result.findings.filter((f: any) => f.severity === "high").length;
       if (highIssues > 0) {
         toast.error(`Compliance check: ${highIssues} high-priority issues found`);
       } else {
@@ -203,6 +219,19 @@ export default function WorkflowsPage() {
       toast.error(error?.message || "ROI estimation failed");
     }
   };
+
+  const [formData, setFormData] = useState<FormDataState>({
+    name: "",
+    description: "",
+    triggerType: "manual",
+    cron: "",
+    eventKey: "",
+    approvalRequired: false,
+    approvalThreshold: 1,
+    pipeline: "[]",
+    tags: "",
+    saveAsTemplate: false,
+  });
 
   useEffect(() => {
     if (!newWorkflowOpen) return;
@@ -474,7 +503,7 @@ export default function WorkflowsPage() {
     });
   };
 
-  const handleSimulate = async (workflow: any) => {
+  const handleSimulateDetailed = async (workflow: any) => {
     try {
       const result = await simulateWorkflowAction({ workflowId: workflow._id });
       toast.success("Simulation complete", { description: `Steps: ${result.summary?.totalSteps ?? 0}, Agent: ${result.summary?.agentSteps ?? 0}, Approval: ${result.summary?.approvalSteps ?? 0}` });
@@ -1152,7 +1181,7 @@ export default function WorkflowsPage() {
                                   variant="outline"
                                   onClick={async () => {
                                     try {
-                                      await upsetsWorkflow({
+                                      await upsertWorkflow({
                                         id: workflow._id,
                                         businessId: workflow.businessId,
                                         name: workflow.name,

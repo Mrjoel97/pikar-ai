@@ -193,7 +193,7 @@ export const createNotification = internalMutation({
     return await ctx.db.insert("notifications", {
       businessId: args.businessId,
       userId: args.userId,
-      type: args.type,
+      type: args.type as any, // ensure it matches the union type at runtime
       title: args.title,
       message: args.message,
       data: args.data,

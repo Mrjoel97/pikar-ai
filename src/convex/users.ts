@@ -42,7 +42,7 @@ export const ensureSeedUser = mutation({
   handler: async (ctx, args) => {
     const existing = await ctx.db
       .query("users")
-      .withIndex("email", (q) => q.eq("email", args.email))
+      .withIndex("by_email", (q) => q.eq("email", args.email))
       .unique();
 
     if (existing) return existing._id;

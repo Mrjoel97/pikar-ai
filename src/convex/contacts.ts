@@ -85,6 +85,7 @@ export const createList = mutation({
       description: args.description ?? undefined,
       createdBy: args.createdBy,
       createdAt: Date.now(),
+      tags: [], // add required field per schema
     });
   },
 });
@@ -218,7 +219,7 @@ export const bulkUploadCsv = mutation({
 
     const user = await ctx.db
       .query("users")
-      .withIndex("email", (q) => q.eq("email", identity.email!))
+      .withIndex("by_email", (q) => q.eq("email", identity.email!))
       .first();
 
     if (!user) {

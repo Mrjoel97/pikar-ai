@@ -98,7 +98,7 @@ export default function Dashboard() {
   }
 
   // Redirect to onboarding if authenticated but no business setup
-  if (isAuthenticated && !business && !guestMode) {
+  if (isAuthenticated && business === null && !guestMode) {
     navigate("/onboarding");
     return null;
   }

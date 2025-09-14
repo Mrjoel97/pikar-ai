@@ -11,7 +11,7 @@ export const getUserBusinesses = query({
 
     const user = await ctx.db
       .query("users")
-      .withIndex("email", (q) => q.eq("email", identity.email!))
+      .withIndex("by_email", (q) => q.eq("email", identity.email!))
       .first();
 
     if (!user) return [];
@@ -63,7 +63,7 @@ export const create = mutation({
 
     const user = await ctx.db
       .query("users")
-      .withIndex("email", (q) => q.eq("email", identity.email!))
+      .withIndex("by_email", (q) => q.eq("email", identity.email!))
       .first();
 
     if (!user) {
@@ -112,7 +112,7 @@ export const getByOwner = query({
 
     const user = await ctx.db
       .query("users")
-      .withIndex("email", (q) => q.eq("email", identity.email!))
+      .withIndex("by_email", (q) => q.eq("email", identity.email!))
       .first();
     
     if (!user) {
@@ -136,7 +136,7 @@ export const getById = query({
 
     const user = await ctx.db
       .query("users")
-      .withIndex("email", (q) => q.eq("email", identity.email!))
+      .withIndex("by_email", (q) => q.eq("email", identity.email!))
       .first();
     
     if (!user) {
@@ -181,7 +181,7 @@ export const update = mutation({
 
     const user = await ctx.db
       .query("users")
-      .withIndex("email", (q) => q.eq("email", identity.email!))
+      .withIndex("by_email", (q) => q.eq("email", identity.email!))
       .first();
 
     if (!user) {
@@ -226,7 +226,7 @@ export const addTeamMember = mutation({
 
     const user = await ctx.db
       .query("users")
-      .withIndex("email", (q) => q.eq("email", identity.email!))
+      .withIndex("by_email", (q) => q.eq("email", identity.email!))
       .first();
 
     if (!user) {
@@ -276,7 +276,7 @@ export const removeTeamMember = mutation({
 
     const user = await ctx.db
       .query("users")
-      .withIndex("email", (q) => q.eq("email", identity.email!))
+      .withIndex("by_email", (q) => q.eq("email", identity.email!))
       .first();
 
     if (!user) {
@@ -320,7 +320,7 @@ export const currentUserBusiness = query({
 
     const user = await ctx.db
       .query("users")
-      .withIndex("email", (q) => q.eq("email", identity.email!))
+      .withIndex("by_email", (q) => q.eq("email", identity.email!))
       .first();
     
     if (!user) {

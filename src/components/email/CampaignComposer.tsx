@@ -56,7 +56,7 @@ export function CampaignComposer({ businessId, onClose, onCreated }: CampaignCom
   const sendTestEmail = useAction(api.emailsActions.sendTestEmail);
   const bulkUploadCsv = useMutation(api.contacts.bulkUploadCsv);
 
-  const selectedList = contactLists?.find(list => list._id === selectedListId);
+  const selectedList = contactLists?.find((list: any) => list._id === selectedListId);
   const recipientCount = selectedList ? "Loading..." : directRecipients.split(",").filter(Boolean).length;
 
   const handleInputChange = (field: string, value: string) => {
@@ -318,7 +318,7 @@ export function CampaignComposer({ businessId, onClose, onCreated }: CampaignCom
                   <SelectValue placeholder="Select a contact list" />
                 </SelectTrigger>
                 <SelectContent>
-                  {contactLists?.map((list) => (
+                  {contactLists?.map((list: any) => (
                     <SelectItem key={list._id} value={list._id}>
                       {list.name}
                     </SelectItem>

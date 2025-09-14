@@ -1,13 +1,11 @@
 import { internalMutation } from "./_generated/server";
 import { v } from "convex/values";
+import { query } from "./_generated/server";
 
 // Initialize default feature flags for the platform enhancement MVP
 export const initializeFeatureFlags = internalMutation({
   args: {},
   handler: async (ctx) => {
-    const now = Date.now();
-    
-    // Default feature flags for the MVP modules
     const defaultFlags = [
       {
         flagName: "workflow_assignments",
@@ -83,25 +81,21 @@ export const initializeFeatureFlags = internalMutation({
       }
     ];
 
-    const createdFlags = [];
-    
+    const createdFlags: string[] = [];
+
     for (const flag of defaultFlags) {
-      // Check if flag already exists
+      // Fix: don't compare to undefined or store undefined fields; just check by flagName
       const existingFlag = await ctx.db
         .query("featureFlags")
         .withIndex("by_flag_name", (q) => q.eq("flagName", flag.flagName))
-        .filter((q) => q.eq(q.field("businessId"), undefined))
         .first();
 
       if (!existingFlag) {
-        const flagId = await ctx.db.insert("featureFlags", {
-          businessId: undefined, // Global flag
+        await ctx.db.insert("featureFlags", {
           flagName: flag.flagName,
           isEnabled: flag.isEnabled,
           rolloutPercentage: flag.rolloutPercentage,
-          createdAt: now,
-          updatedAt: now,
-        });
+        } as any);
         createdFlags.push(flag.flagName);
       }
     }
@@ -188,6 +182,40 @@ export const cleanupOldTelemetryEvents = internalMutation({
     return {
       message: "Old telemetry events cleaned up",
       deletedEvents: oldEvents.length,
+    };
+  },
+});
+
+// Add: Environment status query to verify required config/secrets
+export const getEnvStatus = query({
+  args: {},
+  handler: async () => {
+    const hasResend =
+      typeof process.env.RESEND_API_KEY === "string" &&
+      process.env.RESEND_API_KEY.trim().length > 0;
+
+    const hasSalesInbox =
+      typeof process.env.SALES_INBOX === "string" &&
+      process.env.SALES_INBOX.trim().length > 0;
+
+    const hasPublicBaseUrl =
+      typeof process.env.VITE_PUBLIC_BASE_URL === "string" &&
+      process.env.VITE_PUBLIC_BASE_URL.trim().length > 0;
+
+    const devSafeRaw = String(process.env.DEV_SAFE_EMAILS ?? "").toLowerCase();
+    const devSafeEmails = devSafeRaw === "true" || devSafeRaw === "1";
+
+    // Surface concise server logs to help diagnostics without leaking secrets
+    if (!hasResend) console.warn("[config] RESEND_API_KEY is missing");
+    if (!hasSalesInbox) console.warn("[config] SALES_INBOX is missing");
+    if (!hasPublicBaseUrl) console.warn("[config] VITE_PUBLIC_BASE_URL is missing");
+    if (devSafeEmails) console.info("[config] DEV_SAFE_EMAILS enabled (email sends stubbed in dev)");
+
+    return {
+      hasResend,
+      hasSalesInbox,
+      hasPublicBaseUrl,
+      devSafeEmails,
     };
   },
 });

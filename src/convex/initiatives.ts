@@ -18,7 +18,7 @@ export const upsertForBusiness = mutation({
 
     const user = await ctx.db
       .query("users")
-      .withIndex("email", (q) => q.eq("email", identity.email!))
+      .withIndex("by_email", (q) => q.eq("email", identity.email!))
       .first();
     
     if (!user) {
@@ -93,7 +93,7 @@ export const updateOnboarding = mutation({
 
     const user = await ctx.db
       .query("users")
-      .withIndex("email", (q) => q.eq("email", identity.email!))
+      .withIndex("by_email", (q) => q.eq("email", identity.email!))
       .first();
     
     if (!user) {
@@ -148,7 +148,7 @@ export const advancePhase = mutation({
 
     const user = await ctx.db
       .query("users")
-      .withIndex("email", (q) => q.eq("email", identity.email!))
+      .withIndex("by_email", (q) => q.eq("email", identity.email!))
       .first();
     
     if (!user) {
@@ -206,7 +206,7 @@ export const getByBusiness = query({
 
     const user = await ctx.db
       .query("users")
-      .withIndex("email", (q) => q.eq("email", identity.email!))
+      .withIndex("by_email", (q) => q.eq("email", identity.email!))
       .first();
     
     if (!user) {
@@ -257,7 +257,7 @@ export const runPhase0Diagnostics = mutation({
 
     const user = await ctx.db
       .query("users")
-      .withIndex("email", (q) => q.eq("email", identity.email!))
+      .withIndex("by_email", (q) => q.eq("email", identity.email!))
       .first();
     
     if (!user) {
@@ -348,7 +348,7 @@ export const seedForEmail = mutation({
   handler: async (ctx, args) => {
     const user = await ctx.db
       .query("users")
-      .withIndex("email", (q) => q.eq("email", args.email))
+      .withIndex("by_email", (q) => q.eq("email", args.email))
       .first();
     
     if (!user) {

@@ -36,7 +36,7 @@ export const run = mutation({
 
     const user = await ctx.db
       .query("users")
-      .withIndex("email", (q) => q.eq("email", identity.email!))
+      .withIndex("by_email", (q) => q.eq("email", identity.email!))
       .first();
     
     if (!user) {
@@ -115,7 +115,7 @@ export const getLatest = query({
 
     const user = await ctx.db
       .query("users")
-      .withIndex("email", (q) => q.eq("email", identity.email!))
+      .withIndex("by_email", (q) => q.eq("email", identity.email!))
       .first();
     
     if (!user) {
@@ -152,7 +152,7 @@ export const getAll = query({
 
     const user = await ctx.db
       .query("users")
-      .withIndex("email", (q) => q.eq("email", identity.email!))
+      .withIndex("by_email", (q) => q.eq("email", identity.email!))
       .first();
     
     if (!user) {

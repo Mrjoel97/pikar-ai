@@ -1,6 +1,7 @@
 import { internalMutation, internalQuery, mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
+import type { Id } from "./_generated/dataModel";
 
 export function escapeHtml(input: string): string {
   return input
@@ -262,6 +263,20 @@ export const setUnsubscribeActive = internalMutation({
       await ctx.db.patch(contact._id, { status: "unsubscribed" });
     }
 
+    // Write audit log for unsubscribe
+    const details = {
+      email: unsubscribe.email,
+      token: unsubscribe.token,
+      contactId: contact ? String(contact._id) : null,
+    };
+    await ctx.runMutation(internal.audit.write, {
+      businessId: unsubscribe.businessId,
+      action: "email_unsubscribe",
+      entityType: contact ? "contact" : "email",
+      entityId: contact ? String(contact._id) : unsubscribe.email,
+      details,
+    });
+
     return { success: true };
   },
 });
@@ -279,5 +294,30 @@ export const listDueScheduledCampaigns = internalQuery({
       .filter(c => c.status === "scheduled" && c.scheduledAt && c.scheduledAt <= now)
       .map(c => c._id)
       .slice(0, 50); // Cap to prevent overload
+  },
+});
+
+export const reserveDueScheduledCampaigns = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const now = Date.now();
+    const reservedIds: Array<Id<"emails">> = [];
+
+    // Fetch scheduled campaigns using the status index, then filter by scheduledAt
+    const query = ctx.db
+      .query("emails")
+      .withIndex("by_status", (q) => q.eq("status", "scheduled"))
+      .order("asc");
+
+    for await (const c of query) {
+      if (!c.scheduledAt || c.scheduledAt > now) continue;
+      // Reserve by transitioning to "queued" to avoid duplicate pickup
+      await ctx.db.patch(c._id, { status: "queued" });
+      reservedIds.push(c._id);
+
+      if (reservedIds.length >= 50) break; // Cap to avoid long transactions
+    }
+
+    return reservedIds;
   },
 });
