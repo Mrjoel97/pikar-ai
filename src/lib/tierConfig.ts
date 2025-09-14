@@ -52,6 +52,8 @@ export const tierConfigs: Record<TierType, TierConfig> = {
       { label: "Dashboard", icon: BarChart3, to: "/dashboard" },
       { label: "Today's Focus", icon: Target, to: "/dashboard", feature: "today_focus" },
       { label: "AI Agents", icon: Zap, to: "/agents", feature: "basic_agents" },
+      { label: "Workflows", icon: GitBranch, to: "/workflows" },
+      { label: "Initiatives", icon: Target, to: "/initiatives" },
       { label: "Quick Actions", icon: CheckCircle, to: "/dashboard", feature: "quick_actions" },
       { label: "Performance", icon: TrendingUp, to: "/analytics", feature: "performance_snapshot" }
     ],
