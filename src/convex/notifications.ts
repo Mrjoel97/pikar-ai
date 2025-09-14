@@ -697,6 +697,7 @@ export const sendIfPermitted = internalMutation({
       data: args.data,
       isRead: false,
       priority: "medium",
+      createdAt: Date.now(),
     });
 
     return notificationId;

@@ -127,8 +127,8 @@ function EnvHealth() {
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <ErrorBoundary>
-      <InstrumentationProvider>
-        <AppProviders>
+      <AppProviders>
+        <InstrumentationProvider>
           <BrowserRouter>
             <RouteSyncer />
             {/* <EnvHealth /> */}
@@ -149,8 +149,8 @@ createRoot(document.getElementById("root")!).render(
             </Routes>
           </BrowserRouter>
           <Toaster />
-        </AppProviders>
-      </InstrumentationProvider>
+        </InstrumentationProvider>
+      </AppProviders>
     </ErrorBoundary>
   </StrictMode>,
 );
