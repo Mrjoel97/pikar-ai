@@ -1003,23 +1003,26 @@ export default defineSchema({
 
   contacts: defineTable({
     businessId: v.id("businesses"),
+    listId: v.optional(v.id("contactLists")),
     email: v.string(),
-    name: v.optional(v.string()),
-    tags: v.optional(v.array(v.string())),
+    name: v.optional(v.string()), // was required; make optional to match upsert usage
+    tags: v.array(v.string()),
     status: v.union(
       v.literal("subscribed"),
       v.literal("unsubscribed"),
       v.literal("bounced"),
-      v.literal("complained")
+      v.literal("complained") // include complained to match backend usage
     ),
-    source: v.optional(v.string()), // e.g., "import", "manual", "api"
+    source: v.string(),
     createdBy: v.id("users"),
     createdAt: v.number(),
     lastEngagedAt: v.optional(v.number()),
+    unsubscribeToken: v.optional(v.string()),
   })
     .index("by_business", ["businessId"])
     .index("by_business_and_email", ["businessId", "email"])
-    .index("by_status", ["status"]),
+    .index("by_list", ["listId"])
+    .index("by_created_by", ["createdBy"]),
 
   contactLists: defineTable({
     businessId: v.id("businesses"),
@@ -1027,9 +1030,11 @@ export default defineSchema({
     description: v.optional(v.string()),
     createdBy: v.id("users"),
     createdAt: v.number(),
+    tags: v.array(v.string()),
   })
     .index("by_business", ["businessId"])
-    .index("by_business_and_name", ["businessId", "name"]),
+    .index("by_business_and_name", ["businessId", "name"])
+    .index("by_created_by", ["createdBy"]),
 
   contactListMembers: defineTable({
     businessId: v.id("businesses"),
@@ -1042,4 +1047,42 @@ export default defineSchema({
     .index("by_contact", ["contactId"])
     .index("by_business_and_list", ["businessId", "listId"])
     .index("by_business_and_contact", ["businessId", "contactId"]),
+
+  emails: defineTable({
+    businessId: v.id("businesses"),
+    campaignId: v.optional(v.id("emailCampaigns")),
+    type: v.union(v.literal("campaign"), v.literal("transactional"), v.literal("test")),
+    subject: v.string(),
+    fromEmail: v.string(),
+    fromName: v.optional(v.string()),
+    replyTo: v.optional(v.string()),
+    previewText: v.optional(v.string()),
+    htmlContent: v.string(),
+    textContent: v.optional(v.string()),
+    recipients: v.array(v.string()),
+    audienceType: v.optional(v.union(v.literal("direct"), v.literal("list"))),
+    audienceListId: v.optional(v.id("contactLists")),
+    scheduledAt: v.optional(v.number()),
+    sentAt: v.optional(v.number()),
+    status: v.union(
+      v.literal("draft"),
+      v.literal("scheduled"),
+      v.literal("sending"),
+      v.literal("sent"),
+      v.literal("failed")
+    ),
+    lastError: v.optional(v.string()),
+    sendIds: v.optional(v.array(v.string())),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    buttons: v.optional(v.array(v.object({
+      text: v.string(),
+      url: v.string(),
+      style: v.optional(v.string()),
+    }))),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_campaign", ["campaignId"])
+    .index("by_status", ["status"])
+    .index("by_created_by", ["createdBy"]),
 });

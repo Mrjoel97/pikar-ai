@@ -1,6 +1,7 @@
 import { action, internalMutation, internalQuery, mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { internal, api } from "./_generated/api";
+import type { Id } from "./_generated/dataModel";
 
 // Helpers
 function normalizeEmail(e: string): string {
@@ -154,105 +155,120 @@ export const listContacts = query({
 export const listLists = query({
   args: { businessId: v.id("businesses") },
   handler: async (ctx, args) => {
-    return await ctx.db.query("contactLists").withIndex("by_business", (q: any) => q.eq("businessId", args.businessId)).collect();
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Not authenticated");
+    }
+
+    return await ctx.db
+      .query("contactLists")
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .collect();
   },
 });
 
 // Resolve subscribed recipient emails for a list
-export const getListRecipientEmails = internalQuery({
-  args: { businessId: v.id("businesses"), listId: v.id("contactLists") },
+export const getListRecipientEmails = query({
+  args: { listId: v.id("contactLists") },
   handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Not authenticated");
+    }
+
+    const list = await ctx.db.get(args.listId);
+    if (!list) {
+      throw new Error("Contact list not found");
+    }
+
+    // Resolve members from the junction table
     const members = await ctx.db
       .query("contactListMembers")
-      .withIndex("by_business_and_list", (q: any) => q.eq("businessId", args.businessId).eq("listId", args.listId))
+      .withIndex("by_list", (q) => q.eq("listId", args.listId))
       .collect();
 
     const emails: string[] = [];
     for (const m of members) {
       const contact = await ctx.db.get(m.contactId);
-      if (!contact) continue;
-      if (contact.status !== "subscribed") continue;
-      emails.push(contact.email);
+      if (contact && contact.status === "subscribed") {
+        emails.push(contact.email);
+      }
     }
+
     return emails;
   },
 });
 
 // Bulk upload CSV text and add to a list (auto-create list if name provided)
-export const bulkUploadCsv = action({
+export const bulkUploadCsv = mutation({
   args: {
     businessId: v.id("businesses"),
-    createdBy: v.id("users"),
-    csvText: v.string(), // expected headers: email,name (order flexible); also supports single-column email
     listName: v.optional(v.string()),
-    defaultTags: v.optional(v.array(v.string())),
+    contacts: v.array(v.object({
+      email: v.string(),
+      name: v.optional(v.string()),
+      tags: v.optional(v.array(v.string())),
+    })),
   },
   handler: async (ctx, args) => {
-    const lines = args.csvText.split(/\r?\n/).filter(l => l.trim().length > 0);
-    if (lines.length === 0) return { createdListId: null, added: 0, skipped: 0 };
-
-    // Parse headers if comma present, else assume single-column emails
-    let header: string[] = [];
-    let startIdx = 0;
-    if (lines[0].includes(",")) {
-      header = lines[0].split(",").map(h => h.trim().toLowerCase());
-      startIdx = 1;
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Not authenticated");
     }
 
-    const emailIdx = header.length ? header.indexOf("email") : 0;
-    const nameIdx = header.length ? header.indexOf("name") : -1;
+    const user = await ctx.db
+      .query("users")
+      .withIndex("email", (q) => q.eq("email", identity.email!))
+      .first();
 
-    const emails: string[] = [];
-    const namesByEmail: Record<string, string> = {};
-
-    for (let i = startIdx; i < lines.length; i++) {
-      const row = lines[i].split(","); // simple CSV; assumes commas; for advanced CSV use a parser
-      const rawEmail = (row[emailIdx] ?? row[0] ?? "").trim();
-      if (!rawEmail) continue;
-
-      const email = normalizeEmail(rawEmail);
-      if (!email) continue;
-
-      emails.push(email);
-
-      if (nameIdx >= 0) {
-        const name = (row[nameIdx] ?? "").trim();
-        if (name) namesByEmail[email] = name;
-      }
+    if (!user) {
+      throw new Error("User not found");
     }
 
-    // Create or find list
-    let listId = null as any;
-    if (args.listName && args.listName.trim()) {
-      listId = await ctx.runMutation((api as any).contacts.createList, {
+    const now = Date.now();
+    let listId: Id<"contactLists"> | undefined;
+
+    // Create list if name provided
+    if (args.listName) {
+      listId = await ctx.db.insert("contactLists", {
         businessId: args.businessId,
-        name: args.listName.trim(),
-        createdBy: args.createdBy,
-      });
-    } else {
-      const autoName = `Imports ${new Date().toISOString()}`;
-      listId = await ctx.runMutation((api as any).contacts.createList, {
-        businessId: args.businessId,
-        name: autoName,
-        createdBy: args.createdBy,
+        name: args.listName,
+        description: `Imported on ${new Date().toLocaleDateString()}`,
+        createdBy: user._id,
+        createdAt: now,
+        tags: ["imported"],
       });
     }
 
-    // Upsert contacts with names
-    const uniq = Array.from(new Set(emails));
     let added = 0;
     let skipped = 0;
 
-    for (const email of uniq) {
+    for (const contact of args.contacts) {
       try {
-        await ctx.runMutation((internal as any).contacts.upsertContact, {
+        // Check if contact already exists in business
+        const existing = await ctx.db
+          .query("contacts")
+          .withIndex("by_business_and_email", (q) => 
+            q.eq("businessId", args.businessId).eq("email", contact.email)
+          )
+          .first();
+
+        if (existing) {
+          skipped++;
+          continue;
+        }
+
+        await ctx.db.insert("contacts", {
           businessId: args.businessId,
-          email,
-          name: namesByEmail[email],
-          tags: args.defaultTags ?? [],
-          createdBy: args.createdBy,
+          listId,
+          email: contact.email,
+          name: contact.name || contact.email.split("@")[0],
+          tags: contact.tags || [],
           status: "subscribed",
-          source: "import",
+          source: "csv_import",
+          createdBy: user._id,
+          createdAt: now,
+          lastEngagedAt: now,
         });
         added++;
       } catch {
@@ -260,17 +276,12 @@ export const bulkUploadCsv = action({
       }
     }
 
-    await ctx.runMutation((internal as any).contacts.addContactsToList, {
-      businessId: args.businessId,
+    return {
       listId,
-      emails: uniq,
-      createdBy: args.createdBy,
-      defaultStatus: "subscribed",
-      defaultTags: args.defaultTags ?? [],
-      source: "import",
-    });
-
-    return { createdListId: listId, added, skipped };
+      added,
+      skipped,
+      total: args.contacts.length,
+    };
   },
 });
 

@@ -9,6 +9,7 @@ import { useMemo } from "react";
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import CampaignComposer from "@/components/email/CampaignComposer";
+import { Mail, Plus, AlertCircle } from "lucide-react";
 
 interface StartupDashboardProps {
   business: any;
@@ -317,12 +318,18 @@ export function StartupDashboard({
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <h3 className="font-medium">{c.subject}</h3>
-                      <p className="text-xs text-muted-foreground">From: {c.from}</p>
+                      <p className="text-xs text-muted-foreground">From: {c.fromName ? `${c.fromName} <${c.fromEmail}>` : c.fromEmail}</p>
                     </div>
                     <Badge variant="outline">{c.status}</Badge>
                   </div>
                   <p className="text-xs text-muted-foreground mt-2">
-                    {c.recipients?.length ?? 0} recipients • Scheduled {new Date(c.scheduledAt).toLocaleString?.()}
+                    {(c.audienceType === "list" ? "Contact list" : `${(c.recipients?.length ?? 0)} recipients`)} • {(
+                      c.scheduledAt
+                        ? `Scheduled ${new Date(c.scheduledAt).toLocaleString?.()}`
+                        : c.createdAt
+                        ? `Created ${new Date(c.createdAt).toLocaleString?.()}`
+                        : ""
+                    )}
                   </p>
                 </CardContent>
               </Card>

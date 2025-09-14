@@ -59,50 +59,67 @@ export function renderHtml(params: {
 export const createCampaign = mutation({
   args: {
     businessId: v.id("businesses"),
-    createdBy: v.id("users"),
+    type: v.union(v.literal("campaign"), v.literal("transactional"), v.literal("test")),
     subject: v.string(),
-    from: v.string(),
+    fromEmail: v.string(),
+    fromName: v.optional(v.string()),
+    replyTo: v.optional(v.string()),
     previewText: v.optional(v.string()),
-    blocks: v.array(
-      v.object({
-        type: v.union(v.literal("text"), v.literal("button"), v.literal("footer")),
-        content: v.optional(v.string()),
-        label: v.optional(v.string()),
-        url: v.optional(v.string()),
-        includeUnsubscribe: v.optional(v.boolean()),
-      })
-    ),
+    htmlContent: v.string(),
+    textContent: v.optional(v.string()),
     recipients: v.array(v.string()),
-    timezone: v.string(),
-    scheduledAt: v.number(), // UTC ms
-
-    // New optional audience targeting
     audienceType: v.optional(v.union(v.literal("direct"), v.literal("list"))),
     audienceListId: v.optional(v.id("contactLists")),
+    scheduledAt: v.optional(v.number()),
+    buttons: v.optional(v.array(v.object({
+      text: v.string(),
+      url: v.string(),
+      style: v.optional(v.string()),
+    }))),
   },
   handler: async (ctx, args) => {
-    const _id = await ctx.db.insert("emailCampaigns", {
-      businessId: args.businessId,
-      createdBy: args.createdBy,
-      subject: args.subject,
-      from: args.from,
-      previewText: args.previewText,
-      blocks: args.blocks,
-      recipients: args.recipients,
-      timezone: args.timezone,
-      scheduledAt: args.scheduledAt,
-      status: "scheduled",
-      sendIds: [],
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Not authenticated");
+    }
 
-      // Persist audience fields
-      audienceType: args.audienceType ?? (args.recipients.length > 0 ? "direct" : "list"),
+    const user = await ctx.db
+      .query("users")
+      .withIndex("email", (q) => q.eq("email", identity.email!))
+      .first();
+
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    const campaignId = await ctx.db.insert("emails", {
+      businessId: args.businessId,
+      type: args.type,
+      subject: args.subject,
+      fromEmail: args.fromEmail,
+      fromName: args.fromName,
+      replyTo: args.replyTo,
+      previewText: args.previewText,
+      htmlContent: args.htmlContent,
+      textContent: args.textContent,
+      recipients: args.recipients,
+      audienceType: args.audienceType || "direct",
       audienceListId: args.audienceListId,
+      scheduledAt: args.scheduledAt,
+      status: args.scheduledAt ? "scheduled" : "draft",
+      createdBy: user._id,
+      createdAt: Date.now(),
+      buttons: args.buttons,
     });
 
-    const delayMs = Math.max(0, args.scheduledAt - Date.now());
-    await ctx.scheduler.runAfter(delayMs, internal.emailsActions.sendCampaignInternal, { campaignId: _id });
+    // If scheduled, trigger the send action
+    if (args.scheduledAt && args.scheduledAt <= Date.now() + 60000) { // Within 1 minute
+      await ctx.scheduler.runAfter(0, internal.emailsActions.sendCampaignInternal, {
+        campaignId,
+      });
+    }
 
-    return _id;
+    return campaignId;
   },
 });
 
@@ -110,7 +127,7 @@ export const createCampaign = mutation({
  // Removed legacy internalAction getCampaign; use getCampaignQuery instead
 
 export const getCampaignQuery = internalQuery({
-  args: { campaignId: v.id("emailCampaigns") },
+  args: { campaignId: v.id("emails") },
   handler: async (ctx, args) => {
     return await ctx.db.get(args.campaignId);
   },
@@ -118,14 +135,13 @@ export const getCampaignQuery = internalQuery({
 
 export const updateCampaignStatus = internalMutation({
   args: {
-    campaignId: v.id("emailCampaigns"),
+    campaignId: v.id("emails"),
     status: v.union(
       v.literal("draft"),
       v.literal("scheduled"),
       v.literal("sending"),
       v.literal("sent"),
-      v.literal("failed"),
-      v.literal("canceled")
+      v.literal("failed")
     ),
     lastError: v.optional(v.string()),
   },
@@ -133,22 +149,36 @@ export const updateCampaignStatus = internalMutation({
     await ctx.db.patch(args.campaignId, {
       status: args.status,
       lastError: args.lastError,
+      sentAt: args.status === "sent" ? Date.now() : undefined,
     });
+  },
+});
+
+export const getCampaignById = internalQuery({
+  args: { campaignId: v.id("emails") },
+  handler: async (ctx, args) => {
+    return await ctx.db.get(args.campaignId);
   },
 });
 
 export const appendSendIdsAndComplete = internalMutation({
   args: {
-    campaignId: v.id("emailCampaigns"),
+    campaignId: v.id("emails"),
     sendIds: v.array(v.string()),
+    status: v.union(v.literal("sent"), v.literal("failed")),
+    lastError: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const existing = await ctx.db.get(args.campaignId);
-    if (!existing) return;
-    const merged = [ ...(existing.sendIds ?? []), ...args.sendIds ];
+    const campaign = await ctx.db.get(args.campaignId);
+    if (!campaign) return;
+
+    const existingSendIds = campaign.sendIds || [];
+    
     await ctx.db.patch(args.campaignId, {
-      sendIds: merged,
-      status: "sent",
+      sendIds: [...existingSendIds, ...args.sendIds],
+      status: args.status,
+      lastError: args.lastError,
+      sentAt: args.status === "sent" ? Date.now() : undefined,
     });
   },
 });
@@ -192,51 +222,32 @@ export const ensureTokenMutation = internalMutation({
 export const listCampaigns = query({
   args: { businessId: v.id("businesses") },
   handler: async (ctx, args) => {
-    const scheduled = await ctx.db
-      .query("emailCampaigns")
-      .withIndex("by_business_and_status", (q) =>
-        q.eq("businessId", args.businessId).eq("status", "scheduled")
-      )
-      .collect();
+    const rows = await ctx.db
+      .query("emails")
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .order("desc")
+      .take(50);
 
-    const sending = await ctx.db
-      .query("emailCampaigns")
-      .withIndex("by_business_and_status", (q) =>
-        q.eq("businessId", args.businessId).eq("status", "sending")
-      )
-      .collect();
-
-    const sent = await ctx.db
-      .query("emailCampaigns")
-      .withIndex("by_business_and_status", (q) =>
-        q.eq("businessId", args.businessId).eq("status", "sent")
-      )
-      .collect();
-
-    return [...scheduled, ...sending, ...sent].slice(0, 10);
+    return rows.filter((r) => r.type === "campaign").slice(0, 10);
   },
 });
 
 export const listCampaignsByBusiness = query({
   args: { businessId: v.id("businesses") },
   handler: async (ctx, args) => {
-    const docs = await ctx.db
-      .query("emailCampaigns")
-      .withIndex("by_business_and_status", (q) => q.eq("businessId", args.businessId).eq("status", "scheduled"))
-      .collect();
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Not authenticated");
+    }
 
-    // Also fetch sending/sent to show small list
-    const sending = await ctx.db
-      .query("emailCampaigns")
-      .withIndex("by_business_and_status", (q) => q.eq("businessId", args.businessId).eq("status", "sending"))
-      .collect();
+    // Use the by_business index and then filter in JS (avoid query-builder filter)
+    const rows = await ctx.db
+      .query("emails")
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .order("desc")
+      .take(50);
 
-    const sent = await ctx.db
-      .query("emailCampaigns")
-      .withIndex("by_business_and_status", (q) => q.eq("businessId", args.businessId).eq("status", "sent"))
-      .collect();
-
-    return [...docs, ...sending, ...sent].slice(0, 10);
+    return rows.filter((r) => r.type === "campaign").slice(0, 20);
   },
 });
 
