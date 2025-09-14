@@ -3,7 +3,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { toast } from "sonner";
-import { useState, type ChangeEvent } from "react";
+import { useState, useEffect, type ChangeEvent } from "react";
 import { Play, BarChart3, Clock, Webhook, Search } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -38,6 +38,19 @@ function estimateRoiBadge(wf: any): { label: string; variant: "default" | "secon
   if (score >= 6) return { label: "Est. ROI: High", variant: "default" };
   if (score >= 3) return { label: "Est. ROI: Medium", variant: "secondary" };
   return { label: "Est. ROI: Quick Win", variant: "secondary" };
+}
+
+function extractApproverRoles(wf: any): string[] {
+  const roles = new Set<string>();
+  const steps: any[] = Array.isArray(wf?.pipeline) ? wf.pipeline : [];
+  for (const s of steps) {
+    const kind = s?.kind || s?.type;
+    if (kind === "approval") {
+      const role = s?.approverRole || s?.config?.approverRole;
+      if (role && typeof role === "string") roles.add(role);
+    }
+  }
+  return Array.from(roles);
 }
 
 export default function WorkflowsPage() {
@@ -105,6 +118,47 @@ export default function WorkflowsPage() {
   const seedKpisForBiz = useMutation((api as any).kpis?.seedDemoForBusiness || ({} as any));
 
   // formData hook moved above to keep hook order consistent
+
+  useEffect(() => {
+    if (!newWorkflowOpen) return;
+    const tier = (businesses?.[0]?.tier as string | undefined) || (selectedTier as string | undefined);
+
+    if (tier === "solopreneur") {
+      const defaultPipeline = [
+        { kind: "collect", title: "Collect recent wins", source: "notes" },
+        { kind: "agent", title: "Draft LinkedIn + email blurb", agentPrompt: "Draft a LinkedIn post and an email blurb based on collected wins." },
+        { kind: "approval", approverRole: "Owner", title: "Quick review" },
+        { kind: "delay", delayMinutes: 15, title: "Schedule buffer (optional)" },
+      ];
+      setFormData(prev => ({
+        ...prev,
+        name: prev.name || "Brand Booster",
+        description: prev.description || "Quick weekly post + email draft with a short review.",
+        triggerType: "manual",
+        approvalRequired: true,
+        approvalThreshold: 1,
+        pipeline: JSON.stringify(defaultPipeline, null, 2),
+        tags: prev.tags || "brand-booster, quick-win"
+      }));
+    } else if (tier === "startup") {
+      const defaultPipeline = [
+        { kind: "agent", title: "Draft deliverable", agentPrompt: "Create the initial draft for team review." },
+        { kind: "approval", approverRole: "Manager", title: "Team approval" },
+        { kind: "delay", delayMinutes: 60, title: "SLA buffer" },
+        { kind: "notify", channel: "email", title: "Handoff to next role" },
+      ];
+      setFormData(prev => ({
+        ...prev,
+        name: prev.name || "Standard Handoff",
+        description: prev.description || "Approval + SLA buffer for consistent handoff.",
+        triggerType: "manual",
+        approvalRequired: true,
+        approvalThreshold: 1,
+        pipeline: JSON.stringify(defaultPipeline, null, 2),
+        tags: prev.tags || "standardize, handoff, alignment"
+      }));
+    }
+  }, [newWorkflowOpen, businesses, selectedTier]);
 
   const handleCopyTemplate = async (template: any) => {
     if (!firstBizId) {
@@ -632,6 +686,56 @@ export default function WorkflowsPage() {
             </div>
 
             <div className="space-y-3 max-h-[50vh] overflow-y-auto pr-1">
+              {
+                /* Recommended for your tier */
+              }
+              {(() => {
+                const tierForReco = (tplTier === "all" ? (businesses?.[0]?.tier || selectedTier) : tplTier) as string | undefined;
+                const items = Array.isArray(modalTemplates) ? modalTemplates : [];
+                let recommended: any[] = [];
+
+                if (tierForReco === "solopreneur") {
+                  recommended = items.filter((t: any) =>
+                    (String(t._id || "").includes("brand-booster")) ||
+                    (Array.isArray(t.tags) && t.tags.includes("brand-booster"))
+                  ).slice(0, 3);
+                } else if (tierForReco === "startup") {
+                  recommended = items.filter((t: any) =>
+                    Array.isArray(t.tags) && (t.tags.includes("standardize") || t.tags.includes("handoff"))
+                  ).slice(0, 3);
+                }
+
+                if (!recommended.length) return null;
+                return (
+                  <div className="space-y-2">
+                    <div className="text-sm font-medium">Recommended for your tier</div>
+                    <div className="space-y-2">
+                      {recommended.map((t: any) => (
+                        <div key={`reco-${t._id}`} className="border rounded-md p-3 bg-muted/30">
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="min-w-0">
+                              <div className="font-medium truncate">{t.name}</div>
+                              {t.description && <div className="text-xs text-muted-foreground truncate">{t.description}</div>}
+                            </div>
+                            <Button
+                              size="sm"
+                              onClick={() => handleCopyTemplate(t)}
+                              disabled={!firstBizId || isCopyingId === String(t._id)}
+                            >
+                              {isCopyingId === String(t._id) ? "Copying…" : "Copy"}
+                            </Button>
+                          </div>
+                          <div className="mt-2 text-xs text-muted-foreground flex items-center gap-3">
+                            <span>Steps: {t.pipeline?.length ?? 0}</span>
+                            <span>Trigger: {t.trigger?.type ?? "manual"}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
+
               {(modalTemplates || []).map((t: any) => (
                 <div key={t._id} className="border rounded-md p-3">
                   <div className="flex items-center justify-between gap-2">
@@ -667,6 +771,76 @@ export default function WorkflowsPage() {
           </DialogContent>
         </Dialog>
       </div>
+
+      {(() => {
+        const tier = (businesses?.[0]?.tier as string | undefined);
+        if (tier !== "startup") return null;
+        const list = Array.isArray(workflows) ? workflows : [];
+        const hasApproval = list.some((wf: any) => {
+          const steps = wf?.pipeline || [];
+          return steps.some((s: any) => (s?.kind || s?.type) === "approval");
+        });
+        const rolesDefined = list.some((wf: any) => {
+          const steps = wf?.pipeline || [];
+          return steps.some((s: any) => {
+            const k = s?.kind || s?.type;
+            const role = s?.approverRole || s?.config?.approverRole;
+            return k === "approval" && !!role;
+          });
+        });
+        const hasSlaDelay = list.some((wf: any) => {
+          const steps = wf?.pipeline || [];
+          return steps.some((s: any) => (s?.kind || s?.type) === "delay" && ((s?.delayMinutes ?? s?.config?.delayMinutes ?? 0) > 0));
+        });
+        const hasDescriptions = list.every((wf: any) => !!(wf?.description && String(wf.description).trim().length > 0));
+
+        const items = [
+          { label: "At least one approval step", pass: hasApproval },
+          { label: "Approver roles filled", pass: rolesDefined },
+          { label: "SLA buffer (delay) present", pass: hasSlaDelay },
+          { label: "Workflow descriptions added", pass: hasDescriptions },
+        ];
+
+        return (
+          <div className="border rounded-md p-3 bg-muted/20">
+            <div className="text-sm font-medium mb-2">Consistency & Alignment</div>
+            <div className="grid gap-1">
+              {items.map((it, i) => (
+                <div key={i} className="flex items-center justify-between text-sm">
+                  <span>{it.label}</span>
+                  <Badge variant={it.pass ? "default" : "destructive"} className="text-[10px]">
+                    {it.pass ? "OK" : "Missing"}
+                  </Badge>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
+
+      {(() => {
+        const list = Array.isArray(workflows) ? workflows : [];
+        const counts: Record<string, number> = {};
+        for (const wf of list) {
+          for (const r of extractApproverRoles(wf)) {
+            counts[r] = (counts[r] ?? 0) + 1;
+          }
+        }
+        const items: Array<[string, number]> = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 6);
+        if (items.length === 0) return null;
+        return (
+          <div className="border rounded-md p-3 bg-muted/10">
+            <div className="text-sm font-medium mb-2">Team roles summary</div>
+            <div className="flex flex-wrap gap-2">
+              {items.map(([role, n]) => (
+                <Badge key={role} variant="outline" className="text-[10px]">
+                  {role} • {n}
+                </Badge>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
 
       <Tabs defaultValue="all" className="space-y-4">
         <TabsList>
@@ -727,6 +901,15 @@ export default function WorkflowsPage() {
                       ))}
                     </div>
                   )}
+                  {(() => {
+                    const roles = extractApproverRoles(workflow);
+                    if (!roles.length) return null;
+                    return (
+                      <div className="text-xs text-muted-foreground">
+                        Roles: {roles.join(", ")}
+                      </div>
+                    );
+                  })()}
                 </CardContent>
 
                 {expanded[workflow._id] && (
@@ -825,7 +1008,7 @@ export default function WorkflowsPage() {
                           {execution.status}
                         </Badge>
                         <div className="text-sm text-muted-foreground mt-1">
-                          ROI: ${execution.metrics.roi.toFixed(2)}
+                          ROI: {typeof execution?.metrics?.roi === "number" ? `${execution.metrics.roi.toFixed(2)}` : "n/a"}
                         </div>
                       </div>
                     </div>

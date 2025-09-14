@@ -117,30 +117,29 @@ function generateTemplatesForTier(tier: Tier, count = COUNT_PER_TIER): BuiltInTe
       trigger: { type: "manual" },
       approval: { required: true, threshold: 1 },
       pipeline: [
-        {
-          step: 1,
-          type: "collect",
-          name: "Collect recent wins and updates",
-          config: { variant: "referral", intensity: 0 },
-        },
-        {
-          step: 2,
-          type: "generate",
-          name: "Draft LinkedIn post + email blurb",
-          config: { variant: "social", intensity: 1 },
-        },
-        {
-          step: 3,
-          type: "review",
-          name: "Quick human review",
-          config: { approverRole: "Owner" },
-        },
-        {
-          step: 4,
-          type: "publish",
-          name: "Publish & schedule",
-          config: { variant: "email", intensity: 0 },
-        },
+        { step: 1, type: "collect", name: "Collect recent wins and updates", config: { variant: "referral", intensity: 0 } },
+        { step: 2, type: "generate", name: "Draft LinkedIn post + email blurb", config: { variant: "social", intensity: 1 } },
+        { step: 3, type: "review", name: "Quick human review", config: { approverRole: "Owner" } },
+        { step: 4, type: "publish", name: "Publish & schedule", config: { variant: "email", intensity: 0 } },
+      ],
+    });
+  }
+
+  // Add: Startup micro-template (Standard Handoff) to support alignment & approvals
+  if (tier === "startup") {
+    out.push({
+      _id: "builtin:startup:standard-handoff",
+      name: `${label} • Standard Handoff • Quick Start`,
+      description: "Introduce a standard approval + handoff with a short delay to represent SLAs.",
+      tier,
+      tags: Array.from(new Set(["standardize", "handoff", "sla", "alignment"])),
+      trigger: { type: "manual" },
+      approval: { required: true, threshold: 1 },
+      pipeline: [
+        { step: 1, type: "generate", name: "Agent drafts task/output", config: { variant: "report", intensity: 1 } },
+        { step: 2, type: "review", name: "Team approval", config: { approverRole: "Manager" } },
+        { step: 3, type: "notify", name: "Handoff to next role", config: { variant: "email", intensity: 0 } },
+        { step: 4, type: "delay", name: "SLA buffer", config: { delayMinutes: 60 } },
       ],
     });
   }
