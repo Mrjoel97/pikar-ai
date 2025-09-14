@@ -1,7 +1,6 @@
 import { httpRouter } from "convex/server";
 import { httpAction } from "./_generated/server";
 import { internal, api } from "./_generated/api";
-import type { Id } from "./_generated/dataModel";
 
 const http = httpRouter();
 
@@ -142,46 +141,55 @@ http.route({
 http.route({
   path: "/api/audit/export",
   method: "GET",
-  handler: httpAction(async (ctx, req) => {
-    try {
-      const url = new URL(req.url);
-      const businessId = url.searchParams.get("businessId");
-      // Remove unsupported filter in current audit API
-      // const action = url.searchParams.get("action") ?? undefined;
-
-      if (!businessId) {
-        return new Response(JSON.stringify({ error: "businessId is required" }), { status: 400 });
-      }
-
-      // Use the correct function reference from audit.ts
-      const logs = await ctx.runQuery(api.audit.listForBusiness, {
-        businessId: businessId as any, // Convex will validate as Id<"businesses">
-        // Optional: could take a limit in the future
-      });
-
-      // Align CSV to audit log structure
-      const header = ["createdAt", "businessId", "actorUserId", "type", "message", "data"];
-      const rows = logs.map((l: any) => [
-        new Date(l.createdAt).toISOString(),
-        l.businessId ?? "",
-        l.actorUserId ?? "",
-        l.type ?? "",
-        l.message ?? "",
-        JSON.stringify(l.data ?? {}),
-      ]);
-
-      const csv = [header.join(","), ...rows.map((r: unknown[]) => r.map((f: unknown) => `"${String(f).replace(/"/g, '""')}"`).join(","))].join("\n");
-
-      return new Response(csv, {
-        status: 200,
-        headers: {
-          "Content-Type": "text/csv; charset=utf-8",
-          "Content-Disposition": `attachment; filename="audit_logs_${businessId}_${Date.now()}.csv"`,
-        },
-      });
-    } catch (e: any) {
-      return new Response(JSON.stringify({ error: e?.message || "Failed to export audit logs" }), { status: 500 });
+  handler: httpAction(async (ctx, request) => {
+    const url = new URL(request.url);
+    const businessId = url.searchParams.get("businessId");
+    
+    if (!businessId) {
+      return new Response("Missing businessId parameter", { status: 400 });
     }
+
+    const logs = await ctx.runQuery(internal.audit.listForBusiness, { 
+      businessId: businessId as any 
+    });
+
+    // Enhanced CSV with both legacy and structured fields
+    const csvLines = [
+      // Header with both legacy and new structured fields
+      "timestamp,user,action,details,entityType,entityId,structured_details"
+    ];
+
+    for (const log of logs) {
+      const timestamp = new Date(log._creationTime).toISOString();
+      const user = log.userId || "system";
+      const action = log.action || "unknown";
+      const legacyDetails = typeof log.details === "string" ? log.details : JSON.stringify(log.details || {});
+      const entityType = log.entityType || "";
+      const entityId = log.entityId || "";
+      const structuredDetails = JSON.stringify(log.details || {});
+      
+      // CSV escape function
+      const csvEscape = (str: string) => `"${str.replace(/"/g, '""')}"`;
+      
+      csvLines.push([
+        csvEscape(timestamp),
+        csvEscape(user),
+        csvEscape(action),
+        csvEscape(legacyDetails),
+        csvEscape(entityType),
+        csvEscape(entityId),
+        csvEscape(structuredDetails),
+      ].join(","));
+    }
+
+    const csv = csvLines.join("\n");
+    
+    return new Response(csv, {
+      headers: {
+        "Content-Type": "text/csv",
+        "Content-Disposition": `attachment; filename="audit_export_${businessId}_${Date.now()}.csv"`,
+      },
+    });
   }),
 });
 
@@ -194,34 +202,18 @@ http.route({
     try {
       const url = new URL(req.url);
       const token = url.searchParams.get("token");
-      const businessId = url.searchParams.get("businessId");
-      const email = url.searchParams.get("email");
+      const email = url.searchParams.get("email"); // optional
 
-      if (!token || !businessId || !email) {
+      if (!token) {
         return new Response("Missing required parameters.", { status: 400, headers: { "content-type": "text/html" } });
       }
 
-      const result = await ctx.runMutation(internal.emails.setUnsubscribeActive, {
-        businessId: businessId as Id<"businesses">,
-        email,
+      await ctx.runMutation(internal.emails.setUnsubscribeActive, {
         token,
       });
 
-      if (!result?.ok) {
-        const reason =
-          (result as any)?.reason === "not_found"
-            ? "We could not find a matching subscription."
-            : (result as any)?.reason === "token_mismatch"
-            ? "The unsubscribe link is invalid or has expired."
-            : "Unable to process your request.";
-        return new Response(
-          `<html><body style="font-family:Arial,sans-serif;padding:24px;"><h2>Unsubscribe</h2><p>${reason}</p></body></html>`,
-          { status: 400, headers: { "content-type": "text/html" } }
-        );
-      }
-
       return new Response(
-        `<html><body style="font-family:Arial,sans-serif;padding:24px;"><h2>You're unsubscribed</h2><p>You will no longer receive emails from us at <strong>${email}</strong>.</p></body></html>`,
+        `<html><body style="font-family:Arial,sans-serif;padding:24px;"><h2>You're unsubscribed</h2><p>You will no longer receive emails${email ? ` at <strong>${email}</strong>` : ""}.</p></body></html>`,
         { status: 200, headers: { "content-type": "text/html" } }
       );
     } catch {

@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { mutation, query, internalMutation } from "./_generated/server";
+import { mutation, query, internalMutation, internalQuery } from "./_generated/server";
 // removed unused internal import
 
 // Query to get approval queue items
@@ -16,11 +16,11 @@ export const getApprovalQueue = query({
       throw new Error("Not authenticated");
     }
 
-    let query = ctx.db
+    let dbQuery = ctx.db
       .query("approvalQueue")
       .withIndex("by_business", (q) => q.eq("businessId", args.businessId));
 
-    let approvals = await query.collect();
+    let approvals = await dbQuery.collect();
 
     // Filter by assignee if provided
     if (args.assigneeId) {
@@ -42,7 +42,7 @@ export const getApprovalQueue = query({
     approvals.sort((a, b) => {
       const priorityDiff = priorityOrder[a.priority] - priorityOrder[b.priority];
       if (priorityDiff !== 0) return priorityDiff;
-      return a.createdAt - b.createdAt;
+      return a._creationTime - b._creationTime;
     });
 
     return approvals;
@@ -62,12 +62,12 @@ export const getPendingApprovals = query({
       throw new Error("Not authenticated");
     }
 
-    let query = ctx.db
+    let dbQuery = ctx.db
       .query("approvalQueue")
       .withIndex("by_assignee", (q) => q.eq("assigneeId", args.assigneeId))
       .filter((q) => q.eq(q.field("status"), "pending"));
 
-    let approvals = await query.collect();
+    let approvals = await dbQuery.collect();
 
     // Filter by business if provided
     if (args.businessId) {
@@ -81,7 +81,7 @@ export const getPendingApprovals = query({
       }
       if (a.slaDeadline && !b.slaDeadline) return -1;
       if (!a.slaDeadline && b.slaDeadline) return 1;
-      return a.createdAt - b.createdAt;
+      return a._creationTime - b._creationTime;
     });
 
     // Apply limit if provided
@@ -94,83 +94,48 @@ export const getPendingApprovals = query({
 });
 
 // Mutation to create an approval request
-export const createApprovalRequest = mutation({
+export const createApproval = mutation({
   args: {
     businessId: v.id("businesses"),
     workflowId: v.id("workflows"),
-    stepId: v.id("workflowSteps"),
-    assigneeId: v.id("users"),
-    priority: v.optional(v.union(v.literal("low"), v.literal("medium"), v.literal("high"), v.literal("urgent"))),
-    slaHours: v.optional(v.number()),
-    comments: v.optional(v.string()),
+    workflowRunId: v.id("workflowRuns"),
+    stepIndex: v.number(),
+    assigneeId: v.optional(v.id("users")),
+    assigneeRole: v.optional(v.string()),
+    title: v.string(),
+    description: v.optional(v.string()),
+    priority: v.optional(
+      v.union(
+        v.literal("low"),
+        v.literal("medium"),
+        v.literal("high"),
+        v.literal("urgent")
+      )
+    ),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
-    }
+    if (!identity) throw new Error("Not authenticated");
 
-    const user = await ctx.db
-      .query("users")
-      .filter((q) => q.eq(q.field("email"), identity.email))
-      .first();
-
-    if (!user) {
-      throw new Error("User not found");
-    }
-
-    const now = Date.now();
-    const slaDeadline = args.slaHours 
-      ? now + (args.slaHours * 60 * 60 * 1000)
-      : undefined;
+    // Get business tier for SLA calculation
+    const business = await ctx.db.get(args.businessId);
+    const tier = business?.tier || "startup";
+    const slaMs = getSlaMsForTier(tier);
+    const slaDeadline = Date.now() + slaMs;
 
     const approvalId = await ctx.db.insert("approvalQueue", {
       businessId: args.businessId,
       workflowId: args.workflowId,
-      stepId: args.stepId,
+      workflowRunId: args.workflowRunId,
+      stepIndex: args.stepIndex,
       assigneeId: args.assigneeId,
-      requestedBy: user._id,
+      assigneeRole: args.assigneeRole,
+      title: args.title,
+      description: args.description || "",
       status: "pending",
       priority: args.priority || "medium",
-      createdAt: now,
       slaDeadline,
-      comments: args.comments,
-    });
-
-    // Create notification for approver
-    await ctx.db.insert("notifications", {
-      businessId: args.businessId,
-      userId: args.assigneeId,
-      type: "approval",
-      title: "Approval Required",
-      message: `You have a new approval request that requires your attention.`,
-      data: {
-        approvalId,
-        workflowId: args.workflowId,
-        stepId: args.stepId,
-        priority: args.priority || "medium",
-        slaDeadline,
-      },
-      isRead: false,
-      priority: args.priority === "urgent" ? "high" : "medium",
-      createdAt: now,
-      expiresAt: now + (7 * 24 * 60 * 60 * 1000),
-    });
-
-    // Track telemetry event
-    await ctx.db.insert("telemetryEvents", {
-      businessId: args.businessId,
-      userId: user._id,
-      eventName: "approval_request_created",
-      eventData: {
-        approvalId,
-        workflowId: args.workflowId,
-        stepId: args.stepId,
-        assigneeId: args.assigneeId,
-        priority: args.priority || "medium",
-      },
-      timestamp: now,
-      source: "system",
+      createdBy: identity.subject,
     });
 
     return approvalId;
@@ -233,14 +198,14 @@ export const processApproval = mutation({
     // Create notification for requester
     await ctx.db.insert("notifications", {
       businessId: approval.businessId,
-      userId: approval.requestedBy,
+      userId: approval.assigneeId,
       type: "approval",
       title: `Approval ${args.action === "approve" ? "Approved" : "Rejected"}`,
       message: `Your approval request has been ${args.action}d by ${user.name || user.email}.`,
       data: {
         approvalId: args.approvalId,
         workflowId: approval.workflowId,
-        stepId: approval.stepId,
+        stepIndex: approval.stepIndex,
         action: args.action,
         comments: args.comments,
       },
@@ -250,10 +215,6 @@ export const processApproval = mutation({
       expiresAt: now + (7 * 24 * 60 * 60 * 1000),
     });
 
-    // If approved, we could update the workflow step status here
-    // For now, we'll just track the approval - the step status update
-    // should be handled by the workflow orchestration system
-
     // Track telemetry event
     await ctx.db.insert("telemetryEvents", {
       businessId: approval.businessId,
@@ -262,8 +223,8 @@ export const processApproval = mutation({
       eventData: {
         approvalId: args.approvalId,
         workflowId: approval.workflowId,
-        stepId: approval.stepId,
-        processingTime: now - approval.createdAt,
+        stepIndex: approval.stepIndex,
+        processingTime: now - approval._creationTime,
         comments: args.comments,
       },
       timestamp: now,
@@ -292,7 +253,7 @@ export const getApprovalAnalytics = query({
     const approvals = await ctx.db
       .query("approvalQueue")
       .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
-      .filter((q) => q.gt(q.field("createdAt"), startTime))
+      .filter((q) => q.gt(q.field("_creationTime"), startTime))
       .collect();
 
     const totalApprovals = approvals.length;
@@ -312,7 +273,7 @@ export const getApprovalAnalytics = query({
     const avgProcessingTime = processedApprovals.length > 0
       ? processedApprovals.reduce((sum, a) => {
           const processedAt = a.approvedAt || a.rejectedAt || Date.now();
-          return sum + (processedAt - a.createdAt);
+          return sum + (processedAt - a._creationTime);
         }, 0) / processedApprovals.length
       : 0;
 
@@ -367,12 +328,13 @@ export const getOverdueApprovals = query({
     }
 
     const now = Date.now();
-    let query = ctx.db
+    // Rename to avoid shadowing the imported `query`
+    let dbQuery = ctx.db
       .query("approvalQueue")
       .withIndex("by_sla_deadline", (q) => q.lt("slaDeadline", now))
       .filter((q) => q.eq(q.field("status"), "pending"));
 
-    let approvals = await query.collect();
+    let approvals = await dbQuery.collect();
 
     // Filter by business
     approvals = approvals.filter(approval => approval.businessId === args.businessId);
@@ -424,7 +386,8 @@ export const checkApprovalSLABreaches = internalMutation({
           data: {
             approvalId: approval._id,
             workflowId: approval.workflowId,
-            stepId: approval.stepId,
+            // Fix: use stepIndex to match stored field
+            stepIndex: approval.stepIndex,
             slaDeadline: approval.slaDeadline,
           },
           isRead: false,
@@ -575,9 +538,8 @@ export const pendingForBusiness = query({
     // Return the most recent pending approvals for a business (max: args.limit)
     const rows = await ctx.db
       .query("approvalQueue")
-      .withIndex("by_businessId_and_status", (q) =>
-        q.eq("businessId", args.businessId).eq("status", "pending")
-      )
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .filter((q) => q.eq(q.field("status"), "pending"))
       .order("desc")
       .take(Math.max(1, Math.min(50, args.limit)));
 
@@ -590,38 +552,76 @@ export const getSlaSummary = query({
   args: {
     businessId: v.id("businesses"),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, { businessId }) => {
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
-    }
+    if (!identity) throw new Error("Not authenticated");
 
     const now = Date.now();
-    const soon = now + 2 * 60 * 60 * 1000; // next 2 hours
-
-    // Overdue (pending with slaDeadline < now)
-    const overdue = await ctx.db
+    const approvals = await ctx.db
       .query("approvalQueue")
-      .withIndex("by_sla_deadline", (q) => q.lt("slaDeadline", now))
+      .withIndex("by_business", (q) => q.eq("businessId", businessId))
       .filter((q) => q.eq(q.field("status"), "pending"))
       .collect();
 
-    // Due soon (pending with now <= slaDeadline < soon)
-    const dueSoonRaw = await ctx.db
-      .query("approvalQueue")
-      .withIndex("by_sla_deadline", (q) => q.lt("slaDeadline", soon))
-      .filter((q) => q.eq(q.field("status"), "pending"))
-      .collect();
-
-    const overdueForBiz = overdue.filter((a) => a.businessId === args.businessId);
-    const dueSoonForBiz = dueSoonRaw.filter(
-      (a) => a.businessId === args.businessId && (a.slaDeadline ?? Infinity) >= now
+    const overdue = approvals.filter(a => a.slaDeadline && a.slaDeadline < now);
+    const dueSoon = approvals.filter(a => 
+      a.slaDeadline && 
+      a.slaDeadline >= now && 
+      a.slaDeadline < now + (2 * 60 * 60 * 1000) // Due within 2 hours
     );
 
     return {
-      overdueCount: overdueForBiz.length,
-      dueSoonCount: dueSoonForBiz.length,
-      timestamp: now,
+      total: approvals.length,
+      overdue: overdue.length,
+      dueSoon: dueSoon.length,
     };
+  },
+});
+
+// Add helper function
+const getSlaMsForTier = (tier: string): number => {
+  switch (tier) {
+    case "enterprise":
+      return 12 * 60 * 60 * 1000; // 12 hours
+    case "sme":
+      return 24 * 60 * 60 * 1000; // 24 hours
+    case "startup":
+      return 48 * 60 * 60 * 1000; // 48 hours
+    case "solopreneur":
+      return 72 * 60 * 60 * 1000; // 72 hours
+    default:
+      return 48 * 60 * 60 * 1000; // Default 48 hours
+  }
+};
+
+export const listOverdueApprovals = internalQuery({
+  args: {},
+  handler: async (ctx) => {
+    const now = Date.now();
+    const approvals = await ctx.db
+      .query("approvalQueue")
+      .withIndex("by_sla_deadline")
+      .collect();
+    
+    return approvals.filter(a => 
+      a.status === "pending" && 
+      a.slaDeadline && 
+      a.slaDeadline < now
+    );
+  },
+});
+
+export const updateApprovalPriority = internalMutation({
+  args: {
+    approvalId: v.id("approvalQueue"),
+    priority: v.union(
+      v.literal("low"),
+      v.literal("medium"),
+      v.literal("high"),
+      v.literal("urgent")
+    ),
+  },
+  handler: async (ctx, { approvalId, priority }) => {
+    await ctx.db.patch(approvalId, { priority });
   },
 });

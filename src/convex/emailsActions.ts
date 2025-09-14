@@ -1,15 +1,15 @@
 "use node";
 
 import { Resend } from "resend";
-import { action, internalAction } from "./_generated/server";
-import { v } from "convex/values";
+import { internalAction, action } from "./_generated/server";
 import { internal, api } from "./_generated/api";
-/* removed unused Id type import */
 import { renderHtml, escapeHtml } from "./emails";
+import { v } from "convex/values";
 
-/* using escapeHtml from ./emails */
-
-/* using renderHtml from ./emails */
+// Config constants
+const EMAILS_BATCH_SIZE = parseInt(process.env.EMAILS_BATCH_SIZE || "100");
+const EMAILS_BATCH_DELAY_MS = parseInt(process.env.EMAILS_BATCH_DELAY_MS || "500");
+const EMAILS_MAX_RECIPIENTS_PER_JOB = parseInt(process.env.EMAILS_MAX_RECIPIENTS_PER_JOB || "5000");
 
 /**
  * Resend client is instantiated per handler to avoid stale API keys.
@@ -97,144 +97,124 @@ export const sendTestEmail = action({
 
 // Internal action: Perform campaign send
 export const sendCampaignInternal = internalAction({
-  args: {
-    campaignId: v.id("emails"),
-    batchSize: v.optional(v.number()),
-    batchDelay: v.optional(v.number()),
-  },
-  handler: async (ctx, args) => {
-    const resendApiKey = process.env.RESEND_API_KEY;
-    if (!resendApiKey) {
-      await ctx.runMutation(internal.emails.updateCampaignStatus, {
-        campaignId: args.campaignId,
-        status: "failed",
-        lastError: "RESEND_API_KEY not configured. Please set up the API key in Integrations.",
-      });
+  args: { campaignId: v.id("emails") },
+  handler: async (ctx, { campaignId }) => {
+    // Ensure API key first, then instantiate client with a narrowed type
+    const RESEND_KEY = process.env.RESEND_API_KEY;
+    if (!RESEND_KEY) {
       throw new Error("RESEND_API_KEY not configured");
     }
+    const resend = new Resend(RESEND_KEY);
 
-    const resend = new Resend(resendApiKey);
-    const campaign = await ctx.runQuery(internal.emails.getCampaignById, {
-      campaignId: args.campaignId,
-    });
-
+    const campaign = await ctx.runQuery(internal.emails.getCampaignById, { campaignId });
     if (!campaign) {
       throw new Error("Campaign not found");
     }
 
-    let recipients: string[] = [];
-
-    // Resolve recipients based on audience type
-    if (campaign.audienceType === "list" && campaign.audienceListId) {
-      recipients = await ctx.runQuery(api.contacts.getListRecipientEmails, {
-        listId: campaign.audienceListId,
-      });
-    } else {
-      recipients = campaign.recipients;
+    // Allow both 'scheduled' and 'queued' statuses to proceed
+    if (campaign.status !== "scheduled" && campaign.status !== "queued") {
+      return; // Already processed or cancelled
     }
 
-    if (recipients.length === 0) {
-      await ctx.runMutation(internal.emails.updateCampaignStatus, {
-        campaignId: args.campaignId,
-        status: "failed",
-        lastError: "No recipients found",
-      });
-      return;
-    }
-
-    // Update status to sending
     await ctx.runMutation(internal.emails.updateCampaignStatus, {
-      campaignId: args.campaignId,
+      campaignId,
       status: "sending",
     });
 
-    const batchSize = args.batchSize || 100;
-    const batchDelay = args.batchDelay || 500;
-    const allSendIds: string[] = [];
-    let totalSent = 0;
+    try {
+      let recipients: string[] = [];
+      
+      if (campaign.audienceType === "direct") {
+        recipients = campaign.recipients || [];
+      } else if (campaign.audienceType === "list" && campaign.audienceListId) {
+        recipients = await ctx.runQuery(internal.contacts.getListRecipientEmails, {
+          listId: campaign.audienceListId,
+        });
+      }
 
-    // Process in batches
-    for (let i = 0; i < recipients.length; i += batchSize) {
-      const batch = recipients.slice(i, i + batchSize);
-      let retries = 0;
-      const maxRetries = 3;
+      // Validate and filter recipients
+      const validRecipients: string[] = [];
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      
+      for (const email of recipients) {
+        // Skip invalid emails
+        if (!emailRegex.test(email)) continue;
+        
+        // Check unsubscribe status
+        const isUnsubscribed = await ctx.runQuery(api.emails.isUnsubscribedQuery, {
+          businessId: campaign.businessId,
+          email,
+        });
+        if (isUnsubscribed) continue;
+        
+        validRecipients.push(email);
+      }
 
-      while (retries < maxRetries) {
-        try {
-          const batchResults = await Promise.allSettled(
-            batch.map(async (email) => {
-              const result = await resend.emails.send({
-                from: campaign.fromName 
-                  ? `${campaign.fromName} <${campaign.fromEmail}>`
-                  : campaign.fromEmail,
-                to: [email],
-                subject: campaign.subject,
-                html: campaign.htmlContent,
-                text: campaign.textContent,
-                reply_to: campaign.replyTo,
-              });
+      // Cap recipients if too many
+      const cappedRecipients = validRecipients.slice(0, EMAILS_MAX_RECIPIENTS_PER_JOB);
+      if (validRecipients.length > EMAILS_MAX_RECIPIENTS_PER_JOB) {
+        console.warn(`Campaign ${campaignId} capped to ${EMAILS_MAX_RECIPIENTS_PER_JOB} recipients`);
+      }
 
-              if (result.error) {
-                throw new Error(`Failed to send to ${email}: ${result.error.message}`);
-              }
-
-              return result.data?.id;
-            })
-          );
-
-          // Collect successful send IDs
-          const batchSendIds = batchResults
-            .filter((result): result is PromiseFulfilledResult<string> => 
-              result.status === "fulfilled" && result.value !== undefined
-            )
-            .map(result => result.value);
-
-          allSendIds.push(...batchSendIds);
-          totalSent += batchSendIds.length;
-
-          // Check for failures
-          const failures = batchResults.filter(result => result.status === "rejected");
-          if (failures.length > 0) {
-            console.warn(`Batch ${i / batchSize + 1}: ${failures.length} failures out of ${batch.length}`);
-          }
-
-          break; // Success, exit retry loop
-        } catch (error: any) {
-          retries++;
-          if (error.message?.includes("429") || error.message?.includes("rate limit")) {
-            // Rate limited, wait longer
-            await new Promise(resolve => setTimeout(resolve, Math.pow(2, retries) * 1000));
-          } else if (retries >= maxRetries) {
-            // Final failure
-            await ctx.runMutation(internal.emails.updateCampaignStatus, {
-              campaignId: args.campaignId,
-              status: "failed",
-              lastError: `Batch ${i / batchSize + 1} failed after ${maxRetries} retries: ${error.message}`,
+      const sendIds: string[] = [];
+      
+      // Send in batches
+      for (let i = 0; i < cappedRecipients.length; i += EMAILS_BATCH_SIZE) {
+        const batch = cappedRecipients.slice(i, i + EMAILS_BATCH_SIZE);
+        
+        for (const email of batch) {
+          try {
+            const unsubscribeToken = await ctx.runMutation(internal.emails.ensureTokenMutation, {
+              businessId: campaign.businessId,
+              email,
             });
-            return;
+
+            const unsubscribeUrl = `${process.env.VITE_PUBLIC_BASE_URL || ""}/api/unsubscribe?token=${unsubscribeToken}`;
+            
+            let htmlContent = (campaign.body || campaign.htmlContent || "") as string;
+            if (campaign.buttons && campaign.buttons.length > 0) {
+              const buttonsHtml = campaign.buttons
+                .map(btn => `<a href="${btn.url}" style="display: inline-block; padding: 10px 20px; background-color: #059669; color: white; text-decoration: none; border-radius: 5px; margin: 5px;">${btn.text}</a>`)
+                .join("");
+              htmlContent += `<div style="margin: 20px 0;">${buttonsHtml}</div>`;
+            }
+            htmlContent += `<div style="margin-top: 30px; font-size: 12px; color: #666;"><a href="${unsubscribeUrl}">Unsubscribe</a></div>`;
+
+            const { data } = await resend.emails.send({
+              from: campaign.fromEmail || "noreply@resend.dev",
+              to: [email],
+              subject: campaign.subject || "No Subject",
+              html: htmlContent,
+            });
+
+            if (data?.id) {
+              sendIds.push(data.id);
+            }
+          } catch (error) {
+            console.error(`Failed to send to ${email}:`, error);
           }
+        }
+        
+        // Delay between batches
+        if (i + EMAILS_BATCH_SIZE < cappedRecipients.length) {
+          await new Promise(resolve => setTimeout(resolve, EMAILS_BATCH_DELAY_MS));
         }
       }
 
-      // Delay between batches (except last batch)
-      if (i + batchSize < recipients.length) {
-        await new Promise(resolve => setTimeout(resolve, batchDelay));
-      }
+      await ctx.runMutation(internal.emails.appendSendIdsAndComplete, {
+        campaignId,
+        sendIds,
+        status: "sent",
+      });
+
+    } catch (error) {
+      await ctx.runMutation(internal.emails.updateCampaignStatus, {
+        campaignId,
+        status: "failed",
+        lastError: error instanceof Error ? error.message : "Unknown error",
+      });
+      throw error;
     }
-
-    // Update campaign with results
-    await ctx.runMutation(internal.emails.appendSendIdsAndComplete, {
-      campaignId: args.campaignId,
-      sendIds: allSendIds,
-      status: totalSent > 0 ? "sent" : "failed",
-      lastError: totalSent === 0 ? "No emails were successfully sent" : undefined,
-    });
-
-    return {
-      totalRecipients: recipients.length,
-      totalSent,
-      sendIds: allSendIds,
-    };
   },
 });
 
@@ -249,7 +229,8 @@ export const sendSalesInquiry = action({
   },
   handler: async (ctx, args) => {
     const inbox = process.env.SALES_INBOX || process.env.PUBLIC_SALES_INBOX || "";
-    if (!process.env.RESEND_API_KEY) {
+    const RESEND_KEY = process.env.RESEND_API_KEY;
+    if (!RESEND_KEY) {
       throw new Error("Email service not configured");
     }
     if (!inbox) {
@@ -257,7 +238,7 @@ export const sendSalesInquiry = action({
     }
 
     // Instantiate Resend here to use the configured API key at runtime
-    const resend = new Resend(process.env.RESEND_API_KEY);
+    const resend = new Resend(RESEND_KEY);
 
     const subject = `Sales Inquiry${args.plan ? ` - ${args.plan}` : ""} from ${args.name}`;
     const html = `

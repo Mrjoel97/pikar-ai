@@ -86,7 +86,7 @@ export default defineSchema({
 
   diagnostics: defineTable({
     businessId: v.id("businesses"),
-    createdBy: v.id("users"),
+    createdBy: v.optional(v.id("users")),
     phase: v.union(v.literal("discovery"), v.literal("planning")),
     inputs: v.object({
       goals: v.array(v.string()),
@@ -260,7 +260,7 @@ export default defineSchema({
       userTier: v.optional(v.array(v.string())),
       businessTier: v.optional(v.array(v.string())),
     })),
-    createdAt: v.number(),
+    createdAt: v.optional(v.number()),
     updatedAt: v.number(),
   })
     .index("by_flag_name", ["flagName"])
@@ -295,26 +295,24 @@ export default defineSchema({
   approvalQueue: defineTable({
     businessId: v.id("businesses"),
     workflowId: v.id("workflows"),
-    stepId: v.id("workflowSteps"),
-    assigneeId: v.id("users"),
-    requestedBy: v.id("users"),
+    workflowRunId: v.id("workflowRuns"),
+    stepIndex: v.number(),
+    assigneeId: v.optional(v.id("users")),
+    assigneeRole: v.optional(v.string()),
+    title: v.string(),
+    description: v.string(),
     status: v.union(v.literal("pending"), v.literal("approved"), v.literal("rejected")),
-    priority: v.union(v.literal("low"), v.literal("medium"), v.literal("high"), v.literal("urgent")),
-    createdAt: v.number(),
+    priority: v.union(v.literal("low"), v.literal("medium"), v.literal("high")),
     slaDeadline: v.optional(v.number()),
-    approvedAt: v.optional(v.number()),
-    approvedBy: v.optional(v.id("users")),
-    rejectedAt: v.optional(v.number()),
-    rejectedBy: v.optional(v.id("users")),
-    rejectionReason: v.optional(v.string()),
+    createdBy: v.string(),
+    reviewedBy: v.optional(v.string()),
+    reviewedAt: v.optional(v.number()),
     comments: v.optional(v.string()),
   })
     .index("by_business", ["businessId"])
     .index("by_assignee", ["assigneeId"])
-    .index("by_status", ["status"])
     .index("by_workflow", ["workflowId"])
-    .index("by_sla_deadline", ["slaDeadline"])
-    .index("by_businessId_and_status", ["businessId", "status"]),
+    .index("by_sla_deadline", ["slaDeadline"]),
 
   // Notification System
   notifications: defineTable({
@@ -409,7 +407,7 @@ export default defineSchema({
         includeUnsubscribe: v.optional(v.boolean()), // footer flag
       })
     ),
-    recipients: v.array(v.string()), // raw emails, comma-separated parsed
+    recipients: v.optional(v.array(v.string())), // raw emails, comma-separated parsed
     timezone: v.string(),
     scheduledAt: v.number(), // UTC timestamp (ms)
     status: v.union(
@@ -1057,7 +1055,8 @@ export default defineSchema({
     fromName: v.optional(v.string()),
     replyTo: v.optional(v.string()),
     previewText: v.optional(v.string()),
-    htmlContent: v.string(),
+    htmlContent: v.optional(v.string()),
+    body: v.optional(v.string()),
     textContent: v.optional(v.string()),
     recipients: v.array(v.string()),
     audienceType: v.optional(v.union(v.literal("direct"), v.literal("list"))),
@@ -1066,6 +1065,7 @@ export default defineSchema({
     sentAt: v.optional(v.number()),
     status: v.union(
       v.literal("draft"),
+      v.literal("queued"),
       v.literal("scheduled"),
       v.literal("sending"),
       v.literal("sent"),

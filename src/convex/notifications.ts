@@ -652,3 +652,48 @@ export const markAllMyNotificationsRead = mutation({
     return unread.length;
   },
 });
+
+// Internal mutation to create a notification (used by other services)
+export const sendIfPermitted = internalMutation({
+  args: {
+    userId: v.id("users"),
+    businessId: v.id("businesses"),
+    type: v.string(),
+    title: v.string(),
+    message: v.string(),
+    data: v.optional(v.any()),
+  },
+  handler: async (ctx, args) => {
+    // Check for recent duplicate notifications (simple rate limiting)
+    const oneHourAgo = Date.now() - (60 * 60 * 1000);
+    const recentSimilar = await ctx.db
+      .query("notifications")
+      .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .filter((q) => 
+        q.and(
+          q.gte(q.field("_creationTime"), oneHourAgo),
+          q.eq(q.field("type"), args.type),
+          q.eq(q.field("title"), args.title)
+        )
+      )
+      .first();
+
+    if (recentSimilar) {
+      return null; // Skip duplicate
+    }
+
+    // Create notification
+    const notificationId = await ctx.db.insert("notifications", {
+      userId: args.userId,
+      businessId: args.businessId,
+      type: args.type,
+      title: args.title,
+      message: args.message,
+      data: args.data,
+      isRead: false,
+      priority: "medium",
+    });
+
+    return notificationId;
+  },
+});

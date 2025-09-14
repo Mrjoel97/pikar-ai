@@ -1,134 +1,76 @@
 import { cronJobs } from "convex/server";
 import { internal } from "./_generated/api";
-import { internalMutation } from "./_generated/server";
+import { internalAction } from "./_generated/server";
 
 const crons = cronJobs();
 
-// Local scheduled jobs to avoid cross-module references
-
-export const checkWorkflowSLAsCron = internalMutation({
+// Email sweep cron
+const emailSweep = internalAction({
   args: {},
   handler: async (ctx) => {
-    const now = Date.now();
-    const twoHoursFromNow = now + 2 * 60 * 60 * 1000;
-
-    // Find steps due within 2 hours or overdue and not completed
-    const steps = await ctx.db.query("workflowSteps").collect();
-    const pending = steps.filter(
-      (s) =>
-        s.status !== "completed" &&
-        s.dueDate !== undefined &&
-        s.dueDate <= twoHoursFromNow &&
-        s.assigneeId
-    );
-
-    for (const step of pending) {
-      await ctx.db.insert("notifications", {
-        businessId: step.businessId,
-        userId: step.assigneeId!,
-        type: "sla_warning",
-        title: "Task Due Soon",
-        message: `Task "${step.name}" is due soon.`,
-        data: {
-          stepId: step._id,
-          workflowId: step.workflowId,
-          dueDate: step.dueDate,
-        },
-        isRead: false,
-        priority: "high",
-        createdAt: now,
-        expiresAt: now + 7 * 24 * 60 * 60 * 1000,
-      });
+    const dueCampaignIds = await ctx.runQuery(internal.emails.listDueScheduledCampaigns, {});
+    
+    for (const campaignId of dueCampaignIds) {
+      await ctx.scheduler.runAfter(0, internal.emailsActions.sendCampaignInternal, { campaignId });
     }
-    return pending.length;
+    
+    if (dueCampaignIds.length > 0) {
+      console.log(`Scheduled ${dueCampaignIds.length} due email campaigns for delivery`);
+    }
   },
 });
 
-export const checkApprovalSLABreachesCron = internalMutation({
+// SLA sweep cron (will be implemented in P2)
+const slaSweep = internalAction({
   args: {},
   handler: async (ctx) => {
     const now = Date.now();
-    const warningThreshold = now + 2 * 60 * 60 * 1000;
+    
+    // Get all overdue approvals
+    const overdueApprovals = await ctx.runQuery(internal.approvals.listOverdueApprovals, {});
+    
+    for (const approval of overdueApprovals) {
+      // Notify assignee if present
+      if (approval.assigneeId) {
+        await ctx.runMutation(internal.notifications.sendIfPermitted, {
+          userId: approval.assigneeId,
+          businessId: approval.businessId,
+          type: "sla_overdue",
+          title: "Approval Overdue",
+          message: `"${approval.title}" is past its SLA deadline`,
+          data: { approvalId: approval._id, workflowId: approval.workflowId },
+        });
+      }
 
-    const upcomingBreaches = await ctx.db
-      .query("approvalQueue")
-      .withIndex("by_sla_deadline", (q) => q.lt("slaDeadline", warningThreshold))
-      .filter((q) => q.eq(q.field("status"), "pending"))
-      .collect();
-
-    const approvalsNeedingWarning = upcomingBreaches.filter(
-      (approval) => approval.slaDeadline && approval.slaDeadline > now
-    );
-
-    for (const approval of approvalsNeedingWarning) {
-      await ctx.db.insert("notifications", {
+      // Write audit log
+      await ctx.runMutation(internal.audit.write, {
         businessId: approval.businessId,
-        userId: approval.assigneeId,
-        type: "sla_warning",
-        title: "Approval SLA Warning",
-        message: `Approval request is approaching SLA deadline in less than 2 hours.`,
-        data: {
-          approvalId: approval._id,
-          workflowId: approval.workflowId,
-          stepId: approval.stepId,
+        action: "sla_overdue",
+        entityType: "approval",
+        entityId: approval._id,
+        details: {
+          title: approval.title,
           slaDeadline: approval.slaDeadline,
+          overdueMs: now - (approval.slaDeadline || now),
         },
-        isRead: false,
-        priority: "high",
-        createdAt: now,
-        expiresAt: now + 7 * 24 * 60 * 60 * 1000,
       });
+
+      // Escalate priority if not already high
+      if (approval.priority !== "high") {
+        await ctx.runMutation(internal.approvals.updateApprovalPriority, {
+          approvalId: approval._id,
+          priority: "high",
+        });
+      }
     }
 
-    return approvalsNeedingWarning.length;
+    if (overdueApprovals.length > 0) {
+      console.log(`Processed ${overdueApprovals.length} overdue approvals`);
+    }
   },
 });
 
-export const cleanupExpiredNotificationsCron = internalMutation({
-  args: {},
-  handler: async (ctx) => {
-    const now = Date.now();
-    const expired = await ctx.db
-      .query("notifications")
-      .withIndex("by_expires_at", (q) => q.lt("expiresAt", now))
-      .collect();
-
-    for (const n of expired) {
-      await ctx.db.delete(n._id);
-    }
-    return expired.length;
-  },
-});
-
-export const cleanupOldTelemetryEventsCron = internalMutation({
-  args: {},
-  handler: async (ctx) => {
-    const ninetyDaysAgo = Date.now() - 90 * 24 * 60 * 60 * 1000;
-    const oldEvents = await ctx.db
-      .query("telemetryEvents")
-      .withIndex("by_timestamp", (q) => q.lt("timestamp", ninetyDaysAgo))
-      .collect();
-
-    for (const e of oldEvents) {
-      await ctx.db.delete(e._id);
-    }
-    return oldEvents.length;
-  },
-});
-
-// Schedule (use interval/cron explicitly)
-crons.interval("sla-checks", { minutes: 15 }, internal.cron.checkWorkflowSLAsCron, {});
-crons.interval("approval-sla-checks", { minutes: 30 }, internal.cron.checkApprovalSLABreachesCron, {});
-crons.cron("cleanup-notifications", "0 2 * * *", internal.cron.cleanupExpiredNotificationsCron, {});
-crons.cron("cleanup-telemetry", "0 3 * * 0", internal.cron.cleanupOldTelemetryEventsCron, {});
-
-// Schedule periodic seeding of templates across tiers (idempotent)
-crons.interval(
-  "seed ai agent templates across tiers",
-  { hours: 12 },
-  internal.aiAgents.seedAllTierTemplatesInternal,
-  {}
-);
-// Optionally: add a periodic safety sweep in future for campaigns if needed
+crons.interval("send scheduled email sweep", { minutes: 1 }, internal.cron.emailSweep, {});
+crons.interval("approval SLA sweep", { minutes: 5 }, internal.cron.slaSweep, {});
 
 export default crons;

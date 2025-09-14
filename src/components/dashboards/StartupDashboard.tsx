@@ -9,7 +9,8 @@ import { useMemo } from "react";
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import CampaignComposer from "@/components/email/CampaignComposer";
-import { Mail, Plus, AlertCircle } from "lucide-react";
+import { Suspense } from "react";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface StartupDashboardProps {
   business: any;
@@ -104,10 +105,10 @@ export function StartupDashboard({
   const [showComposer, setShowComposer] = useState(false);
 
   // Add: recent campaigns list
-  const recentCampaigns = useQuery(
-    api.emails.listCampaignsByBusiness,
-    isGuest || !business?._id ? "skip" : { businessId: business._id }
-  );
+  const campaigns = useQuery(
+  api.emails.listCampaigns,
+  isGuest || !business?._id ? "skip" : { businessId: business._id }
+);
 
   return (
     <div className="space-y-6">
@@ -307,49 +308,75 @@ export function StartupDashboard({
         </div>
       </section>
 
-      {/* Email Campaigns */}
-      {!isGuest && business?._id && (
-        <section>
-          <h2 className="text-xl font-semibold mb-4">Email Campaigns</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {(Array.isArray(recentCampaigns) ? recentCampaigns : []).map((c: any) => (
-              <Card key={String(c._id)}>
-                <CardContent className="p-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <h3 className="font-medium">{c.subject}</h3>
-                      <p className="text-xs text-muted-foreground">From: {c.fromName ? `${c.fromName} <${c.fromEmail}>` : c.fromEmail}</p>
-                    </div>
-                    <Badge variant="outline">{c.status}</Badge>
+      {/* Email Campaigns section with skeleton loading */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between">
+            Email Campaigns
+            <Button size="sm" onClick={() => setShowComposer(true)}>
+              Create Campaign
+            </Button>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Suspense fallback={
+            <div className="space-y-3">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="flex items-center justify-between p-3 border rounded">
+                  <div className="space-y-1">
+                    <Skeleton className="h-4 w-48" />
+                    <Skeleton className="h-3 w-32" />
                   </div>
-                  <p className="text-xs text-muted-foreground mt-2">
-                    {(c.audienceType === "list" ? "Contact list" : `${(c.recipients?.length ?? 0)} recipients`)} • {(
-                      c.scheduledAt
-                        ? `Scheduled ${new Date(c.scheduledAt).toLocaleString?.()}`
-                        : c.createdAt
-                        ? `Created ${new Date(c.createdAt).toLocaleString?.()}`
-                        : ""
-                    )}
-                  </p>
-                </CardContent>
-              </Card>
-            ))}
-            {(!recentCampaigns || (Array.isArray(recentCampaigns) && recentCampaigns.length === 0)) && (
-              <Card className="border-dashed">
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="font-medium">No campaigns yet</h3>
-                      <p className="text-sm text-muted-foreground">Create your first campaign to see it here.</p>
+                  <Skeleton className="h-6 w-16" />
+                </div>
+              ))}
+            </div>
+          }>
+            {!campaigns ? (
+              <div className="space-y-3">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <div key={i} className="flex items-center justify-between p-3 border rounded">
+                    <div className="space-y-1">
+                      <Skeleton className="h-4 w-48" />
+                      <Skeleton className="h-3 w-32" />
                     </div>
-                    <Button size="sm" variant="outline" onClick={() => setShowComposer(true)}>New Campaign</Button>
+                    <Skeleton className="h-6 w-16" />
                   </div>
-                </CardContent>
-              </Card>
+                ))}
+              </div>
+            ) : campaigns.length === 0 ? (
+              <div className="text-center py-6 text-muted-foreground">
+                No campaigns yet. Create your first campaign to get started.
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {campaigns.slice(0, 5).map((campaign) => (
+                  <Card key={campaign._id}>
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <h3 className="font-medium">{campaign.subject}</h3>
+                          <p className="text-xs text-muted-foreground">From: {campaign.fromName ? `${campaign.fromName} <${campaign.fromEmail}>` : campaign.fromEmail}</p>
+                        </div>
+                        <Badge variant="outline">{campaign.status}</Badge>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-2">
+                        {(campaign.audienceType === "list" ? "Contact list" : `${(campaign.recipients?.length ?? 0)} recipients`)} • {(
+                          campaign.scheduledAt
+                            ? `Scheduled ${new Date(campaign.scheduledAt).toLocaleString?.()}`
+                            : campaign.createdAt
+                            ? `Created ${new Date(campaign.createdAt).toLocaleString?.()}`
+                            : ""
+                        )}
+                      </p>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
             )}
-          </div>
-        </section>
-      )}
+          </Suspense>
+        </CardContent>
+      </Card>
 
       {/* System Health (Bottom) */}
       <section>

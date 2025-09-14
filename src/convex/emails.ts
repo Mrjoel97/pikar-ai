@@ -59,64 +59,50 @@ export function renderHtml(params: {
 export const createCampaign = mutation({
   args: {
     businessId: v.id("businesses"),
-    type: v.union(v.literal("campaign"), v.literal("transactional"), v.literal("test")),
     subject: v.string(),
-    fromEmail: v.string(),
+    body: v.string(),
     fromName: v.optional(v.string()),
-    replyTo: v.optional(v.string()),
-    previewText: v.optional(v.string()),
-    htmlContent: v.string(),
-    textContent: v.optional(v.string()),
-    recipients: v.array(v.string()),
-    audienceType: v.optional(v.union(v.literal("direct"), v.literal("list"))),
+    fromEmail: v.optional(v.string()),
+    audienceType: v.union(v.literal("direct"), v.literal("list")),
+    recipients: v.optional(v.array(v.string())),
     audienceListId: v.optional(v.id("contactLists")),
-    scheduledAt: v.optional(v.number()),
     buttons: v.optional(v.array(v.object({
       text: v.string(),
       url: v.string(),
-      style: v.optional(v.string()),
     }))),
+    scheduledAt: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
-    }
+    if (!identity) throw new Error("Not authenticated");
 
-    const user = await ctx.db
-      .query("users")
-      .withIndex("email", (q) => q.eq("email", identity.email!))
-      .first();
-
-    if (!user) {
-      throw new Error("User not found");
+    // Basic size guard for direct recipients
+    let recipients = args.recipients;
+    if (args.audienceType === "direct" && recipients && recipients.length > 5000) {
+      recipients = recipients.slice(0, 5000);
+      console.warn("Recipients list capped to 5000 for direct campaign");
     }
 
     const campaignId = await ctx.db.insert("emails", {
       businessId: args.businessId,
-      type: args.type,
+      type: "campaign",
       subject: args.subject,
-      fromEmail: args.fromEmail,
-      fromName: args.fromName,
-      replyTo: args.replyTo,
-      previewText: args.previewText,
-      htmlContent: args.htmlContent,
-      textContent: args.textContent,
-      recipients: args.recipients,
-      audienceType: args.audienceType || "direct",
+      body: args.body,
+      fromName: args.fromName || "Pikar AI",
+      fromEmail: args.fromEmail || "noreply@resend.dev",
+      audienceType: args.audienceType,
+      recipients,
       audienceListId: args.audienceListId,
-      scheduledAt: args.scheduledAt,
-      status: args.scheduledAt ? "scheduled" : "draft",
-      createdBy: user._id,
-      createdAt: Date.now(),
       buttons: args.buttons,
+      scheduledAt: args.scheduledAt || Date.now(),
+      status: args.scheduledAt && args.scheduledAt > Date.now() + 60000 ? "scheduled" : "queued",
+      sendIds: [],
+      createdAt: Date.now(),
     });
 
-    // If scheduled, trigger the send action
-    if (args.scheduledAt && args.scheduledAt <= Date.now() + 60000) { // Within 1 minute
-      await ctx.scheduler.runAfter(0, internal.emailsActions.sendCampaignInternal, {
-        campaignId,
-      });
+    // If immediate send, schedule it
+    if (!args.scheduledAt || args.scheduledAt <= Date.now() + 60000) {
+      await ctx.scheduler.runAfter(0, internal.emailsActions.sendCampaignInternal, { campaignId });
     }
 
     return campaignId;
@@ -252,18 +238,46 @@ export const listCampaignsByBusiness = query({
 });
 
 export const setUnsubscribeActive = internalMutation({
-  args: { businessId: v.id("businesses"), email: v.string(), token: v.string() },
-  handler: async (ctx, args) => {
-    const doc = await ctx.db
+  args: { token: v.string() },
+  handler: async (ctx, { token }) => {
+    const unsubscribe = await ctx.db
       .query("emailUnsubscribes")
-      .withIndex("by_business_and_email", (q) => q.eq("businessId", args.businessId).eq("email", args.email))
-      .unique()
-      .catch(() => null);
+      .withIndex("by_token", (q) => q.eq("token", token))
+      .unique();
 
-    if (!doc) return { ok: false, reason: "not_found" as const };
-    if (doc.token !== args.token) return { ok: false, reason: "token_mismatch" as const };
+    if (!unsubscribe) {
+      throw new Error("Invalid unsubscribe token");
+    }
 
-    await ctx.db.patch(doc._id, { active: true });
-    return { ok: true as const };
+    await ctx.db.patch(unsubscribe._id, { active: true });
+
+    // Sync contact status to unsubscribed if contact exists
+    const contact = await ctx.db
+      .query("contacts")
+      .withIndex("by_business_and_email", (q) => 
+        q.eq("businessId", unsubscribe.businessId).eq("email", unsubscribe.email))
+      .first();
+
+    if (contact && contact.status !== "unsubscribed") {
+      await ctx.db.patch(contact._id, { status: "unsubscribed" });
+    }
+
+    return { success: true };
+  },
+});
+
+export const listDueScheduledCampaigns = internalQuery({
+  args: {},
+  handler: async (ctx) => {
+    const now = Date.now();
+    const campaigns = await ctx.db
+      .query("emails")
+      .withIndex("by_business")
+      .collect();
+    
+    return campaigns
+      .filter(c => c.status === "scheduled" && c.scheduledAt && c.scheduledAt <= now)
+      .map(c => c._id)
+      .slice(0, 50); // Cap to prevent overload
   },
 });
