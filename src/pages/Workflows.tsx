@@ -53,6 +53,41 @@ function extractApproverRoles(wf: any): string[] {
   return Array.from(roles);
 }
 
+// Add: Governance issues helper for SME/Enterprise
+function getGovernanceIssues(wf: any, tier?: string) {
+  const steps: any[] = Array.isArray(wf?.pipeline) ? wf.pipeline : [];
+  const approvals = steps.filter((s) => (s?.kind || s?.type) === "approval");
+  const hasApproval = approvals.length > 0;
+  const approvalsMissingRole = approvals.some((s: any) => {
+    const role = s?.approverRole || s?.config?.approverRole;
+    return !role || String(role).trim().length === 0;
+  });
+
+  const delayVal = (s: any) => (s?.delayMinutes ?? s?.config?.delayMinutes ?? 0);
+  const minDelay = tier === "enterprise" ? 60 : 30; // SME: 30m, Enterprise: 60m
+  const hasSlaDelay = steps.some((s: any) => {
+    const k = s?.kind || s?.type;
+    return k === "delay" && delayVal(s) >= minDelay;
+  });
+
+  const hasDescription = !!(wf?.description && String(wf.description).trim().length > 0);
+
+  const issues: string[] = [];
+  if (!hasApproval) issues.push("Missing approval step");
+  if (approvalsMissingRole) issues.push("Approver role missing");
+  if (!hasSlaDelay) issues.push(`Missing SLA delay (≥ ${minDelay}m)`);
+  if (!hasDescription) issues.push("Description missing");
+
+  // Enterprise: require multi-approver (threshold >= 2 or at least 2 approval steps)
+  if (tier === "enterprise") {
+    const threshold = wf?.approval?.threshold ?? 0;
+    if (!(threshold >= 2 || approvals.length >= 2)) {
+      issues.push("Approval threshold < 2 or fewer than 2 approvals");
+    }
+  }
+  return issues;
+}
+
 export default function WorkflowsPage() {
   const navigate = useNavigate();
   const { isLoading: authLoading, isAuthenticated } = useAuth();
@@ -158,6 +193,41 @@ export default function WorkflowsPage() {
         approvalThreshold: 1,
         pipeline: JSON.stringify(defaultPipeline, null, 2),
         tags: prev.tags || "standardize, handoff, alignment"
+      }));
+    } else if (tier === "sme") {
+      const defaultPipeline = [
+        { kind: "agent", title: "Draft deliverable", agentPrompt: "Create a draft for review." },
+        { kind: "approval", approverRole: "Team Lead", title: "Primary approval" },
+        { kind: "delay", delayMinutes: 30, title: "SLA buffer" },
+        { kind: "notify", channel: "email", title: "Handoff notification" },
+      ];
+      setFormData(prev => ({
+        ...prev,
+        name: prev.name || "Governed Workflow",
+        description: prev.description || "Governed SME workflow with approval and SLA delay.",
+        triggerType: "manual",
+        approvalRequired: true,
+        approvalThreshold: 1,
+        pipeline: JSON.stringify(defaultPipeline, null, 2),
+        tags: prev.tags || "governance, sme"
+      }));
+    } else if (tier === "enterprise") {
+      const defaultPipeline = [
+        { kind: "agent", title: "Agent prepares output", agentPrompt: "Prepare deliverable for dual approval." },
+        { kind: "approval", approverRole: "Compliance Lead", title: "Compliance approval" },
+        { kind: "approval", approverRole: "Manager", title: "Manager approval" },
+        { kind: "delay", delayMinutes: 60, title: "SLA buffer" },
+        { kind: "notify", channel: "email", title: "Handoff notification" },
+      ];
+      setFormData(prev => ({
+        ...prev,
+        name: prev.name || "Enterprise Standard",
+        description: prev.description || "Enterprise workflow with two-stage approval and SLA.",
+        triggerType: "manual",
+        approvalRequired: true,
+        approvalThreshold: 2,
+        pipeline: JSON.stringify(defaultPipeline, null, 2),
+        tags: prev.tags || "governance, enterprise, compliance"
       }));
     }
   }, [newWorkflowOpen, businesses, selectedTier]);
@@ -323,6 +393,18 @@ export default function WorkflowsPage() {
     });
   };
 
+  const addSecondApprovalAtEnd = (wf: any) => {
+    const biz = businesses?.[0];
+    const defaultApproval = getDefaultApproverForTier(biz?.tier);
+    setEditedPipelines((prev) => {
+      const current = prev[wf._id] ? [...prev[wf._id]] : (wf.pipeline || []).map((x: any) => ({ ...x }));
+      // Use a distinct enterprise-leaning role if default equals Manager
+      const secondRole = defaultApproval === "Manager" ? "Compliance Lead" : "Manager";
+      current.push({ kind: "approval", approverRole: secondRole });
+      return { ...prev, [wf._id]: current };
+    });
+  };
+
   const handleSimulate = async (workflow: any) => {
     try {
       const result = await simulateWorkflowAction({ workflowId: workflow._id });
@@ -453,6 +535,12 @@ export default function WorkflowsPage() {
         const issues = getHandoffIssues({ ...wf, pipeline });
         if (issues.length > 0) {
           toast.error("Standards check failed", { description: issues.join(" • ") });
+          return;
+        }
+      } else if (tier === "sme" || tier === "enterprise") {
+        const issues = getGovernanceIssues({ ...wf, pipeline }, tier);
+        if (issues.length > 0) {
+          toast.error("Governance check failed", { description: issues.join(" • ") });
           return;
         }
       }
@@ -874,23 +962,62 @@ export default function WorkflowsPage() {
       })()}
 
       {(() => {
-        const list = Array.isArray(workflows) ? workflows : [];
-        const counts: Record<string, number> = {};
-        for (const wf of list) {
-          for (const r of extractApproverRoles(wf)) {
-            counts[r] = (counts[r] ?? 0) + 1;
-          }
-        }
-        const items: Array<[string, number]> = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 6);
-        if (items.length === 0) return null;
+        const tier = (businesses?.[0]?.tier as string | undefined);
+        if (tier !== "sme" && tier !== "enterprise") return null;
+        const list: any[] = Array.isArray(workflows) ? workflows : [];
+
+        const allHaveApproval = list.length > 0 && list.every((wf) => {
+          const steps = wf?.pipeline || [];
+          return steps.some((s: any) => (s?.kind || s?.type) === "approval");
+        });
+
+        const allRolesDefined = list.length > 0 && list.every((wf) => {
+          const steps = wf?.pipeline || [];
+          return steps.every((s: any) => {
+            const k = s?.kind || s?.type;
+            if (k !== "approval") return true;
+            const role = s?.approverRole || s?.config?.approverRole;
+            return !!role;
+          });
+        });
+
+        const minDelay = tier === "enterprise" ? 60 : 30;
+        const allHaveSla = list.length > 0 && list.every((wf) => {
+          const steps = wf?.pipeline || [];
+          return steps.some((s: any) => {
+            const k = s?.kind || s?.type;
+            const delay = s?.delayMinutes ?? s?.config?.delayMinutes ?? 0;
+            return k === "delay" && delay >= minDelay;
+          });
+        });
+
+        const allDescribed = list.length > 0 && list.every((wf) => !!(wf?.description && String(wf.description).trim().length > 0));
+
+        const enterpriseApprovalsOk = tier !== "enterprise" || (list.length > 0 && list.every((wf) => {
+          const threshold = wf?.approval?.threshold ?? 0;
+          const approvals = (wf?.pipeline || []).filter((s: any) => (s?.kind || s?.type) === "approval").length;
+          return threshold >= 2 || approvals >= 2;
+        }));
+
+        const items = [
+          { label: "Approval steps present", pass: allHaveApproval },
+          { label: "Approver roles filled", pass: allRolesDefined },
+          { label: `SLA delay present (≥ ${minDelay}m)`, pass: allHaveSla },
+          { label: "Descriptions added", pass: allDescribed },
+          ...(tier === "enterprise" ? [{ label: "Multi-approver (≥ 2)", pass: enterpriseApprovalsOk }] : []),
+        ];
+
         return (
-          <div className="border rounded-md p-3 bg-muted/10">
-            <div className="text-sm font-medium mb-2">Team roles summary</div>
-            <div className="flex flex-wrap gap-2">
-              {items.map(([role, n]) => (
-                <Badge key={role} variant="outline" className="text-[10px]">
-                  {role} • {n}
-                </Badge>
+          <div className="border rounded-md p-3 bg-muted/20">
+            <div className="text-sm font-medium mb-2">Governance Policy</div>
+            <div className="grid gap-1">
+              {items.map((it, i) => (
+                <div key={i} className="flex items-center justify-between text-sm">
+                  <span>{it.label}</span>
+                  <Badge variant={it.pass ? "default" : "destructive"} className="text-[10px]">
+                    {it.pass ? "OK" : "Missing"}
+                  </Badge>
+                </div>
               ))}
             </div>
           </div>
@@ -988,16 +1115,18 @@ export default function WorkflowsPage() {
                     {/* Add: Handoff Health indicator */}
                     {(() => {
                       const issues = getHandoffIssues(workflow);
+                      const tier = (businesses?.[0]?.tier as string | undefined);
+                      const label = (tier === "sme" || tier === "enterprise") ? "Governance Health" : "Handoff Health";
                       if (issues.length === 0) {
                         return (
                           <div className="mt-2">
-                            <Badge variant="secondary" className="text-xs">Handoff Health: Good</Badge>
+                            <Badge variant="secondary" className="text-xs">{label}: Good</Badge>
                           </div>
                         );
                       }
                       return (
                         <div className="mt-2 flex flex-wrap gap-1">
-                          <Badge variant="destructive" className="text-xs">Handoff Health: Needs Attention</Badge>
+                          <Badge variant="destructive" className="text-xs">{label}: Needs Attention</Badge>
                           {issues.map((it, i) => (
                             <Badge key={i} variant="outline" className="text-xs">{it}</Badge>
                           ))}
@@ -1081,6 +1210,66 @@ export default function WorkflowsPage() {
                         );
                       })()}
 
+                      {(() => {
+                        const tier = (businesses?.[0]?.tier as string | undefined);
+                        if (tier !== "sme" && tier !== "enterprise") return null;
+                        const working = editedPipelines[workflow._id]
+                          ? { ...workflow, pipeline: editedPipelines[workflow._id] }
+                          : workflow;
+
+                        const issues = getGovernanceIssues(working, tier);
+                        if (issues.length === 0) return null;
+
+                        // Count approvals to decide whether to show second approval quick-add for Enterprise
+                        const approvalsCount = (working.pipeline || []).filter((s: any) => (s?.kind || s?.type) === "approval").length;
+                        const needSecondApproval = tier === "enterprise" && approvalsCount < 2;
+
+                        const minDelay = tier === "enterprise" ? 60 : 30;
+
+                        return (
+                          <div className="p-2 rounded border bg-muted/30">
+                            <div className="text-sm font-medium mb-2">Recommended fixes</div>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <Button size="sm" variant="outline" onClick={() => addApprovalAtEnd(workflow)}>Add Approval</Button>
+                              {needSecondApproval && (
+                                <Button size="sm" variant="outline" onClick={() => addSecondApprovalAtEnd(workflow)}>Add Second Approval</Button>
+                              )}
+                              <Button size="sm" variant="outline" onClick={() => addDelayAtEnd(workflow, minDelay)}>
+                                Add SLA Delay ({minDelay}m)
+                              </Button>
+                              {!workflow.description || !String(workflow.description).trim() ? (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={async () => {
+                                    try {
+                                      await upsertWorkflow({
+                                        id: workflow._id,
+                                        businessId: workflow.businessId,
+                                        name: workflow.name,
+                                        description: tier === "enterprise"
+                                          ? "Enterprise governed workflow with dual approval and SLA."
+                                          : "SME governed workflow with approval and SLA.",
+                                        trigger: workflow.trigger,
+                                        approval: workflow.approval,
+                                        pipeline: editedPipelines[workflow._id] ?? workflow.pipeline,
+                                        template: !!workflow.template,
+                                        tags: workflow.tags || [],
+                                      } as any);
+                                      toast.success("Added default description");
+                                    } catch (e: any) {
+                                      toast.error(e?.message || "Failed to set description");
+                                    }
+                                  }}
+                                >
+                                  Add Default Description
+                                </Button>
+                              ) : null}
+                            </div>
+                          </div>
+                        );
+                      })()}
+
                       {(editedPipelines[workflow._id] ?? workflow.pipeline).map((step: any, idx: number) => {
                         return (
                           <div key={idx} className="flex items-center justify-between p-2 border rounded">
@@ -1144,7 +1333,24 @@ export default function WorkflowsPage() {
                       {/* Top-level quick-add toolbar */}
                       <div className="flex flex-wrap gap-2 pt-1">
                         <Button size="sm" variant="outline" onClick={() => addApprovalAtEnd(workflow)}>Add Approval</Button>
-                        <Button size="sm" variant="outline" onClick={() => addDelayAtEnd(workflow, 60)}>Add SLA Delay (60m)</Button>
+                        {(() => {
+                          const tier = (businesses?.[0]?.tier as string | undefined);
+                          if (tier === "enterprise") {
+                            return (
+                              <Button size="sm" variant="outline" onClick={() => addSecondApprovalAtEnd(workflow)}>
+                                Add Second Approval
+                              </Button>
+                            );
+                          }
+                          return null;
+                        })()}
+                        <Button size="sm" variant="outline" onClick={() => {
+                          const tier = (businesses?.[0]?.tier as string | undefined);
+                          const minDelay = tier === "enterprise" ? 60 : 30;
+                          addDelayAtEnd(workflow, minDelay);
+                        }}>
+                          Add SLA Delay
+                        </Button>
                         <Button size="sm" onClick={() => savePipeline(workflow)}>Save pipeline</Button>
                       </div>
                     </div>
