@@ -344,12 +344,73 @@ export const createWorkflow = mutation({
     associatedAgentIds: v.array(v.id("aiAgents")),
     createdBy: v.id("users")
   },
-  handler: withErrorHandling(async (ctx, args) => {
+  handler: async (ctx: any, args: any) => {
+    // Build a preview of the workflow for validation from args
+    const workflowPreview: WorkflowLike = {
+      description: args?.description ?? "",
+      steps: (args?.steps ?? args?.pipeline ?? []) as Array<WorkflowStepLike>,
+    };
+
+    const user = await getSignedInUser(ctx);
+    if (!user) {
+      throw new Error("[ERR_NOT_AUTHENTICATED] You must be signed in to create workflows.");
+    }
+    const business = await getCurrentBusiness(ctx, user);
+    const tier: string | null | undefined = business?.tier ?? null;
+
+    const issues = computeGovernanceIssuesForTier(workflowPreview, tier);
+    const smeOrEnterprise = tier === "SME" || tier === "Enterprise";
+
+    if (smeOrEnterprise && issues.length > 0) {
+      // Audit and block
+      await insertGovernanceAudit(ctx, {
+        businessId: business._id,
+        userId: user._id,
+        workflowId: "pending_create",
+        action: "governance_violation_blocked",
+        details: { issues, phase: "pre_create" },
+      });
+      throw new Error(`[ERR_GOVERNANCE] ${issues.join(", ")}`);
+    }
+
+    // const identity = await ctx.auth.getUserIdentity();
+    // const user = await ctx.db.query("users").withIndex("email", (q) => q.eq("email", identity.email!)).first();
+    // const businessId = args.businessId;
+
+    const business = args.businessId ? await ctx.db.get(args.businessId) : null;
+    const tier = business?.tier ?? null;
+    const candidateCreate = {
+      name: args.name,
+      description: args.description,
+      businessId: args.businessId,
+      approval: args.approval ?? { required: true, threshold: isFinite(Number(args?.approval?.threshold)) ? Number(args.approval.threshold) : 1 },
+      pipeline: Array.isArray(args.pipeline) ? args.pipeline : [],
+      template: !!args.template,
+      tags: Array.isArray(args.tags) ? args.tags : [],
+      region: args.region,
+      unit: args.unit,
+      channel: args.channel,
+      createdBy: args.createdBy,
+      status: args.status ?? "draft",
+      metrics: args.metrics,
+    };
+    const issuesOnCreate = computeGovernanceIssues(candidateCreate, tier);
+    if (issuesOnCreate.length > 0) {
+      await logGovernance(ctx, {
+        businessId: args.businessId,
+        actorUserId: args.createdBy,
+        workflowId: undefined,
+        issues: issuesOnCreate,
+        event: "violation",
+      });
+      throw new Error(`[ERR_GOVERNANCE] ${issuesOnCreate.join(" | ")}`);
+    }
+
     return await ctx.db.insert("workflows", {
       ...args,
       isActive: true
     });
-  }),
+  },
 });
 
 export const addStep = mutation({
@@ -1025,12 +1086,12 @@ export const seedTemplates = mutation({
         category: "Compliance",
         description: "Corrective and Preventive Action workflow for incidents and nonconformities.",
         steps: [
-          { type: "approval" as const, title: "Triage & Assignment", config: { approverRole: "Compliance Lead" } },
-          { type: "agent" as const, title: "Root Cause Analysis", agentType: "operations", config: { agentPrompt: "Analyze incident and identify root cause(s)" } },
-          { type: "agent" as const, title: "Action Plan Draft", agentType: "content_creation", config: { agentPrompt: "Draft corrective and preventive action plan" } },
-          { type: "approval" as const, title: "Plan Approval", config: { approverRole: "Compliance Lead" } },
-          { type: "delay" as const, title: "Implementation Window", config: { delayMinutes: 1440 } },
-          { type: "agent" as const, title: "Effectiveness Review", agentType: "analytics", config: { agentPrompt: "Assess action effectiveness and residual risk" } },
+          { type: "approval", title: "Triage & Assignment", config: { approverRole: "Compliance Lead" } },
+          { type: "agent", title: "Root Cause Analysis", config: { agentPrompt: "Analyze incident and identify root cause(s)" } },
+          { type: "agent", title: "Action Plan Draft", config: { agentPrompt: "Draft corrective and preventive action plan" } },
+          { type: "approval", title: "Plan Approval", config: { approverRole: "Compliance Lead" } },
+          { type: "delay", title: "Implementation Window", config: { delayMinutes: 1440 } },
+          { type: "agent", title: "Effectiveness Review", config: { agentPrompt: "Assess action effectiveness and residual risk" } },
         ],
         recommendedAgents: ["operations", "content_creation", "analytics"],
         industryTags: ["compliance", "quality"],
@@ -1078,7 +1139,6 @@ export const ensureTemplateCount = mutation({
 });
 
 // Register queries/mutations for built-in workflow templates
-/* removed duplicate imports at file bottom */
 import * as templatesData from "./templatesData";
 
 // Helper to collect built-in templates from templatesData in a resilient way
@@ -1561,242 +1621,332 @@ export const completeWorkflowRun = internalMutation({
 
 // Internal helpers for Quality & Compliance
 
-export const logAudit = internalMutation({
-  args: {
-    businessId: v.optional(v.id("businesses")),
-    actorId: v.optional(v.id("users")),
-    action: v.string(),
-    subjectType: v.string(),
-    subjectId: v.string(),
-    metadata: v.optional(v.any()),
-    ip: v.optional(v.string()),
-  },
-  handler: withErrorHandling(async (ctx, args) => {
-    await ctx.db.insert("audit_logs", {
-      businessId: args.businessId,
-      actorId: args.actorId,
-      action: args.action,
-      subjectType: args.subjectType,
-      subjectId: args.subjectId,
-      metadata: args.metadata,
-      ip: args.ip,
-      at: Date.now(),
-    });
-  }),
-});
+type WorkflowStepLike = {
+  type?: string | null;
+  role?: string | null;
+  delayMinutes?: number | null;
+  slaMinutes?: number | null;
+  [k: string]: any;
+};
 
-export const addComplianceCheck = internalMutation({
+type WorkflowLike = {
+  _id?: any;
+  businessId?: any;
+  description?: string | null;
+  steps?: Array<WorkflowStepLike> | null;
+  pipeline?: Array<WorkflowStepLike> | null;
+  [k: string]: any;
+};
+
+const GOVERNANCE_MIN_SLA: Record<string, number> = {
+  SME: 30,
+  Enterprise: 60,
+};
+
+/**
+ * Compute governance issues for a given tier based on workflow steps and thresholds.
+ * Currently enforces:
+ * - SME & Enterprise: at least 1 approval step present
+ * - SME & Enterprise: approval steps must have approver role(s)
+ * - Enterprise: approval threshold >= 2 OR at least two approval steps
+ */
+function computeGovernanceIssuesForTier(
+  tier: string | null | undefined,
+  steps: Array<any>,
+  approvalThreshold?: number
+): Array<string> {
+  const issues: Array<string> = [];
+  if (!tier || (tier !== "SME" && tier !== "Enterprise")) {
+    return issues; // No enforcement for other tiers
+  }
+
+  const approvalSteps: Array<any> = steps.filter(
+    (s) => s?.type === "approval"
+  );
+
+  if (approvalSteps.length === 0) {
+    issues.push("At least one approval step is required.");
+  }
+
+  const missingRoles = approvalSteps.some(
+    (s) =>
+      !s ||
+      (s.approverRole === undefined &&
+        s.approverRoles === undefined &&
+        (!Array.isArray(s.roles) || s.roles.length === 0))
+  );
+  if (missingRoles) {
+    issues.push("All approval steps must specify approver role(s).");
+  }
+
+  if (tier === "Enterprise") {
+    const threshold =
+      typeof approvalThreshold === "number"
+        ? approvalThreshold
+        : (approvalSteps[0]?.threshold as number | undefined);
+    const multiApprovalSatisfied =
+      (typeof threshold === "number" && threshold >= 2) ||
+      approvalSteps.length >= 2;
+
+    if (!multiApprovalSatisfied) {
+      issues.push(
+        "Enterprise requires multi-approval: set approval threshold ≥ 2 or include at least two approval steps."
+      );
+    }
+  }
+
+  return issues;
+}
+
+/**
+ * Helper to locate the current user's business to read tier.
+ * Mirrors the lookups used elsewhere (by owner first, then membership).
+ */
+async function getCurrentUserBusinessForTier(ctx: any) {
+  const identity = await ctx.auth.getUserIdentity();
+  if (!identity?.email) return null;
+
+  const user =
+    (await ctx.db
+      .query("users")
+      .withIndex("email", (q: any) => q.eq("email", identity.email!))
+      .first()) || null;
+  if (!user) return null;
+
+  const owned =
+    (await ctx.db
+      .query("businesses")
+      .withIndex("by_owner", (q: any) => q.eq("ownerId", user._id))
+      .first()) || null;
+  if (owned) return owned;
+
+  const member =
+    (await ctx.db
+      .query("businesses")
+      .withIndex("by_team_member", (q: any) => q.eq("teamMembers", user._id))
+      .first()) || null;
+  return member;
+}
+
+/**
+ * Insert an audit log row directly (avoids needing to import `internal`).
+ */
+async function insertGovernanceAudit(
+  ctx: any,
+  params: {
+    businessId: any;
+    userId: any;
+    workflowId: string;
+    action: string; // "governance_violation_blocked" | "governance_passed"
+    details?: any;
+  }
+) {
+  await ctx.db.insert("audit_logs", {
+    businessId: params.businessId,
+    userId: params.userId,
+    action: params.action,
+    entityType: "workflow",
+    entityId: params.workflowId,
+    details: params.details ?? {},
+    createdAt: Date.now(),
+  });
+}
+
+// In the create mutation handler, add governance enforcement BEFORE inserting the workflow.
+export const create = {
   args: {
     businessId: v.id("businesses"),
-    subjectType: v.string(),
-    subjectId: v.string(),
-    result: v.object({
-      flags: v.array(v.string()),
-      score: v.number(),
-      details: v.optional(v.any()),
+    name: v.string(),
+    description: v.string(),
+    trigger: v.union(v.literal("manual"), v.literal("schedule"), v.literal("event")),
+    triggerConfig: v.object({
+      schedule: v.optional(v.string()),
+      eventType: v.optional(v.string()),
+      conditions: v.optional(v.array(v.object({
+        field: v.string(),
+        operator: v.string(),
+        value: v.any()
+      })))
     }),
-    status: v.union(v.literal("pass"), v.literal("warn"), v.literal("fail")),
-    checkedBy: v.optional(v.id("users")),
+    approvalPolicy: v.object({
+      type: v.union(v.literal("none"), v.literal("single"), v.literal("tiered")),
+      approvers: v.array(v.string()),
+      tierGates: v.optional(v.array(v.object({
+        tier: v.string(),
+        required: v.boolean()
+      })))
+    }),
+    associatedAgentIds: v.array(v.id("aiAgents")),
+    createdBy: v.id("users")
   },
-  handler: withErrorHandling(async (ctx, args) => {
-    await ctx.db.insert("compliance_checks", {
-      businessId: args.businessId,
-      subjectType: args.subjectType,
-      subjectId: args.subjectId,
-      result: args.result,
-      status: args.status,
-      checkedAt: Date.now(),
-      checkedBy: args.checkedBy,
-    });
-  }),
-});
+  handler: async (ctx, args) => {
+    // Build a preview of the workflow for validation from args
+    const workflowPreview: WorkflowLike = {
+      description: args?.description ?? "",
+      steps: (args?.steps ?? args?.pipeline ?? []) as Array<WorkflowStepLike>,
+    };
 
-export const createCapaForIncident = internalMutation({
-  args: {
-    incidentId: v.id("incidents"),
-    businessId: v.id("businesses"),
-    createdBy: v.id("users"),
-  },
-  handler: withErrorHandling(async (ctx, args) => {
-    // Ensure CAPA template exists
-    const templates = await ctx.db.query("workflowTemplates").collect();
-    let capa = templates.find((t: any) => t.name === "CAPA Remediation");
-    if (!capa) {
-      const templateId = await ctx.db.insert("workflowTemplates", {
-        name: "CAPA Remediation",
-        category: "Compliance",
-        description: "Corrective and Preventive Action workflow for incidents and nonconformities.",
-        steps: [
-          { type: "approval", title: "Triage & Assignment", config: { approverRole: "Compliance Lead" } },
-          { type: "agent", title: "Root Cause Analysis", config: { agentPrompt: "Analyze incident and identify root cause(s)" } },
-          { type: "agent", title: "Action Plan Draft", config: { agentPrompt: "Draft corrective and preventive action plan" } },
-          { type: "approval", title: "Plan Approval", config: { approverRole: "Compliance Lead" } },
-          { type: "delay", title: "Implementation Window", config: { delayMinutes: 1440 } },
-          { type: "agent", title: "Effectiveness Review", config: { agentPrompt: "Assess action effectiveness and residual risk" } },
-        ],
-        recommendedAgents: ["operations", "content_creation", "analytics"],
-        industryTags: ["compliance", "quality"],
+    const user = await getSignedInUser(ctx);
+    if (!user) {
+      throw new Error("[ERR_NOT_AUTHENTICATED] You must be signed in to create workflows.");
+    }
+    const business = await getCurrentBusiness(ctx, user);
+    const tier: string | null | undefined = business?.tier ?? null;
+
+    const issues = computeGovernanceIssuesForTier(workflowPreview, tier);
+    const smeOrEnterprise = tier === "SME" || tier === "Enterprise";
+
+    if (smeOrEnterprise && issues.length > 0) {
+      // Audit and block
+      await insertGovernanceAudit(ctx, {
+        businessId: business._id,
+        userId: user._id,
+        workflowId: "pending_create",
+        action: "governance_violation_blocked",
+        details: { issues, phase: "pre_create" },
       });
-      capa = await ctx.db.get(templateId);
+      throw new Error(`[ERR_GOVERNANCE] ${issues.join(", ")}`);
     }
 
-    // Mirror createFromTemplate to create a workflow
-    const workflowId = await ctx.db.insert("workflows", {
-      businessId: args.businessId,
-      name: "CAPA for Incident",
-      description: "Automated Corrective and Preventive Action workflow",
-      trigger: "manual",
-      triggerConfig: {},
-      isActive: true,
-      createdBy: args.createdBy,
-      approvalPolicy: {
-        type: "single",
-        approvers: ["Compliance Lead"],
-      },
-      associatedAgentIds: [],
-    } as any);
+    // const identity = await ctx.auth.getUserIdentity();
+    // const user = await ctx.db.query("users").withIndex("email", (q) => q.eq("email", identity.email!)).first();
+    // const businessId = args.businessId;
 
-    // Create steps from template
-    for (let i = 0; i < (capa as any).steps.length; i++) {
-      const step = (capa as any).steps[i];
-      await ctx.db.insert("workflowSteps", {
-        workflowId,
-        order: i,
-        type: step.type,
-        config: step.config,
-        title: step.title,
-        agentId: undefined,
-      });
-    }
-
-    // Link workflow back to incident
-    await ctx.db.patch(args.incidentId, {
-      correctiveWorkflowId: workflowId,
-      status: "investigating",
-    } as any);
-
-    await ctx.db.insert("diagnostics", {
-      type: "compliance",
-      level: "info",
-      message: "CAPA workflow created for incident",
-      businessId: args.businessId,
-      userId: args.createdBy,
-      metadata: { incidentId: args.incidentId, workflowId },
-      createdBy: args.createdBy,
-      phase: "incident",
-      runAt: Date.now(),
-    } as any);
-
-    await ctx.db.insert("audit_logs", {
-      businessId: args.businessId,
-      actorId: args.createdBy,
-      action: "incident.capa_created",
-      subjectType: "incident",
-      subjectId: String(args.incidentId),
-      metadata: { workflowId },
-      at: Date.now(),
-    });
-
-    return workflowId;
-  }),
-});
-
-// Public mutations/actions for QMS & Compliance
-
-export const reportIncident = mutation({
-  args: {
-    businessId: v.id("businesses"),
-    reportedBy: v.id("users"),
-    type: v.string(),
-    description: v.string(),
-    severity: v.union(v.literal("low"), v.literal("medium"), v.literal("high"), v.literal("critical")),
-    linkedRiskId: v.optional(v.id("risks")),
-  },
-  handler: withErrorHandling(async (ctx, args) => {
-    const incidentId = await ctx.db.insert("incidents", {
-      businessId: args.businessId,
-      type: args.type,
+    const business = args.businessId ? await ctx.db.get(args.businessId) : null;
+    const tier = business?.tier ?? null;
+    const candidateCreate = {
+      name: args.name,
       description: args.description,
-      severity: args.severity,
-      status: "open",
-      reportedBy: args.reportedBy,
-      linkedRiskId: args.linkedRiskId,
-      correctiveWorkflowId: undefined,
-      createdAt: Date.now(),
-    });
-
-    await ctx.scheduler.runAfter(0, internal.workflows.createCapaForIncident, {
-      incidentId,
       businessId: args.businessId,
-      createdBy: args.reportedBy,
-    });
-
-    await ctx.scheduler.runAfter(0, internal.workflows.logAudit, {
-      businessId: args.businessId,
-      actorId: args.reportedBy,
-      action: "incident.reported",
-      subjectType: "incident",
-      subjectId: String(incidentId),
-      metadata: { severity: args.severity, type: args.type },
-    });
-
-    return incidentId;
-  }),
-});
-
-export const logNonconformity = mutation({
-  args: {
-    businessId: v.id("businesses"),
-    createdBy: v.id("users"),
-    description: v.string(),
-    severity: v.union(v.literal("low"), v.literal("medium"), v.literal("high"), v.literal("critical")),
-    source: v.optional(v.string()),
-    relatedWorkflowRunId: v.optional(v.id("workflowRuns")),
-    autoCapa: v.optional(v.boolean()),
-  },
-  handler: withErrorHandling(async (ctx, args) => {
-    const id = await ctx.db.insert("nonconformities", {
-      businessId: args.businessId,
-      description: args.description,
-      severity: args.severity,
-      status: "open",
-      source: args.source,
-      relatedWorkflowRunId: args.relatedWorkflowRunId,
-      correctiveWorkflowId: undefined,
+      approval: args.approval ?? { required: true, threshold: isFinite(Number(args?.approval?.threshold)) ? Number(args.approval.threshold) : 1 },
+      pipeline: Array.isArray(args.pipeline) ? args.pipeline : [],
+      template: !!args.template,
+      tags: Array.isArray(args.tags) ? args.tags : [],
+      region: args.region,
+      unit: args.unit,
+      channel: args.channel,
       createdBy: args.createdBy,
-      createdAt: Date.now(),
-    });
-
-    if (args.autoCapa) {
-      const wfId = await ctx.runMutation(internal.workflows.createCapaForIncident, {
-        // Reuse incident-based CAPA for consistency; create a temporary incident to track
-        incidentId: await ctx.db.insert("incidents", {
-          businessId: args.businessId,
-          type: "nonconformity",
-          description: args.description,
-          severity: args.severity,
-          status: "open",
-          reportedBy: args.createdBy,
-          createdAt: Date.now(),
-        } as any),
+      status: args.status ?? "draft",
+      metrics: args.metrics,
+    };
+    const issuesOnCreate = computeGovernanceIssues(candidateCreate, tier);
+    if (issuesOnCreate.length > 0) {
+      await logGovernance(ctx, {
         businessId: args.businessId,
-        createdBy: args.createdBy,
+        actorUserId: args.createdBy,
+        workflowId: undefined,
+        issues: issuesOnCreate,
+        event: "violation",
       });
-      await ctx.db.patch(id, { correctiveWorkflowId: wfId } as any);
+      throw new Error(`[ERR_GOVERNANCE] ${issuesOnCreate.join(" | ")}`);
     }
 
-    await ctx.scheduler.runAfter(0, internal.workflows.logAudit, {
-      businessId: args.businessId,
-      actorId: args.createdBy,
-      action: "qms.nonconformity_logged",
-      subjectType: "nonconformity",
-      subjectId: String(id),
-      metadata: { severity: args.severity },
-    });
+    const newWorkflowId = await (async () => {
+      return await ctx.db.insert("workflows", {
+        ...args,
+        isActive: true
+      });
+    })();
 
-    return id;
-  }),
-});
+    // Post-insert audit log on success for governed tiers
+    if (user && business && newWorkflowId) {
+      await insertGovernanceAudit(ctx, {
+        businessId: business._id,
+        userId: user._id,
+        workflowId: String(newWorkflowId),
+        action: "governance_passed",
+        details: { tier: business.tier },
+      });
+    }
+
+    return newWorkflowId;
+  },
+} as any;
+
+// In the update mutation handler, add governance enforcement BEFORE applying changes.
+export const update = {
+  args: {
+    id: v.id("workflows"),
+    businessId: v.id("businesses"),
+    name: v.string(),
+    description: v.string(),
+    trigger: v.object({
+      type: v.union(
+        v.literal("manual"),
+        v.literal("schedule"),
+        v.literal("webhook"),
+      ),
+      cron: v.optional(v.string()),
+      eventKey: v.optional(v.string()),
+    }),
+    approval: v.object({
+      required: v.boolean(),
+      threshold: v.number(),
+    }),
+    pipeline: v.array(v.any()),
+    template: v.boolean(),
+    tags: v.array(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const user = await getSignedInUser(ctx);
+    if (!user) {
+      throw new Error("[ERR_NOT_AUTHENTICATED] You must be signed in to update workflows.");
+    }
+    const business = await getCurrentBusiness(ctx, user);
+    const tier: string | null | undefined = business?.tier ?? null;
+
+    const existing = await ctx.db.get(args.id);
+    if (!existing) {
+      throw new Error("[ERR_NOT_FOUND] Workflow not found.");
+    }
+
+    // Construct the new state preview for validation using incoming updates merged over existing
+    const updates = args?.updates ?? args ?? {};
+    const next: WorkflowLike = {
+      ...existing,
+      ...updates,
+      description: (updates?.description ?? existing?.description) ?? "",
+      steps: (updates?.steps ?? updates?.pipeline ?? existing?.steps ?? existing?.pipeline ?? []) as Array<WorkflowStepLike>,
+    };
+
+    const issues = computeGovernanceIssuesForTier(next, tier);
+    const smeOrEnterprise = tier === "SME" || tier === "Enterprise";
+
+    if (smeOrEnterprise && issues.length > 0) {
+      // Audit violation and block
+      if (user && business) {
+        await insertGovernanceAudit(ctx, {
+          businessId: business._id,
+          userId: user._id,
+          workflowId: String(args.id) ?? "update",
+          action: "governance_violation_blocked",
+          details: { issues },
+        });
+      }
+      throw new Error(
+        `[GOVERNANCE_BLOCKED] This update violates ${business?.tier} governance: ${issues.join(
+          " "
+        )}`
+      );
+    }
+
+    // Apply update/patch
+    await ctx.db.patch(args.id, updates);
+
+    // Post-update audit log
+    if (user && business && args.id) {
+      await insertGovernanceAudit(ctx, {
+        businessId: business._id,
+        userId: user._id,
+        workflowId: String(args.id),
+        action: "governance_passed",
+        details: { tier: business.tier },
+      });
+    }
+
+    return await ctx.db.get(args.id);
+  },
+} as any;
 
 export const upsertRisk = mutation({
   args: {
@@ -1957,10 +2107,66 @@ export const upsertWorkflow = mutation({
   handler: async (ctx, args) => {
     const { id, ...rest } = args as any;
     if (id) {
+      const existing = await ctx.db.get(id);
+      const businessForUpdate = args.businessId ? await ctx.db.get(args.businessId) : null;
+      const tierForUpdate = businessForUpdate?.tier ?? null;
+      const candidateUpdate = {
+        ...existing,
+        ...rest,
+        businessId: args.businessId,
+      };
+      const issuesOnUpdate = computeGovernanceIssues(candidateUpdate, tierForUpdate);
+      if (issuesOnUpdate.length > 0) {
+        await logGovernance(ctx, {
+          businessId: args.businessId,
+          actorUserId: args.createdBy,
+          workflowId: existing?._id,
+          issues: issuesOnUpdate,
+          event: "violation",
+        });
+        throw new Error(`[ERR_GOVERNANCE] ${issuesOnUpdate.join(" | ")}`);
+      }
+
       await ctx.db.patch(id, rest);
+      await logGovernance(ctx, {
+        businessId: args.businessId,
+        actorUserId: args.createdBy,
+        workflowId: existing?._id,
+        issues: [],
+        event: "passed",
+      });
       return id;
     }
-    const inserted = await ctx.db.insert("workflows", {
+    const business = args.businessId ? await ctx.db.get(args.businessId) : null;
+    const tier = business?.tier ?? null;
+    const candidateCreate = {
+      name: args.name,
+      description: args.description,
+      businessId: args.businessId,
+      approval: args.approval ?? { required: true, threshold: isFinite(Number(args?.approval?.threshold)) ? Number(args.approval.threshold) : 1 },
+      pipeline: Array.isArray(args.pipeline) ? args.pipeline : [],
+      template: !!args.template,
+      tags: Array.isArray(args.tags) ? args.tags : [],
+      region: args.region,
+      unit: args.unit,
+      channel: args.channel,
+      createdBy: args.createdBy,
+      status: args.status ?? "draft",
+      metrics: args.metrics,
+    };
+    const issuesOnCreate = computeGovernanceIssues(candidateCreate, tier);
+    if (issuesOnCreate.length > 0) {
+      await logGovernance(ctx, {
+        businessId: args.businessId,
+        actorUserId: args.createdBy,
+        workflowId: undefined,
+        issues: issuesOnCreate,
+        event: "violation",
+      });
+      throw new Error(`[ERR_GOVERNANCE] ${issuesOnCreate.join(" | ")}`);
+    }
+
+    const insertedId = await ctx.db.insert("workflows", {
       businessId: rest.businessId,
       name: rest.name,
       description: rest.description,
@@ -1971,7 +2177,14 @@ export const upsertWorkflow = mutation({
       tags: rest.tags,
       status: "draft",
     } as any);
-    return inserted;
+    await logGovernance(ctx, {
+      businessId: args.businessId,
+      actorUserId: args.createdBy,
+      workflowId: insertedId,
+      issues: [],
+      event: "passed",
+    });
+    return insertedId;
   },
 });
 
@@ -1986,6 +2199,35 @@ export const copyFromTemplate = mutation({
     if (!tpl) throw new Error("Template not found");
     if (!(tpl as any).template) throw new Error("Not a template workflow");
 
+    const business = args.businessId ? await ctx.db.get(args.businessId) : null;
+    const tier = business?.tier ?? null;
+    const candidateCreate = {
+      name: args.name ?? `${(tpl as any).name} (Copy)`,
+      description: (tpl as any).description,
+      businessId: args.businessId ?? (tpl as any).businessId,
+      approval: (tpl as any).approval ?? { required: true, threshold: isFinite(Number((tpl as any).approval?.threshold)) ? Number((tpl as any).approval.threshold) : 1 },
+      pipeline: Array.isArray((tpl as any).pipeline) ? (tpl as any).pipeline : [],
+      template: false,
+      tags: Array.isArray((tpl as any).tags) ? (tpl as any).tags : [],
+      region: (tpl as any).region,
+      unit: (tpl as any).unit,
+      channel: (tpl as any).channel,
+      createdBy: args.createdBy,
+      status: "draft",
+      metrics: (tpl as any).metrics,
+    };
+    const issuesOnCreate = computeGovernanceIssues(candidateCreate, tier);
+    if (issuesOnCreate.length > 0) {
+      await logGovernance(ctx, {
+        businessId: args.businessId ?? (tpl as any).businessId,
+        actorUserId: args.createdBy,
+        workflowId: undefined,
+        issues: issuesOnCreate,
+        event: "violation",
+      });
+      throw new Error(`[ERR_GOVERNANCE] ${issuesOnCreate.join(" | ")}`);
+    }
+
     const newId = await ctx.db.insert("workflows", {
       businessId: args.businessId ?? (tpl as any).businessId,
       name: args.name ?? `${(tpl as any).name} (Copy)`,
@@ -1996,8 +2238,20 @@ export const copyFromTemplate = mutation({
       pipeline: (tpl as any).pipeline,
       template: false,
       tags: (tpl as any).tags ?? [],
+      region: (tpl as any).region,
+      unit: (tpl as any).unit,
+      channel: (tpl as any).channel,
+      createdBy: args.createdBy,
       status: "draft",
+      metrics: (tpl as any).metrics,
     } as any);
+    await logGovernance(ctx, {
+      businessId: args.businessId ?? (tpl as any).businessId,
+      actorUserId: args.createdBy,
+      workflowId: newId,
+      issues: [],
+      event: "passed",
+    });
     return newId;
   },
 });
@@ -2176,3 +2430,121 @@ export const updateTrigger = mutation({
     });
   },
 });
+
+// Governance helpers (SME/Enterprise)
+function computeGovernanceIssues(workflow: any, tier: string | null | undefined) {
+  const issues: Array<string> = [];
+  const isSME = tier === "SME" || tier === "sme";
+  const isEnterprise = tier === "Enterprise" || tier === "enterprise";
+
+  if (!isSME && !isEnterprise) {
+    return issues; // No governance enforcement for other tiers
+  }
+
+  const requiredApprovals = isEnterprise ? 2 : 1;
+  const minSlaMinutes = isEnterprise ? 60 : 30;
+
+  const pipeline: Array<any> = Array.isArray(workflow?.pipeline) ? workflow.pipeline : [];
+  const approvalSteps: Array<any> = pipeline.filter((s) => (s?.type || s?.stepType) === "approval");
+  const delaySteps: Array<any> = pipeline.filter((s) => (s?.type || s?.stepType) === "delay");
+
+  // Approvals count
+  if (approvalSteps.length < requiredApprovals) {
+    issues.push(`Requires at least ${requiredApprovals} approval step(s). Found ${approvalSteps.length}.`);
+  }
+
+  // Approver roles present
+  const missingRole = approvalSteps.some((s) => {
+    const role = s?.role || s?.config?.role || s?.assigneeRole;
+    return !role || String(role).trim().length === 0;
+  });
+  if (approvalSteps.length > 0 && missingRole) {
+    issues.push("All approval steps must specify an approver role.");
+  }
+
+  // SLA delay requirement
+  const normalizeDelayMinutes = (s: any) => {
+    const m = s?.delayMinutes ?? s?.minutes ?? s?.config?.minutes;
+    const h = s?.delayHours ?? s?.hours ?? s?.config?.hours;
+    const mins = (typeof m === "number" ? m : 0) + (typeof h === "number" ? h * 60 : 0);
+    return mins;
+  };
+  const hasSufficientSla = delaySteps.some((s) => normalizeDelayMinutes(s) >= minSlaMinutes);
+  if (!hasSufficientSla) {
+    issues.push(`Requires at least one delay step with SLA >= ${minSlaMinutes} minutes.`);
+  }
+
+  // Description required
+  const desc = workflow?.description;
+  if (!desc || String(desc).trim().length === 0) {
+    issues.push("Workflow description is required.");
+  }
+
+  // Approval threshold policy
+  const threshold = workflow?.approval?.threshold;
+  if (isEnterprise) {
+    if (typeof threshold !== "number" || threshold < 2) {
+      issues.push("Enterprise requires approval.threshold >= 2.");
+    }
+  } else if (isSME) {
+    if (typeof threshold !== "number" || threshold < 1) {
+      issues.push("SME requires approval.threshold >= 1.");
+    }
+  }
+
+  return issues;
+}
+
+async function logGovernance(ctx: any, params: {
+  businessId: any;
+  actorUserId?: any;
+  workflowId?: any;
+  issues: Array<string>;
+  event: "violation" | "passed";
+}) {
+  try {
+    await ctx.runMutation(internal.audit.write, {
+      businessId: params.businessId,
+      type: params.event === "violation" ? "workflow.governance_violation" : "workflow.governance_passed",
+      message: params.event === "violation" ? "Governance checks failed" : "Governance checks passed",
+      actorUserId: params.actorUserId,
+      data: {
+        workflowId: params.workflowId ?? null,
+        issues: params.issues,
+      },
+    });
+  } catch {
+    // Do not block main flow if audit logging fails
+  }
+}
+
+async function getSignedInUser(ctx: any) {
+  const identity = await ctx.auth.getUserIdentity?.();
+  if (!identity?.email) return null;
+
+  const user = await ctx.db
+    .query("users")
+    .withIndex("email", (q: any) => q.eq("email", identity.email!))
+    .first();
+
+  return user ?? null;
+}
+
+async function getCurrentBusiness(ctx: any, user: any) {
+  if (!user) return null;
+
+  // Prefer owned business
+  const owned = await ctx.db
+    .query("businesses")
+    .withIndex("by_owner", (q: any) => q.eq("ownerId", user._id))
+    .first();
+  if (owned) return owned;
+
+  // Fallback to member-of business
+  const memberOf = await ctx.db
+    .query("businesses")
+    .withIndex("by_team_member", (q: any) => q.eq("teamMembers", user._id))
+    .first();
+
+  return memberOf ?? null;
+}

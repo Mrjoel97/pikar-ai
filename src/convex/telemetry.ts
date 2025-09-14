@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query, internalMutation } from "./_generated/server";
-import { Doc, Id } from "./_generated/dataModel";
+import { Id } from "./_generated/dataModel";
 
 // Mutation to track a telemetry event
 export const trackEvent = mutation({
@@ -21,7 +21,7 @@ export const trackEvent = mutation({
 
     const user = await ctx.db
       .query("users")
-      .filter((q) => q.eq(q.field("email"), identity.email))
+      .withIndex("email", (q) => q.eq("email", identity.email!))
       .first();
 
     if (!user) {
@@ -116,7 +116,7 @@ export const getEventAnalytics = query({
 
     // Aggregate by event name
     const eventCounts: Record<string, number> = {};
-    const uniqueUsers = new Set<string>();
+    const uniqueUsers = new Set<Id<"users">>();
     const uniqueSessions = new Set<string>();
 
     filteredEvents.forEach(event => {
@@ -175,7 +175,7 @@ export const trackUserJourney = mutation({
 
     const user = await ctx.db
       .query("users")
-      .filter((q) => q.eq(q.field("email"), identity.email))
+      .withIndex("email", (q) => q.eq("email", identity.email!))
       .first();
 
     if (!user) {
@@ -266,7 +266,7 @@ export const trackOnboardingProgress = mutation({
 
     const user = await ctx.db
       .query("users")
-      .filter((q) => q.eq(q.field("email"), identity.email))
+      .withIndex("email", (q) => q.eq("email", identity.email!))
       .first();
 
     if (!user) {

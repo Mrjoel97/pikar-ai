@@ -84,7 +84,7 @@ export default function Dashboard() {
   const business = useQuery(
     api.businesses.currentUserBusiness,
     // Skip query if in guest mode or not authenticated to prevent server errors
-    guestMode || !isAuthenticated ? "skip" : {}
+    guestMode || !isAuthenticated ? undefined : {}
   );
   
   // Determine which tier to use
@@ -100,7 +100,7 @@ export default function Dashboard() {
   // Add: usage-based upgrade nudges (skip in guest mode)
   const nudges = useQuery(
     api.telemetry.getUpgradeNudges,
-    guestMode || !business?._id ? "skip" : { businessId: business._id }
+    guestMode || !business?._id ? undefined : { businessId: business._id }
   );
 
   if (isLoading) {
