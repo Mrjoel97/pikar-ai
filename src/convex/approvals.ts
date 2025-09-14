@@ -565,3 +565,22 @@ export const rejectSelf = mutation({
     return true;
   },
 });
+
+export const pendingForBusiness = query({
+  args: {
+    businessId: v.id("businesses"),
+    limit: v.number(),
+  },
+  handler: async (ctx, args) => {
+    // Return the most recent pending approvals for a business (max: args.limit)
+    const rows = await ctx.db
+      .query("approvalQueue")
+      .withIndex("by_businessId_and_status", (q) =>
+        q.eq("businessId", args.businessId).eq("status", "pending")
+      )
+      .order("desc")
+      .take(Math.max(1, Math.min(50, args.limit)));
+
+    return rows;
+  },
+});

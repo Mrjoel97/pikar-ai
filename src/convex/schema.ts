@@ -207,6 +207,14 @@ export default defineSchema({
         lastRun: v.optional(v.number()),
       })
     ),
+    // Add: governance health summary for SME/Enterprise enforcement visibility
+    governanceHealth: v.optional(
+      v.object({
+        score: v.number(),
+        issues: v.array(v.string()),
+        updatedAt: v.optional(v.number()),
+      })
+    ),
   })
     .index("by_business", ["businessId"])
     .index("by_status", ["status"])
@@ -305,7 +313,8 @@ export default defineSchema({
     .index("by_assignee", ["assigneeId"])
     .index("by_status", ["status"])
     .index("by_workflow", ["workflowId"])
-    .index("by_sla_deadline", ["slaDeadline"]),
+    .index("by_sla_deadline", ["slaDeadline"])
+    .index("by_businessId_and_status", ["businessId", "status"]),
 
   // Notification System
   notifications: defineTable({

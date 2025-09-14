@@ -1,9 +1,8 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { motion } from "framer-motion";
-import { Button } from "@/components/ui/button";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 
 interface StartupDashboardProps {
   business: any;
@@ -76,6 +75,10 @@ export function StartupDashboard({
 
   const revenueTrend = mkTrend((kpis?.totalRevenue ? Math.min(100, (kpis.totalRevenue / 2000) % 100) : 55));
   const productivityTrend = mkTrend(kpis?.teamProductivity ?? 70);
+
+  const pendingApprovals = !isGuest && business?._id
+    ? useQuery(api.approvals.pendingForBusiness, { businessId: business._id, limit: 6 })
+    : undefined;
 
   return (
     <div className="space-y-6">
@@ -287,18 +290,38 @@ export function StartupDashboard({
       <section>
         <h2 className="text-xl font-semibold mb-4">Pending Approvals</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {tasks.filter((t: any) => t.priority === 'high').map((task: any) => (
-            <Card key={task.id}>
-              <CardContent className="p-4">
-                <h3 className="font-medium">{task.title}</h3>
-                <p className="text-sm text-muted-foreground">Due: {task.dueDate}</p>
-                <div className="flex gap-2 mt-3">
-                  <Button size="sm">Approve</Button>
-                  <Button variant="outline" size="sm">Review</Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+          {(
+            (Array.isArray(pendingApprovals) && pendingApprovals.length > 0
+              ? pendingApprovals
+              : tasks.filter((t: any) => t.priority === "high")
+            ) as any[]
+          ).map((item: any) => {
+            const id = String(item._id ?? item.id ?? Math.random());
+            const title =
+              String(item.title ?? item.name ?? "Approval Required");
+            const sub =
+              item.dueDate
+                ? `Due: ${item.dueDate}`
+                : item.requester
+                ? `Requester: ${item.requester}`
+                : item.owner
+                ? `Owner: ${item.owner}`
+                : "Action required";
+            return (
+              <Card key={id}>
+                <CardContent className="p-4">
+                  <h3 className="font-medium">{title}</h3>
+                  <p className="text-sm text-muted-foreground">{sub}</p>
+                  <div className="flex gap-2 mt-3">
+                    <Button size="sm">Approve</Button>
+                    <Button variant="outline" size="sm">
+                      Review
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
           {!isGuest && <UpgradeCTA feature="Advanced Governance" />}
           {!hasTier("sme") && (
             <div className="md:col-span-2">
