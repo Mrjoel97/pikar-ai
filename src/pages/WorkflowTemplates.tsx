@@ -9,6 +9,8 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
+import { useMemo } from "react";
+import { getAllBuiltInTemplates } from "@/lib/templatesClient";
 
 export default function WorkflowTemplatesPage() {
   const navigate = useNavigate();
@@ -18,16 +20,28 @@ export default function WorkflowTemplatesPage() {
   const [tierFilter, setTierFilter] = useState<string>("all");
   const [search, setSearch] = useState<string>("");
 
-  const builtIns = useQuery((api as any).workflowTemplates?.getBuiltInTemplates || ({} as any), {
-    tier: tierFilter === "all" ? null : (tierFilter as any),
-    search: search || null,
-  });
+  const builtIns = useMemo(() => {
+    const all = getAllBuiltInTemplates();
+    const tier = tierFilter === "all" ? null : (tierFilter as any);
+    const q = (search || "").trim().toLowerCase();
+    let items = all;
+    if (tier !== null) items = items.filter((t: any) => t.tier === tier);
+    if (q) {
+      items = items.filter((t: any) => {
+        const name = String(t.name || "").toLowerCase();
+        const desc = String(t.description || "").toLowerCase();
+        const tags: string[] = Array.isArray(t.tags) ? t.tags.map((x: any) => String(x).toLowerCase()) : [];
+        return name.includes(q) || desc.includes(q) || tags.some((tag) => tag.includes(q));
+      });
+    }
+    return items;
+  }, [tierFilter, search]);
 
   // To copy into a workspace, need a businessId. Reuse user's first business if exists.
   const businesses = useQuery(api.businesses.getUserBusinesses, {});
   const firstBizId = businesses?.[0]?._id;
 
-  const copyBuiltIn = useMutation(((api as any).workflowTemplates?.copyBuiltInTemplate) || ({} as any));
+  const upsertWorkflow = useMutation(api.workflows.upsertWorkflow);
 
   // Add: Default the tier filter to the user's business tier once loaded
   useEffect(() => {
@@ -123,7 +137,16 @@ export default function WorkflowTemplatesPage() {
                       return;
                     }
                     try {
-                      await copyBuiltIn({ businessId: firstBizId as any, key: template._id });
+                      await upsertWorkflow({
+                        businessId: firstBizId as any,
+                        name: template.name,
+                        description: template.description || undefined,
+                        trigger: template.trigger || { type: "manual" },
+                        approval: template.approval || { required: false, threshold: 1 },
+                        pipeline: Array.isArray(template.pipeline) ? template.pipeline : [],
+                        template: false,
+                        tags: Array.isArray(template.tags) ? template.tags : [],
+                      } as any);
                       toast.success("Template copied to your workflows");
                       navigate("/workflows");
                     } catch (e: any) {

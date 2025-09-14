@@ -4,6 +4,7 @@ import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { toast } from "sonner";
 import { useState, useEffect, type ChangeEvent } from "react";
+import { useMemo } from "react";
 import { Play, BarChart3, Clock, Webhook, Search } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -17,6 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { isGuestMode, getSelectedTier } from "@/lib/guestUtils";
+import { getAllBuiltInTemplates } from "@/lib/templatesClient";
 
 function getTriggerIcon(type: string) {
   switch (type) {
@@ -138,10 +140,12 @@ export default function WorkflowsPage() {
     firstBizId ? { businessId: firstBizId } : "skip");
   const simulateWorkflowAction = useAction(api.workflows.simulateWorkflow);
   const complianceScanAction = useAction(api.workflows.checkMarketingCompliance);
-  const guestTemplates = useQuery(
-    ((api as any).workflowTemplates?.getBuiltInTemplates) || ({} as any),
-    guestMode ? { tier: selectedTier as any, search: null } : "skip"
-  );
+  const guestTemplates = useMemo(() => {
+    if (!guestMode) return [];
+    const all = getAllBuiltInTemplates();
+    const tier = selectedTier as any;
+    return all.filter((t: any) => !tier || t.tier === tier);
+  }, [guestMode, selectedTier]);
   const executions = useQuery(api.workflows.getExecutions,
     selectedWorkflow ? {
       workflowId: selectedWorkflow as any,
@@ -149,7 +153,6 @@ export default function WorkflowsPage() {
     } : "skip");
 
   const upsertWorkflow = useMutation(api.workflows.upsertWorkflow);
-  const copyBuiltInTemplate = useMutation(((api as any).workflowTemplates?.copyBuiltInTemplate) || ({} as any));
   const seedTasksForBiz = useMutation(api.tasks.seedDemoTasksForBusiness);
   const seedContactsAction = useAction(((api as any).contacts?.seedContacts) || ({} as any));
   const seedKpisForBiz = useMutation((api as any).kpis?.seedDemoForBusiness || ({} as any));
@@ -239,7 +242,16 @@ export default function WorkflowsPage() {
     }
     try {
       setIsCopyingId(String(template._id));
-      await copyBuiltInTemplate({ businessId: firstBizId as any, key: template._id });
+      await upsertWorkflow({
+        businessId: firstBizId as any,
+        name: template.name,
+        description: template.description || undefined,
+        trigger: template.trigger || { type: "manual" },
+        approval: template.approval || { required: false, threshold: 1 },
+        pipeline: Array.isArray(template.pipeline) ? template.pipeline : [],
+        template: false,
+        tags: Array.isArray(template.tags) ? template.tags : [],
+      } as any);
       toast.success("Template copied to your workflows");
       setTemplatesOpen(false);
       navigate("/workflows");
@@ -285,10 +297,22 @@ export default function WorkflowsPage() {
     }
   };
 
-  const modalTemplates = useQuery(
-    ((api as any).workflowTemplates?.getBuiltInTemplates) || ({} as any),
-    { tier: tplTier === "all" ? null : (tplTier as any), search: tplSearch || null }
-  );
+  const modalTemplates = useMemo(() => {
+    const all = getAllBuiltInTemplates();
+    const tier = tplTier === "all" ? null : (tplTier as any);
+    const q = (tplSearch || "").trim().toLowerCase();
+    let items = all;
+    if (tier !== null) items = items.filter((t: any) => t.tier === tier);
+    if (q) {
+      items = items.filter((t: any) => {
+        const name = String(t.name || "").toLowerCase();
+        const desc = String(t.description || "").toLowerCase();
+        const tags: string[] = Array.isArray(t.tags) ? t.tags.map((x: any) => String(x).toLowerCase()) : [];
+        return name.includes(q) || desc.includes(q) || tags.some((tag) => tag.includes(q));
+      });
+    }
+    return items;
+  }, [tplTier, tplSearch]);
 
   const handleCreateWorkflow = async () => {
     if (!firstBizId || !formData.name.trim()) {
