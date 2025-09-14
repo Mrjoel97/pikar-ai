@@ -144,7 +144,6 @@ createRoot(document.getElementById("root")!).render(
               <Route path="/workflows/templates" element={<WorkflowTemplatesPage />} />
               <Route path="/business" element={<BusinessPage />} />
               <Route path="/analytics" element={<AnalyticsPage />} />
-              <Route path="/pricing" element={<PricingPage />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
