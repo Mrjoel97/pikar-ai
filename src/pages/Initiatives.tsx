@@ -113,7 +113,7 @@ export default function InitiativesPage() {
                 <SelectValue placeholder="Select business" />
               </SelectTrigger>
               <SelectContent>
-                {userBusinesses.map((b) => (
+                {userBusinesses.map((b: any) => (
                   <SelectItem key={b._id} value={b._id}>
                     {b.name} <span className="text-muted-foreground">• {b.tier}</span>
                   </SelectItem>

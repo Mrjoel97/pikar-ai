@@ -584,3 +584,44 @@ export const pendingForBusiness = query({
     return rows;
   },
 });
+
+// Add: SLA summary for dashboards (overdue and due soon within 2h)
+export const getSlaSummary = query({
+  args: {
+    businessId: v.id("businesses"),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Not authenticated");
+    }
+
+    const now = Date.now();
+    const soon = now + 2 * 60 * 60 * 1000; // next 2 hours
+
+    // Overdue (pending with slaDeadline < now)
+    const overdue = await ctx.db
+      .query("approvalQueue")
+      .withIndex("by_sla_deadline", (q) => q.lt("slaDeadline", now))
+      .filter((q) => q.eq(q.field("status"), "pending"))
+      .collect();
+
+    // Due soon (pending with now <= slaDeadline < soon)
+    const dueSoonRaw = await ctx.db
+      .query("approvalQueue")
+      .withIndex("by_sla_deadline", (q) => q.lt("slaDeadline", soon))
+      .filter((q) => q.eq(q.field("status"), "pending"))
+      .collect();
+
+    const overdueForBiz = overdue.filter((a) => a.businessId === args.businessId);
+    const dueSoonForBiz = dueSoonRaw.filter(
+      (a) => a.businessId === args.businessId && (a.slaDeadline ?? Infinity) >= now
+    );
+
+    return {
+      overdueCount: overdueForBiz.length,
+      dueSoonCount: dueSoonForBiz.length,
+      timestamp: now,
+    };
+  },
+});

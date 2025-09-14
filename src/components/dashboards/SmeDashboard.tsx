@@ -1,4 +1,4 @@
-import { useQuery, useMutation } from "convex/react";
+import { useQuery, useMutation, useQuery as useConvexQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -56,6 +56,10 @@ export function SmeDashboard({
     isGuest || !businessId ? "skip" : { businessId }
   );
   const toggleFlag = useMutation(api.featureFlags.toggleFeatureFlag);
+
+  const enforceGovernanceForBiz = useMutation(api.governance.enforceGovernanceForBusiness);
+  // Fetch SLA summary (skip in guest / when no business)
+  const slaSummary = business ? useConvexQuery(api.approvals.getSlaSummary, { businessId: business._id }) : "skip";
 
   const UpgradeCTA = ({ feature }: { feature: string }) => (
     <Card className="border-dashed border-2 border-gray-300">
@@ -216,7 +220,7 @@ export function SmeDashboard({
             ) : pendingApprovals.length === 0 ? (
               <div className="text-sm text-muted-foreground">No pending approvals.</div>
             ) : (
-              pendingApprovals.slice(0, 6).map((a) => (
+              pendingApprovals.slice(0, 6).map((a: any) => (
                 <div key={a._id} className="flex items-center justify-between border rounded-md p-2">
                   <div className="flex flex-col">
                     <span className="text-sm font-medium">Workflow {String(a.workflowId).slice(-6)}</span>
@@ -295,7 +299,7 @@ export function SmeDashboard({
             ) : auditHighlights.length === 0 ? (
               <div className="text-sm text-muted-foreground">No recent audit events.</div>
             ) : (
-              auditHighlights.map((e) => (
+              auditHighlights.map((e: any) => (
                 <div key={e._id} className="flex items-start gap-3">
                   <div className="text-xs text-muted-foreground mt-0.5">
                     {new Date(e.createdAt).toLocaleDateString()}
@@ -314,6 +318,29 @@ export function SmeDashboard({
       {/* Department Views (Tabbed Center Section) */}
       <section>
         <h2 className="text-xl font-semibold mb-4">Department Views</h2>
+        <div className="mb-4 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+          <div className="text-sm text-muted-foreground">
+            {slaSummary && slaSummary !== "skip"
+              ? `SLA: ${slaSummary.overdueCount} overdue, ${slaSummary.dueSoonCount} due soon`
+              : null}
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={async () => {
+              if (!business?._id) return;
+              try {
+                const res = await enforceGovernanceForBiz({ businessId: business._id });
+                toast.success(`Governance updated for ${res.count ?? 0} workflows`);
+              } catch (e: any) {
+                toast.error(e?.message || "Failed to enforce governance");
+              }
+            }}
+            disabled={!business?._id}
+          >
+            Enforce Governance
+          </Button>
+        </div>
         <Tabs defaultValue="marketing" className="w-full">
           <TabsList className="grid grid-cols-4 max-w-full">
             <TabsTrigger value="marketing">Marketing</TabsTrigger>
@@ -509,7 +536,7 @@ export function SmeDashboard({
               ) : featureFlags.length === 0 ? (
                 <div className="text-sm text-muted-foreground">No feature flags configured.</div>
               ) : (
-                featureFlags.slice(0, 8).map((f) => (
+                featureFlags.slice(0, 8).map((f: any) => (
                   <div key={f._id} className="flex items-center justify-between border rounded-md p-2">
                     <div className="flex flex-col">
                       <span className="text-sm font-medium">{f.flagName}</span>

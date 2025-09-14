@@ -1,5 +1,6 @@
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "convex/react";
+import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { useNavigate } from "react-router";
@@ -10,6 +11,7 @@ import { isGuestMode, getSelectedTier, getDemoData } from "@/lib/guestUtils";
 import { getTierConfig, TierType } from "@/lib/tierConfig";
 import React, { Suspense, lazy } from "react";
 import { NotificationsCenter } from "@/components/NotificationsCenter";
+import { toast } from "sonner";
 
 // Add: lazy-loaded tier dashboards (code-splitting)
 const SolopreneurDashboard = lazy(() =>
@@ -66,6 +68,17 @@ export default function Dashboard() {
     api.telemetry.getUpgradeNudges,
     guestMode || !business?._id ? "skip" : { businessId: business._id }
   );
+
+  // Add seeding handler and mutation
+  const seedDemoData = useMutation(api.seed.seedDemoData);
+  const handleSeedDemoData = async () => {
+    try {
+      const res = await seedDemoData({});
+      toast.success(`Demo data ready: ${res.tasksCreated} tasks, ${res.contactsCreated} contacts, ${res.kpisCreated} KPI snapshot`);
+    } catch (err: any) {
+      toast.error(err?.message ?? "Failed to seed demo data");
+    }
+  };
 
   if (isLoading) {
     return (
@@ -219,7 +232,7 @@ export default function Dashboard() {
               <CardTitle className="text-amber-800">Heads up</CardTitle>
             </CardHeader>
             <CardContent className="flex flex-col gap-3">
-              {nudges.nudges.map((n) => (
+              {nudges.nudges.map((n: any) => (
                 <div key={n.code} className="flex items-start gap-2">
                   <Badge variant="outline" className={n.level === "warn" ? "border-amber-400 text-amber-700" : "border-emerald-400 text-emerald-700"}>
                     {n.level === "warn" ? "Usage" : "Tip"}
@@ -238,6 +251,20 @@ export default function Dashboard() {
               </div>
             </CardContent>
           </Card>
+        )}
+
+        {/* Render a fixed action button for authenticated, non-guest users */}
+        {isAuthenticated && !guestMode && (
+          <div className="fixed bottom-6 right-6 z-40">
+            <Button
+              onClick={handleSeedDemoData}
+              className="shadow-lg"
+              variant="default"
+              size="lg"
+            >
+              Seed Demo Data
+            </Button>
+          </div>
         )}
 
         {/* Dashboard content (code-split) */}

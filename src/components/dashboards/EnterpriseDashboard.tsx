@@ -6,7 +6,7 @@ import { useState } from "react";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Badge } from "@/components/ui/badge";
-import { useMutation } from "convex/react";
+import { useMutation, useQuery as useConvexQuery } from "convex/react";
 import { toast } from "sonner";
 
 interface EnterpriseDashboardProps {
@@ -78,6 +78,9 @@ export function EnterpriseDashboard({
     return arr;
   };
 
+  // Add: diagnostics mutation
+  const runDiagnostics = useMutation(api.initiatives.runPhase0Diagnostics);
+
   // Add: unify important KPI values for rendering across data sources
   const unifiedRevenue =
     typeof (kpis?.revenue) === "number"
@@ -116,6 +119,10 @@ export function EnterpriseDashboard({
     isGuest || !businessId ? "skip" : { businessId }
   );
 
+  const enforceGovernanceForBiz = useMutation(api.governance.enforceGovernanceForBusiness);
+  // Fetch SLA summary (skip in guest / when no business)
+  const slaSummary = business ? useConvexQuery(api.approvals.getSlaSummary, { businessId: business._id }) : "skip";
+
   return (
     <div className="space-y-6">
       {/* Add: Upgrade nudge banner */}
@@ -133,6 +140,49 @@ export function EnterpriseDashboard({
 
       {/* Global Overview Banner */}
       <section className="rounded-lg border p-4 bg-gradient-to-r from-emerald-50 to-blue-50">
+        <div className="mb-4 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+          <div className="text-sm text-muted-foreground">
+            {slaSummary && slaSummary !== "skip"
+              ? `SLA: ${slaSummary.overdueCount} overdue, ${slaSummary.dueSoonCount} due soon`
+              : null}
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={async () => {
+                if (!business?._id) return;
+                try {
+                  const id = await runDiagnostics({ businessId: business._id });
+                  toast.success("Diagnostics started");
+                } catch (e: any) {
+                  toast.error(e?.message || "Failed to run diagnostics");
+                }
+              }}
+              disabled={!business?._id}
+            >
+              Run Diagnostics
+            </Button>
+
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={async () => {
+                if (!business?._id) return;
+                try {
+                  const res = await enforceGovernanceForBiz({ businessId: business._id });
+                  toast.success(`Governance updated for ${res.count ?? 0} workflows`);
+                } catch (e: any) {
+                  toast.error(e?.message || "Failed to enforce governance");
+                }
+              }}
+              disabled={!business?._id}
+            >
+              Enforce Governance
+            </Button>
+          </div>
+        </div>
+
         <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
           <div>
             <h2 className="text-xl font-semibold mb-1">Global Overview</h2>
@@ -401,7 +451,7 @@ export function EnterpriseDashboard({
                 ) : approvals.length === 0 ? (
                   <div className="text-sm text-muted-foreground">None pending.</div>
                 ) : (
-                  approvals.slice(0, 3).map((a) => (
+                  approvals.slice(0, 3).map((a: any) => (
                     <div key={a._id} className="flex items-center justify-between border rounded-md p-2">
                       <span className="text-sm">WF {String(a.workflowId).slice(-6)}</span>
                       <div className="flex items-center gap-2">
@@ -452,7 +502,7 @@ export function EnterpriseDashboard({
                 ) : auditLatest.length === 0 ? (
                   <div className="text-sm text-muted-foreground">No recent events.</div>
                 ) : (
-                  auditLatest.slice(0, 3).map((e) => (
+                  auditLatest.slice(0, 3).map((e: any) => (
                     <div key={e._id} className="text-xs text-muted-foreground">
                       {new Date(e.createdAt).toLocaleDateString()} — {e.entityType}: {e.action}
                     </div>
@@ -477,7 +527,7 @@ export function EnterpriseDashboard({
               ) : featureFlags.length === 0 ? (
                 <div className="text-sm text-muted-foreground">No flags configured.</div>
               ) : (
-                featureFlags.slice(0, 6).map((f) => (
+                featureFlags.slice(0, 6).map((f: any) => (
                   <div key={f._id} className="flex items-center justify-between border rounded-md p-2">
                     <div className="flex flex-col">
                       <span className="text-sm font-medium">{f.flagName}</span>

@@ -189,7 +189,7 @@ export const sendSalesInquiry = action({
       to: [inbox],
       subject,
       html,
-      replyTo: args.email,
+      reply_to: args.email,
     });
 
     if (error) {

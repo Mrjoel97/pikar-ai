@@ -3,6 +3,8 @@ import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { useMutation } from "convex/react";
+import { toast } from "sonner";
 
 interface StartupDashboardProps {
   business: any;
@@ -23,6 +25,8 @@ export function StartupDashboard({
   const workflows = isGuest ? demoData?.workflows || [] : [];
   const kpis = isGuest ? demoData?.kpis || {} : {};
   const tasks = isGuest ? demoData?.tasks || [] : [];
+
+  const runDiagnostics = useMutation(api.initiatives.runPhase0Diagnostics);
 
   const tierRank: Record<string, number> = { solopreneur: 1, startup: 2, sme: 3, enterprise: 4 };
   const hasTier = (required: keyof typeof tierRank) => (tierRank[tier] ?? 1) >= tierRank[required];
@@ -243,6 +247,35 @@ export function StartupDashboard({
                   <LockedRibbon label="Advanced collaboration is SME+" />
                 </div>
               )}
+            </CardContent>
+          </Card>
+
+          {/* Add: Run Diagnostics action */}
+          <Card>
+            <CardContent className="p-4">
+              <h3 className="font-medium mb-2">Run Phase 0 Diagnostics</h3>
+              <p className="text-sm text-muted-foreground mb-3">
+                Generate a discovery snapshot from your onboarding profile.
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={async () => {
+                  if (!business?._id) {
+                    toast.error("Sign in or complete onboarding first");
+                    return;
+                  }
+                  try {
+                    await runDiagnostics({ businessId: business._id });
+                    toast.success("Diagnostics started");
+                  } catch (e: any) {
+                    toast.error(e?.message || "Failed to run diagnostics");
+                  }
+                }}
+                disabled={!business?._id}
+              >
+                Run Diagnostics
+              </Button>
             </CardContent>
           </Card>
         </div>

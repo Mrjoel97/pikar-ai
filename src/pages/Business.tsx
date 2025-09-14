@@ -70,7 +70,7 @@ export default function BusinessPage() {
   const hasBusinesses = guestMode || (userBusinesses?.length || 0) > 0;
   const selectedBusiness = guestMode
     ? demoBusiness
-    : userBusinesses?.find((b) => b._id === selectedBusinessId);
+    : userBusinesses?.find((b: any) => b._id === selectedBusinessId);
 
   const handleQuickCreateBusiness = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
