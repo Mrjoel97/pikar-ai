@@ -7,7 +7,7 @@ import { withErrorHandling } from "./utils";
 import { paginationOptsValidator } from "convex/server";
 
 // Add imports for built-in templates
-import { getAllBuiltInTemplates, getBuiltInTemplateByKey } from "./templatesData";
+import { getAllBuiltInTemplates, getBuiltInTemplateByKey, type Tier } from "./templatesData";
 
 // Queries
 export const listWorkflows = query({
@@ -1077,49 +1077,72 @@ export const ensureTemplateCount = mutation({
   }),
 });
 
-// Add: List built-in templates with optional tier + search filtering
+// Public query: fetch built-in templates for the dashboard
 export const getBuiltInTemplates = query({
   args: {
-    tier: v.union(v.string(), v.null()),
-    search: v.union(v.string(), v.null()),
+    tier: v.union(
+      v.literal("solopreneur"),
+      v.literal("startup"),
+      v.literal("sme"),
+      v.literal("enterprise"),
+    ),
+    limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const items = getAllBuiltInTemplates();
-    const filtered = items.filter((t) => {
-      if (args.tier && t.tier !== args.tier) return false;
-      if (args.search) {
-        const q = args.search.toLowerCase();
-        const hay = `${t.name} ${t.description ?? ""} ${(t.tags ?? []).join(" ")}`.toLowerCase();
-        return hay.includes(q);
-      }
-      return true;
-    });
-    return filtered;
+    const { getAllBuiltInTemplates } = await import("./templatesData");
+    const all = getAllBuiltInTemplates();
+    const filtered = args.tier ? all.filter((t) => t.tier === args.tier) : all;
+    const limit = args.limit && args.limit > 0 ? Math.min(args.limit, 60) : 12;
+    return filtered.slice(0, limit);
   },
 });
 
-// Add: Copy a built-in template into a business as a draft workflow
+// Add: mutation to copy a built-in template into a business as a draft workflow
 export const copyBuiltInTemplate = mutation({
   args: {
     businessId: v.id("businesses"),
-    key: v.string(), // matches template._id
+    key: v.string(),
+    status: v.optional(
+      v.union(
+        v.literal("draft"),
+        v.literal("active"),
+        v.literal("paused")
+      )
+    ),
   },
   handler: async (ctx, args) => {
-    const tmpl = getBuiltInTemplateByKey(args.key);
-    if (!tmpl) throw new Error("Template not found");
+    const { getBuiltInTemplateByKey } = await import("./templatesData");
+    const tpl = getBuiltInTemplateByKey(args.key);
+    if (!tpl) {
+      throw new Error("Template not found");
+    }
 
-    const workflowId = await ctx.db.insert("workflows", {
-      name: tmpl.name,
-      description: tmpl.description,
+    const doc = {
+      name: tpl.name,
+      description: tpl.description,
       businessId: args.businessId,
-      trigger: tmpl.trigger as any,
-      approval: tmpl.approval as any,
-      pipeline: tmpl.pipeline as any,
+      trigger: {
+        type: tpl.trigger.type,
+        ...(tpl.trigger.cron ? { cron: tpl.trigger.cron } : {}),
+        ...(tpl.trigger.eventKey ? { eventKey: tpl.trigger.eventKey } : {}),
+      },
+      approval: {
+        required: tpl.approval.required,
+        threshold: tpl.approval.threshold,
+      },
+      pipeline: tpl.pipeline.map((s) => ({
+        step: s.step,
+        type: s.type,
+        name: s.name,
+        config: s.config,
+      })),
       template: false,
-      tags: tmpl.tags ?? [],
-      status: "draft",
-    });
-    return workflowId;
+      tags: Array.isArray(tpl.tags) ? tpl.tags : [],
+      status: args.status ?? "draft",
+    };
+
+    const id = await ctx.db.insert("workflows", doc);
+    return id;
   },
 });
 
@@ -1493,13 +1516,13 @@ export const completeWorkflowRun = internalMutation({
           type: "collaboration",
           level: "warning",
           message: `Workflow run ${String(args.runId)} completed with ${failedSteps} failed step(s). Recommend assigning a review task.`,
-          businessId: (runDoc as any).businessId, // may be absent; optional fields allowed
-          userId: (runDoc as any).startedBy,
+          businessId: runDoc.businessId, // may be absent; optional fields allowed
+          userId: runDoc.startedBy,
           metadata: {
             runId: args.runId,
-            workflowId: (runDoc as any).workflowId,
+            workflowId: runDoc.workflowId,
           },
-          createdBy: (runDoc as any).startedBy,
+          createdBy: runDoc.startedBy,
           phase: "post_run",
           inputs: null,
           outputs: null,
