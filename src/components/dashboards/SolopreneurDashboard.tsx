@@ -1,19 +1,13 @@
+import React, { useState } from "react";
+import { useNavigate } from "react-router";
+import { useQuery, useMutation, useAction } from "convex/react";
+import { api } from "@/convex/_generated/api";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { useQuery } from "convex/react";
-import { api } from "@/convex/_generated/api";
-import { StatCard } from "@/components/dashboard/StatCard";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
-import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription, DrawerFooter, DrawerTrigger, DrawerClose } from "@/components/ui/drawer";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { useAction } from "convex/react";
 import { toast } from "sonner";
-import React from "react";
-import { useMutation } from "convex/react";
-import { useNavigate } from "react-router";
-import { useState } from "react"
+import { Zap, Pencil, Calendar, BarChart3, HelpCircle } from "lucide-react";
 
 interface SolopreneurDashboardProps {
   business: any;
@@ -448,742 +442,254 @@ export function SolopreneurDashboard({
     }
   };
 
+  const snapshot = useQuery(api.kpis.getSnapshot, { period: "7d" } as any) ?? {
+    visitors: 0,
+    subscribers: 0,
+    engagement: 0,
+    revenue: 0,
+    visitorsDelta: 0,
+    subscribersDelta: 0,
+    engagementDelta: 0,
+    revenueDelta: 0,
+  };
+
+  const builtIns = useQuery(api.workflows.getBuiltInTemplates, { tier: "solopreneur", search: null } as any) ?? [];
+
+  const copyBuiltIn = useMutation(api.workflows.copyBuiltInTemplate);
+
+  type FocusTask = { id: string; title: string; snap: "S" | "N" | "A" | "P"; done: boolean };
+  const [focusInput, setFocusInput] = useState("");
+  const [focusTasks, setFocusTasks] = useState<FocusTask[]>([]);
+
+  function addFocusTask(title: string) {
+    const snapLetters: Array<FocusTask["snap"]> = ["S", "N", "A", "P"];
+    const snap = snapLetters[(title.length + focusTasks.length) % 4]!;
+    const task: FocusTask = {
+      id: crypto.randomUUID(),
+      title: title.trim(),
+      snap,
+      done: false,
+    };
+    setFocusTasks((prev) => [task, ...prev].slice(0, 10));
+    toast.success("Task added");
+  }
+
+  function toggleTask(id: string) {
+    setFocusTasks((prev) => prev.map((t) => (t.id === id ? { ...t, done: !t.done } : t)));
+  }
+
+  const snapWeight: Record<FocusTask["snap"], number> = { S: 4, N: 3, A: 2, P: 1 };
+  const top3 = [...focusTasks]
+    .sort((a, b) => snapWeight[b.snap] - snapWeight[a.snap])
+    .slice(0, 3);
+
+  const recentActivityFallback = (builtIns as any[]).slice(0, 5).map((t) => ({
+    id: t._id,
+    title: t.name,
+    meta: `Trigger: ${t.trigger?.type ?? "manual"}`,
+  }));
+  const recentActivityDisplay =
+    Array.isArray(recentActivity) && (recentActivity as any[]).length > 0
+      ? (recentActivity as any[])
+      : recentActivityFallback;
+
   return (
     <div className="space-y-6">
-      {/* Quick Actions */}
-      <div className="border bg-card/50 backdrop-blur supports-[backdrop-filter]:bg-card/60 rounded-xl p-4 mb-6">
-        <div className="flex flex-wrap items-center gap-3">
-          <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-            <DialogTrigger asChild>
-              <Button variant="default" size="sm">Create Content</Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Create content draft</DialogTitle>
-                <DialogDescription>Compose a quick newsletter or announcement.</DialogDescription>
-              </DialogHeader>
-              <form onSubmit={handleCreateContentSubmit} className="space-y-3">
-                <div>
-                  <label className="text-sm mb-1 block">Title</label>
-                  <Input name="title" placeholder="Weekly update" />
-                </div>
-                <div>
-                  <label className="text-sm mb-1 block">Content</label>
-                  <Textarea name="content" placeholder="Write your content..." className="min-h-28" />
-                </div>
-                <Card className="border-dashed">
-                  <CardContent className="pt-4 space-y-2">
-                    <div className="text-xs text-muted-foreground">Optional CTA</div>
-                    <Input name="cta" placeholder="https://example.com/learn-more" />
-                  </CardContent>
-                </Card>
-                <DialogFooter>
-                  <Button type="button" variant="ghost" onClick={() => setCreateOpen(false)}>Cancel</Button>
-                  <Button type="submit">Save Draft</Button>
-                </DialogFooter>
-              </form>
-            </DialogContent>
-          </Dialog>
-
-          <Dialog open={scheduleOpen} onOpenChange={setScheduleOpen}>
-            <DialogTrigger asChild>
-              <Button variant="outline" size="sm">Schedule Posts</Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Schedule a post</DialogTitle>
-                <DialogDescription>Pick a time and channel.</DialogDescription>
-              </DialogHeader>
-              <form onSubmit={handleScheduleSubmit} className="space-y-3">
-                <div>
-                  <label className="text-sm mb-1 block">Post content</label>
-                  <Textarea name="post" placeholder="What's new?" className="min-h-24" />
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-sm mb-1 block">When</label>
-                    <Input name="when" type="datetime-local" />
-                  </div>
-                  <div>
-                    <label className="text-sm mb-1 block">Channel</label>
-                    <Input name="channel" placeholder="twitter | linkedin | email" />
-                  </div>
-                </div>
-                <DialogFooter>
-                  <Button type="button" variant="ghost" onClick={() => setScheduleOpen(false)}>Cancel</Button>
-                  <Button type="submit">Schedule</Button>
-                </DialogFooter>
-              </form>
-            </DialogContent>
-          </Dialog>
-
-          {/* View Analytics: use existing navigate if available; otherwise simple link */}
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => {
-              try {
-                if (typeof navigate === "function") navigate("/analytics")
-                else window.location.href = "/analytics"
-              } catch {
-                window.location.href = "/analytics"
-              }
-            }}
-          >
-            View Analytics
-          </Button>
-
-          <Drawer open={helpOpen} onOpenChange={setHelpOpen}>
-            <DrawerTrigger asChild>
-              <Button variant="ghost" size="sm">Get Help</Button>
-            </DrawerTrigger>
-            <DrawerContent>
-              <DrawerHeader>
-                <DrawerTitle>Need help?</DrawerTitle>
-                <DrawerDescription>Quick tips and links for Solopreneurs.</DrawerDescription>
-              </DrawerHeader>
-              <div className="px-4 pb-4 space-y-3">
-                <ul className="text-sm list-disc pl-5 space-y-2">
-                  <li>Start with top tasks prioritized on your dashboard.</li>
-                  <li>Use "Create Content" for newsletters or announcements.</li>
-                  <li>Schedule posts to maintain consistent engagement.</li>
-                  <li>Check Analytics for performance trends.</li>
-                </ul>
-                <div className="text-xs text-muted-foreground">
-                  For more assistance, reach out via the support channel in the app header.
-                </div>
-              </div>
-              <DrawerFooter>
-                <DrawerClose asChild>
-                  <Button variant="default">Close</Button>
-                </DrawerClose>
-              </DrawerFooter>
-            </DrawerContent>
-          </Drawer>
-        </div>
-      </div>
-
-      {/* Today's Focus */}
-      <section>
-        <h2 className="text-xl font-semibold mb-4">Today's Focus</h2>
-
-        {/* Add: Seed button when authenticated and no tasks yet */}
-        {!isGuest && business?._id && (Array.isArray(tasksToShow) && tasksToShow.length === 0) && (
-          <div className="mb-3">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={async () => {
-                try {
-                  await seedTasks({ businessId: business._id, count: 3 } as any);
-                  toast.success("Sample tasks generated.");
-                } catch (e: any) {
-                  toast.error(e?.message || "Failed to generate tasks");
+      {/* A1: Today's Focus (SNAP Top 3) */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Today's Focus</CardTitle>
+          <CardDescription>Top priorities using SNAP ordering</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex gap-2">
+            <Input
+              placeholder="Add a focus task..."
+              value={focusInput}
+              onChange={(e) => setFocusInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && focusInput.trim()) {
+                  addFocusTask(focusInput);
+                  setFocusInput("");
                 }
               }}
+            />
+            <Button
+              onClick={() => {
+                if (!focusInput.trim()) return;
+                addFocusTask(focusInput);
+                setFocusInput("");
+              }}
             >
-              Generate sample tasks
+              Add
             </Button>
           </div>
-        )}
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {tasksToShow.slice(0, 3).map((task: any) => {
-            const key = task._id || task.id;
-            const due =
-              typeof task.dueDate === "number"
-                ? new Date(task.dueDate).toLocaleDateString()
-                : (task.dueDate || "—");
-            const priority = task.priority || "low";
-            return (
-              <Card key={key}>
-                <CardContent className="p-4">
-                  <h3 className="font-medium">{task.title}</h3>
-                  <p className="text-sm text-muted-foreground">Due: {due}</p>
-                  <Badge variant={priority === "high" ? "destructive" : "secondary"}>
-                    {priority}
-                  </Badge>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
-      </section>
-
-      {/* Performance Snapshot */}
-      <section>
-        <h2 className="text-xl font-semibold mb-4">Performance Snapshot</h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <StatCard
-            title="Revenue"
-            value={typeof revenueVal === "number" ? revenueVal.toLocaleString() : revenueVal}
-            prefix="$"
-            delta={revenueDelta}
-          />
-          <StatCard
-            title="Customers"
-            value={customersVal}
-            delta={subscribersDelta}
-          />
-          <StatCard
-            title="Conversion"
-            value={typeof conversionVal === "number" ? conversionVal : 0}
-            suffix="%"
-            delta={engagementDelta}
-          />
-          <StatCard
-            title="Visitors"
-            value={visitorsVal}
-            delta={visitorsDelta}
-          />
-        </div>
-      </section>
-
-      {/* KPI Trends */}
-      <section>
-        <h2 className="text-xl font-semibold mb-4">KPI Trends</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="text-sm font-medium text-muted-foreground">Revenue Trend</h3>
-                <span className="text-xs text-emerald-700">+Uptrend</span>
-              </div>
-              <Sparkline values={revenueTrend} />
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="text-sm font-medium text-muted-foreground">Task Completion</h3>
-                <span className="text-xs text-emerald-700">
-                  {(kpis?.taskCompletion ?? 0)}%
-                </span>
-              </div>
-              <Sparkline values={efficiencyTrend} color="bg-emerald-500" />
-            </CardContent>
-          </Card>
-        </div>
-      </section>
-
-      {/* Quick Actions */}
-      <section>
-        <h2 className="text-xl font-semibold mb-4">Quick Actions</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card>
-            <CardContent className="p-4">
-              <h3 className="font-medium mb-2">Send Newsletter</h3>
-              <Button 
-                className="w-full"
-                onClick={() => {
-                  if (isGuest) {
-                    toast("Please sign in to send a test email.");
-                  } else {
-                    setOpenNewsletter(true);
-                  }
-                }}
+          <div className="grid sm:grid-cols-3 gap-2">
+            {top3.map((t) => (
+              <div
+                key={t.id}
+                className={`flex items-center justify-between rounded-md border px-3 py-2 ${t.done ? "opacity-60" : ""}`}
               >
-                Send Now
-              </Button>
-            </CardContent>
-          </Card>
-
-          {/* Add: Schedule Email Campaign quick action card (authenticated only) */}
-          {!isGuest && (
-            <Card>
-              <CardContent className="p-4">
-                <h3 className="font-medium mb-2">Schedule Email Campaign</h3>
-                <Button
-                  className="w-full"
-                  onClick={() => {
-                    setOpenScheduleCampaign(true);
-                    // initialize recipients view from existing bulk state
-                    if (!bulkMode) setBulkMode(true);
-                  }}
-                >
-                  Open Scheduler
+                <div className="flex items-center gap-2 min-w-0">
+                  <Badge variant="outline">{t.snap}</Badge>
+                  <span className="truncate">{t.title}</span>
+                </div>
+                <Button size="sm" variant={t.done ? "secondary" : "default"} onClick={() => toggleTask(t.id)}>
+                  {t.done ? "Undo" : "Done"}
                 </Button>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Add: View Analytics quick action */}
-          <Card>
-            <CardContent className="p-4">
-              <h3 className="font-medium mb-2">View Analytics</h3>
-              <Button
-                className="w-full"
-                variant="secondary"
-                onClick={() => navigate("/analytics")}
-              >
-                Open Analytics
-              </Button>
-            </CardContent>
-          </Card>
-
-          {/* Manage Contacts (auth only) */}
-          {!isGuest && (
-            <Card>
-              <CardContent className="p-4">
-                <h3 className="font-medium mb-2">Manage Contacts</h3>
-                <Button className="w-full" variant="outline" onClick={() => setManageContactsOpen(true)}>
-                  Open
-                </Button>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Hide upgrade prompts for guests to allow full access */}
-          {!isGuest && <UpgradeCTA feature="Team Collaboration" />}
-          {!isGuest && <UpgradeCTA feature="Advanced Analytics" />}
-        </div>
-
-        {/* Newsletter Dialog */}
-        {!isGuest && (
-          <Dialog open={openNewsletter} onOpenChange={setOpenNewsletter}>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Send Test Newsletter</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-3">
-                {/* Bulk mode toggle */}
-                <div className="flex items-center justify-between gap-3">
-                  <div className="text-sm font-medium">Bulk send</div>
-                  <button
-                    className={`px-2 py-1 rounded border text-xs ${bulkMode ? "bg-emerald-50 border-emerald-300 text-emerald-700" : ""}`}
-                    onClick={() => setBulkMode((b) => !b)}
-                  >
-                    {bulkMode ? "On" : "Off"}
-                  </button>
-                </div>
-
-                <Input
-                  placeholder="From (must be a verified sender in Resend)"
-                  value={fromEmail}
-                  onChange={(e) => setFromEmail(e.target.value)}
-                />
-                {/* Verified sender hint and format feedback */}
-                <div className="text-xs text-muted-foreground">
-                  Use a verified sender from your Resend account (Settings → Domains). Example: news@yourdomain.com
-                </div>
-                {fromEmail.length > 0 && !emailFmtOk(fromEmail) && (
-                  <div className="text-xs text-red-500">
-                    Enter a valid email format for the From address.
-                  </div>
-                )}
-
-                {/* Recipients input - single vs bulk */}
-                {!bulkMode ? (
-                  <Input
-                    placeholder="To (recipient email)"
-                    value={toEmail}
-                    onChange={(e) => setToEmail(e.target.value)}
-                  />
-                ) : (
-                  <div className="space-y-2">
-                    <Textarea
-                      placeholder="Paste emails (comma, semicolon, or new line separated)"
-                      value={recipientsRaw}
-                      onChange={(e) => handleRecipientsChange(e.target.value)}
-                      rows={5}
-                    />
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="file"
-                        accept=".csv,.txt"
-                        onChange={(e) => handleRecipientsFile(e.target.files?.[0] || null)}
-                        className="text-sm"
-                      />
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      {recipientsList.length} valid • {invalidList.length} invalid
-                      {invalidList.length > 0 && (
-                        <> — invalids ignored</>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                <Input
-                  placeholder="Subject"
-                  value={subject}
-                  onChange={(e) => setSubject(e.target.value)}
-                />
-                <Textarea
-                  placeholder="Message"
-                  value={body}
-                  onChange={(e) => setBody(e.target.value)}
-                  rows={6}
-                />
-                <div className="flex items-center justify-end gap-2">
-                  <button
-                    className="px-3 py-2 border rounded-md"
-                    onClick={() => setOpenNewsletter(false)}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    className="px-3 py-2 rounded-md bg-emerald-600 text-white disabled:opacity-50"
-                    onClick={handleSendNewsletter}
-                    // Disable until valid
-                    disabled={
-                      !emailFmtOk(fromEmail) ||
-                      subject.trim().length === 0 ||
-                      body.trim().length === 0 ||
-                      (!bulkMode
-                        ? !emailFmtOk(toEmail)
-                        : recipientsList.length === 0)
-                    }
-                  >
-                    Send
-                  </button>
-                </div>
-                <div className="text-xs text-muted-foreground">
-                  Note: Email delivery requires RESEND_API_KEY to be configured and a verified sender address.
-                </div>
               </div>
-            </DialogContent>
-          </Dialog>
-        )}
+            ))}
+            {top3.length === 0 && <div className="text-sm text-muted-foreground">Add tasks to see your top 3 priorities.</div>}
+          </div>
+        </CardContent>
+      </Card>
 
-        {/* Manage Contacts dialog (auth only) */}
-        {!isGuest && (
-          <Dialog open={manageContactsOpen} onOpenChange={setManageContactsOpen}>
-            <DialogContent className="max-w-2xl">
-              <DialogHeader>
-                <DialogTitle>Contacts & Lists</DialogTitle>
-                <DialogDescription>Create lists and import CSV to build your audience.</DialogDescription>
-              </DialogHeader>
-
-              <div className="space-y-4">
-                {/* Create list */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
-                  <div className="sm:col-span-2">
-                    <label className="text-sm mb-1 block">New list name</label>
-                    <Input
-                      placeholder="Newsletter Audience"
-                      value={newListName}
-                      onChange={(e) => setNewListName(e.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <Button
-                      className="w-full"
-                      onClick={async () => {
-                        try {
-                          if (!newListName.trim()) {
-                            toast.error("Enter a list name.");
-                            return;
-                          }
-                          if (!business?._id || !currentUser?._id) {
-                            toast.error("Business or user is not ready yet.");
-                            return;
-                          }
-                          const id = await createListMutation({
-                            businessId: business._id,
-                            name: newListName.trim(),
-                            createdBy: currentUser._id,
-                          } as any);
-                          setNewListName("");
-                          toast.success("List created");
-                          if (id) setSelectedListId(String(id));
-                        } catch (e: any) {
-                          toast.error(e?.message || "Failed to create list");
-                        }
-                      }}
-                    >
-                      Create List
-                    </Button>
-                  </div>
-                </div>
-
-                {/* Select list */}
-                <div>
-                  <label className="text-sm mb-1 block">Select list</label>
-                  <select
-                    className="w-full border rounded-md px-3 py-2 bg-white text-sm"
-                    value={selectedListId}
-                    onChange={(e) => setSelectedListId(e.target.value)}
-                  >
-                    {(lists || []).map((l: any) => (
-                      <option key={String(l._id)} value={String(l._id)}>
-                        {l.name}
-                      </option>
-                    ))}
-                  </select>
-                  <div className="text-xs text-muted-foreground mt-1">
-                    {(lists || []).length} lists
-                  </div>
-                </div>
-
-                {/* Import CSV */}
-                <div>
-                  <label className="text-sm mb-1 block">Import CSV (email,name)</label>
-                  <Textarea
-                    placeholder="email,name\njane@example.com,Jane\njohn@example.com,John"
-                    value={csvText}
-                    onChange={(e) => setCsvText(e.target.value)}
-                    rows={6}
-                  />
-                  {/* Added: CSV file upload */}
-                  <div className="flex items-center justify-between mt-2">
-                    <input
-                      ref={uploadCsvInputRef}
-                      type="file"
-                      accept=".csv"
-                      className="hidden"
-                      onChange={async (e) => {
-                        const file = e.target.files?.[0];
-                        if (!file) return;
-                        try {
-                          const text = await file.text();
-                          setCsvText(text);
-                          const lines = text.split(/\r?\n/).filter((l) => l.trim().length > 0);
-                          const rows = lines.length > 0 && lines[0].includes(",") ? Math.max(0, lines.length - 1) : lines.length;
-                          toast.success(`CSV loaded (${rows} row${rows === 1 ? "" : "s"})`);
-
-                          // Directly import to selected list
-                          if (!selectedListId) {
-                            toast.error("Select a list.");
-                            return;
-                          }
-                          if (!business?._id || !currentUser?._id) {
-                            toast.error("Business or user is not ready yet.");
-                            return;
-                          }
-                          const res = await importCsvToList({
-                            businessId: business._id,
-                            createdBy: currentUser._id,
-                            listId: selectedListId as any,
-                            csvText: text,
-                          } as any);
-                          toast.success(`Imported ${res?.added ?? 0} contacts`);
-                        } catch (err: any) {
-                          toast.error(err?.message || "Failed to read CSV");
-                        } finally {
-                          if (uploadCsvInputRef.current) uploadCsvInputRef.current.value = "";
-                        }
-                      }}
-                    />
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      onClick={() => uploadCsvInputRef.current?.click()}
-                    >
-                      Upload CSV file
-                    </Button>
-                    <div className="text-xs text-muted-foreground">
-                      You can paste or upload a .csv (email,name)
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-end gap-2 mt-2">
-                    <Button
-                      variant="ghost"
-                      onClick={() => setCsvText("")}
-                    >
-                      Clear
-                    </Button>
-                    <Button
-                      onClick={async () => {
-                        try {
-                          if (!selectedListId) {
-                            toast.error("Select a list.");
-                            return;
-                          }
-                          if (!csvText.trim()) {
-                            toast.error("Paste CSV content.");
-                            return;
-                          }
-                          if (!business?._id || !currentUser?._id) {
-                            toast.error("Business or user is not ready yet.");
-                            return;
-                          }
-                          const res = await importCsvToList({
-                            businessId: business._id,
-                            createdBy: currentUser._id,
-                            listId: selectedListId as any,
-                            csvText,
-                          } as any);
-                          toast.success(`Imported ${res?.added ?? 0} contacts`);
-                        } catch (e: any) {
-                          toast.error(e?.message || "Failed to import");
-                        }
-                      }}
-                    >
-                      Import to List
-                    </Button>
-                  </div>
-                </div>
-
-                {/* Seed sample contacts */}
-                <div className="flex items-center justify-between rounded-md border p-3">
-                  <div className="text-sm text-muted-foreground">
-                    Generate a sample contact list to try campaigns quickly.
-                  </div>
-                  <Button
-                    variant="secondary"
-                    onClick={async () => {
-                      try {
-                        if (!business?._id || !currentUser?._id) {
-                          toast.error("Business or user is not ready yet.");
-                          return;
-                        }
-                        const r = await seedContactsAction({
-                          businessId: business._id,
-                          createdBy: currentUser._id,
-                          count: 10,
-                        } as any);
-                        toast.success("Sample contacts created");
-                      } catch (e: any) {
-                        toast.error(e?.message || "Failed to seed contacts");
-                      }
-                    }}
-                  >
-                    Generate Samples
-                  </Button>
-                </div>
-
-                {/* Scheduler audience mode helper */}
-                <div className="rounded-md border p-3">
-                  <div className="text-sm font-medium mb-2">Campaign Audience</div>
-                  <div className="flex items-center gap-3 text-sm">
-                    <label className="flex items-center gap-2">
-                      <input
-                        type="radio"
-                        name="audienceMode"
-                        checked={scheduleMode === "direct"}
-                        onChange={() => setScheduleMode("direct")}
-                      />
-                      Direct (paste recipients)
-                    </label>
-                    <label className="flex items-center gap-2">
-                      <input
-                        type="radio"
-                        name="audienceMode"
-                        checked={scheduleMode === "list"}
-                        onChange={() => setScheduleMode("list")}
-                      />
-                      Contact List (selected above)
-                    </label>
-                  </div>
-                  <div className="text-xs text-muted-foreground mt-1">
-                    The selected audience applies when you use "Schedule Email Campaign".
-                  </div>
-                </div>
-              </div>
-
-              <DialogFooter>
-                <Button variant="default" onClick={() => setManageContactsOpen(false)}>Close</Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-        )}
-      </section>
-
-      {/* Recent Activity */}
-      <section>
-        <h2 className="text-xl font-semibold mb-4">Recent Activity</h2>
+      {/* A2: Performance Snapshot + Recent Activity */}
+      <div className="grid md:grid-cols-2 gap-4">
         <Card>
-          <CardContent className="p-4">
-            <div className="space-y-3">
-              {(isGuest
-                ? (demoData?.notifications || [])
-                : (recentActivity || [])
-              ).slice(0, 8).map((item: any, idx: number) => {
-                // Normalize fields between demo notifications and unified activity items
-                const key = item._id || item.id || idx;
-                const type = item.type || item.kind || "info";
-                const message = item.message || item.title || "Activity";
-                const ts = item.time || item.createdAt || item._creationTime || null;
-
-                const color =
-                  type === "success" || type === "workflow_completion"
-                    ? "bg-green-500"
-                    : type === "warning" || type === "sla_warning"
-                    ? "bg-yellow-500"
-                    : type === "urgent" || type === "system_alert" || type === "integration_error" || item.priority === "high"
-                    ? "bg-red-500"
-                    : "bg-blue-500";
-
-                return (
-                  <div key={key} className="flex items-center justify-between gap-3 p-2 rounded border">
-                    <div className="flex items-center gap-3">
-                      <div className={`w-2 h-2 rounded-full ${color}`} />
-                      <span className="text-sm">{message}</span>
-                    </div>
-                    {ts ? (
-                      <span className="text-xs text-muted-foreground">
-                        {new Date(ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                      </span>
-                    ) : null}
-                  </div>
-                );
-              })}
+          <CardHeader>
+            <CardTitle>Performance Snapshot</CardTitle>
+            <CardDescription>Last 7 days</CardDescription>
+          </CardHeader>
+          <CardContent className="grid grid-cols-2 gap-3">
+            <div className="rounded-md border p-3">
+              <div className="text-xs text-muted-foreground">Visitors</div>
+              <div className="text-xl font-semibold">{snapshot.visitors ?? 0}</div>
+              <div className={`text-xs ${((snapshot.visitorsDelta ?? 0) >= 0) ? "text-emerald-600" : "text-red-600"}`}>
+                {((snapshot.visitorsDelta ?? 0) >= 0) ? "▲" : "▼"} {Math.abs(snapshot.visitorsDelta ?? 0)}%
+              </div>
+            </div>
+            <div className="rounded-md border p-3">
+              <div className="text-xs text-muted-foreground">Subscribers</div>
+              <div className="text-xl font-semibold">{snapshot.subscribers ?? 0}</div>
+              <div className={`text-xs ${((snapshot.subscribersDelta ?? 0) >= 0) ? "text-emerald-600" : "text-red-600"}`}>
+                {((snapshot.subscribersDelta ?? 0) >= 0) ? "▲" : "▼"} {Math.abs(snapshot.subscribersDelta ?? 0)}%
+              </div>
+            </div>
+            <div className="rounded-md border p-3">
+              <div className="text-xs text-muted-foreground">Engagement</div>
+              <div className="text-xl font-semibold">{snapshot.engagement ?? 0}%</div>
+              <div className={`text-xs ${((snapshot.engagementDelta ?? 0) >= 0) ? "text-emerald-600" : "text-red-600"}`}>
+                {((snapshot.engagementDelta ?? 0) >= 0) ? "▲" : "▼"} {Math.abs(snapshot.engagementDelta ?? 0)}%
+              </div>
+            </div>
+            <div className="rounded-md border p-3">
+              <div className="text-xs text-muted-foreground">Revenue</div>
+              <div className="text-xl font-semibold">${snapshot.revenue ?? 0}</div>
+              <div className={`text-xs ${((snapshot.revenueDelta ?? 0) >= 0) ? "text-emerald-600" : "text-red-600"}`}>
+                {((snapshot.revenueDelta ?? 0) >= 0) ? "▲" : "▼"} {Math.abs(snapshot.revenueDelta ?? 0)}%
+              </div>
             </div>
           </CardContent>
         </Card>
-      </section>
 
-      {/* Add: Campaigns section (authenticated only) */}
-      {!isGuest && (
-        <section>
-          <h2 className="text-xl font-semibold mb-4">Email Campaigns</h2>
-          <Card>
-            <CardContent className="p-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {(campaigns || []).map((c: any) => {
-                  const when =
-                    typeof c.scheduledAt === "number"
-                      ? new Date(c.scheduledAt).toLocaleString()
-                      : "—";
-                  const count = Array.isArray(c.recipients) ? c.recipients.length : 0;
-                  const sent = Array.isArray(c.sendIds) ? c.sendIds.length : 0;
-                  return (
-                    <div key={String(c._id)} className="border rounded-lg p-3">
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="font-medium truncate" title={c.subject}>{c.subject}</div>
-                        <Badge variant={c.status === "scheduled" ? "secondary" : (c.status === "sent" ? "default" : "outline")}>
-                          {c.status}
-                        </Badge>
-                      </div>
-                      <div className="text-sm text-muted-foreground space-y-1">
-                        <div>When: {when}</div>
-                        <div>Recipients: {count}</div>
-                        <div>Sent IDs: {sent}</div>
-                      </div>
-                    </div>
-                  );
-                })}
-                {(campaigns && campaigns.length === 0) && (
-                  <div className="text-sm text-muted-foreground">
-                    No campaigns yet. Schedule your first campaign above.
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </section>
-      )}
-
-      {/* Initiatives CTA section */}
-      <div className="mt-6">
-        <Card className="border-dashed">
+        <Card>
           <CardHeader>
-            <CardTitle>Initiatives for Solopreneurs</CardTitle>
-            <CardDescription>
-              Define one clear initiative at a time, track progress simply, and link it to your most impactful workflow.
-            </CardDescription>
+            <CardTitle>Recent Activity</CardTitle>
+            <CardDescription>Last 5 items</CardDescription>
           </CardHeader>
-          <CardContent className="flex items-center justify-between gap-4">
-            <p className="text-sm text-muted-foreground">
-              Start lean: pick a single measurable outcome and connect it to an execution workflow.
-            </p>
-            <Button asChild size="sm" variant="default">
-              <a href="/initiatives">Open Initiatives</a>
-            </Button>
+          <CardContent className="space-y-2">
+            {(recentActivityDisplay || []).map((a: any) => (
+              <div key={a.id} className="flex items-center justify-between rounded-md border px-3 py-2">
+                <div className="min-w-0">
+                  <div className="truncate text-sm font-medium">{a.title}</div>
+                  <div className="text-xs text-muted-foreground">{a.meta}</div>
+                </div>
+                <Badge variant="outline">Log</Badge>
+              </div>
+            ))}
+            {((recentActivityDisplay || []).length === 0) && (
+              <div className="text-sm text-muted-foreground">No recent activity yet.</div>
+            )}
           </CardContent>
         </Card>
       </div>
+
+      {/* A3: Quick Actions */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Quick Actions</CardTitle>
+          <CardDescription>Jump into common workflows</CardDescription>
+        </CardHeader>
+        <CardContent className="grid sm:grid-cols-4 gap-3">
+          <Button className="w-full" onClick={() => toast("Open content creator")}><Pencil className="mr-2 h-4 w-4" />Create Content</Button>
+          <Button className="w-full" variant="outline" onClick={() => navigate("/workflows")}><Zap className="mr-2 h-4 w-4" />Schedule Posts</Button>
+          <Button className="w-full" variant="outline" onClick={() => navigate("/analytics")}><BarChart3 className="mr-2 h-4 w-4" />View Analytics</Button>
+          <Button className="w-full" variant="secondary" onClick={() => setHelpOpen(true)}><HelpCircle className="mr-2 h-4 w-4" />Get Help</Button>
+        </CardContent>
+      </Card>
+
+      {/* A4: Pre-built Templates entry */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Jumpstart with Templates</CardTitle>
+          <CardDescription>Use a proven recipe in one click</CardDescription>
+        </CardHeader>
+        <CardContent className="grid sm:grid-cols-2 gap-3">
+          {(builtIns as any[]).slice(0, 2).map((t) => (
+            <div key={t._id} className="rounded-md border p-3">
+              <div className="flex items-center justify-between gap-2">
+                <div className="min-w-0">
+                  <div className="truncate font-medium">{t.name}</div>
+                  {t.description && <div className="text-xs text-muted-foreground truncate">{t.description}</div>}
+                </div>
+                <Button
+                  size="sm"
+                  onClick={async () => {
+                    try {
+                      // Reuse existing copy path; relies on server using user's first business internally if applicable
+                      await copyBuiltIn({ businessId: undefined as any, key: t._id });
+                      toast.success("Template copied to your workflows");
+                      navigate("/workflows");
+                    } catch (e: any) {
+                      toast.error(e?.message ?? "Failed to use template");
+                    }
+                  }}
+                >
+                  Use Template
+                </Button>
+              </div>
+              <div className="mt-2 flex items-center gap-3 text-xs text-muted-foreground">
+                <span>Steps: {t.pipeline?.length ?? 0}</span>
+                <span>Trigger: {t.trigger?.type ?? "manual"}</span>
+              </div>
+              {Array.isArray(t.tags) && t.tags.length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-1">
+                  {t.tags.slice(0, 4).map((tag: string) => (
+                    <Badge key={tag} variant="outline" className="text-[10px]">{tag}</Badge>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+          {(builtIns as any[]).length === 0 && (
+            <div className="text-sm text-muted-foreground">No templates available.</div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Help drawer stub */}
+      {helpOpen && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-end md:items-center md:justify-center">
+          <div className="w-full md:w-[480px] bg-background border-t md:border rounded-t-xl md:rounded-xl p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="font-medium">Need help?</div>
+              <Button variant="ghost" onClick={() => setHelpOpen(false)}>Close</Button>
+            </div>
+            <div className="text-sm text-muted-foreground">
+              Browse docs, or contact us via the support link in the footer. Starter tips:
+              - Use templates to get value fast
+              - Check Analytics for performance snapshot
+              - Add 3 tasks to Today's Focus to stay on track
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => navigate("/workflows")}><Zap className="mr-2 h-4 w-4" />Open Templates</Button>
+              <Button variant="outline" onClick={() => navigate("/analytics")}><BarChart3 className="mr-2 h-4 w-4" />Open Analytics</Button>
+              <Button onClick={() => setHelpOpen(false)}><Calendar className="mr-2 h-4 w-4" />Book Onboarding</Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
