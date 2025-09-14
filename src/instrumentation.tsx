@@ -186,7 +186,8 @@ export function InstrumentationProvider({
     try {
       const hasResend = Boolean((envStatus as any)?.hasResend);
       const hasSalesInbox = Boolean((envStatus as any)?.hasSalesInbox);
-      const hasBaseUrl = Boolean((envStatus as any)?.hasBaseUrl);
+      // Fix: align with backend property name (health.ts returns hasPublicBaseUrl)
+      const hasBaseUrl = Boolean((envStatus as any)?.hasPublicBaseUrl);
       const devSafeEmails = Boolean((envStatus as any)?.devSafeEmails);
 
       if (!hasResend) {
