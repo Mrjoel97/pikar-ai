@@ -73,6 +73,8 @@ export default function WorkflowsPage() {
   const [tplTier, setTplTier] = useState<string>("all");
   const [isCopyingId, setIsCopyingId] = useState<string | null>(null);
   const [isSeeding, setIsSeeding] = useState(false);
+  // Add: Role filter state
+  const [roleFilter, setRoleFilter] = useState<string>("all");
 
   const [formData, setFormData] = useState({
     name: "",
@@ -279,91 +281,47 @@ export default function WorkflowsPage() {
     }
   };
 
-  if (authLoading) {
-    return (
-      <div className="max-w-6xl mx-auto p-6">
-        <div className="animate-pulse h-8 w-40 rounded bg-muted mb-4" />
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="h-32 rounded-lg bg-muted" />
-          <div className="h-32 rounded-lg bg-muted" />
-        </div>
-      </div>
-    );
-  }
+  // Helpers for Startup enforcement and health checks
+  const getHandoffIssues = (wf: any) => {
+    const steps: any[] = Array.isArray(wf?.pipeline) ? wf.pipeline : [];
+    const hasApproval = steps.some((s) => (s?.kind || s?.type) === "approval");
+    const approvalsMissingRole = steps.some((s) => {
+      const k = s?.kind || s?.type;
+      const role = s?.approverRole || s?.config?.approverRole;
+      return k === "approval" && (!role || String(role).trim().length === 0);
+    });
+    const hasSlaDelay = steps.some((s) => {
+      const k = s?.kind || s?.type;
+      const delay = s?.delayMinutes ?? s?.config?.delayMinutes ?? 0;
+      return k === "delay" && delay > 0;
+    });
+    const hasDescription = !!(wf?.description && String(wf.description).trim().length > 0);
 
-  if (!isAuthenticated && !guestMode) {
-    return (
-      <div className="min-h-[60vh] flex items-center justify-center px-6">
-        <Card className="max-w-md w-full">
-          <CardHeader>
-            <CardTitle>Welcome</CardTitle>
-            <CardDescription>Sign in to manage workflows.</CardDescription>
-          </CardHeader>
-          <CardContent className="flex gap-3">
-            <Button onClick={() => navigate("/auth")}>Sign In</Button>
-            <Button variant="outline" onClick={() => navigate("/")}>Go Home</Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+    const issues: string[] = [];
+    if (!hasApproval) issues.push("Missing approval step");
+    if (approvalsMissingRole) issues.push("Approver role missing");
+    if (!hasSlaDelay) issues.push("Missing SLA delay");
+    if (!hasDescription) issues.push("Description missing");
+    return issues;
+  };
 
-  if (guestMode) {
-    return (
-      <div className="max-w-6xl mx-auto px-4 md:px-6 py-6 space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-semibold">Orchestration & Workflows (Demo)</h1>
-            <p className="text-sm text-muted-foreground">
-              Viewing demo workflows for your selected tier. Sign in to create and run workflows.
-            </p>
-          </div>
-        </div>
-
-        <div className="text-xs text-muted-foreground">
-          {guestTemplates ? guestTemplates.length : 0} demo workflow{(guestTemplates?.length || 0) === 1 ? "" : "s"} found
-        </div>
-
-        <div className="grid gap-4">
-          {(guestTemplates || []).map((template: any) => (
-            <Card key={template._id}>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    {getTriggerIcon(template.trigger.type)}
-                    <CardTitle className="text-lg">{template.name}</CardTitle>
-                    <Badge variant="secondary">Demo</Badge>
-                  </div>
-                </div>
-                {template.description && (
-                  <CardDescription>{template.description}</CardDescription>
-                )}
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                  <span>Steps: {template.pipeline?.length ?? 0}</span>
-                  <span>Trigger: {template.trigger.type}</span>
-                  {template.trigger.cron && <span>Schedule: {template.trigger.cron}</span>}
-                  {template.trigger.eventKey && <span>Event: {template.trigger.eventKey}</span>}
-                  {template.approval?.required && <span>Approval Required</span>}
-                </div>
-                {template.tags?.length > 0 && (
-                  <div className="flex gap-1 mt-2 flex-wrap">
-                    {template.tags.map((tag: string) => (
-                      <Badge key={tag} variant="outline" className="text-xs">{tag}</Badge>
-                    ))}
-                  </div>
-                )}
-                <div className="mt-3 text-xs text-muted-foreground">
-                  Actions like simulate, compliance scan, and editing require signing in.
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </div>
-    );
-  }
+  // Quick-add helpers (top-level)
+  const addApprovalAtEnd = (wf: any) => {
+    const biz = businesses?.[0];
+    const defaultApproval = getDefaultApproverForTier(biz?.tier);
+    setEditedPipelines((prev) => {
+      const current = prev[wf._id] ? [...prev[wf._id]] : (wf.pipeline || []).map((x: any) => ({ ...x }));
+      current.push({ kind: "approval", approverRole: defaultApproval });
+      return { ...prev, [wf._id]: current };
+    });
+  };
+  const addDelayAtEnd = (wf: any, minutes = 60) => {
+    setEditedPipelines((prev) => {
+      const current = prev[wf._id] ? [...prev[wf._id]] : (wf.pipeline || []).map((x: any) => ({ ...x }));
+      current.push({ kind: "delay", delayMinutes: minutes });
+      return { ...prev, [wf._id]: current };
+    });
+  };
 
   const handleSimulate = async (workflow: any) => {
     try {
@@ -485,9 +443,20 @@ export default function WorkflowsPage() {
     });
   };
 
+  // Enforce Startup standards on save
   const savePipeline = async (wf: any) => {
     try {
       const pipeline = editedPipelines[wf._id] ?? wf.pipeline;
+      const tier = (businesses?.[0]?.tier as string | undefined);
+
+      if (tier === "startup") {
+        const issues = getHandoffIssues({ ...wf, pipeline });
+        if (issues.length > 0) {
+          toast.error("Standards check failed", { description: issues.join(" • ") });
+          return;
+        }
+      }
+
       await upsertWorkflow({
         id: wf._id,
         businessId: wf.businessId,
@@ -504,6 +473,92 @@ export default function WorkflowsPage() {
       toast.error(e?.message || "Failed to save pipeline");
     }
   };
+
+  if (authLoading) {
+    return (
+      <div className="max-w-6xl mx-auto p-6">
+        <div className="animate-pulse h-8 w-40 rounded bg-muted mb-4" />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="h-32 rounded-lg bg-muted" />
+          <div className="h-32 rounded-lg bg-muted" />
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated && !guestMode) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center px-6">
+        <Card className="max-w-md w-full">
+          <CardHeader>
+            <CardTitle>Welcome</CardTitle>
+            <CardDescription>Sign in to manage workflows.</CardDescription>
+          </CardHeader>
+          <CardContent className="flex gap-3">
+            <Button onClick={() => navigate("/auth")}>Sign In</Button>
+            <Button variant="outline" onClick={() => navigate("/")}>Go Home</Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (guestMode) {
+    return (
+      <div className="max-w-6xl mx-auto px-4 md:px-6 py-6 space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-semibold">Orchestration & Workflows (Demo)</h1>
+            <p className="text-sm text-muted-foreground">
+              Viewing demo workflows for your selected tier. Sign in to create and run workflows.
+            </p>
+          </div>
+        </div>
+
+        <div className="text-xs text-muted-foreground">
+          {guestTemplates ? guestTemplates.length : 0} demo workflow{(guestTemplates?.length || 0) === 1 ? "" : "s"} found
+        </div>
+
+        <div className="grid gap-4">
+          {(guestTemplates || []).map((template: any) => (
+            <Card key={template._id}>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    {getTriggerIcon(template.trigger.type)}
+                    <CardTitle className="text-lg">{template.name}</CardTitle>
+                    <Badge variant="secondary">Demo</Badge>
+                  </div>
+                </div>
+                {template.description && (
+                  <CardDescription>{template.description}</CardDescription>
+                )}
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                  <span>Steps: {template.pipeline?.length ?? 0}</span>
+                  <span>Trigger: {template.trigger.type}</span>
+                  {template.trigger.cron && <span>Schedule: {template.trigger.cron}</span>}
+                  {template.trigger.eventKey && <span>Event: {template.trigger.eventKey}</span>}
+                  {template.approval?.required && <span>Approval Required</span>}
+                </div>
+                {template.tags?.length > 0 && (
+                  <div className="flex gap-1 mt-2 flex-wrap">
+                    {template.tags.map((tag: string) => (
+                      <Badge key={tag} variant="outline" className="text-xs">{tag}</Badge>
+                    ))}
+                  </div>
+                )}
+                <div className="mt-3 text-xs text-muted-foreground">
+                  Actions like simulate, compliance scan, and editing require signing in.
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-6xl mx-auto px-4 md:px-6 py-6 space-y-6">
@@ -849,140 +904,254 @@ export default function WorkflowsPage() {
         </TabsList>
 
         <TabsContent value="all" className="space-y-4">
-          <div className="grid gap-4">
-            {workflows?.map((workflow: any) => (
-              <Card key={workflow._id}>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      {getTriggerIcon(workflow.trigger.type)}
-                      <CardTitle className="text-lg">{workflow.name}</CardTitle>
-                      {workflow.template && <Badge variant="secondary">Template</Badge>}
-                    </div>
-                    <div className="flex gap-2">
-                      <Button size="sm" variant="outline" onClick={() => handleSimulate(workflow)}>
-                        Simulate
-                      </Button>
-                      <Button size="sm" variant="outline" onClick={() => handleComplianceScan(workflow)}>
-                        Compliance Scan
-                      </Button>
-                      <Button size="sm" variant="outline" onClick={() => setSelectedWorkflow(workflow._id)}>
-                        <BarChart3 className="h-4 w-4 mr-1" />
-                        Executions
-                      </Button>
-                      <Button size="sm" variant="outline" onClick={() => toggleExpand(workflow)}>
-                        {expanded[workflow._id] ? "Hide" : "Pipeline"}
-                      </Button>
-                    </div>
-                  </div>
-                  {workflow.description && (
-                    <CardDescription>{workflow.description}</CardDescription>
-                  )}
-                </CardHeader>
-                <CardContent>
-                  <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                    <span>Steps: {workflow.pipeline?.length ?? 0}</span>
-                    <span>Trigger: {workflow.trigger.type}</span>
-                    {workflow.trigger.cron && <span>Schedule: {workflow.trigger.cron}</span>}
-                    {workflow.trigger.eventKey && <span>Event: {workflow.trigger.eventKey}</span>}
-                    {workflow.approval.required && <span>Approval Required</span>}
-                  </div>
-                  {/* Add: ROI badge */}
-                  <div className="mt-2">
-                    {(() => {
-                      const roi = estimateRoiBadge(workflow);
-                      return <Badge variant={roi.variant}>{roi.label}</Badge>;
-                    })()}
-                  </div>
-                  {workflow.tags?.length > 0 && (
-                    <div className="flex gap-1 mt-2">
-                      {(workflow.tags ?? []).map((tag: string) => (
-                        <Badge key={tag} variant="outline" className="text-xs">{tag}</Badge>
-                      ))}
-                    </div>
-                  )}
-                  {(() => {
-                    const roles = extractApproverRoles(workflow);
-                    if (!roles.length) return null;
-                    return (
-                      <div className="text-xs text-muted-foreground">
-                        Roles: {roles.join(", ")}
-                      </div>
-                    );
-                  })()}
-                </CardContent>
+          {/* Add: Role filter control */}
+          {(() => {
+            const list: any[] = Array.isArray(workflows) ? workflows : [];
+            const roleSet = new Set<string>();
+            for (const wf of list) {
+              for (const r of extractApproverRoles(wf)) roleSet.add(r);
+            }
+            const roles = Array.from(roleSet).sort((a, b) => a.localeCompare(b));
+            return (
+              <div className="flex items-center gap-2">
+                <div className="text-sm text-muted-foreground">Filter by approver role:</div>
+                <Select value={roleFilter} onValueChange={setRoleFilter}>
+                  <SelectTrigger className="w-56">
+                    <SelectValue placeholder="Approver role" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All roles</SelectItem>
+                    {roles.map((r) => (
+                      <SelectItem key={r} value={r}>{r}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {roleFilter !== "all" && (
+                  <Button size="sm" variant="outline" onClick={() => setRoleFilter("all")}>
+                    Clear role filter
+                  </Button>
+                )}
+              </div>
+            );
+          })()}
 
-                {expanded[workflow._id] && (
-                  <div className="border-t pt-3 space-y-2">
-                    {(editedPipelines[workflow._id] ?? workflow.pipeline).map((step: any, idx: number) => {
-                      const kind = getStepKind(step);
+          <div className="grid gap-4">
+            {(() => {
+              const list: any[] = Array.isArray(workflows) ? workflows : [];
+              const filtered = roleFilter === "all"
+                ? list
+                : list.filter((wf: any) => extractApproverRoles(wf).includes(roleFilter));
+              return filtered.map((workflow: any) => (
+                <Card key={workflow._id}>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        {getTriggerIcon(workflow.trigger.type)}
+                        <CardTitle className="text-lg">{workflow.name}</CardTitle>
+                        {workflow.template && <Badge variant="secondary">Template</Badge>}
+                      </div>
+                      <div className="flex gap-2">
+                        <Button size="sm" variant="outline" onClick={() => handleSimulate(workflow)}>
+                          Simulate
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={() => handleComplianceScan(workflow)}>
+                          Compliance Scan
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={() => setSelectedWorkflow(workflow._id)}>
+                          <BarChart3 className="h-4 w-4 mr-1" />
+                          Executions
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={() => toggleExpand(workflow)}>
+                          {expanded[workflow._id] ? "Hide" : "Pipeline"}
+                        </Button>
+                      </div>
+                    </div>
+                    {workflow.description && (
+                      <CardDescription>{workflow.description}</CardDescription>
+                    )}
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                      <span>Steps: {workflow.pipeline?.length ?? 0}</span>
+                      <span>Trigger: {workflow.trigger.type}</span>
+                      {workflow.trigger.cron && <span>Schedule: {workflow.trigger.cron}</span>}
+                      {workflow.trigger.eventKey && <span>Event: {workflow.trigger.eventKey}</span>}
+                      {workflow.approval.required && <span>Approval Required</span>}
+                    </div>
+                    {/* ROI badge */}
+                    <div className="mt-2">
+                      {(() => {
+                        const roi = estimateRoiBadge(workflow);
+                        return <Badge variant={roi.variant}>{roi.label}</Badge>;
+                      })()}
+                    </div>
+                    {/* Add: Handoff Health indicator */}
+                    {(() => {
+                      const issues = getHandoffIssues(workflow);
+                      if (issues.length === 0) {
+                        return (
+                          <div className="mt-2">
+                            <Badge variant="secondary" className="text-xs">Handoff Health: Good</Badge>
+                          </div>
+                        );
+                      }
                       return (
-                        <div key={idx} className="flex items-center justify-between p-2 border rounded">
-                          <div className="text-sm">
-                            <div className="font-medium capitalize">{kind}</div>
-                            {kind === "branch" && (
-                              <div className="text-xs text-muted-foreground">
-                                IF {step?.condition?.metric} {step?.condition?.op} {String(step?.condition?.value)} THEN → {step?.onTrueNext} ELSE → {step?.onFalseNext}
-                              </div>
-                            )}
-                            {kind === "approval" && (
-                              <div className="text-xs text-muted-foreground">Approver: {step?.approverRole || step?.config?.approverRole || "manager"}</div>
-                            )}
-                            {kind === "delay" && (
-                              <div className="text-xs text-muted-foreground">Delay: {step?.delayMinutes || step?.config?.delayMinutes || 0} min</div>
-                            )}
-                          </div>
-                          <div className="mt-1 flex flex-wrap items-center gap-2">
-                            <Input
-                              className="h-8 w-64"
-                              placeholder="Step title (optional)"
-                              value={step?.title || ""}
-                              onChange={(e: ChangeEvent<HTMLInputElement>) => setStepField(workflow, idx, { title: e.target.value })}
-                            />
-                            {kind === "approval" && (
-                              <Input
-                                className="h-8 w-56"
-                                placeholder="Approver role"
-                                value={step?.approverRole || step?.config?.approverRole || ""}
-                                onChange={(e: ChangeEvent<HTMLInputElement>) => setStepField(workflow, idx, { approverRole: e.target.value })}
-                              />
-                            )}
-                            {kind === "delay" && (
-                              <Input
-                                type="number"
-                                className="h-8 w-40"
-                                placeholder="Delay minutes"
-                                value={String(step?.delayMinutes ?? step?.config?.delayMinutes ?? 0)}
-                                onChange={(e: ChangeEvent<HTMLInputElement>) => setStepField(workflow, idx, { delayMinutes: parseInt(e.target.value) || 0 })}
-                              />
-                            )}
-                          </div>
-                          {kind === "agent" && (
-                            <div className="flex items-center gap-2">
-                              <Switch checked={!!step?.mmrRequired} onCheckedChange={(v: boolean) => toggleMMR(workflow, idx, !!v)} id={`mmr-${workflow._id}-${idx}`} />
-                              <Label htmlFor={`mmr-${workflow._id}-${idx}`}>Require human review</Label>
-                            </div>
-                          )}
-                          <div className="flex items-center gap-1">
-                            <Button size="sm" variant="outline" onClick={() => addStep(workflow, idx, "agent")}>+Agent</Button>
-                            <Button size="sm" variant="outline" onClick={() => addStep(workflow, idx, "approval")}>+Approval</Button>
-                            <Button size="sm" variant="outline" onClick={() => addStep(workflow, idx, "delay")}>+Delay</Button>
-                            <Button size="sm" variant="outline" onClick={() => addStep(workflow, idx, "branch")}>+Branch</Button>
-                            <Button size="sm" variant="outline" onClick={() => moveStep(workflow, idx, -1)}>Up</Button>
-                            <Button size="sm" variant="outline" onClick={() => moveStep(workflow, idx, 1)}>Down</Button>
-                            <Button size="sm" variant="destructive" onClick={() => removeStep(workflow, idx)}>Remove</Button>
-                          </div>
+                        <div className="mt-2 flex flex-wrap gap-1">
+                          <Badge variant="destructive" className="text-xs">Handoff Health: Needs Attention</Badge>
+                          {issues.map((it, i) => (
+                            <Badge key={i} variant="outline" className="text-xs">{it}</Badge>
+                          ))}
                         </div>
                       );
-                    })}
-                    <div className="pt-1">
-                      <Button size="sm" onClick={() => savePipeline(workflow)}>Save pipeline</Button>
-                    </div>
-                  </div>
-                )}
+                    })()}
+                    {workflow.tags?.length > 0 && (
+                      <div className="flex gap-1 mt-2">
+                        {(workflow.tags ?? []).map((tag: string) => (
+                          <Badge key={tag} variant="outline" className="text-xs">{tag}</Badge>
+                        ))}
+                      </div>
+                    )}
+                    {/* Roles as clickable chips */}
+                    {(() => {
+                      const roles = extractApproverRoles(workflow);
+                      if (!roles.length) return null;
+                      return (
+                        <div className="mt-2 flex flex-wrap items-center gap-1">
+                          {roles.map((r) => (
+                            <Button
+                              key={r}
+                              size="sm"
+                              variant={roleFilter === r ? "default" : "outline"}
+                              className="h-7"
+                              onClick={() => setRoleFilter(r)}
+                            >
+                              {r}
+                            </Button>
+                          ))}
+                        </div>
+                      );
+                    })()}
+                  </CardContent>
 
-              </Card>
-            ))}
+                  {expanded[workflow._id] && (
+                    <div className="border-t pt-3 space-y-2">
+                      {/* Add: Inline prompt + Quick-add for startup */}
+                      {(() => {
+                        const tier = (businesses?.[0]?.tier as string | undefined);
+                        if (tier !== "startup") return null;
+                        const issues = getHandoffIssues(editedPipelines[workflow._id]
+                          ? { ...workflow, pipeline: editedPipelines[workflow._id] }
+                          : workflow
+                        );
+                        if (issues.length === 0) return null;
+                        return (
+                          <div className="p-2 rounded border bg-muted/30">
+                            <div className="text-sm font-medium mb-2">Recommended fixes</div>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <Button size="sm" variant="outline" onClick={() => addApprovalAtEnd(workflow)}>Add Approval</Button>
+                              <Button size="sm" variant="outline" onClick={() => addDelayAtEnd(workflow, 60)}>Add SLA Delay (60m)</Button>
+                              {!workflow.description || !String(workflow.description).trim() ? (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={async () => {
+                                    try {
+                                      await upsertWorkflow({
+                                        id: workflow._id,
+                                        businessId: workflow.businessId,
+                                        name: workflow.name,
+                                        description: "Standardized startup workflow with approval and SLA buffer.",
+                                        trigger: workflow.trigger,
+                                        approval: workflow.approval,
+                                        pipeline: editedPipelines[workflow._id] ?? workflow.pipeline,
+                                        template: !!workflow.template,
+                                        tags: workflow.tags || [],
+                                      } as any);
+                                      toast.success("Added default description");
+                                    } catch (e: any) {
+                                      toast.error(e?.message || "Failed to set description");
+                                    }
+                                  }}
+                                >
+                                  Add Default Description
+                                </Button>
+                              ) : null}
+                            </div>
+                          </div>
+                        );
+                      })()}
+
+                      {(editedPipelines[workflow._id] ?? workflow.pipeline).map((step: any, idx: number) => {
+                        return (
+                          <div key={idx} className="flex items-center justify-between p-2 border rounded">
+                            <div className="text-sm">
+                              <div className="font-medium capitalize">{getStepKind(step)}</div>
+                              {getStepKind(step) === "branch" && (
+                                <div className="text-xs text-muted-foreground">
+                                  IF {step?.condition?.metric} {step?.condition?.op} {String(step?.condition?.value)} THEN → {step?.onTrueNext} ELSE → {step?.onFalseNext}
+                                </div>
+                              )}
+                              {getStepKind(step) === "approval" && (
+                                <div className="text-xs text-muted-foreground">Approver: {step?.approverRole || step?.config?.approverRole || "manager"}</div>
+                              )}
+                              {getStepKind(step) === "delay" && (
+                                <div className="text-xs text-muted-foreground">Delay: {step?.delayMinutes || step?.config?.delayMinutes || 0} min</div>
+                              )}
+                            </div>
+                            <div className="mt-1 flex flex-wrap items-center gap-2">
+                              <Input
+                                className="h-8 w-64"
+                                placeholder="Step title (optional)"
+                                value={step?.title || ""}
+                                onChange={(e: ChangeEvent<HTMLInputElement>) => setStepField(workflow, idx, { title: e.target.value })}
+                              />
+                              {getStepKind(step) === "approval" && (
+                                <Input
+                                  className="h-8 w-56"
+                                  placeholder="Approver role"
+                                  value={step?.approverRole || step?.config?.approverRole || ""}
+                                  onChange={(e: ChangeEvent<HTMLInputElement>) => setStepField(workflow, idx, { approverRole: e.target.value })}
+                                />
+                              )}
+                              {getStepKind(step) === "delay" && (
+                                <Input
+                                  type="number"
+                                  className="h-8 w-40"
+                                  placeholder="Delay minutes"
+                                  value={String(step?.delayMinutes ?? step?.config?.delayMinutes ?? 0)}
+                                  onChange={(e: ChangeEvent<HTMLInputElement>) => setStepField(workflow, idx, { delayMinutes: parseInt(e.target.value) || 0 })}
+                                />
+                              )}
+                            </div>
+                            {getStepKind(step) === "agent" && (
+                              <div className="flex items-center gap-2">
+                                <Switch checked={!!step?.mmrRequired} onCheckedChange={(v: boolean) => toggleMMR(workflow, idx, !!v)} id={`mmr-${workflow._id}-${idx}`} />
+                                <Label htmlFor={`mmr-${workflow._id}-${idx}`}>Require human review</Label>
+                              </div>
+                            )}
+                            <div className="flex items-center gap-1">
+                              <Button size="sm" variant="outline" onClick={() => addStep(workflow, idx, "agent")}>+Agent</Button>
+                              <Button size="sm" variant="outline" onClick={() => addStep(workflow, idx, "approval")}>+Approval</Button>
+                              <Button size="sm" variant="outline" onClick={() => addStep(workflow, idx, "delay")}>+Delay</Button>
+                              <Button size="sm" variant="outline" onClick={() => addStep(workflow, idx, "branch")}>+Branch</Button>
+                              <Button size="sm" variant="outline" onClick={() => moveStep(workflow, idx, -1)}>Up</Button>
+                              <Button size="sm" variant="outline" onClick={() => moveStep(workflow, idx, 1)}>Down</Button>
+                              <Button size="sm" variant="destructive" onClick={() => removeStep(workflow, idx)}>Remove</Button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                      {/* Top-level quick-add toolbar */}
+                      <div className="flex flex-wrap gap-2 pt-1">
+                        <Button size="sm" variant="outline" onClick={() => addApprovalAtEnd(workflow)}>Add Approval</Button>
+                        <Button size="sm" variant="outline" onClick={() => addDelayAtEnd(workflow, 60)}>Add SLA Delay (60m)</Button>
+                        <Button size="sm" onClick={() => savePipeline(workflow)}>Save pipeline</Button>
+                      </div>
+                    </div>
+                  )}
+                </Card>
+              ));
+            })()}
           </div>
         </TabsContent>
 
@@ -994,6 +1163,46 @@ export default function WorkflowsPage() {
                 <CardDescription>Recent workflow executions and metrics</CardDescription>
               </CardHeader>
               <CardContent>
+                {/* Add: Analytics (lite) summary */}
+                {(() => {
+                  const page: any[] = executions.page || [];
+                  const total = page.length;
+                  const succeeded = page.filter((e: any) => e.status === "succeeded").length;
+                  const successRate = total > 0 ? Math.round((succeeded / total) * 100) : 0;
+                  const roiVals = page.map((e: any) => (typeof e?.metrics?.roi === "number" ? e.metrics.roi : null)).filter((v) => v !== null) as number[];
+                  const avgRoi = roiVals.length ? (roiVals.reduce((a, b) => a + b, 0) / roiVals.length) : null;
+                  const last = page[0];
+
+                  return (
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+                      <div className="p-3 border rounded">
+                        <div className="text-xs text-muted-foreground">Total Runs</div>
+                        <div className="text-xl font-semibold">{total}</div>
+                      </div>
+                      <div className="p-3 border rounded">
+                        <div className="text-xs text-muted-foreground">Success Rate</div>
+                        <div className="text-xl font-semibold">{successRate}%</div>
+                      </div>
+                      <div className="p-3 border rounded">
+                        <div className="text-xs text-muted-foreground">Avg ROI</div>
+                        <div className="text-xl font-semibold">{avgRoi !== null ? avgRoi.toFixed(2) : "n/a"}</div>
+                      </div>
+                      {last && (
+                        <div className="sm:col-span-3 p-3 border rounded">
+                          <div className="text-xs text-muted-foreground">Last Run</div>
+                          <div className="flex items-center justify-between">
+                            <div className="text-sm">
+                              {new Date(last._creationTime).toLocaleString()} • {last.mode} mode
+                            </div>
+                            <Badge variant={last.status === "succeeded" ? "default" : "destructive"}>{last.status}</Badge>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+
+                {/* Existing history list */}
                 <div className="space-y-4">
                   {executions.page.map((execution: any) => (
                     <div key={execution._id} className="flex items-center justify-between p-3 border rounded">
