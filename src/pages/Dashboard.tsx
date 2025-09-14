@@ -83,7 +83,8 @@ export default function Dashboard() {
   // Data fetching - skip in guest mode
   const business = useQuery(
     api.businesses.currentUserBusiness,
-    guestMode ? "skip" : {}
+    // Skip query if in guest mode or not authenticated to prevent server errors
+    guestMode || !isAuthenticated ? "skip" : {}
   );
   
   // Determine which tier to use

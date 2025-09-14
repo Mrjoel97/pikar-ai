@@ -1,4 +1,4 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { useQuery } from "convex/react";
@@ -307,6 +307,25 @@ export function StartupDashboard({
           )}
         </div>
       </section>
+
+      <div className="mt-6">
+        <Card className="border-dashed">
+          <CardHeader>
+            <CardTitle>Initiatives for Startups</CardTitle>
+            <CardDescription>
+              Prioritize 2–3 strategic initiatives and attach workflows to accelerate learning and growth.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex items-center justify-between gap-4">
+            <p className="text-sm text-muted-foreground">
+              Drive focus with clear outcomes, owners, and linked workflows that unblock execution.
+            </p>
+            <Button asChild size="sm" variant="default">
+              <a href="/initiatives">Open Initiatives</a>
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

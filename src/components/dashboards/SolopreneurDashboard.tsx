@@ -1,4 +1,4 @@
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useQuery } from "convex/react";
@@ -1164,6 +1164,26 @@ export function SolopreneurDashboard({
           </Card>
         </section>
       )}
+
+      {/* Initiatives CTA section */}
+      <div className="mt-6">
+        <Card className="border-dashed">
+          <CardHeader>
+            <CardTitle>Initiatives for Solopreneurs</CardTitle>
+            <CardDescription>
+              Define one clear initiative at a time, track progress simply, and link it to your most impactful workflow.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex items-center justify-between gap-4">
+            <p className="text-sm text-muted-foreground">
+              Start lean: pick a single measurable outcome and connect it to an execution workflow.
+            </p>
+            <Button asChild size="sm" variant="default">
+              <a href="/initiatives">Open Initiatives</a>
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

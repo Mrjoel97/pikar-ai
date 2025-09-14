@@ -1,6 +1,6 @@
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -554,6 +554,25 @@ export function SmeDashboard({
           </Card>
         </div>
       </section>
+
+      <div className="mt-6">
+        <Card className="border-dashed">
+          <CardHeader>
+            <CardTitle>Initiatives for SMEs</CardTitle>
+            <CardDescription>
+              Align cross-functional initiatives with KPIs and standardized workflows for dependable delivery.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex items-center justify-between gap-4">
+            <p className="text-sm text-muted-foreground">
+              Balance throughput and quality: coordinate teams, timelines, and automation using initiatives.
+            </p>
+            <Button asChild size="sm" variant="default">
+              <a href="/initiatives">Open Initiatives</a>
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

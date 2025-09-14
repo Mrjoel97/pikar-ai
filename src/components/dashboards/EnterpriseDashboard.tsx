@@ -1,4 +1,4 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -513,6 +513,25 @@ export function EnterpriseDashboard({
           </Card>
         </div>
       </section>
+
+      <div className="mt-6">
+        <Card className="border-dashed">
+          <CardHeader>
+            <CardTitle>Initiatives for Enterprise</CardTitle>
+            <CardDescription>
+              Govern strategic programs with clear OKRs, portfolio visibility, and compliant workflows at scale.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex items-center justify-between gap-4">
+            <p className="text-sm text-muted-foreground">
+              Ensure alignment and traceability: initiatives link to KPIs, owners, and standardized execution.
+            </p>
+            <Button asChild size="sm" variant="default">
+              <a href="/initiatives">Open Initiatives</a>
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
