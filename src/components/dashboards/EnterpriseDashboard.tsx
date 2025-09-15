@@ -2,7 +2,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Badge } from "@/components/ui/badge";
@@ -132,6 +132,46 @@ export function EnterpriseDashboard({
     api.approvals.getSlaSummary,
     isGuest || !businessId ? "skip" : { businessId }
   );
+
+  // Minimal draggable widget grid (persisted in localStorage)
+  const defaultWidgets: Array<{ key: string; title: string; content: React.ReactNode }> = [
+    { key: "ops", title: "Ops Health", content: <div className="text-sm text-muted-foreground">Uptime 99.9%, MTTR 1.8h</div> },
+    { key: "growth", title: "Growth Pulse", content: <div className="text-sm text-muted-foreground">Signups +12%, Churn 2.1%</div> },
+    { key: "governance", title: "Governance Score", content: <div className="text-sm text-muted-foreground">Compliant 94%</div> },
+  ];
+
+  const [widgetOrder, setWidgetOrder] = useState<Array<string>>(() => {
+    try {
+      const saved = localStorage.getItem("ent_widget_order");
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return defaultWidgets.map(w => w.key);
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("ent_widget_order", JSON.stringify(widgetOrder));
+    } catch {}
+  }, [widgetOrder]);
+
+  const widgetsByKey: Record<string, { key: string; title: string; content: React.ReactNode }> =
+    Object.fromEntries(defaultWidgets.map(w => [w.key, w]));
+
+  const onDragStart = (e: React.DragEvent<HTMLDivElement>, key: string) => {
+    e.dataTransfer.setData("text/widget", key);
+  };
+  const onDropCard = (e: React.DragEvent<HTMLDivElement>, targetKey: string) => {
+    const sourceKey = e.dataTransfer.getData("text/widget");
+    if (!sourceKey || sourceKey === targetKey) return;
+    const order = [...widgetOrder];
+    const from = order.indexOf(sourceKey);
+    const to = order.indexOf(targetKey);
+    if (from === -1 || to === -1) return;
+    order.splice(from, 1);
+    order.splice(to, 0, sourceKey);
+    setWidgetOrder(order);
+  };
+  const onDragOver = (e: React.DragEvent<HTMLDivElement>) => e.preventDefault();
 
   return (
     <div className="space-y-6">
@@ -320,6 +360,44 @@ export function EnterpriseDashboard({
             </CardContent>
           </Card>
         </div>
+      </section>
+
+      {/* Custom Widget Grid */}
+      <section>
+        <h2 className="text-xl font-semibold mb-4">Custom Widget Grid</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {widgetOrder.map((key) => {
+            const w = widgetsByKey[key];
+            if (!w) return null;
+            return (
+              <Card
+                key={w.key}
+                draggable
+                onDragStart={(e) => onDragStart(e, w.key)}
+                onDragOver={onDragOver}
+                onDrop={(e) => onDropCard(e, w.key)}
+                className="border-dashed"
+                title="Drag to reorder"
+              >
+                <CardHeader className="pb-2">
+                  <CardTitle>{w.title}</CardTitle>
+                </CardHeader>
+                <CardContent>{w.content}</CardContent>
+              </Card>
+            );
+          })}
+        </div>
+        {!hasTier("enterprise") && (
+          <div className="pt-2">
+            <div className="rounded-md border p-2 mt-3">
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <Badge variant="outline" className="border-amber-300 text-amber-700">Locked</Badge>
+                <span>Drag-and-drop persistence is Enterprise+</span>
+                <Button size="sm" variant="outline" onClick={onUpgrade} className="ml-auto">Upgrade</Button>
+              </div>
+            </div>
+          </div>
+        )}
       </section>
 
       {/* Strategic Initiatives */}
@@ -523,7 +601,7 @@ export function EnterpriseDashboard({
           </Card>
 
           {/* Feature Flags Management */}
-          <Card className="xl:col-span-1">
+          <Card className="xl:col-span-1" id="feature-flags">
             <CardHeader className="pb-2">
               <CardTitle>Feature Flags</CardTitle>
             </CardHeader>
@@ -574,6 +652,47 @@ export function EnterpriseDashboard({
         </div>
       </section>
 
+      {/* Enterprise Shortcuts */}
+      <section>
+        <h2 className="text-xl font-semibold mb-4">Enterprise Shortcuts</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <Card>
+            <CardContent className="p-4 flex items-center justify-between">
+              <div>
+                <div className="text-sm font-medium">Feature Flags</div>
+                <div className="text-xs text-muted-foreground">Manage rollout</div>
+              </div>
+              <a href="#feature-flags"><Button size="sm" variant="outline">Open</Button></a>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4 flex items-center justify-between">
+              <div>
+                <div className="text-sm font-medium">Audit Export</div>
+                <div className="text-xs text-muted-foreground">CSV for compliance</div>
+              </div>
+              {business?._id ? (
+                <a href={`/api/audit/export?businessId=${business._id}`} target="_blank" rel="noreferrer">
+                  <Button size="sm" variant="outline">Download</Button>
+                </a>
+              ) : (
+                <Button size="sm" variant="outline" disabled>Download</Button>
+              )}
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4 flex items-center justify-between">
+              <div>
+                <div className="text-sm font-medium">Integrations</div>
+                <div className="text-xs text-muted-foreground">CRMs, Analytics, Billing</div>
+              </div>
+              <Button size="sm" variant="outline" disabled>Open</Button>
+            </CardContent>
+          </Card>
+        </div>
+      </section>
+
+      {/* Initiatives for Enterprise */}
       <div className="mt-6">
         <Card className="border-dashed">
           <CardHeader>

@@ -1,9 +1,9 @@
 import { useQuery, useMutation, useQuery as useConvexQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 
 interface SmeDashboardProps {
@@ -59,7 +59,8 @@ export function SmeDashboard({
 
   const enforceGovernanceForBiz = useMutation(api.governance.enforceGovernanceForBusiness);
   // Fetch SLA summary (skip in guest / when no business)
-  const slaSummary = business ? useConvexQuery(api.approvals.getSlaSummary, { businessId: business._id }) : "skip";
+  const slaSummary = !isGuest && business?._id ? useQuery(api.approvals.getSlaSummary, { businessId: business._id }) : undefined;
+  const auditLatest = !isGuest && business?._id ? useQuery(api.audit.listForBusiness, { businessId: business._id, limit: 10 }) : undefined;
 
   const UpgradeCTA = ({ feature }: { feature: string }) => (
     <Card className="border-dashed border-2 border-gray-300">
@@ -131,26 +132,69 @@ export function SmeDashboard({
         </div>
       )}
 
+      {/* Executive Summary */}
+      <section className="rounded-lg border p-4 bg-gradient-to-r from-blue-50 to-emerald-50 mb-6">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <Card>
+            <CardContent className="p-4">
+              <div className="text-sm text-muted-foreground">Revenue</div>
+              <div className="text-2xl font-bold">${(kpiDoc as any)?.revenue?.toLocaleString?.() ?? (isGuest ? "120,400" : "—")}</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
+              <div className="text-sm text-muted-foreground">ROI</div>
+              <div className="text-2xl font-bold">{(kpiDoc as any)?.roi ?? (isGuest ? 142 : "—")}%</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
+              <div className="text-sm text-muted-foreground">Compliance</div>
+              <div className="text-2xl font-bold">{(kpiDoc as any)?.complianceScore ?? (isGuest ? 92 : "—")}%</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
+              <div className="text-sm text-muted-foreground">Risk Alerts</div>
+              <div className="text-2xl font-bold">{slaSummary && slaSummary !== "skip" ? (slaSummary.overdue + slaSummary.dueSoon) : (isGuest ? 3 : 0)}</div>
+            </CardContent>
+          </Card>
+        </div>
+      </section>
+
       {/* Governance Panel */}
       <section>
-        <h2 className="text-xl font-semibold mb-4">Governance Overview</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <h2 className="text-lg font-semibold mb-3">Governance Panel</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Card>
-            <CardContent className="p-4">
-              <h3 className="text-sm font-medium text-muted-foreground">Compliance Score</h3>
-              <p className="text-2xl font-bold text-green-600">{kpis.complianceScore}%</p>
+            <CardHeader className="pb-2"><CardTitle>Checklist Progress</CardTitle></CardHeader>
+            <CardContent className="text-sm text-muted-foreground">
+              {isGuest ? (
+                <div>MMR enforced, SLA ≥ 24h, Approver roles configured. 4/5 checks passed.</div>
+              ) : (
+                <div>Key policies enforced. SLA floors and approvals configured. Review workflows for issues.</div>
+              )}
             </CardContent>
           </Card>
           <Card>
-            <CardContent className="p-4">
-              <h3 className="text-sm font-medium text-muted-foreground">Risk Score</h3>
-              <p className="text-2xl font-bold text-yellow-600">{kpis.riskScore}</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4">
-              <h3 className="text-sm font-medium text-muted-foreground">Department Efficiency</h3>
-              <p className="text-2xl font-bold">{kpis.departmentEfficiency}%</p>
+            <CardHeader className="pb-2"><CardTitle>Audit Highlights</CardTitle></CardHeader>
+            <CardContent className="space-y-2">
+              {isGuest ? (
+                <>
+                  <div className="text-xs text-muted-foreground">Policy update recorded</div>
+                  <div className="text-xs text-muted-foreground">Approval overdue warning sent</div>
+                </>
+              ) : !auditLatest ? (
+                <div className="text-sm text-muted-foreground">Loading…</div>
+              ) : auditLatest.length === 0 ? (
+                <div className="text-sm text-muted-foreground">No recent events.</div>
+              ) : (
+                auditLatest.slice(0, 6).map((e: any) => (
+                  <div key={e._id} className="text-xs text-muted-foreground">
+                    {new Date(e.createdAt).toLocaleDateString()} — {e.entityType}: {e.action}
+                  </div>
+                ))
+              )}
             </CardContent>
           </Card>
         </div>
@@ -341,111 +385,48 @@ export function SmeDashboard({
             Enforce Governance
           </Button>
         </div>
-        <Tabs defaultValue="marketing" className="w-full">
-          <TabsList className="grid grid-cols-4 max-w-full">
-            <TabsTrigger value="marketing">Marketing</TabsTrigger>
-            <TabsTrigger value="sales">Sales</TabsTrigger>
-            <TabsTrigger value="operations">Operations</TabsTrigger>
-            <TabsTrigger value="finance">Finance</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="marketing" className="mt-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Card>
-                <CardContent className="p-4">
-                  <h3 className="text-sm font-medium text-muted-foreground">Campaign Performance</h3>
-                  <p className="text-2xl font-bold">94%</p>
-                  <p className="text-xs text-green-600">+2% from last month</p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="p-4">
-                  <h3 className="text-sm font-medium text-muted-foreground">Brand Consistency</h3>
-                  <p className="text-2xl font-bold">91%</p>
-                  <p className="text-xs text-green-600">+1% from last month</p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="p-4">
-                  <h3 className="text-sm font-medium text-muted-foreground">Content Calendar</h3>
-                  <p className="text-sm text-muted-foreground">Upcoming: 7 scheduled posts</p>
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="sales" className="mt-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Card>
-                <CardContent className="p-4">
-                  <h3 className="text-sm font-medium text-muted-foreground">Pipeline Health</h3>
-                  <p className="text-2xl font-bold">$240k</p>
-                  <p className="text-xs text-green-600">+5% QoQ</p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="p-4">
-                  <h3 className="text-sm font-medium text-muted-foreground">Conversion Rate</h3>
-                  <p className="text-2xl font-bold">12.4%</p>
-                  <p className="text-xs text-green-600">+0.6% WoW</p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="p-4">
-                  <h3 className="text-sm font-medium text-muted-foreground">Territory Performance</h3>
-                  <p className="text-sm text-muted-foreground">Top: West Coast</p>
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="operations" className="mt-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Card>
-                <CardContent className="p-4">
-                  <h3 className="text-sm font-medium text-muted-foreground">Process Efficiency</h3>
-                  <p className="text-2xl font-bold">88%</p>
-                  <p className="text-xs text-yellow-600">-1% from last month</p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="p-4">
-                  <h3 className="text-sm font-medium text-muted-foreground">Automation Status</h3>
-                  <p className="text-sm text-muted-foreground">Active automations: 14</p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="p-4">
-                  <h3 className="text-sm font-medium text-muted-foreground">Resource Utilization</h3>
-                  <p className="text-2xl font-bold">72%</p>
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="finance" className="mt-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Card>
-                <CardContent className="p-4">
-                  <h3 className="text-sm font-medium text-muted-foreground">Budget vs. Actual</h3>
-                  <p className="text-sm text-muted-foreground">Within 3% of plan</p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="p-4">
-                  <h3 className="text-sm font-medium text-muted-foreground">ROI by Initiative</h3>
-                  <p className="text-2xl font-bold">1.8x</p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="p-4">
-                  <h3 className="text-sm font-medium text-muted-foreground">Cost Center Analysis</h3>
-                  <p className="text-sm text-muted-foreground">Top variance: Ops</p>
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
-        </Tabs>
+        <section className="mb-6">
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="text-lg font-semibold">Departments</h2>
+            <Button asChild size="sm" variant="outline"><a href="/analytics">Open Analytics</a></Button>
+          </div>
+          <Tabs defaultValue="marketing" className="w-full">
+            <TabsList>
+              <TabsTrigger value="marketing">Marketing</TabsTrigger>
+              <TabsTrigger value="sales">Sales</TabsTrigger>
+              <TabsTrigger value="ops">Ops</TabsTrigger>
+              <TabsTrigger value="finance">Finance</TabsTrigger>
+            </TabsList>
+            <TabsContent value="marketing">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <Card><CardContent className="p-4"><div className="text-sm text-muted-foreground">Leads</div><div className="text-2xl font-bold">{isGuest ? 312 : ((kpiDoc as any)?.marketingLeads ?? "—")}</div></CardContent></Card>
+                <Card><CardContent className="p-4"><div className="text-sm text-muted-foreground">CTR</div><div className="text-2xl font-bold">{isGuest ? "3.2%" : (((kpiDoc as any)?.ctr ?? 0) + "%")}</div></CardContent></Card>
+                <Card><CardContent className="p-4"><div className="text-sm text-muted-foreground">Subs</div><div className="text-2xl font-bold">{isGuest ? 124 : ((kpiDoc as any)?.subscribers ?? "—")}</div></CardContent></Card>
+              </div>
+            </TabsContent>
+            <TabsContent value="sales">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <Card><CardContent className="p-4"><div className="text-sm text-muted-foreground">Pipeline</div><div className="text-2xl font-bold">${isGuest ? "540k" : ((kpiDoc as any)?.pipeline ?? "—")}</div></CardContent></Card>
+                <Card><CardContent className="p-4"><div className="text-sm text-muted-foreground">Win Rate</div><div className="text-2xl font-bold">{isGuest ? "27%" : (((kpiDoc as any)?.winRate ?? 0) + "%")}</div></CardContent></Card>
+                <Card><CardContent className="p-4"><div className="text-sm text-muted-foreground">Cycle</div><div className="text-2xl font-bold">{isGuest ? "18d" : (((kpiDoc as any)?.cycleDays ?? 0) + "d")}</div></CardContent></Card>
+              </div>
+            </TabsContent>
+            <TabsContent value="ops">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <Card><CardContent className="p-4"><div className="text-sm text-muted-foreground">On-time</div><div className="text-2xl font-bold">{isGuest ? "96%" : (((kpiDoc as any)?.onTime ?? 0) + "%")}</div></CardContent></Card>
+                <Card><CardContent className="p-4"><div className="text-sm text-muted-foreground">Tickets</div><div className="text-2xl font-bold">{isGuest ? 42 : ((kpiDoc as any)?.tickets ?? "—")}</div></CardContent></Card>
+                <Card><CardContent className="p-4"><div className="text-sm text-muted-foreground">MTTR</div><div className="text-2xl font-bold">{isGuest ? "2.4h" : (((kpiDoc as any)?.mttrHrs ?? 0) + "h")}</div></CardContent></Card>
+              </div>
+            </TabsContent>
+            <TabsContent value="finance">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <Card><CardContent className="p-4"><div className="text-sm text-muted-foreground">MRR</div><div className="text-2xl font-bold">${isGuest ? "80,200" : ((kpiDoc as any)?.mrr ?? "—")}</div></CardContent></Card>
+                <Card><CardContent className="p-4"><div className="text-sm text-muted-foreground">Gross Margin</div><div className="text-2xl font-bold">{isGuest ? "72%" : (((kpiDoc as any)?.gm ?? 0) + "%")}</div></CardContent></Card>
+                <Card><CardContent className="p-4"><div className="text-sm text-muted-foreground">Runway</div><div className="text-2xl font-bold">{isGuest ? "14m" : (((kpiDoc as any)?.runwayMonths ?? 0) + "m")}</div></CardContent></Card>
+              </div>
+            </TabsContent>
+          </Tabs>
+        </section>
       </section>
 
       {/* Department Performance */}
