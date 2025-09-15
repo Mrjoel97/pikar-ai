@@ -333,21 +333,17 @@ export const sendNotification = internalMutation({
   args: {
     businessId: v.id("businesses"),
     userId: v.id("users"),
-    type: v.union(
-      v.literal("assignment"),
-      v.literal("approval"),
-      v.literal("sla_warning"),
-      v.literal("integration_error"),
-      v.literal("workflow_completion"),
-      v.literal("system_alert")
-    ),
+    // Use central validator to include all supported types (including sla_overdue)
+    type: notificationTypeValidator,
     title: v.string(),
     message: v.string(),
     data: v.optional(v.any()),
     priority: v.optional(v.union(v.literal("low"), v.literal("medium"), v.literal("high"))),
   },
   handler: async (ctx, args): Promise<Id<"notifications"> | null> => {
-    // Create in-app notification directly
+    // Normalize priority to schema-supported values
+    const pr: "low" | "medium" | "high" = args.priority ?? "medium";
+
     const notificationId = await ctx.db.insert("notifications", {
       businessId: args.businessId,
       userId: args.userId,
@@ -356,12 +352,10 @@ export const sendNotification = internalMutation({
       message: args.message,
       data: args.data,
       isRead: false,
-      priority: args.priority || "medium",
+      priority: pr,
       createdAt: Date.now(),
-      expiresAt: Date.now() + (7 * 24 * 60 * 60 * 1000), // Expire after 7 days
+      expiresAt: Date.now() + 7 * 24 * 60 * 60 * 1000,
     });
-
-    // TODO: Add email/SMS sending logic here based on user preferences
 
     return notificationId;
   },
@@ -662,54 +656,66 @@ export const sendIfPermitted = internalMutation({
   args: {
     userId: v.id("users"),
     businessId: v.id("businesses"),
-    // Align type with schema union to satisfy insert type-check
-    type: notificationTypeValidator,
+    type: notificationTypeValidator, // use central validator to ensure union type
     title: v.string(),
     message: v.string(),
-    data: v.optional(v.any()),
+    link: v.optional(v.string()),
+    priority: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    // Rate limit enforcement based on preferences (if present)
-    const prefs = await ctx.db
+    // Get user preferences (fallback to defaults if not found)
+    const prefsByUser = await ctx.db
       .query("notificationPreferences")
       .withIndex("by_user", (q) => q.eq("userId", args.userId))
-      .first();
+      .collect();
 
-    if (prefs) {
+    const prefs =
+      prefsByUser.find((p) => p.businessId === args.businessId) ?? null;
+
+    const rateLimits = prefs?.rateLimits || { maxPerHour: 10, maxPerDay: 50 };
+
+    // High priority bypass (SLA warnings/overdue)
+    const isHighPriority =
+      args.type === "sla_warning" ||
+      args.type === "sla_overdue";
+
+    if (!isHighPriority) {
       const now = Date.now();
       const oneHourAgo = now - 60 * 60 * 1000;
       const oneDayAgo = now - 24 * 60 * 60 * 1000;
 
-      const lastHour = await ctx.db
+      const recentHour = await ctx.db
         .query("notifications")
         .withIndex("by_user", (q) => q.eq("userId", args.userId))
-        .filter((q) => q.gt(q.field("createdAt"), oneHourAgo))
+        .filter((q) => q.gte(q.field("createdAt"), oneHourAgo))
         .collect();
 
-      const lastDay = await ctx.db
+      const recentDay = await ctx.db
         .query("notifications")
         .withIndex("by_user", (q) => q.eq("userId", args.userId))
-        .filter((q) => q.gt(q.field("createdAt"), oneDayAgo))
+        .filter((q) => q.gte(q.field("createdAt"), oneDayAgo))
         .collect();
 
-      if (lastHour.length >= prefs.rateLimits.maxPerHour || lastDay.length >= prefs.rateLimits.maxPerDay) {
-        return null;
+      if (
+        recentHour.length >= rateLimits.maxPerHour ||
+        recentDay.length >= rateLimits.maxPerDay
+      ) {
+        return { sent: false };
       }
     }
 
-    // Create notification
-    const notificationId = await ctx.db.insert("notifications", {
+    await ctx.db.insert("notifications", {
       userId: args.userId,
       businessId: args.businessId,
       type: args.type,
       title: args.title,
       message: args.message,
-      data: args.data,
       isRead: false,
-      priority: "medium",
       createdAt: Date.now(),
+      // Normalize "urgent" to "high" to match schema's union
+      priority: (args.priority === "urgent" ? "high" : (args.priority as any)) ?? "medium",
     });
 
-    return notificationId;
+    return { sent: true };
   },
 });

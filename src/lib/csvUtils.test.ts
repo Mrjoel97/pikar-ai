@@ -14,7 +14,7 @@ describe('Email Campaign Scheduling', () => {
     };
 
     const isValidTransition = (from: string, to: string) => {
-      return validTransitions[from as keyof typeof validTransitions]?.includes(to) || false;
+      return (validTransitions as Record<string, string[]>)[from as string]?.includes(to) || false;
     };
 
     // Test valid transitions

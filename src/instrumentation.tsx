@@ -16,6 +16,7 @@ import React, { useEffect, useState } from "react";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { toast } from "sonner";
+import { useAuth } from "@/hooks/use-auth";
 
 type SyncError = {
   error: string;
@@ -175,6 +176,37 @@ export function InstrumentationProvider({
 }: {
   children: React.ReactNode;
 }) {
+  const { isAuthenticated } = useAuth();
+  const [hasShownEnvToast, setHasShownEnvToast] = useState(false);
+  const [hasShownQueueToast, setHasShownQueueToast] = useState(false);
+
+  const healthStatus = useQuery(api.health.envStatus, {});
+
+  useEffect(() => {
+    if (!healthStatus || hasShownEnvToast) return;
+
+    const missingVars = [];
+    if (!healthStatus.hasRESEND) missingVars.push("RESEND_API_KEY");
+    if (!healthStatus.hasSALES_INBOX && !healthStatus.hasPUBLIC_SALES_INBOX) {
+      missingVars.push("SALES_INBOX or PUBLIC_SALES_INBOX");
+    }
+    if (!healthStatus.hasBASE_URL) missingVars.push("VITE_PUBLIC_BASE_URL");
+
+    if (missingVars.length > 0) {
+      toast.error(`Missing environment variables: ${missingVars.join(", ")}`);
+      setHasShownEnvToast(true);
+    }
+  }, [healthStatus, hasShownEnvToast]);
+
+  useEffect(() => {
+    if (!healthStatus || hasShownQueueToast) return;
+
+    if (healthStatus.emailQueueDepth > 100) {
+      toast.warning(`High email queue depth: ${healthStatus.emailQueueDepth} pending`);
+      setHasShownQueueToast(true);
+    }
+  }, [healthStatus, hasShownQueueToast]);
+
   const [error, setError] = useState<GenericError | null>(null);
 
   // Add: environment precheck to surface actionable toasts once
@@ -184,11 +216,12 @@ export function InstrumentationProvider({
   useEffect(() => {
     if (!envStatus || envToastsShown) return;
     try {
-      const hasResend = Boolean((envStatus as any)?.hasResend);
-      const hasSalesInbox = Boolean((envStatus as any)?.hasSalesInbox);
-      // Fix: align with backend property name (health.ts returns hasPublicBaseUrl)
-      const hasBaseUrl = Boolean((envStatus as any)?.hasPublicBaseUrl);
-      const devSafeEmails = Boolean((envStatus as any)?.devSafeEmails);
+      const hasResend = Boolean((envStatus as any)?.hasRESEND);
+      const hasSalesInbox = Boolean(
+        (envStatus as any)?.hasSALES_INBOX || (envStatus as any)?.hasPUBLIC_SALES_INBOX
+      );
+      const hasBaseUrl = Boolean((envStatus as any)?.hasBASE_URL);
+      const devSafeEmails = Boolean((envStatus as any)?.devSafeEmailsEnabled);
 
       if (!hasResend) {
         console.warn("[ENV] RESEND_API_KEY is missing. Email delivery is disabled.");

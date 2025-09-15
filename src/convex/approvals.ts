@@ -614,55 +614,52 @@ export const updateApprovalPriority = internalMutation({
 
 // Add: sweep overdue approvals, notify and audit
 export const sweepOverdueApprovals = internalMutation({
-  args: {
-    limit: v.optional(v.number()),
-  },
+  args: { limit: v.optional(v.number()) },
   handler: async (ctx, args) => {
     const now = Date.now();
-    const limit = Math.max(1, Math.min(args.limit ?? 200, 500));
-    const overdue = await ctx.db
+    const limit = args.limit || 50;
+    
+    const overdueApprovals = await ctx.db
       .query("approvalQueue")
       .withIndex("by_sla_deadline", (q) => q.lt("slaDeadline", now))
       .filter((q) => q.eq(q.field("status"), "pending"))
-      .order("asc")
       .take(limit);
-
-    for (const item of overdue) {
-      // Notify assignee if present
-      if (item.assigneeId) {
-        await ctx.runMutation(internal.notifications.sendIfPermitted, {
-          userId: item.assigneeId,
-          businessId: item.businessId,
-          type: "sla_overdue",
-          title: "Approval SLA overdue",
-          message: item.title ?? "An approval is overdue.",
-          data: {
-            workflowId: item.workflowId,
-            workflowRunId: item.workflowRunId,
-            stepIndex: item.stepIndex,
-            slaDeadline: item.slaDeadline,
-          },
+    
+    let notifiedCount = 0;
+    
+    for (const approval of overdueApprovals) {
+      // Notify assignee
+      if (approval.assigneeId) {
+        const result = await ctx.runMutation(internal.notifications.sendIfPermitted, {
+          userId: approval.assigneeId,
+          businessId: approval.businessId,
+          type: "sla_warning",
+          title: "Overdue Approval",
+          message: `Approval for workflow step is overdue`,
+          link: `/workflows/${approval.workflowId}`,
+          priority: "urgent",
         });
+        
+        if (result.sent) {
+          notifiedCount++;
+        }
       }
-
-      // Audit the overdue event
+      
+      // Audit overdue item
       await ctx.runMutation(internal.audit.write, {
-        businessId: item.businessId,
-        userId: item.assigneeId ?? undefined,
-        action: "approval_sla_overdue",
-        entityType: "workflow",
-        entityId: String(item.workflowId),
+        businessId: approval.businessId,
+        action: "approval_overdue",
+        entityType: "approval",
+        entityId: approval._id as any, // keep as any to match string-typed entityId
         details: {
-          approvalId: item._id,
-          workflowRunId: item.workflowRunId,
-          stepIndex: item.stepIndex,
-          priority: item.priority,
-          slaDeadline: item.slaDeadline,
-          status: item.status,
+          workflowId: approval.workflowId,
+          assigneeId: approval.assigneeId,
+          overdueBy: approval.slaDeadline ? now - approval.slaDeadline : 0, // handle possibly undefined
+          businessId: approval.businessId,
         },
       });
     }
-
-    return overdue.length;
+    
+    return { overdueCount: overdueApprovals.length, notifiedCount };
   },
 });

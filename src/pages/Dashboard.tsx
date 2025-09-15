@@ -80,6 +80,12 @@ export default function Dashboard() {
     }
   };
 
+  // Add: SLA summary for display
+  const slaSummary = useQuery(
+    api.health.envStatus,
+    guestMode || !business?._id ? "skip" : {}
+  );
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -233,11 +239,20 @@ export default function Dashboard() {
             </CardHeader>
             <CardContent className="flex flex-col gap-3">
               {nudges.nudges.map((n: any) => (
-                <div key={n.code} className="flex items-start gap-2">
-                  <Badge variant="outline" className={n.level === "warn" ? "border-amber-400 text-amber-700" : "border-emerald-400 text-emerald-700"}>
-                    {n.level === "warn" ? "Usage" : "Tip"}
+                <div key={n.id} className="flex items-start gap-2">
+                  <Badge
+                    variant="outline"
+                    className={
+                      n.severity === "warn"
+                        ? "border-amber-400 text-amber-700"
+                        : "border-emerald-400 text-emerald-700"
+                    }
+                  >
+                    {n.severity === "warn" ? "Usage" : "Tip"}
                   </Badge>
-                  <span className="text-sm text-slate-700">{n.message}</span>
+                  <span className="text-sm text-slate-700">
+                    <span className="font-medium">{n.title}:</span> {n.reason}
+                  </span>
                 </div>
               ))}
               <div className="text-xs text-slate-500">
@@ -249,6 +264,25 @@ export default function Dashboard() {
                   View plans
                 </Button>
               </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Add: SLA overdue badge */}
+        {!guestMode && slaSummary && slaSummary.overdueApprovalsCount > 0 && (
+          <Card className="mb-6 border-red-200 bg-red-50">
+            <CardContent className="flex items-center justify-between p-4">
+              <div className="flex items-center gap-3">
+                <Badge variant="outline" className="border-red-300 text-red-700">
+                  SLA Alert
+                </Badge>
+                <span className="text-sm text-red-900">
+                  {slaSummary.overdueApprovalsCount} overdue approvals require attention
+                </span>
+              </div>
+              <Button size="sm" onClick={() => navigate("/workflows")}>
+                Review Approvals
+              </Button>
             </CardContent>
           </Card>
         )}

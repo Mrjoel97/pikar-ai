@@ -8,49 +8,24 @@ import { v } from "convex/values";
 export const write = internalMutation({
   args: {
     businessId: v.id("businesses"),
-
-    // Legacy caller shape (e.g., businesses.ts)
-    type: v.optional(v.string()),
-    message: v.optional(v.string()),
-    actorUserId: v.optional(v.id("users")),
-    data: v.optional(v.any()),
-
-    // Newer, structured shape
-    action: v.optional(v.string()),
-    entityType: v.optional(v.string()),
+    action: v.string(),
+    entityType: v.string(),
     entityId: v.optional(v.string()),
-    userId: v.optional(v.id("users")),
     details: v.optional(v.any()),
-    // Add: optional correlation id (stored inside details for flexibility)
-    correlationId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const userId = args.userId ?? args.actorUserId;
-    if (!userId) {
-      throw new Error("[ERR_USER_REQUIRED] Either userId or actorUserId must be provided.");
-    }
-
-    const action = args.action ?? args.type ?? "log";
-    const entityType = args.entityType ?? "business";
-    const entityId = args.entityId ?? String(args.businessId);
-
-    // Prefer structured details; fall back to legacy data or message
-    const details =
-      args.details ??
-      args.data ??
-      (args.message ? { message: args.message } : {});
-
-    const mergedDetails = args.correlationId ? { ...details, correlationId: args.correlationId } : details;
-
     await ctx.db.insert("audit_logs", {
       businessId: args.businessId,
-      userId,
-      action,
-      entityType,
-      entityId,
-      details: mergedDetails,
+      action: args.action,
+      entityType: args.entityType,
+      // Ensure non-optional string
+      entityId: args.entityId ?? "",
+      details: {
+        ...args.details,
+        correlationId: args.details?.correlationId,
+        businessId: args.businessId,
+      },
       createdAt: Date.now(),
-      // ipAddress and userAgent can be appended by callers if available
     });
   },
 });
