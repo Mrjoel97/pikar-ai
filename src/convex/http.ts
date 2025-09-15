@@ -222,4 +222,66 @@ http.route({
   }),
 });
 
+// Manual sweeper endpoint for scheduled email campaigns.
+// Tries to reserve due scheduled campaigns and fan out send jobs.
+// Optional limit to cap the number processed per call.
+http.route({
+  path: "/api/cron/sweep-scheduled-campaigns",
+  method: "POST",
+  handler: httpAction(async (ctx, req) => {
+    try {
+      // Parse optional limit from body or query string
+      let limit = 25;
+      try {
+        const url = new URL(req.url);
+        const qsLimit = url.searchParams.get("limit");
+        if (qsLimit) limit = Math.max(1, Math.min(100, Number(qsLimit)));
+      } catch {
+        // ignore
+      }
+      try {
+        const body = await req.json().catch(() => null);
+        if (body && typeof body.limit === "number") {
+          limit = Math.max(1, Math.min(100, Number(body.limit)));
+        }
+      } catch {
+        // ignore body parse errors, default limit applies
+      }
+
+      // Reserve campaigns atomically to avoid duplicate pickups
+      const reservedIds = await ctx.runMutation(internal.emails.reserveDueScheduledCampaigns, {});
+      const slice = reservedIds.slice(0, limit);
+
+      let scheduled = 0;
+      for (const campaignId of slice) {
+        try {
+          await ctx.scheduler.runAfter(
+            0,
+            internal.emailsActions.sendCampaignInternal,
+            { campaignId }
+          );
+          scheduled++;
+        } catch {
+          // If scheduling fails for a single campaign, continue others
+        }
+      }
+
+      return new Response(
+        JSON.stringify({
+          ok: true,
+          reserved: reservedIds.length,
+          scheduled,
+          processedIds: slice.map((id: unknown) => String(id)),
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      );
+    } catch (e: any) {
+      return new Response(
+        JSON.stringify({ error: e?.message || "Failed to sweep scheduled campaigns" }),
+        { status: 500, headers: { "Content-Type": "application/json" } }
+      );
+    }
+  }),
+});
+
 export default http;

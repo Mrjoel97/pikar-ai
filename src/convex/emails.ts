@@ -349,3 +349,18 @@ export const reserveDueScheduledCampaigns = internalMutation({
     return reservedIds;
   },
 });
+
+// Add: helper mutation to ensure unsubscribe token and return absolute URL
+export const getOrCreateUnsubscribeUrl: any = internalMutation({
+  args: { businessId: v.id("businesses"), email: v.string() },
+  handler: async (ctx, args) => {
+    // Ensure these are concrete types for TS
+    const token: string = await ctx.runMutation(internal.emails.ensureTokenMutation, {
+      email: args.email,
+    });
+
+    const qs: string = new URLSearchParams({ token, email: args.email }).toString();
+
+    return `${String(process.env.VITE_PUBLIC_BASE_URL ?? "").trim()}/api/unsubscribe?${qs}`;
+  },
+});

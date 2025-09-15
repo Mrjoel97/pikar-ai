@@ -389,13 +389,13 @@ export const importCsvToList = action({
 });
 
 // Optional: seed some contacts for testing
-export const seedContacts = action({
+export const seedContacts: any = action({
   args: {
     businessId: v.id("businesses"),
     createdBy: v.id("users"),
     count: v.optional(v.number()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<any> => {
     const count = Math.max(1, Math.min(50, args.count ?? 10));
     const names = ["Ava", "Mason", "Noah", "Liam", "Olivia", "Emma", "Sophia", "Isabella", "Mia", "Charlotte"];
     const emails: string[] = [];
@@ -404,7 +404,7 @@ export const seedContacts = action({
       emails.push(`${name.toLowerCase()}${i}@example.com`);
     }
 
-    const listId = await ctx.runMutation((api as any).contacts.createList, {
+    const listId: any = await ctx.runMutation((api as any).contacts.createList, {
       businessId: args.businessId,
       name: "Sample Contacts",
       createdBy: args.createdBy,
