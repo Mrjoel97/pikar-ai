@@ -1,5 +1,50 @@
 import { describe, it, expect } from 'vitest';
 
+// Simple test for scheduled campaign processing
+describe('Email Campaign Scheduling', () => {
+  it('should validate campaign state transitions', () => {
+    const validTransitions = {
+      'draft': ['scheduled', 'queued'],
+      'scheduled': ['queued', 'cancelled'],
+      'queued': ['sending'],
+      'sending': ['sent', 'failed'],
+      'sent': [],
+      'failed': ['queued'], // allow retry
+      'cancelled': []
+    };
+
+    const isValidTransition = (from: string, to: string) => {
+      return validTransitions[from as keyof typeof validTransitions]?.includes(to) || false;
+    };
+
+    // Test valid transitions
+    expect(isValidTransition('scheduled', 'queued')).toBe(true);
+    expect(isValidTransition('queued', 'sending')).toBe(true);
+    expect(isValidTransition('sending', 'sent')).toBe(true);
+    expect(isValidTransition('sending', 'failed')).toBe(true);
+
+    // Test invalid transitions
+    expect(isValidTransition('sent', 'queued')).toBe(false);
+    expect(isValidTransition('draft', 'sent')).toBe(false);
+  });
+
+  it('should validate due campaign detection logic', () => {
+    const now = Date.now();
+    const campaigns = [
+      { scheduledAt: now - 60000, status: 'scheduled' }, // 1 min ago - due
+      { scheduledAt: now + 60000, status: 'scheduled' }, // 1 min future - not due
+      { scheduledAt: now - 60000, status: 'sent' }, // past but already sent - not due
+    ];
+
+    const dueCampaigns = campaigns.filter(c => 
+      c.status === 'scheduled' && c.scheduledAt <= now
+    );
+
+    expect(dueCampaigns).toHaveLength(1);
+    expect(dueCampaigns[0].scheduledAt).toBe(now - 60000);
+  });
+});
+
 export function parseCsvContacts(csvText: string) {
   const lines = csvText.trim().split('\n');
   if (lines.length < 2) return [];

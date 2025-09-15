@@ -325,25 +325,64 @@ export const listDueScheduledCampaigns = internalQuery({
   },
 });
 
+export const processDueScheduledCampaigns = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const now = Date.now();
+    
+    // Find campaigns due for sending (limit to 50 for safety)
+    const dueCampaigns = await ctx.db
+      .query("emails")
+      .withIndex("by_status", (q) => q.eq("status", "scheduled"))
+      .filter((q) => q.lte(q.field("scheduledAt"), now))
+      .take(50);
+
+    let processed = 0;
+    
+    for (const campaign of dueCampaigns) {
+      // Reserve by marking as queued
+      await ctx.db.patch(campaign._id, { 
+        status: "queued",
+        lastError: undefined 
+      });
+      
+      // Schedule the actual sending
+      await ctx.scheduler.runAfter(
+        0, // Run immediately
+        internal.emailsActions.sendCampaignInternal,
+        { campaignId: campaign._id }
+      );
+      
+      processed++;
+    }
+
+    if (processed > 0) {
+      console.log(`Processed ${processed} due scheduled campaigns`);
+    }
+    
+    return { processed };
+  },
+});
+
 export const reserveDueScheduledCampaigns = internalMutation({
   args: {},
   handler: async (ctx) => {
     const now = Date.now();
     const reservedIds: Array<Id<"emails">> = [];
 
-    // Fetch scheduled campaigns using the status index, then filter by scheduledAt
-    const query = ctx.db
+    const due = await ctx.db
       .query("emails")
       .withIndex("by_status", (q) => q.eq("status", "scheduled"))
-      .order("asc");
+      .filter((q) => q.lte(q.field("scheduledAt"), now))
+      .take(50);
 
-    for await (const c of query) {
-      if (!c.scheduledAt || c.scheduledAt > now) continue;
-      // Reserve by transitioning to "queued" to avoid duplicate pickup
-      await ctx.db.patch(c._id, { status: "queued" });
-      reservedIds.push(c._id);
-
-      if (reservedIds.length >= 50) break; // Cap to avoid long transactions
+    for (const campaign of due) {
+      // Mark as queued to reserve atomically
+      await ctx.db.patch(campaign._id, {
+        status: "queued",
+        lastError: undefined,
+      });
+      reservedIds.push(campaign._id);
     }
 
     return reservedIds;

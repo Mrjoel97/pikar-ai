@@ -201,6 +201,26 @@ export const listLists = query({
   },
 });
 
+// Add internal variant that bypasses user auth for scheduled/internal sends
+export const getListRecipientEmailsInternal = internalQuery({
+  args: { listId: v.id("contactLists") },
+  handler: async (ctx, args) => {
+    const members = await ctx.db
+      .query("contactListMembers")
+      .withIndex("by_list", (q) => q.eq("listId", args.listId))
+      .collect();
+
+    const emails: string[] = [];
+    for (const m of members) {
+      const contact = await ctx.db.get(m.contactId);
+      if (contact && contact.status === "subscribed") {
+        emails.push(contact.email);
+      }
+    }
+    return emails;
+  },
+});
+
 // Resolve subscribed recipient emails for a list
 export const getListRecipientEmails = query({
   args: { listId: v.id("contactLists") },
