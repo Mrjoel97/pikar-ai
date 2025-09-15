@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query, internalMutation, internalQuery } from "./_generated/server";
-// removed unused internal import
+import { internal } from "./_generated/api";
 
 // Query to get approval queue items
 export const getApprovalQueue = query({
@@ -609,5 +609,60 @@ export const updateApprovalPriority = internalMutation({
   },
   handler: async (ctx, { approvalId, priority }) => {
     await ctx.db.patch(approvalId, { priority });
+  },
+});
+
+// Add: sweep overdue approvals, notify and audit
+export const sweepOverdueApprovals = internalMutation({
+  args: {
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const now = Date.now();
+    const limit = Math.max(1, Math.min(args.limit ?? 200, 500));
+    const overdue = await ctx.db
+      .query("approvalQueue")
+      .withIndex("by_sla_deadline", (q) => q.lt("slaDeadline", now))
+      .filter((q) => q.eq(q.field("status"), "pending"))
+      .order("asc")
+      .take(limit);
+
+    for (const item of overdue) {
+      // Notify assignee if present
+      if (item.assigneeId) {
+        await ctx.runMutation(internal.notifications.sendIfPermitted, {
+          userId: item.assigneeId,
+          businessId: item.businessId,
+          type: "sla_overdue",
+          title: "Approval SLA overdue",
+          message: item.title ?? "An approval is overdue.",
+          data: {
+            workflowId: item.workflowId,
+            workflowRunId: item.workflowRunId,
+            stepIndex: item.stepIndex,
+            slaDeadline: item.slaDeadline,
+          },
+        });
+      }
+
+      // Audit the overdue event
+      await ctx.runMutation(internal.audit.write, {
+        businessId: item.businessId,
+        userId: item.assigneeId ?? undefined,
+        action: "approval_sla_overdue",
+        entityType: "workflow",
+        entityId: String(item.workflowId),
+        details: {
+          approvalId: item._id,
+          workflowRunId: item.workflowRunId,
+          stepIndex: item.stepIndex,
+          priority: item.priority,
+          slaDeadline: item.slaDeadline,
+          status: item.status,
+        },
+      });
+    }
+
+    return overdue.length;
   },
 });

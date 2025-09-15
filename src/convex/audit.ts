@@ -21,6 +21,8 @@ export const write = internalMutation({
     entityId: v.optional(v.string()),
     userId: v.optional(v.id("users")),
     details: v.optional(v.any()),
+    // Add: optional correlation id (stored inside details for flexibility)
+    correlationId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const userId = args.userId ?? args.actorUserId;
@@ -38,13 +40,15 @@ export const write = internalMutation({
       args.data ??
       (args.message ? { message: args.message } : {});
 
+    const mergedDetails = args.correlationId ? { ...details, correlationId: args.correlationId } : details;
+
     await ctx.db.insert("audit_logs", {
       businessId: args.businessId,
       userId,
       action,
       entityType,
       entityId,
-      details,
+      details: mergedDetails,
       createdAt: Date.now(),
       // ipAddress and userAgent can be appended by callers if available
     });

@@ -11,4 +11,12 @@ crons.interval(
   {}
 );
 
+// Process due scheduled campaigns every 2 minutes
+crons.interval(
+  "approval SLA sweep",
+  { minutes: 10 },
+  internal.approvals.sweepOverdueApprovals,
+  {}
+);
+
 export default crons;

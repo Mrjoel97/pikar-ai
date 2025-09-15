@@ -669,22 +669,32 @@ export const sendIfPermitted = internalMutation({
     data: v.optional(v.any()),
   },
   handler: async (ctx, args) => {
-    // Check for recent duplicate notifications (simple rate limiting)
-    const oneHourAgo = Date.now() - (60 * 60 * 1000);
-    const recentSimilar = await ctx.db
-      .query("notifications")
+    // Rate limit enforcement based on preferences (if present)
+    const prefs = await ctx.db
+      .query("notificationPreferences")
       .withIndex("by_user", (q) => q.eq("userId", args.userId))
-      .filter((q) =>
-        q.and(
-          q.gte(q.field("_creationTime"), oneHourAgo),
-          q.eq(q.field("type"), args.type),
-          q.eq(q.field("title"), args.title)
-        )
-      )
       .first();
 
-    if (recentSimilar) {
-      return null; // Skip duplicate
+    if (prefs) {
+      const now = Date.now();
+      const oneHourAgo = now - 60 * 60 * 1000;
+      const oneDayAgo = now - 24 * 60 * 60 * 1000;
+
+      const lastHour = await ctx.db
+        .query("notifications")
+        .withIndex("by_user", (q) => q.eq("userId", args.userId))
+        .filter((q) => q.gt(q.field("createdAt"), oneHourAgo))
+        .collect();
+
+      const lastDay = await ctx.db
+        .query("notifications")
+        .withIndex("by_user", (q) => q.eq("userId", args.userId))
+        .filter((q) => q.gt(q.field("createdAt"), oneDayAgo))
+        .collect();
+
+      if (lastHour.length >= prefs.rateLimits.maxPerHour || lastDay.length >= prefs.rateLimits.maxPerDay) {
+        return null;
+      }
     }
 
     // Create notification
