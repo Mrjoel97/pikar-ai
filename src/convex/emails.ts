@@ -356,6 +356,7 @@ export const getOrCreateUnsubscribeUrl: any = internalMutation({
   handler: async (ctx, args) => {
     // Ensure these are concrete types for TS
     const token: string = await ctx.runMutation(internal.emails.ensureTokenMutation, {
+      businessId: args.businessId,
       email: args.email,
     });
 

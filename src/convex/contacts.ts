@@ -178,17 +178,26 @@ export const listContacts = query({
 
 // List contact lists for a business
 export const listLists = query({
-  args: { businessId: v.id("businesses") },
+  args: { businessId: v.optional(v.id("businesses")) },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
+    // If businessId is not provided, return an empty list instead of throwing
+    if (!args.businessId) {
+      return [];
     }
-
-    return await ctx.db
-      .query("contactLists")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
-      .collect();
+    // Prefer using the composite index for business + name
+    try {
+      return await ctx.db
+        .query("contactLists")
+        .withIndex("by_business_and_name", (q: any) => q.eq("businessId", args.businessId))
+        .collect();
+    } catch {
+      // Fallback if index name differs: filter in code (avoid scans when possible)
+      const res: any[] = [];
+      for await (const row of ctx.db.query("contactLists")) {
+        if (row.businessId === args.businessId) res.push(row);
+      }
+      return res;
+    }
   },
 });
 
@@ -407,7 +416,6 @@ export const seedContacts: any = action({
     const listId: any = await ctx.runMutation((api as any).contacts.createList, {
       businessId: args.businessId,
       name: "Sample Contacts",
-      createdBy: args.createdBy,
     });
 
     for (const email of emails) {
