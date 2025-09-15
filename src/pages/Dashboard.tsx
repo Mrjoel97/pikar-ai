@@ -9,9 +9,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { isGuestMode, getSelectedTier, getDemoData } from "@/lib/guestUtils";
 import { getTierConfig, TierType } from "@/lib/tierConfig";
-import React, { Suspense, lazy } from "react";
+import React, { Suspense, lazy, useState } from "react";
 import { NotificationsCenter } from "@/components/NotificationsCenter";
 import { toast } from "sonner";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 // Add: lazy-loaded tier dashboards (code-splitting)
 const SolopreneurDashboard = lazy(() =>
@@ -38,6 +39,7 @@ const EnterpriseDashboard = lazy(() =>
 export default function Dashboard() {
   const { isLoading, isAuthenticated, user, signOut } = useAuth();
   const navigate = useNavigate();
+  const [helpOpen, setHelpOpen] = useState(false);
 
   // Local lazy dashboard re-definitions removed; using module-scoped lazy components.
 
@@ -85,6 +87,13 @@ export default function Dashboard() {
     api.health.envStatus,
     guestMode || !business?._id ? "skip" : {}
   );
+
+  // Helper to emit lightweight telemetry without backend coupling
+  const logTelemetry = (event: string, data?: Record<string, any>) => {
+    try {
+      window.dispatchEvent(new CustomEvent("telemetry", { detail: { event, ...data } }));
+    } catch {}
+  };
 
   if (isLoading) {
     return (
@@ -158,6 +167,39 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Help Dialog */}
+      <Dialog open={helpOpen} onOpenChange={setHelpOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Need a hand?</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 text-sm text-slate-700">
+            <p>Get started quickly with templates, or reach out for help.</p>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  logTelemetry("help_template_click");
+                  navigate("/workflows");
+                }}
+              >
+                Browse Templates
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => {
+                  logTelemetry("help_contact_click");
+                  navigate("/pricing");
+                }}
+              >
+                Contact Sales
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <Sidebar
         items={effectiveConfig.sidebarItems}
         userDisplay={userDisplay}
@@ -169,7 +211,20 @@ export default function Dashboard() {
 
       <main className="md:ml-72 p-6">
         {/* Top actions */}
-        <div className="mb-4 flex items-center justify-end">
+        <div className="mb-4 flex items-center justify-end gap-2">
+          {/* Add Help for guest mode */}
+          {guestMode && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                setHelpOpen(true);
+                logTelemetry("help_open", { tier: effectiveTier });
+              }}
+            >
+              Get Help
+            </Button>
+          )}
           <NotificationsCenter disabled={guestMode} />
         </div>
 
@@ -188,6 +243,110 @@ export default function Dashboard() {
               Sign In to Get Started
             </Button>
           </div>
+        )}
+
+        {/* Solopreneur Initiative Journey rail */}
+        {effectiveTier === "solopreneur" && (
+          <Card className="mb-6 border-emerald-200 bg-white">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-emerald-800">Initiative Journey</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-col gap-3">
+                <div className="grid grid-cols-2 md:grid-cols-6 gap-2">
+                  {["Discovery", "Planning", "Foundation", "Execution", "Scale", "Sustainability"].map((p) => (
+                    <div
+                      key={p}
+                      className="rounded border border-emerald-200 bg-emerald-50 text-emerald-800 text-xs md:text-sm px-2 py-2 text-center"
+                    >
+                      {p}
+                    </div>
+                  ))}
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      logTelemetry("initiative_quick_action", { action: "create_content" });
+                      navigate("/workflows");
+                    }}
+                  >
+                    Create Content
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      logTelemetry("initiative_quick_action", { action: "schedule_posts" });
+                      navigate("/workflows");
+                    }}
+                  >
+                    Schedule Posts
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      logTelemetry("initiative_quick_action", { action: "send_newsletter" });
+                      navigate("/analytics");
+                    }}
+                  >
+                    Send Newsletter
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* System Health strip (auth only) */}
+        {!guestMode && slaSummary && (
+          <Card className="mb-6 border-slate-200 bg-white">
+            <CardContent className="p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge
+                  variant="outline"
+                  className={
+                    slaSummary.hasRESEND ? "border-emerald-300 text-emerald-700" : "border-amber-400 text-amber-700"
+                  }
+                >
+                  Email: {slaSummary.hasRESEND ? "Configured" : "Missing RESEND_API_KEY"}
+                </Badge>
+                <Badge
+                  variant="outline"
+                  className={
+                    slaSummary.hasBASE_URL ? "border-emerald-300 text-emerald-700" : "border-amber-400 text-amber-700"
+                  }
+                >
+                  Base URL: {slaSummary.hasBASE_URL ? "OK" : "Missing VITE_PUBLIC_BASE_URL"}
+                </Badge>
+                <Badge
+                  variant="outline"
+                  className={
+                    slaSummary.emailQueueDepth > 100
+                      ? "border-red-300 text-red-700"
+                      : "border-emerald-300 text-emerald-700"
+                  }
+                >
+                  Queue: {slaSummary.emailQueueDepth}
+                </Badge>
+                {typeof slaSummary.cronLastProcessed === "number" && (
+                  <Badge variant="outline" className="border-slate-300 text-slate-700">
+                    Cron: {Math.max(0, Math.floor((Date.now() - slaSummary.cronLastProcessed) / 60000))}m ago
+                  </Badge>
+                )}
+              </div>
+              <div className="text-xs text-slate-500">
+                Status helps ensure timely sends and approvals.{" "}
+                <button
+                  className="underline"
+                  onClick={() => logTelemetry("health_strip_view_details")}
+                >
+                  Learn more
+                </button>
+              </div>
+            </CardContent>
+          </Card>
         )}
 
         {/* Add: Solopreneur quick-start card */}
@@ -286,6 +445,22 @@ export default function Dashboard() {
             </CardContent>
           </Card>
         )}
+
+        {/* Analytics CTA card */}
+        <Card className="mb-6 border-slate-200 bg-white">
+          <CardContent className="p-4 flex items-center justify-between">
+            <div className="text-sm text-slate-700">Dive deeper into your performance metrics.</div>
+            <Button
+              size="sm"
+              onClick={() => {
+                logTelemetry("analytics_cta_click", { tier: effectiveTier });
+                navigate("/analytics");
+              }}
+            >
+              View Analytics
+            </Button>
+          </CardContent>
+        </Card>
 
         {/* Render a fixed action button for authenticated, non-guest users */}
         {isAuthenticated && !guestMode && (
