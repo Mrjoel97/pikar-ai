@@ -476,3 +476,91 @@ export const seedForEmail = mutation({
 });
 
 // Command to run: npx convex run initiatives:seedForEmail '{"email":"joel.feruzi@gmail.com"}'
+
+export const addBrainDump = mutation({
+  args: {
+    initiativeId: v.id("initiatives"),
+    content: v.string(),
+    title: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("[ERR_NOT_AUTHENTICATED] You must be signed in.");
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_email", (q) => q.eq("email", identity.email!))
+      .first();
+    if (!user) throw new Error("[ERR_USER_NOT_FOUND] User not found.");
+
+    const initiative = await ctx.db.get(args.initiativeId);
+    if (!initiative) throw new Error("[ERR_INITIATIVE_NOT_FOUND] Initiative not found.");
+
+    const business = await ctx.db.get(initiative.businessId);
+    if (!business) throw new Error("[ERR_BUSINESS_NOT_FOUND] Business not found.");
+
+    // RBAC: owner or team member
+    if (business.ownerId !== user._id && !business.teamMembers.includes(user._id)) {
+      throw new Error("[ERR_FORBIDDEN] Not authorized to add brain dump for this initiative.");
+    }
+
+    const now = Date.now();
+    const id = await ctx.db.insert("brainDumps", {
+      businessId: initiative.businessId,
+      initiativeId: args.initiativeId,
+      userId: user._id,
+      content: args.content,
+      createdAt: now,
+      updatedAt: now,
+      title: args.title,
+    });
+
+    await ctx.runMutation(internal.audit.write as any, {
+      businessId: initiative.businessId,
+      type: "initiative.brain_dump_create",
+      message: "Brain dump created",
+      actorUserId: user._id,
+      data: { initiativeId: args.initiativeId, brainDumpId: id },
+    });
+
+    return id;
+  },
+});
+
+export const listBrainDumpsByInitiative = query({
+  args: {
+    initiativeId: v.id("initiatives"),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_email", (q) => q.eq("email", identity.email!))
+      .first();
+    if (!user) throw new Error("User not found");
+
+    const initiative = await ctx.db.get(args.initiativeId);
+    if (!initiative) throw new Error("Initiative not found");
+
+    const business = await ctx.db.get(initiative.businessId);
+    if (!business) throw new Error("Business not found");
+
+    // RBAC: owner or team member
+    if (business.ownerId !== user._id && !business.teamMembers.includes(user._id)) {
+      throw new Error("Not authorized to access this initiative");
+    }
+
+    const lim = Math.max(1, Math.min(args.limit ?? 20, 100));
+
+    const rows = await ctx.db
+      .query("brainDumps")
+      .withIndex("by_initiative", (q) => q.eq("initiativeId", args.initiativeId))
+      .order("desc")
+      .take(lim);
+
+    return rows;
+  },
+});

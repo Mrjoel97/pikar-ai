@@ -1140,4 +1140,19 @@ export default defineSchema({
   })
     .index("by_user_and_metricKey", ["userId", "metricKey"])
     .index("by_business_and_metricKey", ["businessId", "metricKey"]),
+
+  // Brain dumps for initiatives (free-form idea capture)
+  brainDumps: defineTable({
+    businessId: v.id("businesses"),
+    initiativeId: v.id("initiatives"),
+    userId: v.id("users"),
+    content: v.string(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    // optional title if needed later
+    title: v.optional(v.string()),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_initiative", ["initiativeId"])
+    .index("by_user", ["userId"]),
 });

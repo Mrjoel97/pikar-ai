@@ -1,15 +1,15 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router";
-import { useQuery, useMutation, useAction } from "convex/react";
+import { useMutation, useQuery, useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
+import { Card, CardContent } from "@/components/ui/card";
+import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
+import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import { Zap, Pencil, Calendar, BarChart3, HelpCircle } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
-import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
 
 interface SolopreneurDashboardProps {
   business: any;
@@ -26,6 +26,86 @@ export function SolopreneurDashboard({
   tier, 
   onUpgrade 
 }: SolopreneurDashboardProps) {
+  // Add local BrainDumpSection component
+  function BrainDumpSection({ businessId }: { businessId: string }) {
+    // Get or create an initiative for the business (we'll read the first one)
+    const initiatives = useQuery(api.initiatives.getByBusiness as any, businessId ? { businessId } : "skip");
+    const initiativeId = initiatives && initiatives.length > 0 ? initiatives[0]._id : null;
+
+    const dumps = useQuery(
+      api.initiatives.listBrainDumpsByInitiative as any,
+      initiativeId ? { initiativeId, limit: 10 } : "skip"
+    );
+
+    const addDump = useMutation(api.initiatives.addBrainDump as any);
+
+    const [text, setText] = React.useState("");
+    const [saving, setSaving] = React.useState(false);
+
+    const handleSave = async () => {
+      if (!initiativeId) {
+        toast("No initiative found. Run Phase 0 setup first.");
+        return;
+      }
+      const content = text.trim();
+      if (!content) {
+        toast("Please enter your idea first.");
+        return;
+      }
+      try {
+        setSaving(true);
+        await addDump({ initiativeId, content });
+        setText("");
+        toast("Saved to Brain Dump");
+      } catch (e: any) {
+        toast(e?.message || "Failed to save brain dump");
+      } finally {
+        setSaving(false);
+      }
+    };
+
+    return (
+      <Card className="p-4 mt-6">
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold">Brain Dump</h3>
+          <span className="text-xs text-muted-foreground">Capture rough ideas quickly</span>
+        </div>
+        <Separator className="my-3" />
+        <div className="space-y-3">
+          <Textarea
+            placeholder="Write freely here... (e.g., campaign idea, positioning, offer notes)"
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            className="min-h-24"
+          />
+          <div className="flex justify-end">
+            <Button onClick={handleSave} disabled={saving || !initiativeId}>
+              {saving ? "Saving..." : "Save Idea"}
+            </Button>
+          </div>
+        </div>
+        <Separator className="my-4" />
+        <div className="space-y-2">
+          <div className="text-sm font-medium">Recent ideas</div>
+          <div className="space-y-2">
+            {Array.isArray(dumps) && dumps.length > 0 ? (
+              dumps.map((d: any) => (
+                <div key={String(d._id)} className="rounded-md border p-3 text-sm">
+                  <div className="text-muted-foreground text-xs mb-1">
+                    {new Date(d.createdAt).toLocaleString()}
+                  </div>
+                  <div className="whitespace-pre-wrap">{d.content}</div>
+                </div>
+              ))
+            ) : (
+              <div className="text-muted-foreground text-sm">No entries yet.</div>
+            )}
+          </div>
+        </div>
+      </Card>
+    );
+  }
+
   // Use Convex KPI snapshot when authenticated; fallback to demo data for guests
   const kpiDoc = !isGuest && business?._id
     ? useQuery(api.kpis.getSnapshot, { businessId: business._id })
@@ -503,6 +583,9 @@ export function SolopreneurDashboard({
           </Card>
         )}
       </section>
+
+      {/* Brain Dump */}
+      {!isGuest && business ? <BrainDumpSection businessId={String(business._id)} /> : null}
     </div>
   );
 }
