@@ -1,161 +1,58 @@
-import { v } from "convex/values";
 import { query, mutation } from "./_generated/server";
-import { getAuthUserId } from "@convex-dev/auth/server";
+import { v } from "convex/values";
 
-export const getMy = query({
-  args: {
-    businessId: v.id("businesses"),
-  },
-  handler: async (ctx, { businessId }) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("Not authenticated");
-
-    // Use existing index by_business then filter by userId
-    const rows = await ctx.db
+export const getMyAgentProfile = query({
+  args: { businessId: v.id("businesses") },
+  handler: async (ctx, args) => {
+    const profile = await ctx.db
       .query("agentProfiles")
-      .withIndex("by_business", (q) => q.eq("businessId", businessId))
-      .take(100);
-
-    const doc = rows.find((r) => r.userId === userId) ?? null;
-    return doc;
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .order("desc")
+      .first();
+    return profile || null;
   },
 });
 
-export const upsert = mutation({
+export const upsertMyAgentProfile = mutation({
   args: {
     businessId: v.id("businesses"),
-    businessSummary: v.optional(v.string()),
-    industry: v.optional(v.string()),
-    brandVoice: v.optional(v.string()),
-    timezone: v.optional(v.string()),
-    preferences: v.optional(
-      v.object({
-        automations: v.object({
-          invoicing: v.optional(v.boolean()),
-          emailDrafts: v.optional(v.boolean()),
-          socialPosts: v.optional(v.boolean()),
-        }),
-      }),
-    ),
-    docRefs: v.optional(v.array(v.id("_storage"))),
-    trainingNotes: v.optional(v.string()),
-    onboardingScore: v.optional(v.number()),
+    tone: v.optional(v.union(v.literal("concise"), v.literal("friendly"), v.literal("premium"))),
+    persona: v.optional(v.union(v.literal("maker"), v.literal("coach"), v.literal("executive"))),
+    cadence: v.optional(v.union(v.literal("light"), v.literal("standard"), v.literal("aggressive"))),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("Not authenticated");
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
 
-    const { businessId, ...rest } = args;
-    const now = Date.now();
-
-    // Use existing index by_business then filter by userId
-    const rows = await ctx.db
+    const existing = await ctx.db
       .query("agentProfiles")
-      .withIndex("by_business", (q) => q.eq("businessId", businessId))
-      .take(100);
-
-    const existing = rows.find((r) => r.userId === userId) ?? null;
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .order("desc")
+      .first();
 
     if (existing) {
-      await ctx.db.patch(existing._id, { ...rest, lastUpdated: now });
-      return existing._id;
+      await ctx.db.patch(existing._id, {
+        ...(args.tone !== undefined ? { tone: args.tone } : {}),
+        ...(args.persona !== undefined ? { persona: args.persona } : {}),
+        ...(args.cadence !== undefined ? { cadence: args.cadence } : {}),
+      });
+      return { _id: existing._id, updated: true };
     }
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_email", (q) => q.eq("email", identity.email ?? ""))
+      .first()
+      .catch(() => null);
 
     const _id = await ctx.db.insert("agentProfiles", {
-      userId,
-      businessId,
-      ...rest,
-      lastUpdated: now,
-    });
-    return _id;
-  },
-});
-
-// Add: Load current user's Agent Profile (tone/persona/cadence) if present
-export const getMyProfile = query({
-  args: {},
-  handler: async (ctx) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) return null;
-
-    // Expect one profile per user; if multiple ever exist, take most recent
-    const rows = await ctx.db
-      .query("agentProfiles")
-      .withIndex("by_user", (q) => q.eq("userId", userId))
-      .order("desc")
-      .take(1);
-
-    const doc = rows[0] || null;
-    if (!doc) return null;
-
-    // Return only the v2 fields we care about plus _id for potential future edits
-    return {
-      _id: doc._id,
-      tone: (doc as any).tone ?? null,
-      persona: (doc as any).persona ?? null,
-      cadence: (doc as any).cadence ?? null,
-    };
-  },
-});
-
-// Add: Upsert current user's Agent Profile v2 fields
-export const upsertMyProfile = mutation({
-  args: {
-    tone: v.union(v.literal("concise"), v.literal("friendly"), v.literal("premium")),
-    persona: v.union(v.literal("maker"), v.literal("coach"), v.literal("executive")),
-    cadence: v.union(v.literal("light"), v.literal("standard"), v.literal("aggressive")),
-  },
-  handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("Not authenticated");
-
-    const rows = await ctx.db
-      .query("agentProfiles")
-      .withIndex("by_user", (q) => q.eq("userId", userId))
-      .order("desc")
-      .take(1);
-
-    const now = Date.now();
-    if (rows.length > 0) {
-      const doc = rows[0];
-      await ctx.db.patch(doc._id, {
-        tone: args.tone,
-        persona: args.persona,
-        cadence: args.cadence,
-        lastUpdated: now,
-      } as any);
-      return { ok: true as const, _id: doc._id };
-    } else {
-      // Create a new profile; find a business for this user
-      // Prefer owned business; fallback to team membership
-      const owned = await ctx.db
-        .query("businesses")
-        .withIndex("by_owner", (q) => q.eq("ownerId", userId))
-        .take(1);
-
-      let businessId = owned[0]?._id;
-      if (!businessId) {
-        const member = await ctx.db
-          .query("businesses")
-          .withIndex("by_team_member", (q) => q.eq("teamMembers", userId as any))
-          .take(1);
-        businessId = member[0]?._id;
-      }
-
-      if (!businessId) {
-        throw new Error("No business found for current user to attach agent profile");
-      }
-
-      const _id = await ctx.db.insert("agentProfiles", {
-        userId,
-        businessId,
-        lastUpdated: now,
-        // v2 fields
-        tone: args.tone,
-        persona: args.persona,
-        cadence: args.cadence,
-      } as any);
-      return { ok: true as const, _id };
-    }
+      businessId: args.businessId,
+      userId: user?._id,
+      tone: args.tone ?? "friendly",
+      persona: args.persona ?? "maker",
+      cadence: args.cadence ?? "standard",
+      lastUpdated: Date.now(),
+    } as any);
+    return { _id, created: true };
   },
 });

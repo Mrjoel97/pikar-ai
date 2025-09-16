@@ -1,8 +1,7 @@
 import { v } from "convex/values";
-import { mutation } from "./_generated/server";
+import { mutation, query } from "./_generated/server";
 import { getAuthUserId } from "@convex-dev/auth/server";
-import { query } from "./_generated/server";
-import { internal } from "./_generated/api";
+import { internal } from "@/convex/_generated/api";
 
 export const upsertForBusiness = mutation({
   args: {
@@ -569,7 +568,6 @@ export const listBrainDumpsByInitiative = query({
 // Voice-friendly Brain Dump write that includes transcript/summary (stored inline) and optional tags
 export const addVoiceBrainDump = mutation({
   args: {
-    businessId: v.id("businesses"),
     initiativeId: v.id("initiatives"),
     content: v.string(),
     transcript: v.optional(v.string()),
@@ -577,57 +575,106 @@ export const addVoiceBrainDump = mutation({
     tags: v.optional(v.array(v.string())),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("Not authenticated");
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
 
-    const now = Date.now();
+    const initiative = await ctx.db.get(args.initiativeId);
+    if (!initiative) throw new Error("Initiative not found");
+
     const _id = await ctx.db.insert("brainDumps", {
-      businessId: args.businessId,
+      businessId: initiative.businessId,
       initiativeId: args.initiativeId,
-      userId,
-      content: args.content.trim(),
+      userId: identity.subject,
+      content: args.content,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      title: undefined,
       voice: true,
       transcript: args.transcript,
       summary: args.summary,
       tags: args.tags ?? [],
-      createdAt: now,
-      updatedAt: now,
-      title: undefined,
-    } as any);
+    });
     return { ok: true as const, _id };
   },
 });
 
-// Add: Delete a Brain Dump entry (ownership check)
-export const deleteBrainDump = mutation({
-  args: { brainDumpId: v.id("brainDumps") },
+// Persist Voice Note as a Brain Dump with tags
+export const addVoiceNote = mutation({
+  args: {
+    businessId: v.id("businesses"),
+    initiativeId: v.id("initiatives"),
+    transcript: v.string(),
+    summary: v.optional(v.string()),
+    tags: v.optional(v.array(v.string())),
+  },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
     if (!userId) throw new Error("Not authenticated");
 
-    const existing = await ctx.db.get(args.brainDumpId);
-    if (!existing) throw new Error("Brain dump not found");
-    if ((existing as any).userId !== userId) throw new Error("Not authorized");
+    const _id = await ctx.db.insert("brainDumps", {
+      businessId: args.businessId,
+      initiativeId: args.initiativeId,
+      userId,
+      content: args.summary ?? args.transcript.slice(0, 140), // short label content
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      title: undefined,
+      voice: true,
+      transcript: args.transcript,
+      summary: args.summary,
+      tags: args.tags ?? [],
+    });
+    return { ok: true as const, _id };
+  },
+});
+
+// Delete a Brain Dump (voice note or normal), only by owner
+export const deleteBrainDump = mutation({
+  args: { brainDumpId: v.id("brainDumps") },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+
+    const doc = await ctx.db.get(args.brainDumpId);
+    if (!doc) throw new Error("Not found");
+    if (doc.userId !== identity.subject) throw new Error("Not authorized");
 
     await ctx.db.delete(args.brainDumpId);
     return { ok: true as const };
   },
 });
 
-// Optional: Tag-aware listing (keeps index on initiative and filters tags client-side)
-export const listBrainDumpsByInitiativeWithTags = query({
+// List brain dumps filtered by initiative and optional tag
+// Uses indexes to avoid full scans: by_initiative primary, by_tags when tag provided
+export const listBrainDumpsFiltered = query({
   args: {
     initiativeId: v.id("initiatives"),
     tag: v.optional(v.string()),
+    limit: v.optional(v.number()),
   },
-  handler: async (ctx, { initiativeId, tag }) => {
-    const results = await ctx.db
-      .query("brainDumps")
-      .withIndex("by_initiative", (q) => q.eq("initiativeId", initiativeId))
-      .order("desc")
-      .take(200);
+  handler: async (ctx, args) => {
+    const limit = Math.min(Math.max(args.limit ?? 100, 1), 500);
 
-    if (!tag) return results;
-    return results.filter((r) => (r.tags ?? []).includes(tag));
+    if (args.tag) {
+      // Tag filter: fetch by initiative (indexed) then filter by tag client-side
+      const rows = await ctx.db
+        .query("brainDumps")
+        .withIndex("by_initiative", (q) => q.eq("initiativeId", args.initiativeId))
+        .order("desc")
+        .take(500);
+
+      return rows
+        .filter((r) => Array.isArray((r as any).tags) && (r as any).tags.includes(args.tag!))
+        .slice(0, limit);
+    }
+
+    // Initiative index
+    const rows = await ctx.db
+      .query("brainDumps")
+      .withIndex("by_initiative", (q) => q.eq("initiativeId", args.initiativeId))
+      .order("desc")
+      .take(limit);
+
+    return rows;
   },
 });

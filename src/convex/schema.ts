@@ -982,7 +982,8 @@ export default defineSchema({
     updatedAt: v.number(),
     dueDate: v.optional(v.number()),
   })
-    .index("by_business", ["businessId"]),
+    .index("by_business", ["businessId"])
+    .index("by_user", ["userId"]),
 
   // Add KPIs for Dashboard snapshots (per-business, per-day)
   dashboardKpis: defineTable({
@@ -1114,17 +1115,11 @@ export default defineSchema({
     onboardingScore: v.optional(v.number()),
     lastUpdated: v.optional(v.number()),
     // Add Agent Profile v2 fields
-    tone: v.optional(
-      v.union(v.literal("concise"), v.literal("friendly"), v.literal("premium"))
-    ),
-    persona: v.optional(
-      v.union(v.literal("maker"), v.literal("coach"), v.literal("executive"))
-    ),
-    cadence: v.optional(
-      v.union(v.literal("light"), v.literal("standard"), v.literal("aggressive"))
-    ),
+    tone: v.optional(v.union(v.literal("concise"), v.literal("friendly"), v.literal("premium"))),
+    persona: v.optional(v.union(v.literal("maker"), v.literal("coach"), v.literal("executive"))),
+    cadence: v.optional(v.union(v.literal("light"), v.literal("standard"), v.literal("aggressive"))),
+    // duplicates removed
   })
-    .index("by_user", ["userId"])
     .index("by_business", ["businessId"]),
 
   // Upload metadata (references Convex storage system table via fileId)
@@ -1159,11 +1154,7 @@ export default defineSchema({
     initiativeId: v.id("initiatives"),
     userId: v.id("users"),
     content: v.string(),
-    createdAt: v.number(),
-    updatedAt: v.number(),
-    // optional title if needed later
-    title: v.optional(v.string()),
-    // Add voice-notes support and tag metadata
+    createdAt: v.optional(v.number()),
     voice: v.optional(v.boolean()),
     transcript: v.optional(v.string()),
     summary: v.optional(v.string()),
@@ -1185,6 +1176,17 @@ export default defineSchema({
   })
     .index("by_user", ["userId", "pinnedAt"])
     .index("by_user_and_template", ["userId", "templateId"]),
+
+  // Duplicate scheduleSlots removed (was defined twice)
+  // scheduleSlots_dup: defineTable({
+  //   userId: v.id("users"),
+  //   businessId: v.optional(v.id("businesses")),
+  //   label: v.string(),
+  //   channel: v.union(v.literal("email"), v.literal("post"), v.literal("other")),
+  //   scheduledAt: v.number(),
+  //   createdAt: v.number(),
+  // })
+  //   .index("by_user_and_time", ["userId", "scheduledAt"]),
 
   // Add new table: scheduleSlots for persisted schedule assistant slots
   scheduleSlots: defineTable({

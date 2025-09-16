@@ -29,6 +29,10 @@ export function SolopreneurDashboard({
   tier, 
   onUpgrade 
 }: SolopreneurDashboardProps) {
+  // Provide a relaxed-typing alias for the composer so extra props don't cause TS errors
+  const CampaignComposerAny = CampaignComposer as any;
+  // Use auth status early to guard queries when not authenticated
+  const { isAuthenticated: isAuthed } = useAuth();
   // Add local BrainDumpSection component
   function BrainDumpSection({ businessId }: { businessId: string }) {
     // Get or create an initiative for the business (we'll read the first one)
@@ -41,8 +45,8 @@ export function SolopreneurDashboard({
     );
 
     const addDump = useMutation(api.initiatives.addBrainDump as any);
-    const addVoiceDump = useMutation(api.initiatives?.addVoiceBrainDump as any);
-    const deleteDump = useMutation(api.initiatives?.deleteBrainDump as any);
+    const addVoiceDump = useMutation(api.initiatives.addVoiceBrainDump as any);
+    const deleteDump = useMutation(api.initiatives.deleteBrainDump as any);
 
     const [text, setText] = React.useState("");
     const [saving, setSaving] = React.useState(false);
@@ -371,6 +375,39 @@ export function SolopreneurDashboard({
     navigate("/workflows");
   };
 
+  // Add: load Agent Profile v2 to wire tone/persona/cadence into composer
+  const agentProfile = useQuery(api.agentProfile.getMyAgentProfile, business ? { businessId: business._id } : "skip" as any);
+  const upsertAgent = useMutation(api.agentProfile.upsertMyAgentProfile as any);
+  const saveAgentProfile = async (partial: { tone?: "concise" | "friendly" | "premium"; persona?: "maker" | "coach" | "executive"; cadence?: "light" | "standard" | "aggressive" }) => {
+    if (!business?._id) {
+      toast("Create a business first.");
+      return;
+    }
+    try {
+      await upsertAgent({ businessId: business._id, ...partial });
+      toast.success("Agent profile updated");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Failed to save agent profile");
+    }
+  };
+
+  // Add: Schedule a simple "Post" quick action using schedule.addSlot
+  const addSlot = useMutation(api.schedule.addSlot);
+  const handleQuickPost = async () => {
+    try {
+      const when = Date.now() + 15 * 60 * 1000; // 15 minutes from now
+      await addSlot({
+        businessId: business?._id,
+        label: "Quick Post",
+        channel: "post",
+        scheduledAt: when,
+      });
+      toast.success(`Post scheduled for ${new Date(when).toLocaleString()}`);
+    } catch (e: any) {
+      toast.error(e.message ?? "Failed to schedule post");
+    }
+  };
+
   // Handler for One-Click Setup
   const handleOneClickSetup = async () => {
     if (isGuest) {
@@ -487,7 +524,10 @@ export function SolopreneurDashboard({
   const orderedTemplates = React.useMemo(() => utils.orderTemplates(myTemplates), [myTemplates]);
 
   // NEW: Template pinning persistence
-  const pinnedList = useQuery(api.templatePins?.listPinned as any, {}) as any[] | undefined;
+  const pinnedList = useQuery(
+    api.templatePins?.listPinned as any,
+    isGuest || !isAuthed ? ("skip" as any) : {}
+  ) as any[] | undefined;
   const togglePin = useMutation(api.templatePins?.togglePin as any);
   const pinnedSet = React.useMemo(() => {
     const ids = new Set<string>();
@@ -562,7 +602,6 @@ export function SolopreneurDashboard({
   const listSlots = !isGuest && business?._id
     ? (useQuery as any)(api.schedule?.listSlots, { businessId: business._id })
     : [];
-  const addSlot = useMutation(api.schedule?.addSlot as any);
   const deleteSlot = useMutation(api.schedule?.deleteSlot as any);
 
   // Handler to accept a suggested slot
@@ -671,13 +710,13 @@ export function SolopreneurDashboard({
   const handleUseTemplateEnhanced = async (tpl: { key: string; name: string }) => {
     try {
       utils.bumpTemplateUsage(tpl.key);
-      utils.recordLocalWin(5, "template_used", { templateKey: tpl.key, tone: agentProfile.tone, persona: agentProfile.persona });
+      utils.recordLocalWin(5, "template_used", { templateKey: tpl.key, tone: agentProfile?.tone, persona: agentProfile?.persona });
       if (business?._id) {
         await logWin({
           businessId: business._id,
           winType: "template_used",
           timeSavedMinutes: 5,
-          details: { templateKey: tpl.key, tone: agentProfile.tone, persona: agentProfile.persona },
+          details: { templateKey: tpl.key, tone: agentProfile?.tone, persona: agentProfile?.persona },
         });
       }
     } catch {}
@@ -725,61 +764,6 @@ export function SolopreneurDashboard({
     );
   }, [galleryQuery, orderedTemplates]);
 
-  // Add: Agent Profile (local) state + persistence
-  const [agentProfile, setAgentProfile] = React.useState<{
-    tone: "concise" | "friendly" | "premium";
-    persona: "maker" | "coach" | "executive";
-    cadence: "light" | "standard" | "aggressive";
-  }>({ tone: "friendly", persona: "maker", cadence: "standard" });
-
-  // 1) Load and Save Agent Profile v2 via Convex
-  const serverProfile = useQuery(api.agentProfile?.getMyProfile as any, isGuest ? "skip" : ({} as any)) as
-    | { _id: string; tone: "concise" | "friendly" | "premium" | null; persona: "maker" | "coach" | "executive" | null; cadence: "light" | "standard" | "aggressive" | null }
-    | null
-    | undefined;
-
-  const saveProfileMutation = useMutation(api.agentProfile?.upsertMyProfile as any);
-
-  // Hydrate local Agent Profile from server on first load
-  React.useEffect(() => {
-    if (!serverProfile) return;
-    const patch: any = {};
-    if (serverProfile.tone) patch.tone = serverProfile.tone;
-    if (serverProfile.persona) patch.persona = serverProfile.persona;
-    if (serverProfile.cadence) patch.cadence = serverProfile.cadence;
-    if (Object.keys(patch).length > 0) {
-      setAgentProfile((prev) => ({ ...prev, ...patch }));
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [!!serverProfile]);
-
-  // Update saveAgentProfile to persist to backend
-  const saveAgentProfile = (patch: Partial<typeof agentProfile>) => {
-    setAgentProfile((prev) => {
-      const next = { ...prev, ...patch };
-      try {
-        localStorage.setItem("pikar.agentProfile", JSON.stringify(next));
-      } catch {}
-      // Persist to backend if authenticated
-      (async () => {
-        try {
-          if (!isGuest) {
-            await saveProfileMutation({
-              tone: next.tone,
-              persona: next.persona,
-              cadence: next.cadence,
-            });
-          }
-        } catch (e: any) {
-          // Non-blocking persistence
-          console.warn("Failed to save Agent Profile:", e?.message || e);
-        }
-      })();
-      return next;
-    });
-    toast("Agent Profile updated");
-  };
-
   // Tag ideas by theme (simple keyword heuristic)
   const tagIdea = (text: string): Array<"content" | "offer" | "ops"> => {
     const t = text.toLowerCase();
@@ -792,7 +776,7 @@ export function SolopreneurDashboard({
 
   // Adapt short copy to tone + persona
   const adaptCopy = (base: string) => {
-    const { tone, persona } = agentProfile;
+    const { tone, persona } = agentProfile || { tone: "friendly", persona: "maker", cadence: "standard" };
     let prefix = "";
     if (tone === "concise") prefix += "";
     if (tone === "friendly") prefix += "Hey there! ";
@@ -812,7 +796,7 @@ export function SolopreneurDashboard({
     const churn = quickAnalytics?.churnAlert ? "Churn risk spotted — re‑engage now." : "Healthy retention — keep cadence.";
     const top = (quickAnalytics?.topProducts ?? [])[0]?.name || "your top offer";
     const cadenceCopy =
-      agentProfile.cadence === "light" ? "light weekly" : agentProfile.cadence === "aggressive" ? "high‑tempo" : "steady weekly";
+      agentProfile?.cadence === "light" ? "light weekly" : agentProfile?.cadence === "aggressive" ? "high‑tempo" : "steady weekly";
 
     const weeklyPost = adaptCopy(
       `Weekly update: momentum check, ${cadenceCopy} plan, and a quick spotlight on ${top}. ${churn}`
@@ -848,14 +832,14 @@ export function SolopreneurDashboard({
     );
   };
   const handleSaveCapsuleWins = async () => {
-    utils.recordLocalWin(12, "content_capsule_generated", { cadence: agentProfile.cadence });
+    utils.recordLocalWin(12, "content_capsule_generated", { cadence: agentProfile?.cadence });
     if (business?._id) {
       try {
         await logWin({
           businessId: business._id,
           winType: "content_capsule_generated",
           timeSavedMinutes: 12,
-          details: { cadence: agentProfile.cadence },
+          details: { cadence: agentProfile?.cadence },
         });
       } catch {}
     }
@@ -924,8 +908,7 @@ export function SolopreneurDashboard({
   };
 
   // Business context for composer and SLA
-  const { isAuthenticated } = useAuth();
-  const currentBusiness = useQuery(api.businesses?.currentUserBusiness as any, isAuthenticated ? {} : "skip") as any;
+  const currentBusiness = useQuery(api.businesses?.currentUserBusiness as any, isAuthed ? {} : "skip") as any;
   const businessId = currentBusiness?._id;
 
   // Env / system health
@@ -1081,11 +1064,11 @@ export function SolopreneurDashboard({
             <DialogTitle>Quick Newsletter</DialogTitle>
           </DialogHeader>
           {businessId ? (
-            <CampaignComposer
+            <CampaignComposerAny
               businessId={businessId}
-              agentTone={agentProfile.tone}
-              agentPersona={agentProfile.persona}
-              agentCadence={agentProfile.cadence}
+              agentTone={agentProfile?.tone}
+              agentPersona={agentProfile?.persona}
+              agentCadence={agentProfile?.cadence}
               onClose={() => setComposerOpen(false)}
               onCreated={() => toast.success("Newsletter scheduled")}
               defaultScheduledAt={nextEmailSlot ? nextEmailSlot.scheduledAt : undefined}
@@ -1143,8 +1126,8 @@ export function SolopreneurDashboard({
                   <Button
                     key={t}
                     size="sm"
-                    variant={agentProfile.tone === t ? "default" : "outline"}
-                    className={agentProfile.tone === t ? "bg-emerald-600 text-white hover:bg-emerald-700" : ""}
+                    variant={agentProfile?.tone === t ? "default" : "outline"}
+                    className={agentProfile?.tone === t ? "bg-emerald-600 text-white hover:bg-emerald-700" : ""}
                     onClick={() => saveAgentProfile({ tone: t })}
                   >
                     {t}
@@ -1159,8 +1142,8 @@ export function SolopreneurDashboard({
                   <Button
                     key={p}
                     size="sm"
-                    variant={agentProfile.persona === p ? "default" : "outline"}
-                    className={agentProfile.persona === p ? "bg-emerald-600 text-white hover:bg-emerald-700" : ""}
+                    variant={agentProfile?.persona === p ? "default" : "outline"}
+                    className={agentProfile?.persona === p ? "bg-emerald-600 text-white hover:bg-emerald-700" : ""}
                     onClick={() => saveAgentProfile({ persona: p })}
                   >
                     {p}
@@ -1175,8 +1158,8 @@ export function SolopreneurDashboard({
                   <Button
                     key={c}
                     size="sm"
-                    variant={agentProfile.cadence === c ? "default" : "outline"}
-                    className={agentProfile.cadence === c ? "bg-emerald-600 text-white hover:bg-emerald-700" : ""}
+                    variant={agentProfile?.cadence === c ? "default" : "outline"}
+                    className={agentProfile?.cadence === c ? "bg-emerald-600 text-white hover:bg-emerald-700" : ""}
                     onClick={() => saveAgentProfile({ cadence: c })}
                   >
                     {c}
@@ -1432,6 +1415,14 @@ export function SolopreneurDashboard({
                   disabled={!businessId}
                 >
                   Use Next Slot
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleQuickPost}
+                  disabled={!businessId}
+                >
+                  Schedule in 15m
                 </Button>
               </div>
             </CardContent>
@@ -1872,7 +1863,7 @@ export function SolopreneurDashboard({
         </Card>
       </div>
 
-      {isAuthenticated && (
+      {isAuthed && (
         <div className="fixed bottom-6 right-6 z-40">
           <Button
             onClick={async () => {

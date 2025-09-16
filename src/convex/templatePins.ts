@@ -5,12 +5,19 @@ import { getAuthUserId } from "@convex-dev/auth/server";
 
 // List pinned templates for the current user (optionally scoped by tier or search in UI later)
 export const listPinned = query({
-  args: {
-    limit: v.optional(v.number()),
-  },
-  handler: async (ctx, args) => {
+  args: {},
+  handler: async (ctx) => {
+    // Allow guests: return empty list instead of throwing
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      return [];
+    }
+
     const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("Not authenticated");
+    // Allow guests: return empty list instead of throwing
+    if (!userId) {
+      return [];
+    }
 
     const limit = Math.min(Math.max(args.limit ?? 50, 1), 200);
 
