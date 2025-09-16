@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import { useState, useEffect } from "react";
 import { useMemo } from "react";
 import { getAllBuiltInTemplates } from "@/lib/templatesClient";
+import { useMutation as usePinMutation, useQuery as usePinQuery } from "convex/react";
 
 export default function WorkflowTemplatesPage() {
   const navigate = useNavigate();
@@ -50,6 +51,33 @@ export default function WorkflowTemplatesPage() {
       setTierFilter(bizTier);
     }
   }, [businesses, tierFilter]);
+
+  // Backend‑persistent template pinning
+  const pinnedList = usePinQuery(api.templatePins?.listPinned as any, isAuthenticated ? {} : "skip") as any[] | undefined;
+  const togglePin = usePinMutation(api.templatePins?.togglePin as any);
+  const pinnedSet = useMemo(() => {
+    const ids = new Set<string>();
+    if (Array.isArray(pinnedList)) {
+      for (const p of pinnedList) {
+        const id = String((p as any)?.templateId || "");
+        if (id) ids.add(id);
+      }
+    }
+    return ids;
+  }, [pinnedList]);
+
+  const handlePin = async (templateId: string, nextPin: boolean) => {
+    if (!isAuthenticated) {
+      toast("Sign in to pin templates.");
+      return;
+    }
+    try {
+      await togglePin({ templateId, pin: nextPin } as any);
+      toast(nextPin ? "Pinned template" : "Unpinned template");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Failed to update pin");
+    }
+  };
 
   if (authLoading) {
     return (
@@ -129,33 +157,47 @@ export default function WorkflowTemplatesPage() {
                     <CardDescription>{template.description}</CardDescription>
                   )}
                 </div>
-                <Button
-                  disabled={!firstBizId}
-                  onClick={async () => {
-                    if (!firstBizId) {
-                      toast.error("No business found. Complete onboarding first.");
-                      return;
-                    }
-                    try {
-                      await upsertWorkflow({
-                        businessId: firstBizId as any,
-                        name: template.name,
-                        description: template.description || undefined,
-                        trigger: template.trigger || { type: "manual" },
-                        approval: template.approval || { required: false, threshold: 1 },
-                        pipeline: Array.isArray(template.pipeline) ? template.pipeline : [],
-                        template: false,
-                        tags: Array.isArray(template.tags) ? template.tags : [],
-                      } as any);
-                      toast.success("Template copied to your workflows");
-                      navigate("/workflows");
-                    } catch (e: any) {
-                      toast.error(e?.message || "Failed to copy template");
-                    }
-                  }}
-                >
-                  Copy to Workflows
-                </Button>
+                <div className="flex items-center gap-2">
+                  {isAuthenticated && (
+                    <Button
+                      size="icon"
+                      variant={pinnedSet.has(template._id) ? "default" : "outline"}
+                      className={pinnedSet.has(template._id) ? "bg-emerald-600 text-white hover:bg-emerald-700 h-8 w-8" : "h-8 w-8"}
+                      onClick={() => handlePin(template._id, !pinnedSet.has(template._id))}
+                      aria-label={pinnedSet.has(template._id) ? "Unpin template" : "Pin template"}
+                      title={pinnedSet.has(template._id) ? "Unpin" : "Pin"}
+                    >
+                      {pinnedSet.has(template._id) ? "★" : "☆"}
+                    </Button>
+                  )}
+                  <Button
+                    disabled={!firstBizId}
+                    onClick={async () => {
+                      if (!firstBizId) {
+                        toast.error("No business found. Complete onboarding first.");
+                        return;
+                      }
+                      try {
+                        await upsertWorkflow({
+                          businessId: firstBizId as any,
+                          name: template.name,
+                          description: template.description || undefined,
+                          trigger: template.trigger || { type: "manual" },
+                          approval: template.approval || { required: false, threshold: 1 },
+                          pipeline: Array.isArray(template.pipeline) ? template.pipeline : [],
+                          template: false,
+                          tags: Array.isArray(template.tags) ? template.tags : [],
+                        } as any);
+                        toast.success("Template copied to your workflows");
+                        navigate("/workflows");
+                      } catch (e: any) {
+                        toast.error(e?.message || "Failed to copy template");
+                      }
+                    }}
+                  >
+                    Copy to Workflows
+                  </Button>
+                </div>
               </div>
             </CardHeader>
             <CardContent>

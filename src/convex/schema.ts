@@ -366,7 +366,9 @@ export default defineSchema({
     updatedAt: v.number(),
   })
     .index("by_user", ["userId"])
-    .index("by_business", ["businessId"]),
+    .index("by_business", ["businessId"])
+    // Composite index to enable efficient user+business lookups
+    .index("by_user_and_business", ["userId", "businessId"]),
 
   // Telemetry Events
   telemetryEvents: defineTable({
@@ -1155,4 +1157,24 @@ export default defineSchema({
     .index("by_business", ["businessId"])
     .index("by_initiative", ["initiativeId"])
     .index("by_user", ["userId"]),
+
+  // Add new table: templatePins for backend-persisted template pinning
+  templatePins: defineTable({
+    userId: v.id("users"),
+    templateId: v.id("workflowTemplates"),
+    pinnedAt: v.number(),
+  })
+    .index("by_user", ["userId", "pinnedAt"])
+    .index("by_user_and_template", ["userId", "templateId"]),
+
+  // Add new table: scheduleSlots for persisted schedule assistant slots
+  scheduleSlots: defineTable({
+    userId: v.id("users"),
+    businessId: v.optional(v.id("businesses")),
+    label: v.string(),
+    channel: v.union(v.literal("email"), v.literal("post"), v.literal("other")),
+    scheduledAt: v.number(),
+    createdAt: v.number(),
+  })
+    .index("by_user_and_time", ["userId", "scheduledAt"]),
 });

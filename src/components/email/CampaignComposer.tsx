@@ -14,11 +14,13 @@ import { toast } from "sonner";
 import { useMutation, useQuery, useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
+import { Switch } from "@/components/ui/switch";
 
 interface CampaignComposerProps {
   businessId: Id<"businesses">;
   onClose: () => void;
   onCreated?: () => void;
+  defaultScheduledAt?: number;
 }
 
 interface CsvContact {
@@ -27,7 +29,7 @@ interface CsvContact {
   tags?: string[];
 }
 
-export function CampaignComposer({ businessId, onClose, onCreated }: CampaignComposerProps) {
+export function CampaignComposer({ businessId, onClose, onCreated, defaultScheduledAt }: CampaignComposerProps) {
   const [formData, setFormData] = useState({
     fromName: "",
     fromEmail: "",
@@ -36,6 +38,12 @@ export function CampaignComposer({ businessId, onClose, onCreated }: CampaignCom
     previewText: "",
     body: "",
     buttons: [] as Array<{ text: string; url: string; style?: string }>,
+  });
+
+  const [enableAb, setEnableAb] = useState(false);
+  const [variantB, setVariantB] = useState({
+    subject: "",
+    body: "",
   });
 
   const [audienceType, setAudienceType] = useState<"direct" | "list">("direct");
@@ -214,8 +222,13 @@ export function CampaignComposer({ businessId, onClose, onCreated }: CampaignCom
         audienceType,
         audienceListId: audienceType === "list" ? selectedListId : undefined,
         buttons: formData.buttons.map(({ text, url }) => ({ text, url })),
-        scheduledAt: Date.now(),
+        scheduledAt: defaultScheduledAt ?? Date.now(),
       });
+
+      // Note: A/B variant is UI-only scaffold for now (not persisted in campaign)
+      if (enableAb && variantB.subject && variantB.body) {
+        toast("A/B scaffold saved locally (B variant not yet scheduled server-side).");
+      }
 
       toast.success("Campaign scheduled successfully!");
       onCreated?.();
@@ -463,6 +476,47 @@ export function CampaignComposer({ businessId, onClose, onCreated }: CampaignCom
             </CardContent>
           </Card>
         ))}
+      </div>
+
+      <Separator />
+
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <Label>A/B Testing (scaffold)</Label>
+          <div className="flex items-center gap-2">
+            <Switch checked={enableAb} onCheckedChange={setEnableAb} />
+            <span className="text-sm text-muted-foreground">{enableAb ? "Enabled" : "Disabled"}</span>
+          </div>
+        </div>
+        {enableAb && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm">Variant B</CardTitle>
+              <CardDescription>Lightweight fields for a second variant (UI-only)</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div>
+                <Label htmlFor="subjectB">Subject (B)</Label>
+                <Input
+                  id="subjectB"
+                  value={variantB.subject}
+                  onChange={(e) => setVariantB((p) => ({ ...p, subject: e.target.value }))}
+                  placeholder="Your variant B subject"
+                />
+              </div>
+              <div>
+                <Label htmlFor="bodyB">Body (B)</Label>
+                <Textarea
+                  id="bodyB"
+                  value={variantB.body}
+                  onChange={(e) => setVariantB((p) => ({ ...p, body: e.target.value }))}
+                  placeholder="Variant B email content..."
+                  rows={6}
+                />
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       <Separator />

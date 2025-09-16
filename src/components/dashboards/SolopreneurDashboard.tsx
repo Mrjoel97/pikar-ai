@@ -478,6 +478,42 @@ export function SolopreneurDashboard({
   const [quickIdea, setQuickIdea] = useState<string>("");
   const [savingQuickIdea, setSavingQuickIdea] = useState(false);
 
+  // NEW: Template pinning persistence
+  const pinnedList = useQuery(api.templatePins?.listPinned as any, {}) as any[] | undefined;
+  const togglePin = useMutation(api.templatePins?.togglePin as any);
+  const pinnedSet = React.useMemo(() => {
+    const ids = new Set<string>();
+    if (Array.isArray(pinnedList)) {
+      for (const p of pinnedList) {
+        const id = String((p as any)?.templateId || "");
+        if (id) ids.add(id);
+      }
+    }
+    return ids;
+  }, [pinnedList]);
+
+  const handlePinTemplate = async (tplKey: string, nextPin: boolean) => {
+    try {
+      await togglePin({ templateId: tplKey, pin: nextPin } as any);
+      toast(nextPin ? "Pinned template" : "Unpinned template");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Failed to update pin");
+    }
+  };
+
+  // Sort pinned first, then by usage ordering
+  const orderedTemplatesWithPins = React.useMemo(() => {
+    const list = [...orderedTemplates];
+    list.sort((a, b) => {
+      const ap = pinnedSet.has(a.key) ? 1 : 0;
+      const bp = pinnedSet.has(b.key) ? 1 : 0;
+      // pinned first
+      if (ap !== bp) return bp - ap;
+      return 0;
+    });
+    return list;
+  }, [orderedTemplates, pinnedSet]);
+
   // Template Gallery modal state
   const [galleryOpen, setGalleryOpen] = useState(false);
   const [galleryQuery, setGalleryQuery] = useState("");
@@ -514,22 +550,48 @@ export function SolopreneurDashboard({
     ];
   }, []);
 
+  // Schedule slots persistence
+  const listSlots = !isGuest && business?._id
+    ? (useQuery as any)(api.schedule?.listSlots, { businessId: business._id })
+    : [];
+  const addSlot = useMutation(api.schedule?.addSlot as any);
+  const deleteSlot = useMutation(api.schedule?.deleteSlot as any);
+
   // Handler to accept a suggested slot
   const handleAddSlot = async (slot: { label: string; channel: "Post" | "Email"; when: string }) => {
     try {
       // Log a small win locally (+3m) and server-side if signed in
       utils.recordLocalWin(3, "schedule_slot_added", { channel: slot.channel, when: slot.when });
       if (business?._id) {
-        await logWin({
+        // Persist to backend
+        const whenDate = new Date();
+        // attempt to parse "when" string using current locale best-effort; fallback to now
+        // Consumers will typically set absolute times in the server; this provides a client-side shim
+        try {
+          const parsed = new Date(slot.when);
+          if (!isNaN(parsed.getTime())) {
+            whenDate.setTime(parsed.getTime());
+          }
+        } catch {}
+        await addSlot({
           businessId: business._id,
-          winType: "schedule_slot_added",
-          timeSavedMinutes: 3,
-          details: { channel: slot.channel, when: slot.when },
-        });
+          label: slot.label,
+          channel: slot.channel,
+          scheduledAt: whenDate.getTime(),
+        } as any);
       }
       toast.success(`Added ${slot.channel} slot for ${slot.when}`);
     } catch (e: any) {
       toast.error(e?.message ?? "Failed to add slot");
+    }
+  };
+
+  const handleDeleteSlot = async (slotId: string) => {
+    try {
+      await deleteSlot({ slotId } as any);
+      toast("Deleted slot");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Failed to delete slot");
     }
   };
 
@@ -993,12 +1055,24 @@ export function SolopreneurDashboard({
           <Button size="sm" variant="outline" onClick={() => setGalleryOpen(true)}>Open Gallery</Button>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {orderedTemplates.map((t) => (
+          {orderedTemplatesWithPins.map((t) => (
             <Card key={t.key} className="...">
               <CardContent className="p-4 space-y-2">
                 <div className="flex items-center justify-between">
                   <h3 className="font-medium">{t.name}</h3>
-                  <Badge variant="outline" className="capitalize">{t.tag}</Badge>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline" className="capitalize">{t.tag}</Badge>
+                    <Button
+                      size="icon"
+                      variant={pinnedSet.has(t.key) ? "default" : "outline"}
+                      className={pinnedSet.has(t.key) ? "bg-emerald-600 text-white hover:bg-emerald-700 h-8 w-8" : "h-8 w-8"}
+                      onClick={() => handlePinTemplate(t.key, !pinnedSet.has(t.key))}
+                      aria-label={pinnedSet.has(t.key) ? "Unpin template" : "Pin template"}
+                      title={pinnedSet.has(t.key) ? "Unpin" : "Pin"}
+                    >
+                      {pinnedSet.has(t.key) ? "★" : "☆"}
+                    </Button>
+                  </div>
                 </div>
                 <p className="text-sm text-muted-foreground">{t.description}</p>
                 <div className="pt-1">
@@ -1033,7 +1107,19 @@ export function SolopreneurDashboard({
                     <CardContent className="p-4 space-y-2">
                       <div className="flex items-center justify-between">
                         <h3 className="font-medium">{t.name}</h3>
-                        <Badge variant="outline" className="capitalize">{t.tag}</Badge>
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline" className="capitalize">{t.tag}</Badge>
+                          <Button
+                            size="icon"
+                            variant={pinnedSet.has(t.key) ? "default" : "outline"}
+                            className={pinnedSet.has(t.key) ? "bg-emerald-600 text-white hover:bg-emerald-700 h-8 w-8" : "h-8 w-8"}
+                            onClick={() => handlePinTemplate(t.key, !pinnedSet.has(t.key))}
+                            aria-label={pinnedSet.has(t.key) ? "Unpin template" : "Pin template"}
+                            title={pinnedSet.has(t.key) ? "Unpin" : "Pin"}
+                          >
+                            {pinnedSet.has(t.key) ? "★" : "☆"}
+                          </Button>
+                        </div>
                       </div>
                       <p className="text-sm text-muted-foreground">{t.description}</p>
                       <div className="pt-1">
@@ -1426,10 +1512,32 @@ export function SolopreneurDashboard({
                     <div className="text-sm font-medium">{s.label} • {s.channel}</div>
                     <div className="text-xs text-muted-foreground">{s.when}</div>
                   </div>
-                  <Button size="sm" onClick={() => handleAddSlot(s)}>Add</Button>
+                  <Button size="sm" onClick={() => handleAddSlot(s)} disabled={isGuest}>Add</Button>
                 </div>
               ))}
             </div>
+            {!isGuest && (
+              <div className="space-y-2">
+                <div className="text-xs text-muted-foreground mt-2">Your scheduled slots</div>
+                {Array.isArray(listSlots) && listSlots.length > 0 ? (
+                  <div className="space-y-2 max-h-48 overflow-auto pr-1">
+                    {listSlots.map((slot: any) => (
+                      <div key={String(slot._id)} className="flex items-center justify-between rounded-md border p-2">
+                        <div>
+                          <div className="text-sm font-medium">{String(slot.label)} • {String(slot.channel)}</div>
+                          <div className="text-xs text-muted-foreground">{new Date(Number(slot.scheduledAt || 0)).toLocaleString()}</div>
+                        </div>
+                        <Button size="sm" variant="outline" onClick={() => handleDeleteSlot(String(slot._id))}>
+                          Delete
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-sm text-muted-foreground">No scheduled slots yet.</div>
+                )}
+              </div>
+            )}
             <div className="text-xs text-muted-foreground">
               Tip: Keep a consistent weekly cadence — Tue/Thu mornings for posts, Wed afternoons for email.
             </div>
