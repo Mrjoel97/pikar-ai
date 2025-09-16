@@ -42,24 +42,50 @@ export function SolopreneurDashboard({
 
     const [text, setText] = React.useState("");
     const [saving, setSaving] = React.useState(false);
+    // Add filter state for tag chips
+    const [activeTagFilter, setActiveTagFilter] = React.useState<"" | "content" | "offer" | "ops">("");
 
-    const handleSave = async () => {
+    // Add local save handler for voice ideas (uses BrainDumpSection-local state)
+    const handleSaveVoiceIdeaLocal = async () => {
       if (!initiativeId) {
         toast("No initiative found. Run Phase 0 setup first.");
         return;
       }
-      const content = text.trim();
+      const content = `${summary || transcript}`.trim();
       if (!content) {
-        toast("Please enter your idea first.");
+        toast("No transcription available.");
         return;
       }
       try {
         setSaving(true);
         await addDump({ initiativeId, content });
         setText("");
-        toast("Saved to Brain Dump");
+        toast("Saved voice note to Brain Dump");
       } catch (e: any) {
-        toast(e?.message || "Failed to save brain dump");
+        toast(e?.message || "Failed to save voice note");
+      } finally {
+        setSaving(false);
+      }
+    };
+
+    // Add: inline save handler for typed idea
+    const handleSave = async () => {
+      if (!initiativeId) {
+        toast("No initiative found. Run Phase 0 setup first.");
+        return;
+      }
+      const content = (text || summary || transcript).trim();
+      if (!content) {
+        toast("Type an idea first.");
+        return;
+      }
+      try {
+        setSaving(true);
+        await addDump({ initiativeId, content });
+        setText("");
+        toast.success("Saved idea.");
+      } catch (e: any) {
+        toast.error(e?.message || "Failed to save idea.");
       } finally {
         setSaving(false);
       }
@@ -73,13 +99,42 @@ export function SolopreneurDashboard({
         </div>
         <Separator className="my-3" />
         <div className="space-y-3">
+          <div className="flex items-center gap-2 mb-2">
+            <Button size="sm" variant={isRecording ? "default" : "outline"} className={isRecording ? "bg-emerald-600 text-white hover:bg-emerald-700" : ""} onClick={isRecording ? stopVoice : startVoice}>
+              {isRecording ? "Stop Recording" : "Record Voice Note"}
+            </Button>
+            {transcript && <Badge variant="outline">Transcript ready</Badge>}
+            {detectedTags.length > 0 && (
+              <div className="flex items-center gap-1">
+                <span className="text-xs text-muted-foreground">Tags:</span>
+                {detectedTags.map((t) => (
+                  <Badge key={t} variant="secondary" className="capitalize">{t}</Badge>
+                ))}
+              </div>
+            )}
+          </div>
+          {transcript && (
+            <div className="text-xs text-muted-foreground mb-2">
+              <span className="font-medium">Heard:</span> {transcript}
+            </div>
+          )}
+          {summary && (
+            <div className="text-xs text-muted-foreground mb-2">
+              <span className="font-medium">Summary:</span> {summary}
+            </div>
+          )}
           <Textarea
             placeholder="Write freely here... (e.g., campaign idea, positioning, offer notes)"
             value={text}
             onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setText(e.target.value)}
             className="min-h-24"
           />
-          <div className="flex justify-end">
+          <div className="flex justify-end gap-2">
+            {summary && (
+              <Button variant="outline" onClick={handleSaveVoiceIdeaLocal} disabled={saving || !initiativeId}>
+                {saving ? "Saving..." : "Save Voice Idea"}
+              </Button>
+            )}
             <Button onClick={handleSave} disabled={saving || !initiativeId}>
               {saving ? "Saving..." : "Save Idea"}
             </Button>
@@ -88,12 +143,36 @@ export function SolopreneurDashboard({
         <Separator className="my-4" />
         <div className="space-y-2">
           <div className="text-sm font-medium">Recent ideas</div>
-          <div className="space-y-2">
-            {Array.isArray(dumps) && dumps.length > 0 ? (
-              dumps.map((d: any) => (
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-xs text-muted-foreground">Filter:</span>
+            {(["", "content", "offer", "ops"] as const).map((tag) => (
+              <Button
+                key={`tag_${tag || "all"}`}
+                size="xs"
+                variant={activeTagFilter === tag ? "default" : "outline"}
+                className={activeTagFilter === tag ? "bg-emerald-600 text-white hover:bg-emerald-700" : ""}
+                onClick={() => setActiveTagFilter(tag as any)}
+              >
+                {tag || "All"}
+              </Button>
+            ))}
+          </div>
+          {Array.isArray(dumps) && dumps.length > 0 ? (
+            dumps
+              .filter((d: any) => {
+                if (!activeTagFilter) return true;
+                const inferred = tagIdea(String(d.content || ""));
+                return inferred.includes(activeTagFilter as any);
+              })
+              .map((d: any) => (
                 <div key={String(d._id)} className="rounded-md border p-3 text-sm">
                   <div className="text-muted-foreground text-xs mb-1">
                     {new Date(d.createdAt).toLocaleString()}
+                  </div>
+                  <div className="flex items-center gap-2 mb-1">
+                    {tagIdea(String(d.content || "")).map((t) => (
+                      <Badge key={`${String(d._id)}_${t}`} variant="outline" className="capitalize">{t}</Badge>
+                    ))}
                   </div>
                   <div className="whitespace-pre-wrap">{d.content}</div>
                   <Button size="xs" variant="secondary" onClick={() => handleCreateWorkflowFromIdea(d.content)}>
@@ -101,10 +180,9 @@ export function SolopreneurDashboard({
                   </Button>
                 </div>
               ))
-            ) : (
-              <div className="text-muted-foreground text-sm">No entries yet.</div>
-            )}
-          </div>
+          ) : (
+            <div className="text-muted-foreground text-sm">No entries yet.</div>
+          )}
         </div>
       </Card>
     );
@@ -523,17 +601,17 @@ export function SolopreneurDashboard({
   const handleUseTemplateEnhanced = async (tpl: { key: string; name: string }) => {
     try {
       utils.bumpTemplateUsage(tpl.key);
-      // Count a quick win locally (5 minutes)
-      utils.recordLocalWin(5, "template_used", { templateKey: tpl.key });
+      utils.recordLocalWin(5, "template_used", { templateKey: tpl.key, tone: agentProfile.tone, persona: agentProfile.persona });
       if (business?._id) {
         await logWin({
           businessId: business._id,
           winType: "template_used",
           timeSavedMinutes: 5,
-          details: { templateKey: tpl.key },
+          details: { templateKey: tpl.key, tone: agentProfile.tone, persona: agentProfile.persona },
         });
       }
     } catch {}
+    toast("Template adapted to your tone/persona");
     handleUseTemplate({ name: tpl.name });
   };
 
@@ -577,6 +655,180 @@ export function SolopreneurDashboard({
     );
   }, [galleryQuery, orderedTemplates]);
 
+  // Add: Agent Profile (local) state + persistence
+  const [agentProfile, setAgentProfile] = React.useState<{
+    tone: "concise" | "friendly" | "premium";
+    persona: "maker" | "coach" | "executive";
+    cadence: "light" | "standard" | "aggressive";
+  }>({ tone: "friendly", persona: "maker", cadence: "standard" });
+
+  React.useEffect(() => {
+    try {
+      const raw = localStorage.getItem("pikar.agentProfile");
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        setAgentProfile((prev) => ({
+          ...prev,
+          ...parsed,
+        }));
+      }
+    } catch {}
+  }, []);
+
+  const saveAgentProfile = (patch: Partial<typeof agentProfile>) => {
+    setAgentProfile((prev) => {
+      const next = { ...prev, ...patch };
+      try {
+        localStorage.setItem("pikar.agentProfile", JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+    toast("Agent Profile updated");
+  };
+
+  // Tag ideas by theme (simple keyword heuristic)
+  const tagIdea = (text: string): Array<"content" | "offer" | "ops"> => {
+    const t = text.toLowerCase();
+    const out: Array<"content" | "offer" | "ops"> = [];
+    if (/(post|tweet|blog|write|publish|newsletter|content)/.test(t)) out.push("content");
+    if (/(discount|offer|promo|sale|bundle|pricing|cta)/.test(t)) out.push("offer");
+    if (/(ops|process|system|template|automation|schedule|cadence|tooling)/.test(t)) out.push("ops");
+    return Array.from(new Set(out));
+  };
+
+  // Adapt short copy to tone + persona
+  const adaptCopy = (base: string) => {
+    const { tone, persona } = agentProfile;
+    let prefix = "";
+    if (tone === "concise") prefix += "";
+    if (tone === "friendly") prefix += "Hey there! ";
+    if (tone === "premium") prefix += "Introducing our refined update: ";
+
+    let personaHint = "";
+    if (persona === "maker") personaHint = " Built for momentum.";
+    if (persona === "coach") personaHint = " Actionable and supportive.";
+    if (persona === "executive") personaHint = " Clear ROI and next steps.";
+
+    return `${prefix}${base}${personaHint}`;
+  };
+
+  // Content Capsule generator (1 weekly post + 1 email + 3 tweets)
+  const genContentCapsule = () => {
+    const rev = fmtNum(quickAnalytics?.revenue90d ?? 0);
+    const churn = quickAnalytics?.churnAlert ? "Churn risk spotted — re‑engage now." : "Healthy retention — keep cadence.";
+    const top = (quickAnalytics?.topProducts ?? [])[0]?.name || "your top offer";
+    const cadenceCopy =
+      agentProfile.cadence === "light" ? "light weekly" : agentProfile.cadence === "aggressive" ? "high‑tempo" : "steady weekly";
+
+    const weeklyPost = adaptCopy(
+      `Weekly update: momentum check, ${cadenceCopy} plan, and a quick spotlight on ${top}. ${churn}`
+    );
+
+    const emailSubject = adaptCopy(`This week's quick win: ${top}`);
+    const emailBody = adaptCopy(
+      `Here's your ${cadenceCopy} nudge. Highlight: ${top}. Rolling 90‑day revenue at $${rev}. ` +
+        (quickAnalytics?.churnAlert ? "Let's re‑activate quiet subscribers with a friendly value note." : "Stay consistent and keep delivering value.")
+    );
+
+    const tweets: string[] = [
+      adaptCopy(`Ship > perfect. This week: feature ${top} and keep your streak alive.`),
+      adaptCopy(`Consistency compounds. One quick post today = momentum for the week.`),
+      adaptCopy(`Tiny wins add up. Spotlight ${top} in under 90 words.`),
+    ];
+
+    return { weeklyPost, emailSubject, emailBody, tweets };
+  };
+
+  // UI state: Content Capsule
+  const [capsuleOpen, setCapsuleOpen] = React.useState(false);
+  const [capsule, setCapsule] = React.useState<{ weeklyPost: string; emailSubject: string; emailBody: string; tweets: string[] } | null>(null);
+  const handleOpenCapsule = () => {
+    const c = genContentCapsule();
+    setCapsule(c);
+    setCapsuleOpen(true);
+  };
+  const handleCopy = (txt: string, toastMsg = "Copied") => {
+    navigator.clipboard.writeText(txt).then(
+      () => toast.success(toastMsg),
+      () => toast.error("Copy failed")
+    );
+  };
+  const handleSaveCapsuleWins = async () => {
+    utils.recordLocalWin(12, "content_capsule_generated", { cadence: agentProfile.cadence });
+    if (business?._id) {
+      try {
+        await logWin({
+          businessId: business._id,
+          winType: "content_capsule_generated",
+          timeSavedMinutes: 12,
+          details: { cadence: agentProfile.cadence },
+        });
+      } catch {}
+    }
+    toast("Saved win");
+  };
+
+  // Add Voice Notes (beta): record → transcribe (Web Speech API if available) → summarize & tag → save
+  const [isRecording, setIsRecording] = React.useState(false);
+  const [transcript, setTranscript] = React.useState("");
+  const [summary, setSummary] = React.useState("");
+  const [detectedTags, setDetectedTags] = React.useState<Array<"content" | "offer" | "ops">>([]);
+  const recognitionRef = React.useRef<any>(null);
+
+  // Start voice capture via Web Speech API if available, else guide user
+  const startVoice = async () => {
+    try {
+      const SpeechRecognition =
+        (window as any).webkitSpeechRecognition ||
+        (window as any).SpeechRecognition ||
+        null;
+      if (!SpeechRecognition) {
+        toast("Voice recognition not supported in this browser");
+        return;
+      }
+      const rec = new SpeechRecognition();
+      rec.lang = "en-US";
+      rec.continuous = false;
+      rec.interimResults = true;
+      rec.onresult = (e: any) => {
+        let text = "";
+        for (let i = 0; i < e.results.length; i++) {
+          text += e.results[i][0].transcript;
+        }
+        setTranscript(text);
+      };
+      rec.onend = () => {
+        setIsRecording(false);
+        // Simple auto-summarize: take first sentence or 20 words
+        const clean = transcript.trim();
+        const s = clean.split(/[.!?]/)[0] || clean.split(" ").slice(0, 20).join(" ");
+        setSummary(s);
+        setDetectedTags(tagIdea(clean));
+      };
+      recognitionRef.current = rec;
+      setTranscript("");
+      setSummary("");
+      setDetectedTags([]);
+      setIsRecording(true);
+      rec.start();
+    } catch (e: any) {
+      setIsRecording(false);
+      toast.error(e?.message ?? "Failed to start recording");
+    }
+  };
+
+  const stopVoice = () => {
+    try {
+      const rec = recognitionRef.current;
+      if (rec) rec.stop();
+    } catch {}
+  };
+
+  // Save from voice summary into Brain Dump (delegated to BrainDumpSection-local handler)
+  const handleSaveVoiceIdea = async () => {
+    toast("Open the Brain Dump to save the voice note.");
+  };
+
   return (
     <div className="space-y-6">
       {/* Header / Nudge */}
@@ -614,6 +866,126 @@ export function SolopreneurDashboard({
         </Button>
       </div>
 
+      {/* Agent Profile v2 (local) */}
+      <section>
+        <h2 className="text-xl font-semibold mb-3">Agent Profile</h2>
+        <Card>
+          <CardContent className="p-4 grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div>
+              <div className="text-xs text-muted-foreground mb-1">Brand Tone</div>
+              <div className="flex gap-2 flex-wrap">
+                {(["concise","friendly","premium"] as const).map((t) => (
+                  <Button
+                    key={t}
+                    size="sm"
+                    variant={agentProfile.tone === t ? "default" : "outline"}
+                    className={agentProfile.tone === t ? "bg-emerald-600 text-white hover:bg-emerald-700" : ""}
+                    onClick={() => saveAgentProfile({ tone: t })}
+                  >
+                    {t}
+                  </Button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <div className="text-xs text-muted-foreground mb-1">Audience Persona</div>
+              <div className="flex gap-2 flex-wrap">
+                {(["maker","coach","executive"] as const).map((p) => (
+                  <Button
+                    key={p}
+                    size="sm"
+                    variant={agentProfile.persona === p ? "default" : "outline"}
+                    className={agentProfile.persona === p ? "bg-emerald-600 text-white hover:bg-emerald-700" : ""}
+                    onClick={() => saveAgentProfile({ persona: p })}
+                  >
+                    {p}
+                  </Button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <div className="text-xs text-muted-foreground mb-1">Preferred Cadence</div>
+              <div className="flex gap-2 flex-wrap">
+                {(["light","standard","aggressive"] as const).map((c) => (
+                  <Button
+                    key={c}
+                    size="sm"
+                    variant={agentProfile.cadence === c ? "default" : "outline"}
+                    className={agentProfile.cadence === c ? "bg-emerald-600 text-white hover:bg-emerald-700" : ""}
+                    onClick={() => saveAgentProfile({ cadence: c })}
+                  >
+                    {c}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Persistent Quick Bar */}
+        <div className="mt-3 flex flex-wrap gap-2">
+          <Button size="sm" variant="outline" onClick={() => setGalleryOpen(true)}>New Idea</Button>
+          <Button size="sm" variant="outline" onClick={() => navigate("/workflows")}>Draft Email</Button>
+          <Button size="sm" variant="outline" onClick={() => handleQuickAction("Create Post")}>Create Post</Button>
+          <Button size="sm" className="bg-emerald-600 text-white hover:bg-emerald-700" onClick={handleOpenCapsule}>
+            Content Capsule
+          </Button>
+        </div>
+      </section>
+
+      {/* Content Capsule Dialog */}
+      <Dialog open={capsuleOpen} onOpenChange={setCapsuleOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Content Capsule</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              One weekly post, one email, and 3 tweet variants adapted to your tone/persona.
+            </p>
+            {capsule && (
+              <div className="space-y-3">
+                <Card>
+                  <CardContent className="p-3 space-y-2">
+                    <div className="text-xs text-muted-foreground">Weekly Post</div>
+                    <div className="text-sm whitespace-pre-wrap">{capsule.weeklyPost}</div>
+                    <Button size="sm" variant="outline" onClick={() => handleCopy(capsule.weeklyPost, "Copied weekly post")}>Copy</Button>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-3 space-y-2">
+                    <div className="text-xs text-muted-foreground">Email</div>
+                    <div className="text-sm font-medium">Subject: {capsule.emailSubject}</div>
+                    <div className="text-sm whitespace-pre-wrap">{capsule.emailBody}</div>
+                    <div className="flex gap-2">
+                      <Button size="sm" variant="outline" onClick={() => handleCopy(capsule.emailSubject, "Copied subject")}>Copy Subject</Button>
+                      <Button size="sm" variant="outline" onClick={() => handleCopy(capsule.emailBody, "Copied email body")}>Copy Body</Button>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-3 space-y-2">
+                    <div className="text-xs text-muted-foreground">Tweet Variants</div>
+                    <div className="space-y-2">
+                      {capsule.tweets.map((t, i) => (
+                        <div key={i} className="flex items-start justify-between gap-2 border rounded p-2">
+                          <div className="text-sm whitespace-pre-wrap">{t}</div>
+                          <Button size="sm" variant="outline" onClick={() => handleCopy(t, "Copied tweet")}>Copy</Button>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={handleSaveCapsuleWins}>Save Win</Button>
+            <Button onClick={() => setCapsuleOpen(false)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* My Templates strip */}
       <section>
         <div className="flex items-center justify-between mb-4">
@@ -630,11 +1002,11 @@ export function SolopreneurDashboard({
                 </div>
                 <p className="text-sm text-muted-foreground">{t.description}</p>
                 <div className="pt-1">
-              <Button
-                size="sm"
-                onClick={() => handleUseTemplateEnhanced(t)}
-                className="bg-emerald-600 text-white hover:bg-emerald-700"
-              >
+                  <Button
+                    size="sm"
+                    onClick={() => handleUseTemplateEnhanced(t)}
+                    className="bg-emerald-600 text-white hover:bg-emerald-700"
+                  >
                     Use
                   </Button>
                 </div>
@@ -951,15 +1323,7 @@ export function SolopreneurDashboard({
             <CardContent className="p-4">
               <h3 className="text-sm font-medium text-muted-foreground">Top Products by Margin</h3>
               <ul className="mt-2 space-y-1">
-                {(quickAnalytics?.topProducts ?? []).slice(0, 3).map((p: any) => (
-                  <li key={String(p.name)} className="text-sm flex justify-between">
-                    <span className="truncate">{String(p.name)}</span>
-                    <span className="text-muted-foreground">{Math.round((p.margin ?? 0) * 100)}%</span>
-                  </li>
-                ))}
-                {(!quickAnalytics || (quickAnalytics.topProducts ?? []).length === 0) && (
-                  <li className="text-sm text-muted-foreground">No data yet</li>
-                )}
+                {(quickAnalytics?.topProducts ?? [])[0]?.name || "No data yet"}
               </ul>
               <p className="text-xs text-muted-foreground mt-1">7d: Stable — consider highlighting top margin items.</p>
               <div className="pt-2">
@@ -1075,6 +1439,12 @@ export function SolopreneurDashboard({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Content Capsule launcher */}
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-xl font-semibold">Content Capsule</h2>
+        <Button size="sm" onClick={handleOpenCapsule}>Generate</Button>
+      </div>
 
       {/* Recent Activity */}
       <section>
