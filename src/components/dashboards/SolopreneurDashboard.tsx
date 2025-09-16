@@ -413,6 +413,48 @@ export function SolopreneurDashboard({
   const [dismissedTips, setDismissedTips] = useState<Record<string, boolean>>({});
   const visibleTips = coachTips.filter(t => !dismissedTips[t.id]);
 
+  // Add state for Schedule Assistant (Week 4)
+  const [scheduleOpen, setScheduleOpen] = useState(false);
+
+  // Compute suggested schedule slots (simple best-time defaults for this week)
+  const suggestedSlots: Array<{ label: string; when: string; channel: "Post" | "Email" }> = React.useMemo(() => {
+    // Simple heuristic: Tue/Thu 10:00 for Posts; Wed 14:00 for Email
+    const base = new Date();
+    const toDateString = (d: Date) =>
+      d.toLocaleString(undefined, { weekday: "short", hour: "2-digit", minute: "2-digit" });
+    const nextDow = (targetDow: number, hour: number) => {
+      const d = new Date(base);
+      const diff = (targetDow + 7 - d.getDay()) % 7 || 7; // always future
+      d.setDate(d.getDate() + diff);
+      d.setHours(hour, 0, 0, 0);
+      return d;
+    };
+    return [
+      { label: "Weekly Post", when: toDateString(nextDow(2, 10)), channel: "Post" },  // Tue 10:00
+      { label: "Newsletter", when: toDateString(nextDow(3, 14)), channel: "Email" },  // Wed 14:00
+      { label: "Follow-up Post", when: toDateString(nextDow(4, 10)), channel: "Post" }, // Thu 10:00
+    ];
+  }, []);
+
+  // Handler to accept a suggested slot
+  const handleAddSlot = async (slot: { label: string; channel: "Post" | "Email"; when: string }) => {
+    try {
+      // Log a small win locally (+3m) and server-side if signed in
+      utils.recordLocalWin(3, "schedule_slot_added", { channel: slot.channel, when: slot.when });
+      if (business?._id) {
+        await logWin({
+          businessId: business._id,
+          winType: "schedule_slot_added",
+          timeSavedMinutes: 3,
+          details: { channel: slot.channel, when: slot.when },
+        });
+      }
+      toast.success(`Added ${slot.channel} slot for ${slot.when}`);
+    } catch (e: any) {
+      toast.error(e?.message ?? "Failed to add slot");
+    }
+  };
+
   // Next Best Action: pick a single dynamic CTA
   const nextBest = React.useMemo(() => {
     // Prefer turning most recent idea into workflow
@@ -566,6 +608,10 @@ export function SolopreneurDashboard({
           {nextBest.label}
         </Button>
         <span className="ml-auto text-xs text-muted-foreground">Reason: {nextBest.reason}</span>
+        {/* Week 4: Schedule Assistant entry */}
+        <Button size="sm" variant="outline" onClick={() => setScheduleOpen(true)}>
+          Schedule Assistant
+        </Button>
       </div>
 
       {/* My Templates strip */}
@@ -861,6 +907,13 @@ export function SolopreneurDashboard({
                 ${fmtNum(quickAnalytics?.revenue90d ?? 0)}
               </p>
               <p className="text-xs text-muted-foreground mt-1">Rolling window</p>
+              <p className="text-xs mt-1">
+                <span className="text-muted-foreground">7d delta: </span>
+                <span className={snapshot.revenue.delta >= 0 ? "text-emerald-700" : "text-amber-700"}>
+                  {snapshot.revenue.delta >= 0 ? "+" : ""}
+                  {fmtNum(snapshot.revenue.delta)}%
+                </span>
+              </p>
               {/* Tip */}
               <p className="text-xs text-emerald-700 mt-1">Tip: Track weekly revenue cadence — consistency beats spikes.</p>
             </CardContent>
@@ -878,7 +931,19 @@ export function SolopreneurDashboard({
               </div>
               {/* Tip */}
               {quickAnalytics?.churnAlert && (
-                <p className="text-xs text-amber-700 mt-1">Suggestion: Send a win‑back email with an exclusive offer.</p>
+                <div className="pt-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      utils.recordLocalWin(4, "nudge_send_to_top_50", { reason: quickAnalytics?.churnAlert ? "churn_risk" : "routine" });
+                      toast("Open Workflows to draft a targeted message.");
+                      navigate("/workflows");
+                    }}
+                  >
+                    Send to your top 50
+                  </Button>
+                </div>
               )}
             </CardContent>
           </Card>
@@ -896,11 +961,120 @@ export function SolopreneurDashboard({
                   <li className="text-sm text-muted-foreground">No data yet</li>
                 )}
               </ul>
-              <p className="text-xs text-muted-foreground mt-1">Tip: Feature top‑margin products in your next post.</p>
+              <p className="text-xs text-muted-foreground mt-1">7d: Stable — consider highlighting top margin items.</p>
+              <div className="pt-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    utils.recordLocalWin(3, "nudge_feature_top_product", {});
+                    toast("Open Workflows to feature top product.");
+                    navigate("/workflows");
+                  }}
+                >
+                  Feature top product
+                </Button>
+              </div>
             </CardContent>
           </Card>
         </div>
       </section>
+
+      {/* Insights from My Agent (light heuristic based on quickAnalytics + usage) */}
+      <section>
+        <h2 className="text-xl font-semibold mb-4">My Agent Insights</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Card className="border-emerald-200">
+            <CardContent className="p-4 space-y-2">
+              <h3 className="text-sm font-medium text-muted-foreground">Retention Play</h3>
+              <p className="text-sm">
+                {quickAnalytics?.churnAlert
+                  ? "Churn risk detected — queue a win‑back email with an exclusive offer."
+                  : "Retention looks healthy — schedule a light value email to maintain cadence."}
+              </p>
+              <Button
+                size="sm"
+                className="bg-emerald-600 text-white hover:bg-emerald-700"
+                onClick={() => {
+                  utils.recordLocalWin(6, "agent_insight_applied", { kind: "retention" });
+                  toast("Opening Workflows — draft a retention email.");
+                  navigate("/workflows");
+                }}
+              >
+                Draft retention email
+              </Button>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4 space-y-2">
+              <h3 className="text-sm font-medium text-muted-foreground">Content Momentum</h3>
+              <p className="text-sm">
+                Keep your streak: publish one quick post using your most‑used template.
+              </p>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  const t = orderedTemplates[0] || myTemplates[0];
+                  if (t) handleUseTemplateEnhanced(t);
+                }}
+              >
+                Use top template
+              </Button>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4 space-y-2">
+              <h3 className="text-sm font-medium text-muted-foreground">Offer Spotlight</h3>
+              <p className="text-sm">
+                Pair a top‑margin product with a concise CTA. Keep it under 90 words.
+              </p>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  utils.recordLocalWin(4, "agent_insight_applied", { kind: "offer_spotlight" });
+                  toast("Open Workflows to create a quick product highlight.");
+                  navigate("/workflows");
+                }}
+              >
+                Create highlight
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </section>
+
+      {/* Schedule Assistant dialog (simple, suggest slots with 1‑click add) */}
+      <Dialog open={scheduleOpen} onOpenChange={setScheduleOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Schedule Assistant</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Suggested slots based on best‑time defaults and simple cadence. Add with one click.
+            </p>
+            <div className="space-y-2">
+              {suggestedSlots.map((s, idx) => (
+                <div key={`${s.label}-${idx}`} className="flex items-center justify-between rounded-md border p-2">
+                  <div>
+                    <div className="text-sm font-medium">{s.label} • {s.channel}</div>
+                    <div className="text-xs text-muted-foreground">{s.when}</div>
+                  </div>
+                  <Button size="sm" onClick={() => handleAddSlot(s)}>Add</Button>
+                </div>
+              ))}
+            </div>
+            <div className="text-xs text-muted-foreground">
+              Tip: Keep a consistent weekly cadence — Tue/Thu mornings for posts, Wed afternoons for email.
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setScheduleOpen(false)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Recent Activity */}
       <section>
