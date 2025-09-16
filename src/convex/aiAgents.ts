@@ -51,7 +51,8 @@ export const initSolopreneurAgent = mutation({
     // Upsert: ensure one profile per user+business
     const existing = await ctx.db
       .query("agentProfiles")
-      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      // Use by_business index and then filter in memory by user
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
       .take(50);
 
     const now = Date.now();
@@ -269,7 +270,8 @@ export const forgetUploads = mutation({
 
     const profiles = await ctx.db
       .query("agentProfiles")
-      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      // Scope to the provided business up front; these are the only ones we want to clear
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
       .take(50);
 
     let count = 0;

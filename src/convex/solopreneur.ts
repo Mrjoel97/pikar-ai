@@ -63,7 +63,8 @@ export const initSolopreneurAgent = mutation({
     // Check existing profile
     const existingProfile = await ctx.db
       .query("agentProfiles")
-      .withIndex("by_user", (q) => q.eq("userId", userId))
+      // Query by business first; then we can reuse the same profile for this user if present
+      .withIndex("by_business", (q) => q.eq("businessId", businessId))
       .unique()
       .catch(() => null);
 
@@ -400,19 +401,28 @@ export const forgetUploads = mutation({
     const userId = await getAuthUserId(ctx);
     if (!userId) throw new Error("Not authenticated");
 
-    // Find agent profile to get businessId and clear docRefs/trainingNotes
-    const profile = await ctx.db
-      .query("agentProfiles")
-      .withIndex("by_user", (q) => q.eq("userId", userId))
+    // Resolve the user's business (owner)
+    const business = await ctx.db
+      .query("businesses")
+      .withIndex("by_owner", (q) => q.eq("ownerId", userId))
       .unique()
       .catch(() => null);
 
-    if (profile) {
-      await ctx.db.patch(profile._id, {
-        docRefs: [],
-        trainingNotes: "",
-        lastUpdated: Date.now(),
-      } as any);
+    // If we have a business, clear agent doc refs for that business
+    if (business) {
+      const profile = await ctx.db
+        .query("agentProfiles")
+        .withIndex("by_business", (q) => q.eq("businessId", business._id))
+        .unique()
+        .catch(() => null);
+
+      if (profile) {
+        await ctx.db.patch(profile._id, {
+          docRefs: [],
+          trainingNotes: "",
+          lastUpdated: Date.now(),
+        } as any);
+      }
     }
 
     // Delete uploads owned by this user (best-effort)

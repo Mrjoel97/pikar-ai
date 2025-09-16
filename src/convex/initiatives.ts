@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { getAuthUserId } from "@convex-dev/auth/server";
-import { internal } from "@/convex/_generated/api";
+import { internal } from "./_generated/api";
 
 export const upsertForBusiness = mutation({
   args: {
@@ -511,8 +511,6 @@ export const addBrainDump = mutation({
       userId: user._id,
       content: args.content,
       createdAt: now,
-      updatedAt: now,
-      title: args.title,
     });
 
     await ctx.runMutation(internal.audit.write as any, {
@@ -575,8 +573,8 @@ export const addVoiceBrainDump = mutation({
     tags: v.optional(v.array(v.string())),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Not authenticated");
 
     const initiative = await ctx.db.get(args.initiativeId);
     if (!initiative) throw new Error("Initiative not found");
@@ -584,11 +582,9 @@ export const addVoiceBrainDump = mutation({
     const _id = await ctx.db.insert("brainDumps", {
       businessId: initiative.businessId,
       initiativeId: args.initiativeId,
-      userId: identity.subject,
+      userId,
       content: args.content,
       createdAt: Date.now(),
-      updatedAt: Date.now(),
-      title: undefined,
       voice: true,
       transcript: args.transcript,
       summary: args.summary,
@@ -615,10 +611,8 @@ export const addVoiceNote = mutation({
       businessId: args.businessId,
       initiativeId: args.initiativeId,
       userId,
-      content: args.summary ?? args.transcript.slice(0, 140), // short label content
+      content: args.summary ?? args.transcript.slice(0, 140),
       createdAt: Date.now(),
-      updatedAt: Date.now(),
-      title: undefined,
       voice: true,
       transcript: args.transcript,
       summary: args.summary,

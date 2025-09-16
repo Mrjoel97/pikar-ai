@@ -5,8 +5,8 @@ import { getAuthUserId } from "@convex-dev/auth/server";
 
 // List pinned templates for the current user (optionally scoped by tier or search in UI later)
 export const listPinned = query({
-  args: {},
-  handler: async (ctx) => {
+  args: { limit: v.optional(v.number()) },
+  handler: async (ctx, args) => {
     // Allow guests: return empty list instead of throwing
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) {
