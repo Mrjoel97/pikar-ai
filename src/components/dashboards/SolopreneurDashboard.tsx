@@ -41,6 +41,8 @@ export function SolopreneurDashboard({
     );
 
     const addDump = useMutation(api.initiatives.addBrainDump as any);
+    const addVoiceDump = useMutation(api.initiatives?.addVoiceBrainDump as any);
+    const deleteDump = useMutation(api.initiatives?.deleteBrainDump as any);
 
     const [text, setText] = React.useState("");
     const [saving, setSaving] = React.useState(false);
@@ -60,7 +62,18 @@ export function SolopreneurDashboard({
       }
       try {
         setSaving(true);
-        await addDump({ initiativeId, content });
+        const tags = tagIdea(content);
+        if (addVoiceDump) {
+          await addVoiceDump({
+            initiativeId,
+            content,
+            transcript: transcript || undefined,
+            summary: summary || undefined,
+            tags,
+          });
+        } else {
+          await addDump({ initiativeId, content });
+        }
         setText("");
         toast.success("Saved idea.");
       } catch (e: any) {
@@ -87,7 +100,7 @@ export function SolopreneurDashboard({
               <div className="flex items-center gap-1">
                 <span className="text-xs text-muted-foreground">Tags:</span>
                 {detectedTags.map((t) => (
-                  <Badge key={t} variant="secondary" className="capitalize">{t}</Badge>
+                  <Badge key={`detected_${t}`} variant="secondary" className="capitalize">{t}</Badge>
                 ))}
               </div>
             )}
@@ -156,6 +169,21 @@ export function SolopreneurDashboard({
                   <div className="whitespace-pre-wrap">{d.content}</div>
                   <Button size="xs" variant="secondary" onClick={() => handleCreateWorkflowFromIdea(d.content)}>
                     Create workflow
+                  </Button>
+                  <Button
+                    size="xs"
+                    variant="outline"
+                    className="ml-2"
+                    onClick={async () => {
+                      try {
+                        await deleteDump({ brainDumpId: d._id } as any);
+                        toast("Deleted");
+                      } catch (e: any) {
+                        toast.error(e?.message ?? "Failed to delete");
+                      }
+                    }}
+                  >
+                    Delete
                   </Button>
                 </div>
               ))
@@ -298,6 +326,11 @@ export function SolopreneurDashboard({
   const [triageSuggestions, setTriageSuggestions] = useState<
     Array<{ label: string; reply: string; priority: "low" | "medium" | "high" }>
   >([]);
+
+  // Add missing state and mutation for Quick‑add Brain Dump
+  const [quickIdea, setQuickIdea] = useState<string>("");
+  const [savingQuickIdea, setSavingQuickIdea] = useState<boolean>(false);
+  const addDumpTop = useMutation(api.initiatives.addBrainDump as any);
 
   // Local loading state
   const [settingUp, setSettingUp] = useState(false);
@@ -452,11 +485,6 @@ export function SolopreneurDashboard({
   const utils = useTemplateOrderingAndStreak();
   // If you already have myTemplates defined, wrap it:
   const orderedTemplates = React.useMemo(() => utils.orderTemplates(myTemplates), [myTemplates]);
-
-  // Add: top-level addBrainDump for quick-add + gallery and help coach state
-  const addDumpTop = useMutation(api.initiatives.addBrainDump as any);
-  const [quickIdea, setQuickIdea] = useState<string>("");
-  const [savingQuickIdea, setSavingQuickIdea] = useState(false);
 
   // NEW: Template pinning persistence
   const pinnedList = useQuery(api.templatePins?.listPinned as any, {}) as any[] | undefined;
@@ -704,25 +732,49 @@ export function SolopreneurDashboard({
     cadence: "light" | "standard" | "aggressive";
   }>({ tone: "friendly", persona: "maker", cadence: "standard" });
 
-  React.useEffect(() => {
-    try {
-      const raw = localStorage.getItem("pikar.agentProfile");
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        setAgentProfile((prev) => ({
-          ...prev,
-          ...parsed,
-        }));
-      }
-    } catch {}
-  }, []);
+  // 1) Load and Save Agent Profile v2 via Convex
+  const serverProfile = useQuery(api.agentProfile?.getMyProfile as any, isGuest ? "skip" : ({} as any)) as
+    | { _id: string; tone: "concise" | "friendly" | "premium" | null; persona: "maker" | "coach" | "executive" | null; cadence: "light" | "standard" | "aggressive" | null }
+    | null
+    | undefined;
 
+  const saveProfileMutation = useMutation(api.agentProfile?.upsertMyProfile as any);
+
+  // Hydrate local Agent Profile from server on first load
+  React.useEffect(() => {
+    if (!serverProfile) return;
+    const patch: any = {};
+    if (serverProfile.tone) patch.tone = serverProfile.tone;
+    if (serverProfile.persona) patch.persona = serverProfile.persona;
+    if (serverProfile.cadence) patch.cadence = serverProfile.cadence;
+    if (Object.keys(patch).length > 0) {
+      setAgentProfile((prev) => ({ ...prev, ...patch }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [!!serverProfile]);
+
+  // Update saveAgentProfile to persist to backend
   const saveAgentProfile = (patch: Partial<typeof agentProfile>) => {
     setAgentProfile((prev) => {
       const next = { ...prev, ...patch };
       try {
         localStorage.setItem("pikar.agentProfile", JSON.stringify(next));
       } catch {}
+      // Persist to backend if authenticated
+      (async () => {
+        try {
+          if (!isGuest) {
+            await saveProfileMutation({
+              tone: next.tone,
+              persona: next.persona,
+              cadence: next.cadence,
+            });
+          }
+        } catch (e: any) {
+          // Non-blocking persistence
+          console.warn("Failed to save Agent Profile:", e?.message || e);
+        }
+      })();
       return next;
     });
     toast("Agent Profile updated");
@@ -956,6 +1008,13 @@ export function SolopreneurDashboard({
     }
   }
 
+  // 2) Expose a "Post" quick action using next scheduled Post slot
+  // Fetch next Post slot similar to nextEmailSlot (guarded by businessId):
+  const nextPostSlot = useQuery(
+    api.schedule.nextSlotByChannel,
+    businessId ? { channel: "post", businessId, from: Date.now() } : ("skip" as any)
+  );
+
   return (
     <div className="space-y-4">
       {/* DEV Safe Mode banner */}
@@ -984,9 +1043,9 @@ export function SolopreneurDashboard({
             <Badge variant={env?.devSafeEmailsEnabled ? "secondary" : "default"}>
               Send Mode: {env?.devSafeEmailsEnabled ? "DEV (stubbed)" : "LIVE"}
             </Badge>
-            <Badge variant="outline">
-              Cron Freshness: {env?.cronLastProcessed ? `${Math.max(0, Math.round((Date.now() - env.cronLastProcessed) / 60000))}m ago` : "n/a"}
-            </Badge>
+<Badge variant="outline">
+  Cron Freshness: {env?.cronLastProcessed ? `${Math.max(0, Math.round((Date.now() - env.cronLastProcessed) / 60000))}m ago` : "n/a"}
+</Badge>
           </div>
         </CardContent>
       </Card>
@@ -1024,6 +1083,9 @@ export function SolopreneurDashboard({
           {businessId ? (
             <CampaignComposer
               businessId={businessId}
+              agentTone={agentProfile.tone}
+              agentPersona={agentProfile.persona}
+              agentCadence={agentProfile.cadence}
               onClose={() => setComposerOpen(false)}
               onCreated={() => toast.success("Newsletter scheduled")}
               defaultScheduledAt={nextEmailSlot ? nextEmailSlot.scheduledAt : undefined}
@@ -1355,7 +1417,23 @@ export function SolopreneurDashboard({
               <p className="text-sm text-muted-foreground mb-3">
                 Draft and publish content to engage your audience.
               </p>
-              <Button size="sm" onClick={() => handleQuickAction("Create Post")}>Start</Button>
+              <div className="flex gap-2">
+                <Button size="sm" onClick={() => handleQuickAction("Create Post")}>Start</Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    if (nextPostSlot && (nextPostSlot as any).scheduledAt) {
+                      toast(`Post scheduled placeholder for ${new Date((nextPostSlot as any).scheduledAt).toLocaleString()}`);
+                    } else {
+                      toast("No upcoming Post slot; add one in Schedule Assistant");
+                    }
+                  }}
+                  disabled={!businessId}
+                >
+                  Use Next Slot
+                </Button>
+              </div>
             </CardContent>
           </Card>
           <Card>

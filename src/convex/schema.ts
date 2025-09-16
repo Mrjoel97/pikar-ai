@@ -1113,6 +1113,16 @@ export default defineSchema({
     trainingNotes: v.optional(v.string()),
     onboardingScore: v.optional(v.number()),
     lastUpdated: v.optional(v.number()),
+    // Add Agent Profile v2 fields
+    tone: v.optional(
+      v.union(v.literal("concise"), v.literal("friendly"), v.literal("premium"))
+    ),
+    persona: v.optional(
+      v.union(v.literal("maker"), v.literal("coach"), v.literal("executive"))
+    ),
+    cadence: v.optional(
+      v.union(v.literal("light"), v.literal("standard"), v.literal("aggressive"))
+    ),
   })
     .index("by_user", ["userId"])
     .index("by_business", ["businessId"]),
@@ -1153,10 +1163,19 @@ export default defineSchema({
     updatedAt: v.number(),
     // optional title if needed later
     title: v.optional(v.string()),
+    // Add voice-notes support and tag metadata
+    voice: v.optional(v.boolean()),
+    transcript: v.optional(v.string()),
+    summary: v.optional(v.string()),
+    tags: v.optional(v.array(v.string())),
   })
     .index("by_business", ["businessId"])
     .index("by_initiative", ["initiativeId"])
-    .index("by_user", ["userId"]),
+    .index("by_user", ["userId"])
+    .index("by_voice", ["voice"])
+    .index("by_transcript", ["transcript"])
+    .index("by_summary", ["summary"])
+    .index("by_tags", ["tags"]),
 
   // Add new table: templatePins for backend-persisted template pinning
   templatePins: defineTable({

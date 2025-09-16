@@ -1,7 +1,8 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
-import { Id } from "./_generated/dataModel";
-import { api, internal } from "./_generated/api";
+import { mutation } from "./_generated/server";
+import { getAuthUserId } from "@convex-dev/auth/server";
+import { query } from "./_generated/server";
+import { internal } from "./_generated/api";
 
 export const upsertForBusiness = mutation({
   args: {
@@ -562,5 +563,71 @@ export const listBrainDumpsByInitiative = query({
       .take(lim);
 
     return rows;
+  },
+});
+
+// Voice-friendly Brain Dump write that includes transcript/summary (stored inline) and optional tags
+export const addVoiceBrainDump = mutation({
+  args: {
+    businessId: v.id("businesses"),
+    initiativeId: v.id("initiatives"),
+    content: v.string(),
+    transcript: v.optional(v.string()),
+    summary: v.optional(v.string()),
+    tags: v.optional(v.array(v.string())),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Not authenticated");
+
+    const now = Date.now();
+    const _id = await ctx.db.insert("brainDumps", {
+      businessId: args.businessId,
+      initiativeId: args.initiativeId,
+      userId,
+      content: args.content.trim(),
+      voice: true,
+      transcript: args.transcript,
+      summary: args.summary,
+      tags: args.tags ?? [],
+      createdAt: now,
+      updatedAt: now,
+      title: undefined,
+    } as any);
+    return { ok: true as const, _id };
+  },
+});
+
+// Add: Delete a Brain Dump entry (ownership check)
+export const deleteBrainDump = mutation({
+  args: { brainDumpId: v.id("brainDumps") },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Not authenticated");
+
+    const existing = await ctx.db.get(args.brainDumpId);
+    if (!existing) throw new Error("Brain dump not found");
+    if ((existing as any).userId !== userId) throw new Error("Not authorized");
+
+    await ctx.db.delete(args.brainDumpId);
+    return { ok: true as const };
+  },
+});
+
+// Optional: Tag-aware listing (keeps index on initiative and filters tags client-side)
+export const listBrainDumpsByInitiativeWithTags = query({
+  args: {
+    initiativeId: v.id("initiatives"),
+    tag: v.optional(v.string()),
+  },
+  handler: async (ctx, { initiativeId, tag }) => {
+    const results = await ctx.db
+      .query("brainDumps")
+      .withIndex("by_initiative", (q) => q.eq("initiativeId", initiativeId))
+      .order("desc")
+      .take(200);
+
+    if (!tag) return results;
+    return results.filter((r) => (r.tags ?? []).includes(tag));
   },
 });

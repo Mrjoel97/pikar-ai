@@ -17,11 +17,18 @@ import type { Id } from "@/convex/_generated/dataModel";
 import { Switch } from "@/components/ui/switch";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
+type AgentTone = "concise" | "friendly" | "premium";
+type AgentPersona = "maker" | "coach" | "executive";
+type AgentCadence = "light" | "standard" | "aggressive";
+
 interface CampaignComposerProps {
   businessId: Id<"businesses">;
   onClose: () => void;
   onCreated?: () => void;
   defaultScheduledAt?: number;
+  agentTone?: AgentTone;
+  agentPersona?: AgentPersona;
+  agentCadence?: AgentCadence;
 }
 
 interface CsvContact {
@@ -30,7 +37,7 @@ interface CsvContact {
   tags?: string[];
 }
 
-export function CampaignComposer({ businessId, onClose, onCreated, defaultScheduledAt }: CampaignComposerProps) {
+export function CampaignComposer({ businessId, onClose, onCreated, defaultScheduledAt, agentTone, agentPersona, agentCadence }: CampaignComposerProps) {
   const [formData, setFormData] = useState({
     fromName: "",
     fromEmail: "",
@@ -270,6 +277,17 @@ export function CampaignComposer({ businessId, onClose, onCreated, defaultSchedu
             Scheduled for {new Date(defaultScheduledAt).toLocaleString()}
           </Badge>
         </div>
+      )}
+
+      {(agentTone || agentPersona || agentCadence) && (
+        <Alert>
+          <AlertTitle>Using your Agent Profile</AlertTitle>
+          <AlertDescription>
+            {agentTone ? `Tone: ${agentTone}` : ""}{agentTone && (agentPersona || agentCadence) ? " · " : ""}
+            {agentPersona ? `Persona: ${agentPersona}` : ""}{agentPersona && agentCadence ? " · " : ""}
+            {agentCadence ? `Cadence: ${agentCadence}` : ""}
+          </AlertDescription>
+        </Alert>
       )}
 
       {preflightWarnings.length > 0 && (
