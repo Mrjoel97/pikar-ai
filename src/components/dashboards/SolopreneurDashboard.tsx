@@ -80,6 +80,39 @@ export function SolopreneurDashboard({
   // Local loading state
   const [settingUp, setSettingUp] = useState(false);
 
+  // Add navigate for "Use" action
+  const navigate = useNavigate();
+
+  // Templates strip (client-side, mirrors the seeded presets)
+  const myTemplates: Array<{ name: string; description: string; tag: string }> = [
+    {
+      name: "Solopreneur — Launch Post",
+      description: "Announce a new offering with a friendly, concise tone.",
+      tag: "social",
+    },
+    {
+      name: "Solopreneur — Weekly Newsletter",
+      description: "Lightweight weekly update to nurture your audience.",
+      tag: "email",
+    },
+    {
+      name: "Solopreneur — Product Highlight",
+      description: "Quick product spotlight with clear CTA.",
+      tag: "cta",
+    },
+  ];
+
+  const handleUseTemplate = (t: { name: string }) => {
+    if (isGuest) {
+      toast("Sign in to use templates.");
+      onUpgrade?.();
+      return;
+    }
+    // Navigate to Workflows where templates can be copied/used
+    toast.success(`Opening Workflows — "${t.name}" is ready to use.`);
+    navigate("/workflows");
+  };
+
   // Handler for One-Click Setup
   const handleOneClickSetup = async () => {
     if (isGuest) {
@@ -179,6 +212,33 @@ export function SolopreneurDashboard({
           </Button>
         </div>
       </div>
+
+      {/* My Templates strip */}
+      <section>
+        <h2 className="text-xl font-semibold mb-4">My Templates</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {myTemplates.map((t) => (
+            <Card key={t.name}>
+              <CardContent className="p-4 space-y-2">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-medium">{t.name}</h3>
+                  <Badge variant="outline" className="capitalize">{t.tag}</Badge>
+                </div>
+                <p className="text-sm text-muted-foreground">{t.description}</p>
+                <div className="pt-1">
+                  <Button
+                    size="sm"
+                    onClick={() => handleUseTemplate(t)}
+                    className="bg-emerald-600 text-white hover:bg-emerald-700"
+                  >
+                    Use
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </section>
 
       {/* Today's Focus (max 3) */}
       <section>
