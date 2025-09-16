@@ -1,15 +1,14 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router";
 import { useMutation, useQuery, useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { Card, CardContent } from "@/components/ui/card";
-import { Textarea } from "@/components/ui/textarea";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
-import { toast } from "sonner";
-import { Zap, Pencil, Calendar, BarChart3, HelpCircle } from "lucide-react";
-import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
+import { useNavigate } from "react-router";
+import { Separator } from "@/components/ui/separator";
+import { Textarea } from "@/components/ui/textarea";
+import { Progress } from "@/components/ui/progress";
 
 interface SolopreneurDashboardProps {
   business: any;
@@ -75,7 +74,7 @@ export function SolopreneurDashboard({
           <Textarea
             placeholder="Write freely here... (e.g., campaign idea, positioning, offer notes)"
             value={text}
-            onChange={(e) => setText(e.target.value)}
+            onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setText(e.target.value)}
             className="min-h-24"
           />
           <div className="flex justify-end">
@@ -95,6 +94,9 @@ export function SolopreneurDashboard({
                     {new Date(d.createdAt).toLocaleString()}
                   </div>
                   <div className="whitespace-pre-wrap">{d.content}</div>
+                  <Button size="xs" variant="secondary" onClick={() => handleCreateWorkflowFromIdea(d.content)}>
+                    Create workflow
+                  </Button>
                 </div>
               ))
             ) : (
@@ -104,6 +106,55 @@ export function SolopreneurDashboard({
         </div>
       </Card>
     );
+  }
+
+  // Add helper: local usage and streaks
+  function useTemplateOrderingAndStreak() {
+    const [streak, setStreak] = React.useState<number>(0);
+    const [timeSavedTotal, setTimeSavedTotal] = React.useState<number>(0);
+
+    React.useEffect(() => {
+      const rawDates = localStorage.getItem("pikar.winDates");
+      const dates: string[] = rawDates ? JSON.parse(rawDates) : [];
+      // compute streak ending today
+      const today = new Date(); today.setHours(0,0,0,0);
+      let s = 0;
+      for (;;) {
+        const d = new Date(today);
+        d.setDate(today.getDate() - s);
+        const key = d.toISOString().slice(0,10);
+        if (dates.includes(key)) s += 1; else break;
+      }
+      setStreak(s);
+
+      const ts = Number(localStorage.getItem("pikar.timeSavedTotal") || "0");
+      setTimeSavedTotal(ts);
+    }, []);
+
+    const recordLocalWin = (minutes: number) => {
+      const todayKey = new Date().toISOString().slice(0,10);
+      const rawDates = localStorage.getItem("pikar.winDates");
+      const dates: string[] = rawDates ? JSON.parse(rawDates) : [];
+      if (!dates.includes(todayKey)) dates.push(todayKey);
+      localStorage.setItem("pikar.winDates", JSON.stringify(dates));
+      const ts = Number(localStorage.getItem("pikar.timeSavedTotal") || "0") + minutes;
+      localStorage.setItem("pikar.timeSavedTotal", String(ts));
+    };
+
+    const bumpTemplateUsage = (key: string) => {
+      const raw = localStorage.getItem("pikar.templateUsageCounts");
+      const map: Record<string, number> = raw ? JSON.parse(raw) : {};
+      map[key] = (map[key] || 0) + 1;
+      localStorage.setItem("pikar.templateUsageCounts", JSON.stringify(map));
+    };
+
+    const orderTemplates = <T extends { key: string }>(list: T[]): T[] => {
+      const raw = localStorage.getItem("pikar.templateUsageCounts");
+      const map: Record<string, number> = raw ? JSON.parse(raw) : {};
+      return [...list].sort((a, b) => (map[b.key] || 0) - (map[a.key] || 0));
+    };
+
+    return { streak, timeSavedTotal, recordLocalWin, bumpTemplateUsage, orderTemplates };
   }
 
   // Use Convex KPI snapshot when authenticated; fallback to demo data for guests
@@ -148,6 +199,15 @@ export function SolopreneurDashboard({
     ? useQuery(api.solopreneur.runQuickAnalytics, { businessId: business._id })
     : undefined;
 
+  // Add: Top-level initiative + brain dump data for Today's Focus suggestions
+  const initiativesTop = !isGuest && business?._id
+    ? (useQuery as any)(api.initiatives.getByBusiness, { businessId: business._id })
+    : undefined;
+  const currentInitiative = Array.isArray(initiativesTop) && initiativesTop.length > 0 ? initiativesTop[0] : undefined;
+  const brainDumps = currentInitiative?._id
+    ? (useQuery as any)(api.initiatives.listBrainDumpsByInitiative, { initiativeId: currentInitiative._id, limit: 10 })
+    : [];
+
   // Add: actions/mutations and local state for Support Triage + Privacy controls
   const suggest = useAction(api.solopreneur.supportTriageSuggest);
   const forgetUploads = useMutation(api.solopreneur.forgetUploads);
@@ -164,21 +224,24 @@ export function SolopreneurDashboard({
   const navigate = useNavigate();
 
   // Templates strip (client-side, mirrors the seeded presets)
-  const myTemplates: Array<{ name: string; description: string; tag: string }> = [
+  const myTemplates: Array<{ key: string; name: string; description: string; tag: string }> = [
     {
       name: "Solopreneur — Launch Post",
       description: "Announce a new offering with a friendly, concise tone.",
       tag: "social",
+      key: "solopreneur_launch_post",
     },
     {
       name: "Solopreneur — Weekly Newsletter",
       description: "Lightweight weekly update to nurture your audience.",
       tag: "email",
+      key: "solopreneur_weekly_newsletter",
     },
     {
       name: "Solopreneur — Product Highlight",
       description: "Quick product spotlight with clear CTA.",
       tag: "cta",
+      key: "solopreneur_product_highlight",
     },
   ];
 
@@ -269,6 +332,91 @@ export function SolopreneurDashboard({
     }
   };
 
+  // Add helper: local usage and streaks
+  const createFromIdea = useMutation(api.workflows.createQuickFromIdea);
+  const logWin = useMutation(api.audit.logWin);
+
+  // Example state you likely already have: businessId, initiativeId, brain dumps, myTemplates, navigate, etc.
+  // We'll add new handlers:
+
+  // Create workflow from a brain dump item
+  const handleCreateWorkflowFromIdea = async (ideaText: string) => {
+    try {
+      if (!business?._id) {
+        toast("Please select or create a business first.");
+        return;
+      }
+      const id = await createFromIdea({
+        businessId: business._id,
+        idea: ideaText,
+        initiativeId: currentInitiative?._id,
+      });
+      // Log a win: estimate 20 minutes saved for skipping setup
+      await logWin({
+        businessId: business._id,
+        winType: "workflow_created_from_idea",
+        timeSavedMinutes: 20,
+        details: { workflowId: String(id) },
+      });
+      utils.recordLocalWin(20);
+      toast("Workflow created from idea!");
+      navigate("/workflows");
+    } catch (e: any) {
+      toast(e.message || "Failed to create workflow.");
+    }
+  };
+
+  // Smart ordering for "My Templates" and local streak/time saved view
+  const utils = useTemplateOrderingAndStreak();
+  // If you already have myTemplates defined, wrap it:
+  const orderedTemplates = React.useMemo(() => utils.orderTemplates(myTemplates), [myTemplates]);
+
+  // Enhance existing "Use Template" click:
+  const handleUseTemplateEnhanced = async (tpl: { key: string; name: string }) => {
+    try {
+      utils.bumpTemplateUsage(tpl.key);
+      // Count a quick win locally (5 minutes)
+      utils.recordLocalWin(5);
+      if (business?._id) {
+        await logWin({
+          businessId: business._id,
+          winType: "template_used",
+          timeSavedMinutes: 5,
+          details: { templateKey: tpl.key },
+        });
+      }
+    } catch {}
+    handleUseTemplate({ name: tpl.name });
+  };
+
+  // "Today's Focus (3)" suggestions (light heuristic)
+  const todaysFocus = React.useMemo(() => {
+    const suggestions: { title: string; action: () => void }[] = [];
+    // 1) Recent idea
+    if (brainDumps && brainDumps.length > 0) {
+      const topIdea = brainDumps[0];
+      suggestions.push({
+        title: `Turn idea into workflow: ${topIdea.title || topIdea.content.slice(0, 40)}`,
+        action: () => handleCreateWorkflowFromIdea(topIdea.content),
+      });
+    }
+    // 2) Most-used template
+    if (orderedTemplates.length > 0) {
+      const t = orderedTemplates[0];
+      suggestions.push({
+        title: `Use template: ${t.name}`,
+        action: () => handleUseTemplateEnhanced(t),
+      });
+    }
+    // 3) Quick email draft as a default nudge (if you have a composer route, otherwise leave as placeholder)
+    suggestions.push({
+      title: "Draft this week's newsletter",
+      action: () => navigate("/workflows"),
+    });
+
+    return suggestions.slice(0, 3);
+  }, [brainDumps, orderedTemplates]);
+
   return (
     <div className="space-y-6">
       {/* Header / Nudge */}
@@ -297,8 +445,8 @@ export function SolopreneurDashboard({
       <section>
         <h2 className="text-xl font-semibold mb-4">My Templates</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {myTemplates.map((t) => (
-            <Card key={t.name}>
+          {orderedTemplates.map((t) => (
+            <Card key={t.key} className="...">
               <CardContent className="p-4 space-y-2">
                 <div className="flex items-center justify-between">
                   <h3 className="font-medium">{t.name}</h3>
@@ -306,11 +454,11 @@ export function SolopreneurDashboard({
                 </div>
                 <p className="text-sm text-muted-foreground">{t.description}</p>
                 <div className="pt-1">
-                  <Button
-                    size="sm"
-                    onClick={() => handleUseTemplate(t)}
-                    className="bg-emerald-600 text-white hover:bg-emerald-700"
-                  >
+              <Button
+                size="sm"
+                onClick={() => handleUseTemplateEnhanced(t)}
+                className="bg-emerald-600 text-white hover:bg-emerald-700"
+              >
                     Use
                   </Button>
                 </div>
@@ -323,6 +471,23 @@ export function SolopreneurDashboard({
       {/* Today's Focus (max 3) */}
       <section>
         <h2 className="text-xl font-semibold mb-4">Today&apos;s Focus</h2>
+        <Card className="mt-4">
+          <CardHeader className="flex items-center justify-between gap-2 sm:flex-row">
+            <CardTitle className="text-base sm:text-lg">Today's Focus</CardTitle>
+            <div className="flex items-center gap-2">
+              <Badge variant="secondary">Streak: {utils.streak}d</Badge>
+              <Badge variant="outline">Time saved: {utils.timeSavedTotal}m</Badge>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {todaysFocus.map((s, i) => (
+              <div key={i} className="flex items-center justify-between rounded-md border p-3">
+                <div className="text-sm">{s.title}</div>
+                <Button size="sm" onClick={s.action}>Do it</Button>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
         {focusTasks.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {focusTasks.map((t: any) => (
@@ -399,7 +564,7 @@ export function SolopreneurDashboard({
             <Textarea
               placeholder="Paste an email thread or message to triage..."
               value={emailBody}
-              onChange={(e) => setEmailBody(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setEmailBody(e.target.value)}
               className="min-h-28"
             />
             <div className="flex items-center gap-2">
@@ -415,7 +580,7 @@ export function SolopreneurDashboard({
 
             {triageSuggestions.length > 0 && (
               <div className="pt-2 grid grid-cols-1 md:grid-cols-2 gap-3">
-                {triageSuggestions.map((s, idx) => (
+                {triageSuggestions.map((s: any, idx: number) => (
                   <Card key={`${s.label}-${idx}`}>
                     <CardContent className="p-3 space-y-2">
                       <div className="flex items-center justify-between">

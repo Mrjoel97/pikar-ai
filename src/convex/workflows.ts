@@ -2025,3 +2025,49 @@ async function getCurrentBusiness(ctx: any, user: any) {
 
   return memberOf ?? null;
 }
+
+// Quick create a workflow skeleton from a free-form idea
+export const createQuickFromIdea = mutation({
+  args: {
+    businessId: v.id("businesses"),
+    idea: v.string(),
+    initiativeId: v.optional(v.id("initiatives")),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("[ERR_NOT_AUTHENTICATED] You must be signed in.");
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_email", (q) => q.eq("email", identity.email!))
+      .first();
+    if (!user) throw new Error("[ERR_USER_NOT_FOUND] User not found.");
+
+    const business = await ctx.db.get(args.businessId);
+    if (!business) throw new Error("[ERR_BUSINESS_NOT_FOUND] Business not found.");
+    if (business.ownerId !== user._id && !business.teamMembers.includes(user._id)) {
+      throw new Error("[ERR_FORBIDDEN] Not authorized.");
+    }
+
+    const name = args.idea.length > 60 ? `${args.idea.slice(0, 57)}...` : args.idea;
+    const description = `Auto-generated from Brain Dump: ${args.idea}`;
+
+    const workflowId = await ctx.db.insert("workflows", {
+      businessId: args.businessId,
+      name: name || "Quick Workflow",
+      description,
+      trigger: { type: "manual" },
+      approval: { required: false, threshold: 1 },
+      pipeline: [
+        { type: "agent", name: "Draft Output", role: "content", params: { prompt: args.idea } },
+        { type: "approval", name: "Quick Review", role: "self", minSlaHours: 0 },
+        { type: "delay", name: "Schedule", hours: 0 },
+      ],
+      template: false,
+      tags: ["quick", "idea"],
+      status: "draft",
+      // ... keep existing code attributes in schema if any
+    });
+
+    return workflowId;
+  },
+});

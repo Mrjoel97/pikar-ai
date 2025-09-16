@@ -1,4 +1,4 @@
-import { internalMutation, query } from "./_generated/server";
+import { internalMutation, query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 
 /**
@@ -49,6 +49,55 @@ export const logGovernanceEvent = internalMutation({
       details: args.details ?? {},
       createdAt: Date.now(),
     });
+  },
+});
+
+/**
+ * Public mutation: Log a "win" event with time saved, scoped to a business with RBAC
+ */
+export const logWin = mutation({
+  args: {
+    businessId: v.id("businesses"),
+    winType: v.string(), // e.g., "workflow_created_from_idea", "template_used"
+    timeSavedMinutes: v.number(),
+    details: v.optional(v.any()),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("[ERR_NOT_AUTHENTICATED] You must be signed in.");
+    }
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_email", (q) => q.eq("email", identity.email!))
+      .first();
+    if (!user) {
+      throw new Error("[ERR_USER_NOT_FOUND] User not found.");
+    }
+
+    const business = await ctx.db.get(args.businessId);
+    if (!business) {
+      throw new Error("[ERR_BUSINESS_NOT_FOUND] Business not found.");
+    }
+    if (business.ownerId !== user._id && !business.teamMembers.includes(user._id)) {
+      throw new Error("[ERR_FORBIDDEN] Not authorized.");
+    }
+
+    await ctx.db.insert("audit_logs", {
+      businessId: args.businessId,
+      userId: user._id,
+      action: "win",
+      entityType: "productivity",
+      entityId: "",
+      details: {
+        winType: args.winType,
+        timeSavedMinutes: args.timeSavedMinutes,
+        ...(args.details ?? {}),
+      },
+      createdAt: Date.now(),
+    });
+
+    return true;
   },
 });
 
