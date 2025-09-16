@@ -173,7 +173,7 @@ export function CampaignComposer({ businessId, onClose, onCreated }: CampaignCom
         replyTo: formData.replyTo,
         previewText: formData.previewText,
         htmlContent: formData.body,
-        buttons: formData.buttons,
+        buttons: formData.buttons.map(({ text, url }) => ({ text, url })),
       });
       toast.success(`Test email sent to ${testEmail}`);
     } catch (error: any) {
@@ -204,17 +204,16 @@ export function CampaignComposer({ businessId, onClose, onCreated }: CampaignCom
 
       await createCampaign({
         businessId,
-        type: "campaign",
         subject: formData.subject,
         fromEmail: formData.fromEmail || "noreply@example.com",
         fromName: formData.fromName,
         replyTo: formData.replyTo,
         previewText: formData.previewText,
-        htmlContent: formData.body,
+        body: formData.body,
         recipients,
         audienceType,
         audienceListId: audienceType === "list" ? selectedListId : undefined,
-        buttons: formData.buttons,
+        buttons: formData.buttons.map(({ text, url }) => ({ text, url })),
         scheduledAt: Date.now(),
       });
 

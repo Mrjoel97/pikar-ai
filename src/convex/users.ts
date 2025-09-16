@@ -60,10 +60,10 @@ export const ensureSeedUser = mutation({
 export const getByEmail = query({
   args: { email: v.string() },
   handler: async (ctx, args) => {
-    // Note: Using filter to avoid assuming an email index exists
+    // Use index to avoid full scan
     return await ctx.db
       .query("users")
-      .filter((q) => q.eq(q.field("email"), args.email))
+      .withIndex("by_email", (q) => q.eq("email", args.email))
       .unique();
   },
 });
@@ -72,10 +72,9 @@ export const getByEmail = query({
 export const findByEmail = query({
   args: { email: v.string() },
   handler: async (ctx, args) => {
-    // Same behavior as getByEmail; seed.ts references both
     return await ctx.db
       .query("users")
-      .filter((q) => q.eq(q.field("email"), args.email))
+      .withIndex("by_email", (q) => q.eq("email", args.email))
       .unique();
   },
 });

@@ -14,8 +14,10 @@ import {
   Sparkles,
   CheckCircle,
   BadgeCheck,
-  Loader2
+  Loader2,
+  Badge as BadgeIcon
 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { useNavigate } from "react-router";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Menu } from "lucide-react";
@@ -41,6 +43,7 @@ import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import { useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useMemo } from "react";
 
 export default function Landing() {
   const { isLoading, isAuthenticated } = useAuth();
@@ -334,6 +337,34 @@ export default function Landing() {
     }
   };
 
+  const industries: Array<string> = [
+    "SaaS",
+    "eCommerce",
+    "Healthcare",
+    "Fintech",
+    "Education",
+    "Real Estate",
+    "Logistics",
+    "Hospitality",
+    "Manufacturing",
+    "Agencies",
+    "Nonprofit",
+    "Retail",
+    "Media",
+    "Gaming",
+    "Legal",
+    "HR Tech",
+    "Travel",
+    "Fitness & Wellness",
+    "Consumer Apps",
+    "Marketplaces",
+  ];
+  const randomIndustries = useMemo(() => {
+    const shuffled = [...industries].sort(() => Math.random() - 0.5);
+    // Show all industries randomized
+    return shuffled;
+  }, []);
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -602,6 +633,28 @@ export default function Landing() {
                 <div className="text-lg sm:text-2xl font-bold text-black">{stat.value}</div>
                 <div className="text-xs sm:text-sm text-muted-foreground">{stat.label}</div>
               </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* High-Traction Industries (randomized) */}
+      <section className="px-4 sm:px-6 lg:px-8 pb-10">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-4">
+            <p className="text-xs sm:text-sm text-muted-foreground tracking-wide">
+              High‑Traction Industries We Support
+            </p>
+          </div>
+          <div className="flex flex-wrap justify-center gap-2 sm:gap-3">
+            {randomIndustries.map((ind) => (
+              <Badge
+                key={ind}
+                variant="secondary"
+                className="neu-inset rounded-full px-3 py-1.5 bg-card/70"
+              >
+                {ind}
+              </Badge>
             ))}
           </div>
         </div>

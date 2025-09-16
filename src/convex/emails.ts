@@ -64,6 +64,9 @@ export const createCampaign = mutation({
     body: v.string(),
     fromName: v.optional(v.string()),
     fromEmail: v.optional(v.string()),
+    // Add optional fields to support UI inputs
+    replyTo: v.optional(v.string()),
+    previewText: v.optional(v.string()),
     audienceType: v.union(v.literal("direct"), v.literal("list")),
     recipients: v.optional(v.array(v.string())),
     audienceListId: v.optional(v.id("contactLists")),
@@ -115,6 +118,9 @@ export const createCampaign = mutation({
       body: args.body,
       fromName: args.fromName || "Pikar AI",
       fromEmail: args.fromEmail || "noreply@resend.dev",
+      // pass-through optional UI fields
+      replyTo: args.replyTo,
+      previewText: args.previewText,
       audienceType: args.audienceType,
       recipients,
       audienceListId: args.audienceListId,

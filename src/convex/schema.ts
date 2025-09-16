@@ -676,7 +676,7 @@ export default defineSchema({
   })
     // IMPORTANT: index name must match the library's expectation
     .index("providerAndAccountId", ["provider", "providerAccountId"])
-    .index("by_userId", ["userId"]),
+    .index("userId", ["userId"]),
 
   // Add required authSessions table for @convex-dev/auth
   // NOTE: Make some fields optional to accommodate legacy docs and include legacy expirationTime
@@ -1089,4 +1089,55 @@ export default defineSchema({
     .index("by_campaign", ["campaignId"])
     .index("by_status", ["status"])
     .index("by_created_by", ["createdBy"]),
+
+  // Agent Profiles for User-Trained Custom AI Agent (Solopreneur S1)
+  agentProfiles: defineTable({
+    userId: v.id("users"),
+    businessId: v.id("businesses"),
+    businessSummary: v.optional(v.string()),
+    industry: v.optional(v.string()),
+    brandVoice: v.optional(v.string()),
+    timezone: v.optional(v.string()),
+    preferences: v.optional(
+      v.object({
+        automations: v.object({
+          invoicing: v.optional(v.boolean()),
+          emailDrafts: v.optional(v.boolean()),
+          socialPosts: v.optional(v.boolean()),
+        }),
+      })
+    ),
+    docRefs: v.optional(v.array(v.id("_storage"))),
+    trainingNotes: v.optional(v.string()),
+    onboardingScore: v.optional(v.number()),
+    lastUpdated: v.optional(v.number()),
+  })
+    .index("by_user", ["userId"])
+    .index("by_business", ["businessId"]),
+
+  // Upload metadata (references Convex storage system table via fileId)
+  uploads: defineTable({
+    userId: v.id("users"),
+    businessId: v.id("businesses"),
+    filename: v.string(),
+    mimeType: v.string(),
+    fileId: v.id("_storage"),
+    uploadedAt: v.number(),
+    vectorIndexId: v.optional(v.string()),
+  })
+    .index("by_user", ["userId"])
+    .index("by_business", ["businessId"]),
+
+  // Key metrics for micro-analytics (90d revenue snapshot, etc.)
+  key_metrics: defineTable({
+    userId: v.optional(v.id("users")),
+    businessId: v.optional(v.id("businesses")),
+    metricKey: v.string(),
+    value: v.number(),
+    windowStart: v.number(), // ms
+    windowEnd: v.number(),   // ms
+    createdAt: v.number(),
+  })
+    .index("by_user_and_metricKey", ["userId", "metricKey"])
+    .index("by_business_and_metricKey", ["businessId", "metricKey"]),
 });
