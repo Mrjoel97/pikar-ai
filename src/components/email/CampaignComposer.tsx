@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -15,6 +15,7 @@ import { useMutation, useQuery, useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { Switch } from "@/components/ui/switch";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 interface CampaignComposerProps {
   businessId: Id<"businesses">;
@@ -66,6 +67,29 @@ export function CampaignComposer({ businessId, onClose, onCreated, defaultSchedu
 
   const selectedList = contactLists?.find((list: any) => list._id === selectedListId);
   const recipientCount = selectedList ? "Loading..." : directRecipients.split(",").filter(Boolean).length;
+
+  // Add: Compliance preflight heuristics (UI-only)
+  const preflightWarnings = React.useMemo(() => {
+    const warnings: string[] = [];
+    const lowerBody = (formData.body || "").toLowerCase();
+
+    if (!formData.fromEmail) {
+      warnings.push("From Email is empty. Add a valid sender address for deliverability.");
+    }
+    if (!formData.subject) {
+      warnings.push("Subject is empty. Emails without a subject are likely to be flagged or ignored.");
+    }
+    if (!lowerBody.includes("unsubscribe")) {
+      warnings.push("Missing unsubscribe language. Include a clear unsubscribe option to minimize complaints.");
+    }
+    if (audienceType === "direct" && directRecipients.split(",").filter(Boolean).length === 0) {
+      warnings.push("No direct recipients provided. Add at least one recipient or switch to a Contact List.");
+    }
+    if (audienceType === "list" && !selectedListId) {
+      warnings.push("No contact list selected. Choose a list to target your campaign.");
+    }
+    return warnings;
+  }, [formData.body, formData.subject, formData.fromEmail, audienceType, directRecipients, selectedListId]);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -240,6 +264,27 @@ export function CampaignComposer({ businessId, onClose, onCreated, defaultSchedu
 
   return (
     <div className="space-y-6 max-w-2xl mx-auto">
+      {typeof defaultScheduledAt === "number" && (
+        <div className="flex items-center gap-2">
+          <Badge variant="secondary">
+            Scheduled for {new Date(defaultScheduledAt).toLocaleString()}
+          </Badge>
+        </div>
+      )}
+
+      {preflightWarnings.length > 0 && (
+        <Alert variant="destructive">
+          <AlertTitle>Compliance preflight warnings</AlertTitle>
+          <AlertDescription>
+            <ul className="list-disc pl-5 space-y-1">
+              {preflightWarnings.map((w, i) => (
+                <li key={i}>{w}</li>
+              ))}
+            </ul>
+          </AlertDescription>
+        </Alert>
+      )}
+
       <div className="space-y-4">
         <div className="grid grid-cols-2 gap-4">
           <div>
