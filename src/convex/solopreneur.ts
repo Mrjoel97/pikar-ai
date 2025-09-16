@@ -86,7 +86,6 @@ export const initSolopreneurAgent = mutation({
     } else {
       profileId = await ctx.db.insert("agentProfiles", {
         userId,
-        businessId,
         preferences: {
           automations: {
             invoicing: false,

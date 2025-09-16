@@ -58,6 +58,45 @@ export function SolopreneurDashboard({
     conversionRate: { value: kpis.conversionRate ?? 3.2, delta: 0 }, // %
   };
 
+  // Add mutations for One-Click Setup
+  const initAgent = useMutation(api.solopreneur.initSolopreneurAgent);
+  const seedTemplates = useMutation(api.solopreneur.seedOneClickTemplates);
+
+  // Local loading state
+  const [settingUp, setSettingUp] = useState(false);
+
+  // Handler for One-Click Setup
+  const handleOneClickSetup = async () => {
+    if (isGuest) {
+      toast("Please sign in to run setup.");
+      onUpgrade?.();
+      return;
+    }
+    try {
+      setSettingUp(true);
+      toast("Initializing your solopreneur agent...");
+
+      const initRes = await initAgent({
+        businessId: business?._id,
+      } as any);
+
+      const resolvedBusinessId =
+        (initRes && (initRes as any).businessId) || business?._id;
+
+      toast("Seeding one-click templates...");
+      const seedRes = await seedTemplates({
+        businessId: resolvedBusinessId,
+      } as any);
+
+      const created = (seedRes as any)?.created ?? 0;
+      toast.success(`Setup complete! ${created} templates ready to use.`);
+    } catch (e: any) {
+      toast.error(e?.message || "Setup failed. Please try again.");
+    } finally {
+      setSettingUp(false);
+    }
+  };
+
   // Quick actions (guest -> prompt sign-in, authed -> future: navigate)
   const handleQuickAction = (action: string) => {
     if (isGuest) {
@@ -77,7 +116,16 @@ export function SolopreneurDashboard({
         <div className="text-sm">
           Supercharge your solo biz with focused tasks, quick actions, and clear KPIs.
         </div>
-        <div className="ml-auto">
+        <div className="ml-auto flex items-center gap-2">
+          {/* New One-Click Setup button */}
+          <Button
+            size="sm"
+            onClick={handleOneClickSetup}
+            disabled={settingUp}
+            className="bg-emerald-600 text-white hover:bg-emerald-700"
+          >
+            {settingUp ? "Setting up..." : "One‑Click Setup"}
+          </Button>
           <Button size="sm" variant="outline" onClick={onUpgrade}>
             Upgrade to Startup
           </Button>
