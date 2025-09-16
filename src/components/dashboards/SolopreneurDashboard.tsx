@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { Zap, Pencil, Calendar, BarChart3, HelpCircle } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
+import { Textarea } from "@/components/ui/textarea";
 
 interface SolopreneurDashboardProps {
   business: any;
@@ -62,6 +63,20 @@ export function SolopreneurDashboard({
   const initAgent = useMutation(api.solopreneur.initSolopreneurAgent);
   const seedTemplates = useMutation(api.solopreneur.seedOneClickTemplates);
 
+  // Add quick analytics (skip for guests)
+  const quickAnalytics = !isGuest && business?._id
+    ? useQuery(api.solopreneur.runQuickAnalytics, { businessId: business._id })
+    : undefined;
+
+  // Add: actions/mutations and local state for Support Triage + Privacy controls
+  const suggest = useAction(api.solopreneur.supportTriageSuggest);
+  const forgetUploads = useMutation(api.solopreneur.forgetUploads);
+  const [emailBody, setEmailBody] = useState<string>("");
+  const [triageLoading, setTriageLoading] = useState(false);
+  const [triageSuggestions, setTriageSuggestions] = useState<
+    Array<{ label: string; reply: string; priority: "low" | "medium" | "high" }>
+  >([]);
+
   // Local loading state
   const [settingUp, setSettingUp] = useState(false);
 
@@ -106,6 +121,39 @@ export function SolopreneurDashboard({
     }
     // Future: route to real features
     alert(`${action} coming soon`);
+  };
+
+  const handleSuggestReplies = async () => {
+    if (!emailBody.trim()) {
+      toast("Paste an email to get suggestions.");
+      return;
+    }
+    try {
+      setTriageLoading(true);
+      const res = await suggest({ body: emailBody });
+      const items = (res as any)?.suggestions ?? [];
+      setTriageSuggestions(items);
+      toast.success(`Generated ${items.length} suggestion${items.length === 1 ? "" : "s"}.`);
+    } catch (e: any) {
+      toast.error(e?.message ?? "Failed to generate suggestions.");
+    } finally {
+      setTriageLoading(false);
+    }
+  };
+
+  const handleForgetUploads = async () => {
+    if (isGuest) {
+      toast("Sign in to manage your uploads.");
+      onUpgrade?.();
+      return;
+    }
+    try {
+      const res = await forgetUploads({});
+      const count = (res as any)?.deleted ?? 0;
+      toast.success(`Cleared ${count} upload${count === 1 ? "" : "s"} and reset agent doc refs.`);
+    } catch (e: any) {
+      toast.error(e?.message ?? "Failed to clear uploads.");
+    }
   };
 
   return (
@@ -200,6 +248,81 @@ export function SolopreneurDashboard({
         </div>
       </section>
 
+      {/* Support Triage (beta) */}
+      <section>
+        <h2 className="text-xl font-semibold mb-4">Support Triage (beta)</h2>
+        <Card>
+          <CardContent className="p-4 space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Paste an inbound email and get suggested replies. No external APIs, safe to try in guest mode.
+            </p>
+            <Textarea
+              placeholder="Paste an email thread or message to triage..."
+              value={emailBody}
+              onChange={(e) => setEmailBody(e.target.value)}
+              className="min-h-28"
+            />
+            <div className="flex items-center gap-2">
+              <Button size="sm" onClick={handleSuggestReplies} disabled={triageLoading}>
+                {triageLoading ? "Generating..." : "Suggest Replies"}
+              </Button>
+              {!isGuest && (
+                <span className="text-xs text-muted-foreground">
+                  Suggestions are also lightly logged to audit when signed in.
+                </span>
+              )}
+            </div>
+
+            {triageSuggestions.length > 0 && (
+              <div className="pt-2 grid grid-cols-1 md:grid-cols-2 gap-3">
+                {triageSuggestions.map((s, idx) => (
+                  <Card key={`${s.label}-${idx}`}>
+                    <CardContent className="p-3 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium">{s.label}</span>
+                        <Badge variant={s.priority === "high" ? "destructive" : "outline"} className="capitalize">
+                          {s.priority}
+                        </Badge>
+                      </div>
+                      <div className="text-sm whitespace-pre-wrap">{s.reply}</div>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            navigator.clipboard.writeText(s.reply).then(
+                              () => toast("Copied reply"),
+                              () => toast.error("Copy failed")
+                            );
+                          }}
+                        >
+                          Copy
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </section>
+
+      {/* Privacy Controls */}
+      <section>
+        <h2 className="text-xl font-semibold mb-4">Privacy Controls</h2>
+        <Card>
+          <CardContent className="p-4 flex items-center justify-between">
+            <div className="text-sm text-muted-foreground">
+              Clear uploaded files and reset your agent's document references.
+            </div>
+            <Button size="sm" variant="outline" onClick={handleForgetUploads} disabled={isGuest}>
+              Forget uploads
+            </Button>
+          </CardContent>
+        </Card>
+      </section>
+
       {/* KPI Snapshot */}
       <section>
         <h2 className="text-xl font-semibold mb-4">KPI Snapshot</h2>
@@ -234,6 +357,51 @@ export function SolopreneurDashboard({
               <p className="text-2xl font-bold">{fmtNum(snapshot.taskCompletion.value)}%</p>
               <p className="text-xs text-muted-foreground mt-1">Across current workflows</p>
               <Progress value={Math.min(100, snapshot.taskCompletion.value)} className="mt-2" />
+            </CardContent>
+          </Card>
+        </div>
+      </section>
+
+      {/* Micro-Analytics */}
+      <section>
+        <h2 className="text-xl font-semibold mb-4">Micro‑Analytics</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Card>
+            <CardContent className="p-4">
+              <h3 className="text-sm font-medium text-muted-foreground">90‑Day Revenue</h3>
+              <p className="text-2xl font-bold">
+                ${fmtNum(quickAnalytics?.revenue90d ?? 0)}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">Rolling window</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
+              <h3 className="text-sm font-medium text-muted-foreground">Churn Alert</h3>
+              <div className="flex items-center gap-2 mt-1">
+                <Badge variant={quickAnalytics?.churnAlert ? "destructive" : "outline"}>
+                  {quickAnalytics?.churnAlert ? "At Risk" : "Healthy"}
+                </Badge>
+                <p className="text-xs text-muted-foreground">
+                  {quickAnalytics?.churnAlert ? "Review retention plays" : "No immediate risk"}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
+              <h3 className="text-sm font-medium text-muted-foreground">Top Products by Margin</h3>
+              <ul className="mt-2 space-y-1">
+                {(quickAnalytics?.topProducts ?? []).slice(0, 3).map((p: any) => (
+                  <li key={String(p.name)} className="text-sm flex justify-between">
+                    <span className="truncate">{String(p.name)}</span>
+                    <span className="text-muted-foreground">{Math.round((p.margin ?? 0) * 100)}%</span>
+                  </li>
+                ))}
+                {(!quickAnalytics || (quickAnalytics.topProducts ?? []).length === 0) && (
+                  <li className="text-sm text-muted-foreground">No data yet</li>
+                )}
+              </ul>
             </CardContent>
           </Card>
         </div>

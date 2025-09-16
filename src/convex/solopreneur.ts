@@ -6,7 +6,7 @@ import { getAuthUserId } from "@convex-dev/auth/server";
 // High-traction industries pool (randomized selection per agent init)
 const HIGH_TRACTION_INDUSTRIES: Array<string> = [
   "ecommerce",
-  "professional_services",
+  "professional_services", 
   "saas",
   "coaching",
   "real_estate",
@@ -256,7 +256,7 @@ export const supportTriageSuggest = action({
       suggestions.push({
         label: "Invoice/Payment",
         reply:
-          "Thanks for reaching out. I’ve attached the invoice for your review. Please let me know if you have any questions.",
+          "Thanks for reaching out. I've attached the invoice for your review. Please let me know if you have any questions.",
         priority: "high",
       });
     }
@@ -264,7 +264,7 @@ export const supportTriageSuggest = action({
       suggestions.push({
         label: "Scheduling",
         reply:
-          "I’d be happy to meet. Here are two time slots that may work well. Please confirm which you prefer.",
+          "I'd be happy to meet. Here are two time slots that may work well. Please confirm which you prefer.",
         priority: "medium",
       });
     }
@@ -272,7 +272,7 @@ export const supportTriageSuggest = action({
       suggestions.push({
         label: "Support",
         reply:
-          "I’m sorry for the trouble. Could you share a bit more detail and any screenshots? I’ll take a look right away.",
+          "I'm sorry for the trouble. Could you share a bit more detail and any screenshots? I'll take a look right away.",
         priority: "high",
       });
     }
@@ -280,7 +280,7 @@ export const supportTriageSuggest = action({
       suggestions.push({
         label: "General",
         reply:
-          "Thanks for your message. I’ll review and get back to you shortly with next steps.",
+          "Thanks for your message. I'll review and get back to you shortly with next steps.",
         priority: "low",
       });
     }
@@ -390,5 +390,45 @@ export const seedOneClickTemplates = mutation({
       }
     }
     return { ok: true as const, created };
+  },
+});
+
+// Add: forgetUploads mutation to clear user uploads and agent doc refs
+export const forgetUploads = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Not authenticated");
+
+    // Find agent profile to get businessId and clear docRefs/trainingNotes
+    const profile = await ctx.db
+      .query("agentProfiles")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .unique()
+      .catch(() => null);
+
+    if (profile) {
+      await ctx.db.patch(profile._id, {
+        docRefs: [],
+        trainingNotes: "",
+        lastUpdated: Date.now(),
+      } as any);
+    }
+
+    // Delete uploads owned by this user (best-effort)
+    const toDelete = await ctx.db
+      .query("uploads")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .collect();
+
+    for (const u of toDelete) {
+      try {
+        await ctx.db.delete(u._id);
+      } catch {
+        // ignore best-effort failures
+      }
+    }
+
+    return { ok: true as const, deleted: toDelete.length };
   },
 });
