@@ -141,17 +141,17 @@ export function SolopreneurDashboard({
           <div className="text-sm font-medium">Recent ideas</div>
           <div className="flex items-center gap-2 mb-2">
             <span className="text-xs text-muted-foreground">Filter:</span>
-            {(["", "content", "offer", "ops"] as const).map((tag) => (
-              <Button
-                key={`tag_${tag || "all"}`}
-                size="xs"
-                variant={activeTagFilter === tag ? "default" : "outline"}
-                className={activeTagFilter === tag ? "bg-emerald-600 text-white hover:bg-emerald-700" : ""}
-                onClick={() => setActiveTagFilter(tag as any)}
-              >
-                {tag || "All"}
-              </Button>
-            ))}
+              {(["", "content", "offer", "ops"] as const).map((tag) => (
+                <Button
+                  key={`tag_${tag || "all"}`}
+                  size="sm"
+                  variant={activeTagFilter === tag ? "default" : "outline"}
+                  className={activeTagFilter === tag ? "bg-emerald-600 text-white hover:bg-emerald-700" : ""}
+                  onClick={() => setActiveTagFilter(tag as any)}
+                >
+                  {tag || "All"}
+                </Button>
+              ))}
           </div>
           {Array.isArray(dumps) && dumps.length > 0 ? (
             dumps
@@ -171,11 +171,11 @@ export function SolopreneurDashboard({
                     ))}
                   </div>
                   <div className="whitespace-pre-wrap">{d.content}</div>
-                  <Button size="xs" variant="secondary" onClick={() => handleCreateWorkflowFromIdea(d.content)}>
+                  <Button size="sm" variant="secondary" onClick={() => handleCreateWorkflowFromIdea(d.content)}>
                     Create workflow
                   </Button>
                   <Button
-                    size="xs"
+                    size="sm"
                     variant="outline"
                     className="ml-2"
                     onClick={async () => {
@@ -525,10 +525,10 @@ export function SolopreneurDashboard({
 
   // NEW: Template pinning persistence
   const pinnedList = useQuery(
-    api.templatePins?.listPinned as any,
+    api.templatePins.listPinned as any,
     isGuest || !isAuthed ? ("skip" as any) : {}
   ) as any[] | undefined;
-  const togglePin = useMutation(api.templatePins?.togglePin as any);
+  const togglePin = useMutation(api.templatePins.togglePin as any);
   const pinnedSet = React.useMemo(() => {
     const ids = new Set<string>();
     if (Array.isArray(pinnedList)) {
@@ -600,9 +600,9 @@ export function SolopreneurDashboard({
 
   // Schedule slots persistence
   const listSlots = !isGuest && business?._id
-    ? (useQuery as any)(api.schedule?.listSlots, { businessId: business._id })
+    ? (useQuery as any)(api.schedule.listSlots, { businessId: business._id })
     : [];
-  const deleteSlot = useMutation(api.schedule?.deleteSlot as any);
+  const deleteSlot = useMutation(api.schedule.deleteSlot as any);
 
   // Handler to accept a suggested slot
   const handleAddSlot = async (slot: { label: string; channel: "Post" | "Email"; when: string }) => {
@@ -623,7 +623,7 @@ export function SolopreneurDashboard({
         await addSlot({
           businessId: business._id,
           label: slot.label,
-          channel: slot.channel,
+          channel: (slot.channel === "Email" ? "email" : "post") as any,
           scheduledAt: whenDate.getTime(),
         } as any);
       }
@@ -908,7 +908,7 @@ export function SolopreneurDashboard({
   };
 
   // Business context for composer and SLA
-  const currentBusiness = useQuery(api.businesses?.currentUserBusiness as any, isAuthed ? {} : "skip") as any;
+  const currentBusiness = useQuery(api.businesses.currentUserBusiness as any, isAuthed ? {} : "skip") as any;
   const businessId = currentBusiness?._id;
 
   // Env / system health
