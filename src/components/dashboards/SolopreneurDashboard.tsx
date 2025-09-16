@@ -9,6 +9,8 @@ import { useNavigate } from "react-router";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
+import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 
 interface SolopreneurDashboardProps {
   business: any;
@@ -112,11 +114,12 @@ export function SolopreneurDashboard({
   function useTemplateOrderingAndStreak() {
     const [streak, setStreak] = React.useState<number>(0);
     const [timeSavedTotal, setTimeSavedTotal] = React.useState<number>(0);
+    // New: local wins history
+    const [history, setHistory] = React.useState<Array<{ at: string; type: string; minutes: number; meta?: Record<string, any> }>>([]);
 
     React.useEffect(() => {
       const rawDates = localStorage.getItem("pikar.winDates");
       const dates: string[] = rawDates ? JSON.parse(rawDates) : [];
-      // compute streak ending today
       const today = new Date(); today.setHours(0,0,0,0);
       let s = 0;
       for (;;) {
@@ -129,16 +132,37 @@ export function SolopreneurDashboard({
 
       const ts = Number(localStorage.getItem("pikar.timeSavedTotal") || "0");
       setTimeSavedTotal(ts);
+
+      const rawHist = localStorage.getItem("pikar.winHistory");
+      const hist: Array<{ at: string; type: string; minutes: number; meta?: Record<string, any> }> = rawHist ? JSON.parse(rawHist) : [];
+      setHistory(hist);
     }, []);
 
-    const recordLocalWin = (minutes: number) => {
-      const todayKey = new Date().toISOString().slice(0,10);
+    const recordLocalWin = (minutes: number, type: string = "generic", meta?: Record<string, any>) => {
+      const nowIso = new Date().toISOString();
+      const todayKey = nowIso.slice(0,10);
       const rawDates = localStorage.getItem("pikar.winDates");
       const dates: string[] = rawDates ? JSON.parse(rawDates) : [];
       if (!dates.includes(todayKey)) dates.push(todayKey);
       localStorage.setItem("pikar.winDates", JSON.stringify(dates));
       const ts = Number(localStorage.getItem("pikar.timeSavedTotal") || "0") + minutes;
       localStorage.setItem("pikar.timeSavedTotal", String(ts));
+      setTimeSavedTotal(ts);
+
+      const rawHist = localStorage.getItem("pikar.winHistory");
+      const hist: Array<{ at: string; type: string; minutes: number; meta?: Record<string, any> }> = rawHist ? JSON.parse(rawHist) : [];
+      hist.unshift({ at: nowIso, type, minutes, meta });
+      localStorage.setItem("pikar.winHistory", JSON.stringify(hist.slice(0, 100)));
+      setHistory(hist.slice(0, 100));
+    };
+
+    const clearLocalWins = () => {
+      localStorage.removeItem("pikar.winDates");
+      localStorage.removeItem("pikar.timeSavedTotal");
+      localStorage.removeItem("pikar.winHistory");
+      setStreak(0);
+      setTimeSavedTotal(0);
+      setHistory([]);
     };
 
     const bumpTemplateUsage = (key: string) => {
@@ -154,7 +178,7 @@ export function SolopreneurDashboard({
       return [...list].sort((a, b) => (map[b.key] || 0) - (map[a.key] || 0));
     };
 
-    return { streak, timeSavedTotal, recordLocalWin, bumpTemplateUsage, orderTemplates };
+    return { streak, timeSavedTotal, history, recordLocalWin, clearLocalWins, bumpTemplateUsage, orderTemplates };
   }
 
   // Use Convex KPI snapshot when authenticated; fallback to demo data for guests
@@ -358,7 +382,7 @@ export function SolopreneurDashboard({
         timeSavedMinutes: 20,
         details: { workflowId: String(id) },
       });
-      utils.recordLocalWin(20);
+      utils.recordLocalWin(20, "workflow_created_from_idea", { source: "brain_dump" });
       toast("Workflow created from idea!");
       navigate("/workflows");
     } catch (e: any) {
@@ -371,12 +395,94 @@ export function SolopreneurDashboard({
   // If you already have myTemplates defined, wrap it:
   const orderedTemplates = React.useMemo(() => utils.orderTemplates(myTemplates), [myTemplates]);
 
+  // Add: top-level addBrainDump for quick-add + gallery and help coach state
+  const addDumpTop = useMutation(api.initiatives.addBrainDump as any);
+  const [quickIdea, setQuickIdea] = useState<string>("");
+  const [savingQuickIdea, setSavingQuickIdea] = useState(false);
+
+  // Template Gallery modal state
+  const [galleryOpen, setGalleryOpen] = useState(false);
+  const [galleryQuery, setGalleryQuery] = useState("");
+
+  // Help Coach tips (dismissable)
+  const coachTips: Array<{ id: string; text: string }> = [
+    { id: "tip_focus", text: "Pick one high‑impact task to ship today — momentum compounds." },
+    { id: "tip_templates", text: "Use templates to publish faster — tweak, don't start from scratch." },
+    { id: "tip_ideas", text: "Turn a Brain Dump idea into a workflow when it's actionable." },
+  ];
+  const [dismissedTips, setDismissedTips] = useState<Record<string, boolean>>({});
+  const visibleTips = coachTips.filter(t => !dismissedTips[t.id]);
+
+  // Next Best Action: pick a single dynamic CTA
+  const nextBest = React.useMemo(() => {
+    // Prefer turning most recent idea into workflow
+    if (brainDumps && brainDumps.length > 0) {
+      const topIdea = brainDumps[0];
+      return {
+        label: `Turn idea into workflow: ${topIdea.title || topIdea.content.slice(0, 40)}`,
+        onClick: () => handleCreateWorkflowFromIdea(topIdea.content),
+        reason: "Recent idea detected",
+      };
+    }
+    // If churn risk flagged, nudge newsletter
+    if (quickAnalytics?.churnAlert) {
+      return {
+        label: "Draft a retention newsletter",
+        onClick: () => navigate("/workflows"),
+        reason: "Churn risk detected",
+      };
+    }
+    // Otherwise, most-used template
+    if (orderedTemplates.length > 0) {
+      const t = orderedTemplates[0];
+      return {
+        label: `Use template: ${t.name}`,
+        onClick: () => handleUseTemplateEnhanced(t),
+        reason: "Based on your usage",
+      };
+    }
+    // Default
+    return {
+      label: "Create a simple workflow",
+      onClick: () => navigate("/workflows"),
+      reason: "Kickstart momentum",
+    };
+  }, [brainDumps, orderedTemplates, quickAnalytics]);
+
+  // Quick‑add Brain Dump handler
+  const handleQuickAddIdea = async () => {
+    if (isGuest) {
+      toast("Sign in to save ideas.");
+      onUpgrade?.();
+      return;
+    }
+    if (!currentInitiative?._id) {
+      toast("No initiative found. Run setup first.");
+      return;
+    }
+    const content = quickIdea.trim();
+    if (!content) {
+      toast("Type an idea first.");
+      return;
+    }
+    try {
+      setSavingQuickIdea(true);
+      await addDumpTop({ initiativeId: currentInitiative._id, content });
+      setQuickIdea("");
+      toast.success("Saved idea.");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Failed to save idea.");
+    } finally {
+      setSavingQuickIdea(false);
+    }
+  };
+
   // Enhance existing "Use Template" click:
   const handleUseTemplateEnhanced = async (tpl: { key: string; name: string }) => {
     try {
       utils.bumpTemplateUsage(tpl.key);
       // Count a quick win locally (5 minutes)
-      utils.recordLocalWin(5);
+      utils.recordLocalWin(5, "template_used", { templateKey: tpl.key });
       if (business?._id) {
         await logWin({
           businessId: business._id,
@@ -417,6 +523,18 @@ export function SolopreneurDashboard({
     return suggestions.slice(0, 3);
   }, [brainDumps, orderedTemplates]);
 
+  // Add: derive filtered templates for gallery
+  const filteredTemplates = React.useMemo(() => {
+    const q = galleryQuery.toLowerCase().trim();
+    const base = orderedTemplates;
+    if (!q) return base;
+    return base.filter(t =>
+      t.name.toLowerCase().includes(q) ||
+      t.description.toLowerCase().includes(q) ||
+      t.tag.toLowerCase().includes(q)
+    );
+  }, [galleryQuery, orderedTemplates]);
+
   return (
     <div className="space-y-6">
       {/* Header / Nudge */}
@@ -441,9 +559,21 @@ export function SolopreneurDashboard({
         </div>
       </div>
 
+      {/* Next Best Action bar */}
+      <div className="rounded-md border p-3 bg-emerald-50/60 flex items-center gap-3">
+        <span className="text-sm font-medium">Next best action:</span>
+        <Button size="sm" className="bg-emerald-600 text-white hover:bg-emerald-700" onClick={nextBest.onClick}>
+          {nextBest.label}
+        </Button>
+        <span className="ml-auto text-xs text-muted-foreground">Reason: {nextBest.reason}</span>
+      </div>
+
       {/* My Templates strip */}
       <section>
-        <h2 className="text-xl font-semibold mb-4">My Templates</h2>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-semibold">My Templates</h2>
+          <Button size="sm" variant="outline" onClick={() => setGalleryOpen(true)}>Open Gallery</Button>
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {orderedTemplates.map((t) => (
             <Card key={t.key} className="...">
@@ -466,6 +596,46 @@ export function SolopreneurDashboard({
             </Card>
           ))}
         </div>
+
+        {/* Template Gallery Modal */}
+        <Dialog open={galleryOpen} onOpenChange={setGalleryOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Template Gallery</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3">
+              <Input
+                placeholder="Search templates by name, tag, or description..."
+                value={galleryQuery}
+                onChange={(e) => setGalleryQuery(e.target.value)}
+              />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-80 overflow-auto pr-1">
+                {filteredTemplates.map((t) => (
+                  <Card key={`gallery_${t.key}`}>
+                    <CardContent className="p-4 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <h3 className="font-medium">{t.name}</h3>
+                        <Badge variant="outline" className="capitalize">{t.tag}</Badge>
+                      </div>
+                      <p className="text-sm text-muted-foreground">{t.description}</p>
+                      <div className="pt-1">
+                        <Button size="sm" className="bg-emerald-600 text-white hover:bg-emerald-700" onClick={() => { handleUseTemplateEnhanced(t); setGalleryOpen(false); }}>
+                          Use
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+                {filteredTemplates.length === 0 && (
+                  <div className="text-sm text-muted-foreground p-2">No templates match your search.</div>
+                )}
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setGalleryOpen(false)}>Close</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </section>
 
       {/* Today's Focus (max 3) */}
@@ -514,6 +684,19 @@ export function SolopreneurDashboard({
               No focus tasks yet. Add up to three high-impact tasks to stay on track.
             </CardContent>
           </Card>
+        )}
+        {/* Inline quick‑add Brain Dump */}
+        {!isGuest && (
+          <div className="mb-3 flex items-center gap-2">
+            <Input
+              placeholder="Quick add idea to Brain Dump..."
+              value={quickIdea}
+              onChange={(e) => setQuickIdea(e.target.value)}
+            />
+            <Button size="sm" onClick={handleQuickAddIdea} disabled={savingQuickIdea}>
+              {savingQuickIdea ? "Saving..." : "Add"}
+            </Button>
+          </div>
         )}
       </section>
 
@@ -678,6 +861,8 @@ export function SolopreneurDashboard({
                 ${fmtNum(quickAnalytics?.revenue90d ?? 0)}
               </p>
               <p className="text-xs text-muted-foreground mt-1">Rolling window</p>
+              {/* Tip */}
+              <p className="text-xs text-emerald-700 mt-1">Tip: Track weekly revenue cadence — consistency beats spikes.</p>
             </CardContent>
           </Card>
           <Card>
@@ -691,6 +876,10 @@ export function SolopreneurDashboard({
                   {quickAnalytics?.churnAlert ? "Review retention plays" : "No immediate risk"}
                 </p>
               </div>
+              {/* Tip */}
+              {quickAnalytics?.churnAlert && (
+                <p className="text-xs text-amber-700 mt-1">Suggestion: Send a win‑back email with an exclusive offer.</p>
+              )}
             </CardContent>
           </Card>
           <Card>
@@ -707,6 +896,7 @@ export function SolopreneurDashboard({
                   <li className="text-sm text-muted-foreground">No data yet</li>
                 )}
               </ul>
+              <p className="text-xs text-muted-foreground mt-1">Tip: Feature top‑margin products in your next post.</p>
             </CardContent>
           </Card>
         </div>
@@ -751,6 +941,65 @@ export function SolopreneurDashboard({
 
       {/* Brain Dump */}
       {!isGuest && business ? <BrainDumpSection businessId={String(business._id)} /> : null}
+
+      {/* Help Coach */}
+      <section>
+        <h2 className="text-xl font-semibold mb-2">Help Coach</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          {visibleTips.map((t) => (
+            <Card key={t.id} className="border-emerald-200">
+              <CardContent className="p-3 flex items-start justify-between gap-2">
+                <span className="text-sm">{t.text}</span>
+                <Button
+                  size="icon"
+                  variant="outline"
+                  className="h-6 w-6 text-xs"
+                  onClick={() => setDismissedTips((d) => ({ ...d, [t.id]: true }))}
+                  aria-label="Dismiss tip"
+                >
+                  ×
+                </Button>
+              </CardContent>
+            </Card>
+          ))}
+          {visibleTips.length === 0 && (
+            <Card className="border-dashed">
+              <CardContent className="p-3 text-sm text-muted-foreground">All tips dismissed. They'll refresh later.</CardContent>
+            </Card>
+          )}
+        </div>
+      </section>
+
+      {/* Wins History */}
+      <section>
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="text-xl font-semibold">Wins History</h2>
+          <div className="flex items-center gap-2">
+            <Badge variant="secondary">Streak: {utils.streak}d</Badge>
+            <Badge variant="outline">Time saved: {utils.timeSavedTotal}m</Badge>
+            <Button size="sm" variant="outline" onClick={utils.clearLocalWins}>Clear</Button>
+          </div>
+        </div>
+        <Card>
+          <CardContent className="p-3">
+            {utils.history.length > 0 ? (
+              <div className="space-y-2 max-h-56 overflow-auto pr-1">
+                {utils.history.slice(0, 20).map((w, idx) => (
+                  <div key={`${w.at}-${idx}`} className="flex items-center justify-between text-sm border rounded-md p-2">
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline" className="capitalize">{w.type.replace(/_/g, " ")}</Badge>
+                      <span className="text-muted-foreground">{new Date(w.at).toLocaleString()}</span>
+                    </div>
+                    <div className="font-medium">{w.minutes}m</div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-sm text-muted-foreground">No wins recorded yet. Using a template or creating from an idea will log one.</div>
+            )}
+          </CardContent>
+        </Card>
+      </section>
     </div>
   );
 }
