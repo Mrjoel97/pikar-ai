@@ -77,3 +77,32 @@ export const deleteSlot = mutation({
     return { ok: true as const };
   },
 });
+
+export const nextSlotByChannel = query({
+  args: {
+    channel: v.union(v.literal("email"), v.literal("post"), v.literal("other")),
+    businessId: v.optional(v.id("businesses")),
+    from: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Not authenticated");
+
+    const from = args.from ?? Date.now();
+
+    // Query next 50 upcoming slots for user, then filter by channel (and business if provided)
+    const rows = await ctx.db
+      .query("scheduleSlots")
+      .withIndex("by_user_and_time", (q) => q.eq("userId", userId).gte("scheduledAt", from))
+      .order("asc")
+      .take(50);
+
+    const filtered = rows.filter(
+      (r) =>
+        r.channel === args.channel &&
+        (args.businessId ? r.businessId === args.businessId : true)
+    );
+
+    return filtered[0] ?? null;
+  },
+});

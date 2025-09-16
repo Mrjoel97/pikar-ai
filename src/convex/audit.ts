@@ -188,3 +188,70 @@ export const listForWorkflow = query({
     return filtered.slice(0, limit);
   },
 });
+
+export const winsSummary = query({
+  args: {
+    businessId: v.id("businesses"),
+    // Optional time window in ms (default: last 30 days)
+    windowMs: v.optional(v.number()),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("[ERR_NOT_AUTHENTICATED] You must be signed in.");
+    }
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_email", (q) => q.eq("email", identity.email!))
+      .first();
+    if (!user) {
+      throw new Error("[ERR_USER_NOT_FOUND] User not found.");
+    }
+
+    const business = await ctx.db.get(args.businessId);
+    if (!business) {
+      throw new Error("[ERR_BUSINESS_NOT_FOUND] Business not found.");
+    }
+    if (business.ownerId !== user._id && !business.teamMembers.includes(user._id)) {
+      throw new Error("[ERR_FORBIDDEN] Not authorized.");
+    }
+
+    const now = Date.now();
+    const windowMs = Math.max(1, args.windowMs ?? 30 * 24 * 60 * 60 * 1000); // 30d
+    const since = now - windowMs;
+
+    // Pull recent logs by business and aggregate "win" events
+    const take = Math.max(10, Math.min(args.limit ?? 500, 1000));
+    const logs = await ctx.db
+      .query("audit_logs")
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .order("desc")
+      .take(take);
+
+    let wins = 0;
+    let totalTimeSavedMinutes = 0;
+    const recent: Array<{ at: number; winType?: string; timeSavedMinutes?: number }> = [];
+    for (const l of logs) {
+      if (l.createdAt < since) break;
+      if (l.action === "win") {
+        wins += 1;
+        const ts = Number(l.details?.timeSavedMinutes ?? 0) || 0;
+        totalTimeSavedMinutes += ts;
+        recent.push({
+          at: l.createdAt,
+          winType: typeof l.details?.winType === "string" ? l.details.winType : undefined,
+          timeSavedMinutes: ts,
+        });
+      }
+    }
+
+    return {
+      wins,
+      totalTimeSavedMinutes,
+      windowMs,
+      recent: recent.slice(0, 10),
+      generatedAt: now,
+    };
+  },
+});

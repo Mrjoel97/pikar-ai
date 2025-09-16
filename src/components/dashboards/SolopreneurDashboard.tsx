@@ -47,29 +47,6 @@ export function SolopreneurDashboard({
     // Add filter state for tag chips
     const [activeTagFilter, setActiveTagFilter] = React.useState<"" | "content" | "offer" | "ops">("");
 
-    // Add local save handler for voice ideas (uses BrainDumpSection-local state)
-    const handleSaveVoiceIdeaLocal = async () => {
-      if (!initiativeId) {
-        toast("No initiative found. Run Phase 0 setup first.");
-        return;
-      }
-      const content = `${summary || transcript}`.trim();
-      if (!content) {
-        toast("No transcription available.");
-        return;
-      }
-      try {
-        setSaving(true);
-        await addDump({ initiativeId, content });
-        setText("");
-        toast("Saved voice note to Brain Dump");
-      } catch (e: any) {
-        toast(e?.message || "Failed to save voice note");
-      } finally {
-        setSaving(false);
-      }
-    };
-
     // Add: inline save handler for typed idea
     const handleSave = async () => {
       if (!initiativeId) {
@@ -133,7 +110,7 @@ export function SolopreneurDashboard({
           />
           <div className="flex justify-end gap-2">
             {summary && (
-              <Button variant="outline" onClick={handleSaveVoiceIdeaLocal} disabled={saving || !initiativeId}>
+              <Button variant="outline" onClick={handleSave} disabled={saving || !initiativeId}>
                 {saving ? "Saving..." : "Save Voice Idea"}
               </Button>
             )}
@@ -274,6 +251,12 @@ export function SolopreneurDashboard({
   const notifications = isGuest ? (demoData?.notifications || []) : [];
   // removed duplicate kpis declaration; using kpiDoc fallback above
 
+  // Add: Quick Analytics (Convex) with safe fallback for guests/no business
+  const quickAnalytics =
+    !isGuest && business?._id
+      ? (useQuery as any)(api.solopreneur.runQuickAnalytics, { businessId: business._id })
+      : { revenue90d: 0, churnAlert: false, topProducts: [] as Array<{ name: string }> };
+
   // Limit "Today's Focus" to max 3 tasks
   const focusTasks = Array.isArray(tasks) ? tasks.slice(0, 3) : [];
 
@@ -297,11 +280,6 @@ export function SolopreneurDashboard({
   // Add mutations for One-Click Setup
   const initAgent = useMutation(api.solopreneur.initSolopreneurAgent);
   const seedTemplates = useMutation(api.solopreneur.seedOneClickTemplates);
-
-  // Add quick analytics (skip for guests)
-  const quickAnalytics = !isGuest && business?._id
-    ? useQuery(api.solopreneur.runQuickAnalytics, { businessId: business._id })
-    : undefined;
 
   // Add: Top-level initiative + brain dump data for Today's Focus suggestions
   const initiativesTop = !isGuest && business?._id
@@ -921,6 +899,63 @@ export function SolopreneurDashboard({
   // Local UI
   const [composerOpen, setComposerOpen] = React.useState(false);
 
+  // Inject default schedule time into existing CampaignComposer usage, if present
+  const nextEmailSlot = useQuery(
+    api.schedule.nextSlotByChannel,
+    // Guarded usage: only query when businessId is available; otherwise, skip
+    businessId
+      ? { channel: "email", businessId, from: Date.now() }
+      : ("skip" as any)
+  );
+
+  const winsSummary = useQuery(
+    api.audit.winsSummary,
+    businessId ? { businessId } : ("skip" as any)
+  );
+
+  const recentAudit = useQuery(
+    api.audit.listForBusiness,
+    businessId ? { businessId, limit: 3 } : ("skip" as any)
+  );
+
+  // Local fallback for wins when unauthenticated or no business
+  function getLocalWinsFallback() {
+    try {
+      const raw = localStorage.getItem("pikar_local_wins_v1");
+      if (!raw) return { wins: 0, totalTimeSavedMinutes: 0 };
+      const arr = JSON.parse(raw) as Array<{ at: number; timeSavedMinutes?: number }>;
+      let wins = 0;
+      let totalTimeSavedMinutes = 0;
+      const since = Date.now() - 30 * 24 * 60 * 60 * 1000;
+      for (const w of arr) {
+        if (w.at >= since) {
+          wins += 1;
+          totalTimeSavedMinutes += Number(w.timeSavedMinutes || 0);
+        }
+      }
+      return { wins, totalTimeSavedMinutes };
+    } catch {
+      return { wins: 0, totalTimeSavedMinutes: 0 };
+    }
+  }
+
+  // Enhance existing "Send Newsletter" trigger to use handleOpenComposerPrefilled
+  function handleOpenComposerPrefilled() {
+    if (nextEmailSlot && nextEmailSlot.scheduledAt) {
+      toast("Prefilling schedule with your next Email slot");
+    }
+    setComposerOpen(true);
+  }
+
+  // Optional: Add a small helper button for "Post" placeholder if you have a "Schedule Assistant" area
+  function handlePostPlaceholder() {
+    if (nextEmailSlot && nextEmailSlot.scheduledAt) {
+      toast(`Post placeholder queued for ${new Date(nextEmailSlot.scheduledAt).toLocaleString()}`);
+    } else {
+      toast("No upcoming slot found; add one in Schedule Assistant");
+    }
+  }
+
   return (
     <div className="space-y-4">
       {/* DEV Safe Mode banner */}
@@ -975,7 +1010,7 @@ export function SolopreneurDashboard({
 
       {/* Quick actions: Send Newsletter */}
       <div className="flex flex-wrap items-center gap-2">
-        <Button variant="default" onClick={() => setComposerOpen(true)} disabled={!businessId}>
+        <Button variant="default" onClick={handleOpenComposerPrefilled} disabled={!businessId}>
           Send Newsletter
         </Button>
       </div>
@@ -991,6 +1026,7 @@ export function SolopreneurDashboard({
               businessId={businessId}
               onClose={() => setComposerOpen(false)}
               onCreated={() => toast.success("Newsletter scheduled")}
+              defaultScheduledAt={nextEmailSlot ? nextEmailSlot.scheduledAt : undefined}
             />
           ) : (
             <div className="text-sm text-muted-foreground">Finish onboarding to create a business first.</div>
@@ -1535,71 +1571,6 @@ export function SolopreneurDashboard({
         </div>
       </section>
 
-      {/* Insights from My Agent (light heuristic based on quickAnalytics + usage) */}
-      <section>
-        <h2 className="text-xl font-semibold mb-4">My Agent Insights</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card className="border-emerald-200">
-            <CardContent className="p-4 space-y-2">
-              <h3 className="text-sm font-medium text-muted-foreground">Retention Play</h3>
-              <p className="text-sm">
-                {quickAnalytics?.churnAlert
-                  ? "Churn risk detected — queue a win‑back email with an exclusive offer."
-                  : "Retention looks healthy — schedule a light value email to maintain cadence."}
-              </p>
-              <Button
-                size="sm"
-                className="bg-emerald-600 text-white hover:bg-emerald-700"
-                onClick={() => {
-                  utils.recordLocalWin(6, "agent_insight_applied", { kind: "retention" });
-                  toast("Opening Workflows — draft a retention email.");
-                  navigate("/workflows");
-                }}
-              >
-                Draft retention email
-              </Button>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4 space-y-2">
-              <h3 className="text-sm font-medium text-muted-foreground">Content Momentum</h3>
-              <p className="text-sm">
-                Keep your streak: publish one quick post using your most‑used template.
-              </p>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => {
-                  const t = orderedTemplates[0] || myTemplates[0];
-                  if (t) handleUseTemplateEnhanced(t);
-                }}
-              >
-                Use top template
-              </Button>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4 space-y-2">
-              <h3 className="text-sm font-medium text-muted-foreground">Offer Spotlight</h3>
-              <p className="text-sm">
-                Pair a top‑margin product with a concise CTA. Keep it under 90 words.
-              </p>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => {
-                  utils.recordLocalWin(4, "agent_insight_applied", { kind: "offer_spotlight" });
-                  toast("Open Workflows to create a quick product highlight.");
-                  navigate("/workflows");
-                }}
-              >
-                Create highlight
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-      </section>
-
       {/* Schedule Assistant dialog (simple, suggest slots with 1‑click add) */}
       <Dialog open={scheduleOpen} onOpenChange={setScheduleOpen}>
         <DialogContent>
@@ -1757,6 +1728,71 @@ export function SolopreneurDashboard({
           </CardContent>
         </Card>
       </section>
+
+      {/* Wins Summary card */}
+      <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+        <Card className="p-4">
+          <div className="flex items-center justify-between">
+            <h3 className="font-semibold">Wins (30 days)</h3>
+            <Button variant="outline" size="sm" onClick={() => navigate("/analytics")}>
+              View Analytics
+            </Button>
+          </div>
+          <div className="mt-3">
+            {businessId && winsSummary ? (
+              <div className="flex gap-6">
+                <div>
+                  <div className="text-3xl font-bold">{winsSummary.wins}</div>
+                  <div className="text-sm text-muted-foreground">Total wins</div>
+                </div>
+                <div>
+                  <div className="text-3xl font-bold">{winsSummary.totalTimeSavedMinutes}</div>
+                  <div className="text-sm text-muted-foreground">Minutes saved</div>
+                </div>
+              </div>
+            ) : (
+              (() => {
+                const local = getLocalWinsFallback();
+                return (
+                  <div className="flex gap-6">
+                    <div>
+                      <div className="text-3xl font-bold">{local.wins}</div>
+                      <div className="text-sm text-muted-foreground">Total wins (local)</div>
+                    </div>
+                    <div>
+                      <div className="text-3xl font-bold">{local.totalTimeSavedMinutes}</div>
+                      <div className="text-sm text-muted-foreground">Minutes saved (local)</div>
+                    </div>
+                  </div>
+                );
+              })()
+            )}
+          </div>
+        </Card>
+
+        {/* Audit & Analytics CTA card */}
+        <Card className="p-4">
+          <div className="flex items-center justify-between">
+            <h3 className="font-semibold">Audit & Analytics</h3>
+            <Button size="sm" onClick={() => navigate("/analytics")}>
+              Open
+            </Button>
+          </div>
+          <div className="mt-3 space-y-2">
+            {businessId && recentAudit
+              ? recentAudit.map((log: any) => (
+                  <div key={log._id} className="text-sm">
+                    <div className="font-medium">{log.action}</div>
+                    <div className="text-muted-foreground">
+                      {new Date(log.createdAt).toLocaleString()}
+                    </div>
+                  </div>
+                ))
+              : <div className="text-sm text-muted-foreground">Sign in to view recent audit events.</div>
+            }
+          </div>
+        </Card>
+      </div>
 
       {isAuthenticated && (
         <div className="fixed bottom-6 right-6 z-40">

@@ -43,6 +43,12 @@ export function NotificationsCenter({ disabled }: Props) {
   const businesses = useConvexQuery(api.businesses.getUserBusinesses, disabled ? "skip" : {});
   const businessId = Array.isArray(businesses) && businesses[0]?._id ? businesses[0]._id : null;
 
+  // Add: guest-like detection for redundant guard
+  const isGuestLike =
+    !!disabled ||
+    businesses === "skip" ||
+    (Array.isArray(businesses) && businesses.length === 0);
+
   const myPrefs = useConvexQuery(
     api.notifications.getMyNotificationPreferences,
     disabled || !businessId ? "skip" : { businessId }
@@ -55,6 +61,9 @@ export function NotificationsCenter({ disabled }: Props) {
   React.useEffect(() => {
     if (myPrefs && !prefsDraft) setPrefsDraft(myPrefs);
   }, [myPrefs, prefsDraft]);
+
+  // Add: SLA-only quick filter state
+  const [slaOnlyLocal, setSlaOnlyLocal] = React.useState(false);
 
   const handleSavePrefs = async () => {
     if (!businessId || !prefsDraft) return;
@@ -100,7 +109,8 @@ export function NotificationsCenter({ disabled }: Props) {
     }
   };
 
-  if (disabled) {
+  // Redundant guard: hide entirely for guests
+  if (disabled || isGuestLike) {
     return null;
   }
 
@@ -126,9 +136,15 @@ export function NotificationsCenter({ disabled }: Props) {
              String(n.message ?? "").toLowerCase().includes(q) ||
              String(n.type ?? "").toLowerCase().includes(q));
       const matchUnread = unreadOnlyLocal ? !n.isRead : true;
-      return matchType && matchQuery && matchUnread;
+      // Add: SLA-only filter (handles 'sla_warning' and 'sla_overdue')
+      const matchSlaOnly =
+        !slaOnlyLocal ||
+        n.type === "sla_warning" ||
+        n.type === "sla_overdue";
+
+      return matchType && matchQuery && matchUnread && matchSlaOnly;
     });
-  }, [notifications, typeFilter, query, unreadOnlyLocal]);
+  }, [notifications, typeFilter, query, unreadOnlyLocal, slaOnlyLocal]);
 
   return (
     <Drawer open={open} onOpenChange={setOpen}>
@@ -158,7 +174,13 @@ export function NotificationsCenter({ disabled }: Props) {
             >
               Preferences
             </Button>
-            <Button size="sm" variant="outline" onClick={handleMarkAll} disabled={!notifications || (notifications?.length ?? 0) === 0}>
+            {/* Fix: correct disable condition based on notifications.page length */}
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleMarkAll}
+              disabled={!notifications || ((notifications.page?.length ?? 0) === 0)}
+            >
               Mark all read
             </Button>
           </div>
@@ -174,8 +196,15 @@ export function NotificationsCenter({ disabled }: Props) {
             >
               {unreadOnlyLocal ? "Showing Unread" : "Show Unread"}
             </Button>
-            {/* Simple select using shadcn Select from ui/select */}
-            {/* We avoid importing here; create a minimal inline menu with buttons to keep dependencies stable */}
+            {/* Add: SLA-only quick filter */}
+            <Button
+              size="sm"
+              variant={slaOnlyLocal ? "default" : "outline"}
+              onClick={() => setSlaOnlyLocal((s) => !s)}
+            >
+              {slaOnlyLocal ? "SLA-only On" : "SLA-only"}
+            </Button>
+            {/* Simple inline type filter */}
             <div className="flex items-center gap-1">
               <span className="text-xs text-muted-foreground">Type:</span>
               <div className="flex rounded-md border overflow-hidden">
