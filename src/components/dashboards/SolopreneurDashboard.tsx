@@ -11,6 +11,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { useAuth } from "@/hooks/use-auth";
+import CampaignComposer from "@/components/email/CampaignComposer";
 
 interface SolopreneurDashboardProps {
   business: any;
@@ -891,8 +893,111 @@ export function SolopreneurDashboard({
     toast("Open the Brain Dump to save the voice note.");
   };
 
+  // Business context for composer and SLA
+  const { isAuthenticated } = useAuth();
+  const currentBusiness = useQuery(api.businesses?.currentUserBusiness as any, isAuthenticated ? {} : "skip") as any;
+  const businessId = currentBusiness?._id;
+
+  // Env / system health
+  const env = useQuery(api.health.envStatus, {}) as {
+    hasRESEND: boolean;
+    hasSALES_INBOX: boolean;
+    hasPUBLIC_SALES_INBOX: boolean;
+    hasBASE_URL: boolean;
+    devSafeEmailsEnabled: boolean;
+    emailQueueDepth: number;
+    cronLastProcessed: number | null;
+    overdueApprovalsCount: number;
+  } | undefined;
+
+  // SLA summary (skip if no business yet)
+  const sla = useQuery(api.approvals.getSlaSummary as any, businessId ? { businessId } : "skip") as
+    | { total: number; overdue: number; dueSoon: number }
+    | undefined;
+
+  // Seed demo data
+  const seedForMe = useAction(api.seed.seedForCurrentUser);
+
+  // Local UI
+  const [composerOpen, setComposerOpen] = React.useState(false);
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
+      {/* DEV Safe Mode banner */}
+      {env?.devSafeEmailsEnabled && (
+        <div className="rounded-md border border-amber-400/50 bg-amber-50 px-4 py-2 text-amber-800">
+          DEV Safe Mode is ON — outbound emails are stubbed. Disable DEV_SAFE_EMAILS to send live.
+        </div>
+      )}
+
+      {/* System Health strip */}
+      <Card>
+        <CardContent className="py-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge variant={env?.hasRESEND ? "default" : "destructive"}>
+              Email API: {env?.hasRESEND ? "Configured" : "Missing"}
+            </Badge>
+            <Badge variant={env?.hasBASE_URL ? "default" : "destructive"}>
+              Base URL: {env?.hasBASE_URL ? "Set" : "Missing"}
+            </Badge>
+            <Badge variant={(env?.hasSALES_INBOX || env?.hasPUBLIC_SALES_INBOX) ? "default" : "destructive"}>
+              Sales Inbox: {(env?.hasSALES_INBOX || env?.hasPUBLIC_SALES_INBOX) ? "Present" : "Missing"}
+            </Badge>
+            <Badge variant={env && env.emailQueueDepth > 0 ? "secondary" : "default"}>
+              Email Queue: {env?.emailQueueDepth ?? 0}
+            </Badge>
+            <Badge variant={env?.devSafeEmailsEnabled ? "secondary" : "default"}>
+              Send Mode: {env?.devSafeEmailsEnabled ? "DEV (stubbed)" : "LIVE"}
+            </Badge>
+            <Badge variant="outline">
+              Cron Freshness: {env?.cronLastProcessed ? `${Math.max(0, Math.round((Date.now() - env.cronLastProcessed) / 60000))}m ago` : "n/a"}
+            </Badge>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Approvals/SLA badge with link */}
+      {businessId && (
+        <div className="flex items-center justify-between rounded-md border p-3">
+          <div className="flex items-center gap-2 text-sm">
+            <Badge variant={sla && sla.overdue > 0 ? "destructive" : "secondary"}>
+              SLA: {sla ? `${sla.overdue} overdue • ${sla.dueSoon} due soon` : "Loading..."}
+            </Badge>
+            <span className="text-muted-foreground">
+              {sla ? `${sla.total} pending total` : ""}
+            </span>
+          </div>
+          <Button variant="outline" size="sm" onClick={() => navigate("/workflows")}>
+            View Workflows
+          </Button>
+        </div>
+      )}
+
+      {/* Quick actions: Send Newsletter */}
+      <div className="flex flex-wrap items-center gap-2">
+        <Button variant="default" onClick={() => setComposerOpen(true)} disabled={!businessId}>
+          Send Newsletter
+        </Button>
+      </div>
+
+      {/* Newsletter Composer Modal */}
+      <Dialog open={composerOpen} onOpenChange={setComposerOpen}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Quick Newsletter</DialogTitle>
+          </DialogHeader>
+          {businessId ? (
+            <CampaignComposer
+              businessId={businessId}
+              onClose={() => setComposerOpen(false)}
+              onCreated={() => toast.success("Newsletter scheduled")}
+            />
+          ) : (
+            <div className="text-sm text-muted-foreground">Finish onboarding to create a business first.</div>
+          )}
+        </DialogContent>
+      </Dialog>
+
       {/* Header / Nudge */}
       <div className="rounded-md border p-3 bg-emerald-50 flex items-center gap-3">
         <Badge variant="outline" className="border-emerald-300 text-emerald-700">Solopreneur</Badge>
@@ -1652,6 +1757,26 @@ export function SolopreneurDashboard({
           </CardContent>
         </Card>
       </section>
+
+      {isAuthenticated && (
+        <div className="fixed bottom-6 right-6 z-40">
+          <Button
+            onClick={async () => {
+              try {
+                const res = await seedForMe({});
+                toast.success("Demo data seeded");
+                if ((res as any)?.businessId) {
+                  // no-op; UI is reactive via Convex queries
+                }
+              } catch (e: any) {
+                toast.error(e?.message ?? "Failed to seed demo data");
+              }
+            }}
+          >
+            Seed Demo Data
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
