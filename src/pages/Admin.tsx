@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import { useNavigate } from "react-router";
+import { useMemo } from "react";
 
 export default function AdminPage() {
   const navigate = useNavigate();
@@ -22,6 +23,13 @@ export default function AdminPage() {
     api.admin.listAdmins as any,
     isAdmin ? {} : undefined
   ) as Array<{ _id: string; email: string; role: string }> | undefined;
+
+  const myRole = useMemo(() => {
+    if (!adminList) return null;
+    // We don't have current user's email here; rely on privileges to show sections.
+    // Super admin can see pending; senior cannot. We'll gate by presence of 'pending' list.
+    return null;
+  }, [adminList]);
 
   if (isAdmin === undefined) {
     return (
