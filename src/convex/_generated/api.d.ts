@@ -23,6 +23,7 @@ import type * as audit from "../audit.js";
 import type * as auth_emailOtp from "../auth/emailOtp.js";
 import type * as auth from "../auth.js";
 import type * as billing from "../billing.js";
+import type * as billingInternal from "../billingInternal.js";
 import type * as businesses from "../businesses.js";
 import type * as contacts from "../contacts.js";
 import type * as cron from "../cron.js";
@@ -76,6 +77,7 @@ declare const fullApi: ApiFromModules<{
   "auth/emailOtp": typeof auth_emailOtp;
   auth: typeof auth;
   billing: typeof billing;
+  billingInternal: typeof billingInternal;
   businesses: typeof businesses;
   contacts: typeof contacts;
   cron: typeof cron;

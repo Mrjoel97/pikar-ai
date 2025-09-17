@@ -46,6 +46,11 @@ export default defineSchema({
         aiAgentsEnabled: v.array(v.string()),
         complianceLevel: v.string(),
         dataIntegrations: v.array(v.string()),
+        // Add Stripe-related plan fields (all optional to preserve backward compatibility)
+        plan: v.optional(v.string()),
+        status: v.optional(v.string()),
+        stripeCustomerId: v.optional(v.string()),
+        stripeSubscriptionId: v.optional(v.string()),
       })
     ),
   })

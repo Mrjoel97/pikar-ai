@@ -42,9 +42,33 @@ export default function Onboarding() {
   const selectTier = useMutation(api.onboarding.selectTier);
   const finalize = useMutation(api.onboarding.finalizeOnboarding);
   const startCheckout = useAction(api.billing.startCheckout);
+  const handleCheckoutSuccess = useAction(api.billing.handleCheckoutSuccess);
 
   // Loading flags
   const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    const sessionId = url.searchParams.get("session_id");
+    const tierParam = url.searchParams.get("tier");
+    if (sessionId) {
+      (async () => {
+        try {
+          await handleCheckoutSuccess({ sessionId });
+          toast.success("Payment confirmed. Plan activated.");
+          // Clean URL
+          url.searchParams.delete("session_id");
+          url.searchParams.delete("tier");
+          window.history.replaceState({}, "", url.toString());
+          // Move to confirm step
+          setStep("confirm");
+        } catch (e) {
+          console.error(e);
+          toast.error("We couldn't confirm your payment. You can continue without payment or try again.");
+        }
+      })();
+    }
+  }, [handleCheckoutSuccess]);
 
   const nextFromAccount = async () => {
     if (!name.trim()) {
@@ -119,7 +143,6 @@ export default function Onboarding() {
     setIsSaving(true);
     try {
       const { checkoutUrl } = await startCheckout({ tier });
-      // Phase 1 stubbed redirect
       window.location.href = checkoutUrl;
     } catch (e) {
       console.error(e);
@@ -298,7 +321,7 @@ export default function Onboarding() {
   const renderConfirm = () => (
     <div className="space-y-4">
       <p className="text-sm text-muted-foreground">
-        Finalize your setup. We’ll ensure your workspace and initiative are ready.
+        Finalize your setup. We'll ensure your workspace and initiative are ready.
       </p>
       <div className="flex gap-2 pt-2">
         {status?.needsOnboarding ? (
