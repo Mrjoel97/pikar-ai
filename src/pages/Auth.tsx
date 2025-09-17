@@ -160,9 +160,9 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4 py-10">
-      <div className="w-full max-w-md">
+      <div className="w-full max-w-md space-y-4 md:space-y-6">
         {/* Add: top helper toggle for returning/new users */}
-        <div className="mb-4 flex items-center justify-end text-sm">
+        <div className="flex items-center justify-end text-xs sm:text-sm">
           {authMode === "signup" ? (
             <span className="text-muted-foreground">
               Already have an account?{" "}
@@ -189,11 +189,11 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
         </div>
 
         {/* Optional: light heading to reflect mode without disrupting existing Card header */}
-        <div className="mb-2">
-          <h2 className="text-xl font-semibold">
+        <div className="text-center">
+          <h2 className="text-2xl font-semibold tracking-tight">
             {authMode === "login" ? "Welcome back" : "Create your account"}
           </h2>
-          <p className="text-sm text-muted-foreground">
+          <p className="mt-1 text-sm text-muted-foreground">
             {authMode === "login"
               ? "Use your email (OTP) or continue with Google."
               : "Sign up with email (OTP) or continue with Google."}
@@ -203,7 +203,7 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
         {/* Auth Content */}
         <div className="flex-1 flex items-center justify-center px-4">
           <div className="flex items-center justify-center h-full flex-col">
-            <Card className="min-w-[350px] pb-0 neu-raised rounded-2xl border-0 shadow-xl">
+            <Card className="w-full neu-raised rounded-2xl border-0 shadow-xl">
               {step === "signIn" ? (
                 <>
                   <CardHeader className="text-center">
@@ -263,7 +263,7 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
                       {error && (
                         <p className="mt-2 text-sm text-red-500">{error}</p>
                       )}
-                      <div className="mt-4">
+                      <div className="mt-6">
                         <div className="relative">
                           <div className="absolute inset-0 flex items-center">
                             <span className="w-full border-t" />
@@ -304,7 +304,7 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
                 </>
               ) : (
                 <>
-                  <CardHeader className="text-center mt-4">
+                  <CardHeader className="text-center">
                     <CardTitle>Check your email</CardTitle>
                     <CardDescription>
                       We've sent a code to {step.email}
