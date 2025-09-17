@@ -31,7 +31,7 @@ interface AuthProps {
 }
 
 function Auth({ redirectAfterAuth }: AuthProps = {}) {
-  const { isAuthenticated, authLoading, signIn } = useAuth();
+  const { isAuthenticated, isLoading: authLoading, signIn } = useAuth();
   const navigate = useNavigate();
   const [step, setStep] = useState<"signIn" | { email: string }>("signIn");
   const [otp, setOtp] = useState("");
@@ -51,6 +51,9 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
     api.onboarding.getOnboardingStatus,
     isAuthenticated ? {} : undefined
   );
+
+  // Add: simple mode toggle for sign up vs login
+  const [authMode, setAuthMode] = useState<"signup" | "login">("signup");
 
   useEffect(() => {
     if (authLoading) return;
@@ -156,287 +159,325 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-br from-accent/10 via-background to-primary/5">
-      
-      {/* Auth Content */}
-      <div className="flex-1 flex items-center justify-center px-4">
-        <div className="flex items-center justify-center h-full flex-col">
-        <Card className="min-w-[350px] pb-0 neu-raised rounded-2xl border-0 shadow-xl">
-          {step === "signIn" ? (
-            <>
-              <CardHeader className="text-center">
-              <div className="flex justify-center">
-                    <img
-                      src="./logo.svg"
-                      alt="Lock Icon"
-                      width={64}
-                      height={64}
-                      className="rounded-xl mb-4 mt-4 cursor-pointer bg-primary/10 p-2"
-                      onClick={() => navigate("/")}
-                    />
-                  </div>
-                <CardTitle className="text-xl">Get Started</CardTitle>
-                <CardDescription>
-                  Enter your email to log in or sign up
-                </CardDescription>
-              </CardHeader>
-              <form onSubmit={handleEmailSubmit}>
-                <CardContent>
-                  
-                  <div className="relative flex items-center gap-2">
-                    <div className="relative flex-1">
-                      <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        name="email"
-                        placeholder="name@example.com"
-                        type="email"
-                        className="pl-9 neu-inset rounded-xl"
-                        disabled={isLoading}
-                        required
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        onBlur={() => setTouched(true)}
-                        aria-invalid={touched && !isValidEmail}
-                        aria-describedby="email-error"
-                      />
-                    </div>
-                    <Button
-                      type="submit"
-                      variant="outline"
-                      size="icon"
-                      disabled={isLoading || !isValidEmail}
-                      className="neu-flat rounded-xl"
-                    >
-                      {isLoading ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <ArrowRight className="h-4 w-4" />
-                      )}
-                    </Button>
-                  </div>
-                  {touched && !isValidEmail && (
-                    <p id="email-error" className="mt-2 text-xs text-red-500">
-                      Please enter a valid email address.
-                    </p>
-                  )}
-                  {error && (
-                    <p className="mt-2 text-sm text-red-500">{error}</p>
-                  )}
-                  
-                  <div className="mt-4">
-                    <div className="relative">
-                      <div className="absolute inset-0 flex items-center">
-                        <span className="w-full border-t" />
-                      </div>
-                      <div className="relative flex justify-center text-xs uppercase">
-                        <span className="bg-background px-2 text-muted-foreground">
-                          Or
-                        </span>
-                      </div>
-                    </div>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="w-full mt-4 neu-flat rounded-xl"
-                      onClick={handleGoogleLogin}
-                      disabled={isLoading}
-                    >
-                      <img
-                        src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
-                        alt="Google"
-                        className="h-4 w-4 mr-2"
-                      />
-                      Continue with Google
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="w-full mt-2 neu-flat rounded-xl"
-                      onClick={handleGuestLogin}
-                      disabled={isLoading}
-                    >
-                      <UserX className="mr-2 h-4 w-4" />
-                      Continue as Guest
-                    </Button>
-                  </div>
-                </CardContent>
-              </form>
-            </>
+    <div className="min-h-screen flex items-center justify-center px-4 py-10">
+      <div className="w-full max-w-md">
+        {/* Add: top helper toggle for returning/new users */}
+        <div className="mb-4 flex items-center justify-end text-sm">
+          {authMode === "signup" ? (
+            <span className="text-muted-foreground">
+              Already have an account?{" "}
+              <button
+                type="button"
+                onClick={() => setAuthMode("login")}
+                className="text-primary underline underline-offset-4 hover:opacity-90"
+              >
+                Log in
+              </button>
+            </span>
           ) : (
-            <>
-              <CardHeader className="text-center mt-4">
-                <CardTitle>Check your email</CardTitle>
-                <CardDescription>
-                  We've sent a code to {step.email}
-                </CardDescription>
-              </CardHeader>
-              <form onSubmit={handleOtpSubmit}>
-                <CardContent className="pb-4">
-                  <input type="hidden" name="email" value={step.email} />
-                  <input type="hidden" name="code" value={otp} />
-
-                  <div className="flex justify-center">
-                    <InputOTP
-                      className="neu-inset rounded-xl p-2"
-                      value={otp}
-                      onChange={setOtp}
-                      maxLength={6}
-                      disabled={isLoading}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" && otp.length === 6 && !isLoading) {
-                          // Find the closest form and submit it
-                          const form = (e.target as HTMLElement).closest("form");
-                          if (form) {
-                            form.requestSubmit();
-                          }
-                        }
-                      }}
-                    >
-                      <InputOTPGroup>
-                        {Array.from({ length: 6 }).map((_, index) => (
-                          <InputOTPSlot key={index} index={index} />
-                        ))}
-                      </InputOTPGroup>
-                    </InputOTP>
-                  </div>
-                  {error && (
-                    <p className="mt-2 text-sm text-red-500 text-center">
-                      {error}
-                    </p>
-                  )}
-                  <p className="text-sm text-muted-foreground text-center mt-4">
-                    Didn't receive a code?{" "}
-                    <Button
-                      variant="link"
-                      className="p-0 h-auto"
-                      onClick={() => setStep("signIn")}
-                    >
-                      Try again
-                    </Button>
-                  </p>
-                </CardContent>
-                <CardFooter className="flex-col gap-2">
-                  <Button
-                    type="submit"
-                    className="w-full neu-raised rounded-xl bg-primary hover:bg-primary/90"
-                    disabled={isLoading || otp.length !== 6}
-                  >
-                    {isLoading ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Verifying...
-                      </>
-                    ) : (
-                      <>
-                        Verify code
-                        <ArrowRight className="ml-2 h-4 w-4" />
-                      </>
-                    )}
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    onClick={() => setStep("signIn")}
-                    disabled={isLoading}
-                    className="w-full neu-flat rounded-xl"
-                  >
-                    Use different email
-                  </Button>
-                </CardFooter>
-              </form>
-            </>
+            <span className="text-muted-foreground">
+              New here?{" "}
+              <button
+                type="button"
+                onClick={() => setAuthMode("signup")}
+                className="text-primary underline underline-offset-4 hover:opacity-90"
+              >
+                Create an account
+              </button>
+            </span>
           )}
-
-          <div className="py-4 px-6 text-xs text-center text-muted-foreground bg-muted border-t rounded-b-lg">
-            Secured by{" "}
-            <a
-              href="https://vly.ai"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="underline hover:text-primary transition-colors"
-            >
-              vly.ai
-            </a>
-          </div>
-        </Card>
         </div>
-      </div>
 
-      {/* Guest Tier Selection Dialog */}
-      <Dialog open={guestDialogOpen} onOpenChange={setGuestDialogOpen}>
-        <DialogContent className="max-w-md w-[92vw] neu-raised rounded-2xl border-0">
-          <DialogHeader>
-            <DialogTitle>Select a dashboard tier</DialogTitle>
-            <DialogDescription>
-              Preview Pikar using a tier-specific dashboard while signed in as a guest.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <RadioGroup
-              value={guestTier}
-              onValueChange={(v) =>
-                setGuestTier(v as "solopreneur" | "startup" | "sme" | "enterprise")
-              }
-              className="grid grid-cols-1 gap-3"
-            >
-              <div className="flex items-center gap-3 neu-inset rounded-xl p-3">
-                <RadioGroupItem id="tier-solo" value="solopreneur" />
-                <Label htmlFor="tier-solo" className="cursor-pointer">
-                  Solopreneur — $99/mo
-                </Label>
-              </div>
-              <div className="flex items-center gap-3 neu-inset rounded-xl p-3">
-                <RadioGroupItem id="tier-startup" value="startup" />
-                <Label htmlFor="tier-startup" className="cursor-pointer">
-                  Startup — $297/mo
-                </Label>
-              </div>
-              <div className="flex items-center gap-3 neu-inset rounded-xl p-3">
-                <RadioGroupItem id="tier-sme" value="sme" />
-                <Label htmlFor="tier-sme" className="cursor-pointer">
-                  SME — $597/mo
-                </Label>
-              </div>
-              <div className="flex items-center gap-3 neu-inset rounded-xl p-3">
-                <RadioGroupItem id="tier-enterprise" value="enterprise" />
-                <Label htmlFor="tier-enterprise" className="cursor-pointer">
-                  Enterprise — Custom
-                </Label>
-              </div>
-            </RadioGroup>
-            {error && (
-              <p className="text-sm text-red-500">{error}</p>
-            )}
-          </div>
-          <DialogFooter className="gap-2">
-            <Button
-              variant="ghost"
-              className="neu-flat rounded-xl"
-              onClick={() => setGuestDialogOpen(false)}
-              disabled={isLoading}
-            >
-              Cancel
-            </Button>
-            <Button
-              className="neu-raised rounded-xl bg-primary hover:bg-primary/90"
-              onClick={handleConfirmGuest}
-              disabled={isLoading || !guestTier}
-            >
-              {isLoading ? (
+        {/* Optional: light heading to reflect mode without disrupting existing Card header */}
+        <div className="mb-2">
+          <h2 className="text-xl font-semibold">
+            {authMode === "login" ? "Welcome back" : "Create your account"}
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            {authMode === "login"
+              ? "Use your email (OTP) or continue with Google."
+              : "Sign up with email (OTP) or continue with Google."}
+          </p>
+        </div>
+
+        {/* Auth Content */}
+        <div className="flex-1 flex items-center justify-center px-4">
+          <div className="flex items-center justify-center h-full flex-col">
+            <Card className="min-w-[350px] pb-0 neu-raised rounded-2xl border-0 shadow-xl">
+              {step === "signIn" ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Continuing...
+                  <CardHeader className="text-center">
+                    <div className="flex justify-center">
+                      <img
+                        src="./logo.svg"
+                        alt="Lock Icon"
+                        width={64}
+                        height={64}
+                        className="rounded-xl mb-4 mt-4 cursor-pointer bg-primary/10 p-2"
+                        onClick={() => navigate("/")}
+                      />
+                    </div>
+                    <CardTitle className="text-xl">Get Started</CardTitle>
+                    <CardDescription>
+                      Enter your email to log in or sign up
+                    </CardDescription>
+                  </CardHeader>
+                  <form onSubmit={handleEmailSubmit}>
+                    <CardContent>
+                      <div className="relative flex items-center gap-2">
+                        <div className="relative flex-1">
+                          <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                          <Input
+                            name="email"
+                            placeholder="name@example.com"
+                            type="email"
+                            className="pl-9 neu-inset rounded-xl"
+                            disabled={isLoading}
+                            required
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            onBlur={() => setTouched(true)}
+                            aria-invalid={touched && !isValidEmail}
+                            aria-describedby="email-error"
+                          />
+                        </div>
+                        <Button
+                          type="submit"
+                          variant="outline"
+                          size="icon"
+                          disabled={isLoading || !isValidEmail}
+                          className="neu-flat rounded-xl"
+                        >
+                          {isLoading ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <ArrowRight className="h-4 w-4" />
+                          )}
+                        </Button>
+                      </div>
+                      {touched && !isValidEmail && (
+                        <p id="email-error" className="mt-2 text-xs text-red-500">
+                          Please enter a valid email address.
+                        </p>
+                      )}
+                      {error && (
+                        <p className="mt-2 text-sm text-red-500">{error}</p>
+                      )}
+                      <div className="mt-4">
+                        <div className="relative">
+                          <div className="absolute inset-0 flex items-center">
+                            <span className="w-full border-t" />
+                          </div>
+                          <div className="relative flex justify-center text-xs uppercase">
+                            <span className="bg-background px-2 text-muted-foreground">
+                              Or
+                            </span>
+                          </div>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="w-full mt-4 neu-flat rounded-xl"
+                          onClick={handleGoogleLogin}
+                          disabled={isLoading}
+                        >
+                          <img
+                            src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
+                            alt="Google"
+                            className="h-4 w-4 mr-2"
+                          />
+                          Continue with Google
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="w-full mt-2 neu-flat rounded-xl"
+                          onClick={handleGuestLogin}
+                          disabled={isLoading}
+                        >
+                          <UserX className="mr-2 h-4 w-4" />
+                          Continue as Guest
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </form>
                 </>
               ) : (
                 <>
-                  Continue as Guest
-                  <ArrowRight className="ml-2 h-4 w-4" />
+                  <CardHeader className="text-center mt-4">
+                    <CardTitle>Check your email</CardTitle>
+                    <CardDescription>
+                      We've sent a code to {step.email}
+                    </CardDescription>
+                  </CardHeader>
+                  <form onSubmit={handleOtpSubmit}>
+                    <CardContent className="pb-4">
+                      <input type="hidden" name="email" value={step.email} />
+                      <input type="hidden" name="code" value={otp} />
+
+                      <div className="flex justify-center">
+                        <InputOTP
+                          className="neu-inset rounded-xl p-2"
+                          value={otp}
+                          onChange={setOtp}
+                          maxLength={6}
+                          disabled={isLoading}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" && otp.length === 6 && !isLoading) {
+                              // Find the closest form and submit it
+                              const form = (e.target as HTMLElement).closest("form");
+                              if (form) {
+                                form.requestSubmit();
+                              }
+                            }
+                          }}
+                        >
+                          <InputOTPGroup>
+                            {Array.from({ length: 6 }).map((_, index) => (
+                              <InputOTPSlot key={index} index={index} />
+                            ))}
+                          </InputOTPGroup>
+                        </InputOTP>
+                      </div>
+                      {error && (
+                        <p className="mt-2 text-sm text-red-500 text-center">
+                          {error}
+                        </p>
+                      )}
+                      <p className="text-sm text-muted-foreground text-center mt-4">
+                        Didn't receive a code?{" "}
+                        <Button
+                          variant="link"
+                          className="p-0 h-auto"
+                          onClick={() => setStep("signIn")}
+                        >
+                          Try again
+                        </Button>
+                      </p>
+                    </CardContent>
+                    <CardFooter className="flex-col gap-2">
+                      <Button
+                        type="submit"
+                        className="w-full neu-raised rounded-xl bg-primary hover:bg-primary/90"
+                        disabled={isLoading || otp.length !== 6}
+                      >
+                        {isLoading ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Verifying...
+                          </>
+                        ) : (
+                          <>
+                            Verify code
+                            <ArrowRight className="ml-2 h-4 w-4" />
+                          </>
+                        )}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        onClick={() => setStep("signIn")}
+                        disabled={isLoading}
+                        className="w-full neu-flat rounded-xl"
+                      >
+                        Use different email
+                      </Button>
+                    </CardFooter>
+                  </form>
                 </>
               )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+
+              <div className="py-4 px-6 text-xs text-center text-muted-foreground bg-muted border-t rounded-b-lg">
+                Secured by{" "}
+                <a
+                  href="https://vly.ai"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline hover:text-primary transition-colors"
+                >
+                  vly.ai
+                </a>
+              </div>
+            </Card>
+          </div>
+        </div>
+
+        {/* Guest Tier Selection Dialog */}
+        <Dialog open={guestDialogOpen} onOpenChange={setGuestDialogOpen}>
+          <DialogContent className="max-w-md w-[92vw] neu-raised rounded-2xl border-0">
+            <DialogHeader>
+              <DialogTitle>Select a dashboard tier</DialogTitle>
+              <DialogDescription>
+                Preview Pikar using a tier-specific dashboard while signed in as a guest.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <RadioGroup
+                value={guestTier}
+                onValueChange={(v) =>
+                  setGuestTier(v as "solopreneur" | "startup" | "sme" | "enterprise")
+                }
+                className="grid grid-cols-1 gap-3"
+              >
+                <div className="flex items-center gap-3 neu-inset rounded-xl p-3">
+                  <RadioGroupItem id="tier-solo" value="solopreneur" />
+                  <Label htmlFor="tier-solo" className="cursor-pointer">
+                    Solopreneur — $99/mo
+                  </Label>
+                </div>
+                <div className="flex items-center gap-3 neu-inset rounded-xl p-3">
+                  <RadioGroupItem id="tier-startup" value="startup" />
+                  <Label htmlFor="tier-startup" className="cursor-pointer">
+                    Startup — $297/mo
+                  </Label>
+                </div>
+                <div className="flex items-center gap-3 neu-inset rounded-xl p-3">
+                  <RadioGroupItem id="tier-sme" value="sme" />
+                  <Label htmlFor="tier-sme" className="cursor-pointer">
+                    SME — $597/mo
+                  </Label>
+                </div>
+                <div className="flex items-center gap-3 neu-inset rounded-xl p-3">
+                  <RadioGroupItem id="tier-enterprise" value="enterprise" />
+                  <Label htmlFor="tier-enterprise" className="cursor-pointer">
+                    Enterprise — Custom
+                  </Label>
+                </div>
+              </RadioGroup>
+              {error && (
+                <p className="text-sm text-red-500">{error}</p>
+              )}
+            </div>
+            <DialogFooter className="gap-2">
+              <Button
+                variant="ghost"
+                className="neu-flat rounded-xl"
+                onClick={() => setGuestDialogOpen(false)}
+                disabled={isLoading}
+              >
+                Cancel
+              </Button>
+              <Button
+                className="neu-raised rounded-xl bg-primary hover:bg-primary/90"
+                onClick={handleConfirmGuest}
+                disabled={isLoading || !guestTier}
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Continuing...
+                  </>
+                ) : (
+                  <>
+                    Continue as Guest
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
     </div>
   );
 }
