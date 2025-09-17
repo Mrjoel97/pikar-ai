@@ -26,21 +26,31 @@ async function assertCanManageBusiness(ctx: any, businessId: any) {
   return { userId: user._id, business: biz };
 }
 
+type WorkspaceEmailSummary = {
+  hasResendKey: boolean;
+  salesInbox: string | null;
+  publicBaseUrl: string | null;
+  fromEmail: string | null;
+  fromName: string | null;
+  replyTo: string | null;
+  updatedAt: number | null;
+};
+
 /**
  * Public: Get a safe summary of the workspace email config for the current user's business.
  * No args required; derives business via currentUserBusiness. Guest-safe (returns null).
  */
 export const getForBusinessSummary = query({
   args: {},
-  handler: async (ctx) => {
+  handler: async (ctx): Promise<WorkspaceEmailSummary | null> => {
     // Derive business from the signed-in user; guest-safe (returns null if none)
-    const business = await ctx.runQuery(api.businesses.currentUserBusiness, {} as any);
-    const businessId = business?._id;
+    const business: any = await ctx.runQuery(api.businesses.currentUserBusiness, {});
+    const businessId: any = business?._id;
     if (!businessId) return null;
 
-    const existing = await ctx.db
+    const existing: any = await ctx.db
       .query("emailConfigs")
-      .withIndex("by_business", (q) => q.eq("businessId", businessId))
+      .withIndex("by_business", (q: any) => q.eq("businessId", businessId))
       .unique();
 
     return existing

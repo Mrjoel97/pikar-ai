@@ -1,5 +1,8 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
+import { authTables } from "@convex-dev/auth/server";
+
+const { users: _authUsers, ...authWithoutUsers } = authTables;
 
 export default defineSchema({
   users: defineTable({
@@ -989,4 +992,7 @@ export default defineSchema({
     createdAt: v.number(),
   })
     .index("by_email", ["email"]),
+
+  // Append Convex Auth required tables inside the schema (excluding users to avoid conflicts)
+  ...authWithoutUsers,
 });
