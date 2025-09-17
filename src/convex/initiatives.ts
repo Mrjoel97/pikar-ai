@@ -18,7 +18,8 @@ export const upsertForBusiness = mutation({
 
     const user = await ctx.db
       .query("users")
-      .withIndex("by_email", (q) => q.eq("email", identity.email!))
+      // Use the standardized "email" index (Convex Auth expects this)
+      .withIndex("email", (q) => q.eq("email", identity.email!))
       .first();
     
     if (!user) {
@@ -93,7 +94,8 @@ export const updateOnboarding = mutation({
 
     const user = await ctx.db
       .query("users")
-      .withIndex("by_email", (q) => q.eq("email", identity.email!))
+      // Use the standardized "email" index (Convex Auth expects this)
+      .withIndex("email", (q) => q.eq("email", identity.email!))
       .first();
     
     if (!user) {
@@ -148,7 +150,8 @@ export const advancePhase = mutation({
 
     const user = await ctx.db
       .query("users")
-      .withIndex("by_email", (q) => q.eq("email", identity.email!))
+      // Use the standardized "email" index (Convex Auth expects this)
+      .withIndex("email", (q) => q.eq("email", identity.email!))
       .first();
     
     if (!user) {
@@ -206,7 +209,8 @@ export const getByBusiness = query({
 
     const user = await ctx.db
       .query("users")
-      .withIndex("by_email", (q) => q.eq("email", identity.email!))
+      // Use the standardized "email" index (Convex Auth expects this)
+      .withIndex("email", (q) => q.eq("email", identity.email!))
       .first();
     
     if (!user) {
@@ -257,7 +261,8 @@ export const runPhase0Diagnostics = mutation({
 
     const user = await ctx.db
       .query("users")
-      .withIndex("by_email", (q) => q.eq("email", identity.email!))
+      // Use the standardized "email" index (Convex Auth expects this)
+      .withIndex("email", (q) => q.eq("email", identity.email!))
       .first();
     
     if (!user) {
@@ -348,7 +353,7 @@ export const seedForEmail = mutation({
   handler: async (ctx, args) => {
     const user = await ctx.db
       .query("users")
-      .withIndex("by_email", (q) => q.eq("email", args.email))
+      .withIndex("email", (q) => q.eq("email", args.email))
       .first();
     
     if (!user) {
@@ -489,7 +494,8 @@ export const addBrainDump = mutation({
 
     const user = await ctx.db
       .query("users")
-      .withIndex("by_email", (q) => q.eq("email", identity.email!))
+      // Use the standardized "email" index (Convex Auth expects this)
+      .withIndex("email", (q) => q.eq("email", identity.email!))
       .first();
     if (!user) throw new Error("[ERR_USER_NOT_FOUND] User not found.");
 
@@ -536,7 +542,8 @@ export const listBrainDumpsByInitiative = query({
 
     const user = await ctx.db
       .query("users")
-      .withIndex("by_email", (q) => q.eq("email", identity.email!))
+      // Use the standardized "email" index (Convex Auth expects this)
+      .withIndex("email", (q) => q.eq("email", identity.email!))
       .first();
     if (!user) throw new Error("User not found");
 

@@ -21,7 +21,7 @@ export default defineSchema({
     onboardingCompleted: v.optional(v.boolean()),
     // Add optional businessId to satisfy consumers that reference it
     businessId: v.optional(v.id("businesses")),
-  }).index("by_email", ["email"]),
+  }).index("email", ["email"]),
 
   businesses: defineTable({
     name: v.string(),

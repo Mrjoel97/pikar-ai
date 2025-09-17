@@ -69,7 +69,7 @@ export const logWin = mutation({
     }
     const user = await ctx.db
       .query("users")
-      .withIndex("by_email", (q) => q.eq("email", identity.email!))
+      .withIndex("email", (q) => q.eq("email", identity.email!))
       .first();
     if (!user) {
       throw new Error("[ERR_USER_NOT_FOUND] User not found.");
@@ -116,7 +116,7 @@ export const listForBusiness = query({
     }
     const user = await ctx.db
       .query("users")
-      .withIndex("by_email", (q) => q.eq("email", identity.email!))
+      .withIndex("email", (q) => q.eq("email", identity.email!))
       .first();
     if (!user) {
       throw new Error("[ERR_USER_NOT_FOUND] User not found.");
@@ -158,7 +158,7 @@ export const listForWorkflow = query({
     }
     const user = await ctx.db
       .query("users")
-      .withIndex("by_email", (q) => q.eq("email", identity.email!))
+      .withIndex("email", (q) => q.eq("email", identity.email!))
       .first();
     if (!user) {
       throw new Error("[ERR_USER_NOT_FOUND] User not found.");
@@ -203,7 +203,7 @@ export const winsSummary = query({
     }
     const user = await ctx.db
       .query("users")
-      .withIndex("by_email", (q) => q.eq("email", identity.email!))
+      .withIndex("email", (q) => q.eq("email", identity.email!))
       .first();
     if (!user) {
       throw new Error("[ERR_USER_NOT_FOUND] User not found.");

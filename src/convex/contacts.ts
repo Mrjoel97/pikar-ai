@@ -79,7 +79,7 @@ export const createList = mutation({
     }
     const user = await ctx.db
       .query("users")
-      .withIndex("by_email", (q) => q.eq("email", identity.email!))
+      .withIndex("email", (q) => q.eq("email", identity.email!))
       .first();
     if (!user) {
       throw new Error("User not found");
@@ -272,7 +272,7 @@ export const bulkUploadCsv = mutation({
 
     const user = await ctx.db
       .query("users")
-      .withIndex("by_email", (q) => q.eq("email", identity.email!))
+      .withIndex("email", (q) => q.eq("email", identity.email!))
       .first();
 
     if (!user) {

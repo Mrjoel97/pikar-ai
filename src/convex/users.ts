@@ -42,7 +42,7 @@ export const ensureSeedUser = mutation({
   handler: async (ctx, args) => {
     const existing = await ctx.db
       .query("users")
-      .withIndex("by_email", (q) => q.eq("email", args.email))
+      .withIndex("email", (q) => q.eq("email", args.email))
       .unique();
 
     if (existing) return existing._id;
@@ -63,7 +63,7 @@ export const getByEmail = query({
     // Use index to avoid full scan
     return await ctx.db
       .query("users")
-      .withIndex("by_email", (q) => q.eq("email", args.email))
+      .withIndex("email", (q) => q.eq("email", args.email))
       .unique();
   },
 });
@@ -74,7 +74,7 @@ export const findByEmail = query({
   handler: async (ctx, args) => {
     return await ctx.db
       .query("users")
-      .withIndex("by_email", (q) => q.eq("email", args.email))
+      .withIndex("email", (q) => q.eq("email", args.email))
       .unique();
   },
 });

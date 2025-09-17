@@ -26,7 +26,7 @@ export const initSolopreneurAgent = mutation({
     // Resolve current user
     const user = await ctx.db
       .query("users")
-      .withIndex("by_email", (q) => q.eq("email", identity.email || ""))
+      .withIndex("email", (q) => q.eq("email", identity.email || ""))
       .unique()
       .catch(() => null);
     if (!user) throw new Error("User not found");
@@ -116,7 +116,7 @@ export const summarizeUploads = query({
     if (!userId && identity?.email) {
       const user = await ctx.db
         .query("users")
-        .withIndex("by_email", (q) => q.eq("email", identity.email || ""))
+        .withIndex("email", (q) => q.eq("email", identity.email || ""))
         .unique()
         .catch(() => null);
       if (!user) throw new Error("User not found");
@@ -263,7 +263,7 @@ export const forgetUploads = mutation({
 
     const user = await ctx.db
       .query("users")
-      .withIndex("by_email", (q) => q.eq("email", identity.email || ""))
+      .withIndex("email", (q) => q.eq("email", identity.email || ""))
       .unique()
       .catch(() => null);
     if (!user) throw new Error("User not found");
