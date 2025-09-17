@@ -1,30 +1,20 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import { Doc, Id } from "./_generated/dataModel";
+import { Doc } from "./_generated/dataModel";
 
-// Query to get feature flags for a business
+// Make getFeatureFlags fully guest-safe; never require auth and never throw
 export const getFeatureFlags = query({
   args: { businessId: v.optional(v.id("businesses")) },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
+    try {
+      const allFlags = await ctx.db.query("featureFlags").collect();
+      const globalFlags = allFlags.filter((f: any) => f.businessId === undefined);
+      const tenantFlags = args.businessId ? allFlags.filter((f: any) => f.businessId === args.businessId) : [];
+      return [...globalFlags, ...tenantFlags];
+    } catch {
+      // Never throw for reads
+      return [];
     }
-
-    // Get global flags (no businessId) and business-specific flags
-    const globalFlags = await ctx.db
-      .query("featureFlags")
-      .filter((q) => q.eq(q.field("businessId"), undefined))
-      .collect();
-
-    const businessFlags = args.businessId
-      ? await ctx.db
-          .query("featureFlags")
-          .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
-          .collect()
-      : [];
-
-    return [...globalFlags, ...businessFlags];
   },
 });
 
@@ -187,40 +177,35 @@ export const toggleFeatureFlag = mutation({
   },
 });
 
-// Query to get feature flag usage analytics
+// Ensure analytics is also guest-safe
 export const getFeatureFlagAnalytics = query({
   args: { businessId: v.optional(v.id("businesses")) },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
+    try {
+      const allFlags = await ctx.db.query("featureFlags").collect();
+      const flags = args.businessId
+        ? allFlags.filter((f: any) => f.businessId === args.businessId)
+        : allFlags.filter((f: any) => f.businessId === undefined);
+
+      let usageEvents = 0;
+      try {
+        const events = await ctx.db
+          .query("telemetryEvents")
+          .withIndex("by_event_name", (q) => q.eq("eventName", "feature_flag_check"))
+          .collect();
+        usageEvents = events.length;
+      } catch {
+        usageEvents = 0;
+      }
+
+      return {
+        flags,
+        totalFlags: flags.length,
+        enabledFlags: flags.filter((f: any) => f.isEnabled).length,
+        usageEvents,
+      };
+    } catch {
+      return { flags: [], totalFlags: 0, enabledFlags: 0, usageEvents: 0 };
     }
-
-    const flags = await ctx.db
-      .query("featureFlags")
-      .filter((q) => 
-        args.businessId 
-          ? q.eq(q.field("businessId"), args.businessId)
-          : q.eq(q.field("businessId"), undefined)
-      )
-      .collect();
-
-    // Get telemetry events for feature flag usage
-    const flagUsageEvents = await ctx.db
-      .query("telemetryEvents")
-      .withIndex("by_event_name", (q) => q.eq("eventName", "feature_flag_check"))
-      .filter((q) => 
-        args.businessId 
-          ? q.eq(q.field("businessId"), args.businessId)
-          : q.neq(q.field("businessId"), undefined)
-      )
-      .collect();
-
-    return {
-      flags,
-      totalFlags: flags.length,
-      enabledFlags: flags.filter(f => f.isEnabled).length,
-      usageEvents: flagUsageEvents.length,
-    };
   },
 });

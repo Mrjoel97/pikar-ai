@@ -35,10 +35,10 @@ export default function AdminPage() {
   const requestSenior = useMutation(api.admin.requestSeniorAdmin);
   const approveSenior = useMutation(api.admin.approveSeniorAdmin);
 
-  // Determine if user has admin access via either method
-  const hasAdminAccess = Boolean((adminSession?.valid && adminSession.email) || isAdmin);
+  // Determine if user has admin access via either method (STRICT boolean check)
+  const hasAdminAccess = (adminSession?.valid === true) || (isAdmin === true);
   const adminRole = adminSession?.valid ? adminSession.role : null;
-  const isAdminSession = adminSession?.valid || false;
+  const isAdminSession = adminSession?.valid === true;
 
   // Admin queries (only run if has access)
   const pending = useQuery(
