@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -11,27 +11,55 @@ import { useMemo } from "react";
 
 export default function AdminPage() {
   const navigate = useNavigate();
+  const [adminToken, setAdminToken] = useState<string | null>(null);
+
+  // Load admin token from localStorage on mount
+  useEffect(() => {
+    const token = localStorage.getItem("adminSessionToken");
+    setAdminToken(token);
+  }, []);
+
+  // Validate admin session
+  const adminSession = useQuery(
+    api.adminAuthData.validateSession as any,
+    adminToken ? { token: adminToken } : undefined
+  );
+
+  // Existing user-based admin check
   const isAdmin = useQuery(api.admin.getIsAdmin, {} as any);
   const ensureAdmin = useMutation(api.admin.ensureAdminSelf);
   const requestSenior = useMutation(api.admin.requestSeniorAdmin);
   const approveSenior = useMutation(api.admin.approveSeniorAdmin);
+
+  // Determine if user has admin access via either method
+  const hasAdminAccess = (adminSession?.valid && adminSession.email) || isAdmin;
+  const adminRole = adminSession?.valid ? adminSession.role : null;
+  const isAdminSession = adminSession?.valid || false;
+
+  // Admin queries (only run if has access)
   const pending = useQuery(
     api.admin.listPendingAdminRequests as any,
-    isAdmin ? {} : undefined
+    hasAdminAccess ? {} : undefined
   ) as Array<{ email: string; role: string; _id: string }> | undefined;
+
   const adminList = useQuery(
     api.admin.listAdmins as any,
-    isAdmin ? {} : undefined
+    hasAdminAccess ? {} : undefined
   ) as Array<{ _id: string; email: string; role: string }> | undefined;
 
   const myRole = useMemo(() => {
     if (!adminList) return null;
-    // We don't have current user's email here; rely on privileges to show sections.
-    // Super admin can see pending; senior cannot. We'll gate by presence of 'pending' list.
     return null;
   }, [adminList]);
 
-  if (isAdmin === undefined) {
+  const handleLogout = () => {
+    localStorage.removeItem("adminSessionToken");
+    setAdminToken(null);
+    toast.success("Logged out successfully");
+    navigate("/admin-auth");
+  };
+
+  if (isAdmin === undefined && !adminToken) {
     return (
       <div className="p-6">
         <Card>
@@ -41,7 +69,7 @@ export default function AdminPage() {
     );
   }
 
-  if (isAdmin === false) {
+  if (!hasAdminAccess) {
     return (
       <div className="p-6 max-w-3xl mx-auto space-y-4">
         <Card>
@@ -52,8 +80,24 @@ export default function AdminPage() {
             <p className="text-sm text-muted-foreground">
               You don't have access to the Admin Panel.
             </p>
+            
+            <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-lg">
+              <h4 className="font-medium text-emerald-800 mb-2">Admin Portal</h4>
+              <p className="text-sm text-emerald-700 mb-3">
+                Use the independent Admin Portal for platform administration.
+              </p>
+              <Button
+                onClick={() => navigate("/admin-auth")}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white"
+              >
+                Use Admin Portal
+              </Button>
+            </div>
+
+            <Separator />
+
             <p className="text-xs text-muted-foreground">
-              If your email is in the ADMIN_EMAILS allowlist (comma-separated), you can claim super admin:
+              Alternative: If your email is in the ADMIN_EMAILS allowlist (comma-separated), you can claim super admin:
             </p>
             <div className="flex flex-wrap gap-2">
               <Button
@@ -98,9 +142,16 @@ export default function AdminPage() {
     <div className="p-6 max-w-6xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Admin Dashboard</h1>
-        <Button variant="secondary" onClick={() => navigate("/dashboard")}>
-          Back to Dashboard
-        </Button>
+        <div className="flex gap-2">
+          {isAdminSession && (
+            <Button variant="outline" onClick={handleLogout}>
+              Logout
+            </Button>
+          )}
+          <Button variant="secondary" onClick={() => navigate("/dashboard")}>
+            Back to Dashboard
+          </Button>
+        </div>
       </div>
 
       <Card>
@@ -110,8 +161,13 @@ export default function AdminPage() {
         <CardContent className="space-y-3">
           <div className="flex flex-wrap gap-2">
             <Badge variant="outline" className="border-emerald-300 text-emerald-700">
-              Access: Admin
+              Access: {isAdminSession ? `Admin Portal (${adminRole})` : "User Admin"}
             </Badge>
+            {isAdminSession && adminSession?.email && (
+              <Badge variant="outline" className="border-blue-300 text-blue-700">
+                {adminSession.email}
+              </Badge>
+            )}
           </div>
           <p className="text-sm text-muted-foreground">
             This is the admin-only area. Share the features/workflows you want here and I'll wire them up.

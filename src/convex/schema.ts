@@ -1003,6 +1003,23 @@ export default defineSchema({
   })
     .index("by_email", ["email"]),
 
+  // Independent admin authentication tables
+  adminAuths: defineTable({
+    email: v.string(),
+    passwordHash: v.string(),
+    createdAt: v.number(),
+  })
+    .index("by_email", ["email"]),
+
+  adminSessions: defineTable({
+    token: v.string(),
+    email: v.string(),
+    createdAt: v.number(),
+    expiresAt: v.number(),
+  })
+    .index("by_token", ["token"])
+    .index("by_email", ["email"]),
+
   // Append Convex Auth required tables inside the schema (excluding users to avoid conflicts)
   ...authWithoutUsers,
 });

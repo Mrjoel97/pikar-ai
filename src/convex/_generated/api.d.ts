@@ -16,6 +16,8 @@ import type {
 import type * as activity from "../activity.js";
 import type * as activityFeed from "../activityFeed.js";
 import type * as admin from "../admin.js";
+import type * as adminAuth from "../adminAuth.js";
+import type * as adminAuthData from "../adminAuthData.js";
 import type * as agentProfile from "../agentProfile.js";
 import type * as aiAgents from "../aiAgents.js";
 import type * as approvals from "../approvals.js";
@@ -70,6 +72,8 @@ declare const fullApi: ApiFromModules<{
   activity: typeof activity;
   activityFeed: typeof activityFeed;
   admin: typeof admin;
+  adminAuth: typeof adminAuth;
+  adminAuthData: typeof adminAuthData;
   agentProfile: typeof agentProfile;
   aiAgents: typeof aiAgents;
   approvals: typeof approvals;

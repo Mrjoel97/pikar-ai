@@ -24,6 +24,7 @@ import { api } from "@/convex/_generated/api";
 import { toast } from "sonner";
 import SettingsPage from "@/pages/Settings.tsx";
 import AdminPage from "./pages/Admin";
+import AdminAuthPage from "./pages/AdminAuth";
 
 class ErrorBoundary extends Component<
   { children: React.ReactNode },
@@ -147,8 +148,9 @@ createRoot(document.getElementById("root")!).render(
               <Route path="/business" element={<BusinessPage />} />
               <Route path="/analytics" element={<AnalyticsPage />} />
               <Route path="/settings" element={<SettingsPage />} />
-              <Route path="*" element={<NotFound />} />
               <Route path="/admin" element={<AdminPage />} />
+              <Route path="/admin-auth" element={<AdminAuthPage />} />
+              <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
           <Toaster />
