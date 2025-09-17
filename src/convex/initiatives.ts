@@ -672,3 +672,95 @@ export const listBrainDumpsFiltered = query({
     return rows;
   },
 });
+
+// Soft-delete (mark as deleted)
+export const softDeleteBrainDump = mutation({
+  args: { brainDumpId: v.id("brainDumps") },
+  handler: async (ctx, { brainDumpId }) => {
+    const userId = await ctx.auth.getUserIdentity();
+    if (!userId) throw new Error("Not authenticated");
+    const dump = await ctx.db.get(brainDumpId);
+    if (!dump) return;
+    // authorization: owner only
+    if (String(dump.userId) !== String(userId.subject)) throw new Error("Forbidden");
+    await ctx.db.patch(brainDumpId, {
+      deletedAt: Date.now(),
+      deletedBy: dump.userId,
+    });
+  },
+});
+
+// Restore (clear soft-delete)
+export const restoreBrainDump = mutation({
+  args: { brainDumpId: v.id("brainDumps") },
+  handler: async (ctx, { brainDumpId }) => {
+    const userId = await ctx.auth.getUserIdentity();
+    if (!userId) throw new Error("Not authenticated");
+    const dump = await ctx.db.get(brainDumpId);
+    if (!dump) return;
+    // authorization: owner only
+    if (String(dump.userId) !== String(userId.subject)) throw new Error("Forbidden");
+    await ctx.db.patch(brainDumpId, { deletedAt: undefined, deletedBy: undefined });
+  },
+});
+
+// Update tags on a single brain dump
+export const updateBrainDumpTags = mutation({
+  args: { brainDumpId: v.id("brainDumps"), tags: v.array(v.string()) },
+  handler: async (ctx, { brainDumpId, tags }) => {
+    const userId = await ctx.auth.getUserIdentity();
+    if (!userId) throw new Error("Not authenticated");
+    const dump = await ctx.db.get(brainDumpId);
+    if (!dump) throw new Error("Not found");
+    if (String(dump.userId) !== String(userId.subject)) throw new Error("Forbidden");
+    await ctx.db.patch(brainDumpId, { tags });
+  },
+});
+
+// Merge tags across an initiative: replace fromTag with toTag
+export const mergeTagsForInitiative = mutation({
+  args: { initiativeId: v.id("initiatives"), fromTag: v.string(), toTag: v.string() },
+  handler: async (ctx, { initiativeId, fromTag, toTag }) => {
+    const user = await ctx.auth.getUserIdentity();
+    if (!user) throw new Error("Not authenticated");
+    const q = ctx.db
+      .query("brainDumps")
+      .withIndex("by_initiative", (idx) => idx.eq("initiativeId", initiativeId));
+    for await (const d of q) {
+      const tags: string[] = Array.isArray(d.tags) ? d.tags : [];
+      if (tags.includes(fromTag)) {
+        const next = Array.from(new Set(tags.map((t) => (t === fromTag ? toTag : t))));
+        await ctx.db.patch(d._id, { tags: next });
+      }
+    }
+  },
+});
+
+// Search brain dumps by text and optional tags (excludes soft-deleted)
+export const searchBrainDumps = query({
+  args: {
+    initiativeId: v.id("initiatives"),
+    q: v.string(),
+    tags: v.optional(v.array(v.string())),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, { initiativeId, q, tags, limit }) => {
+    const needle = q.toLowerCase().trim();
+    const rows: any[] = [];
+    const it = ctx.db
+      .query("brainDumps")
+      .withIndex("by_initiative", (idx) => idx.eq("initiativeId", initiativeId));
+    for await (const d of it) {
+      if (d.deletedAt) continue;
+      const hay = `${d.content ?? ""}\n${d.transcript ?? ""}\n${d.summary ?? ""}`.toLowerCase();
+      if (needle && !hay.includes(needle)) continue;
+      if (tags && tags.length > 0) {
+        const dt = Array.isArray(d.tags) ? d.tags : [];
+        if (!tags.every((t) => dt.includes(t))) continue;
+      }
+      rows.push(d);
+      if (limit && rows.length >= limit) break;
+    }
+    return rows;
+  },
+});

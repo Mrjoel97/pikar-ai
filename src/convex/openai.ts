@@ -70,3 +70,56 @@ export const generate = action({
     }
   },
 });
+
+// Transcribe an audio file from Convex storage using OpenAI Whisper if configured; otherwise return a fallback
+export const transcribeAudio = action({
+  args: { fileId: v.id("_storage") },
+  handler: async (ctx, { fileId }) => {
+    // Try to get the file bytes
+    const file = await ctx.storage.get(fileId);
+    if (!file) {
+      return { transcript: "", summary: "", provider: "none", note: "File not found" };
+    }
+    const OPENAI_KEY = process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY?.toString();
+    if (!OPENAI_KEY) {
+      // Fallback: no key configured
+      return {
+        transcript: "[transcription unavailable - OPENAI_API_KEY not set]",
+        summary: "",
+        provider: "none",
+        note: "OPENAI_API_KEY not set",
+      };
+    }
+
+    // Whisper API expects multipart/form-data. Build it manually.
+    const buf = Buffer.from(await file.arrayBuffer());
+    const form = new FormData();
+    const blob = new Blob([buf], { type: "audio/webm" });
+    form.append("file", blob, "note.webm");
+    form.append("model", "whisper-1");
+    form.append("response_format", "json");
+
+    const res = await fetch("https://api.openai.com/v1/audio/transcriptions", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${OPENAI_KEY}` },
+      body: form as any,
+    });
+
+    if (!res.ok) {
+      const text = await res.text();
+      return {
+        transcript: "",
+        summary: "",
+        provider: "openai",
+        note: `Transcription failed: ${text}`,
+      };
+    }
+    const data = (await res.json()) as { text?: string };
+    const transcript = data?.text ?? "";
+    const summary =
+      transcript.length > 0
+        ? (transcript.split(/[.!?]/)[0] || transcript.split(" ").slice(0, 20).join(" "))
+        : "";
+    return { transcript, summary, provider: "openai", note: "" };
+  },
+});

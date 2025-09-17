@@ -29,6 +29,7 @@ import type * as emails from "../emails.js";
 import type * as emailsActions from "../emailsActions.js";
 import type * as entitlements from "../entitlements.js";
 import type * as featureFlags from "../featureFlags.js";
+import type * as files from "../files.js";
 import type * as governance from "../governance.js";
 import type * as health from "../health.js";
 import type * as http from "../http.js";
@@ -77,6 +78,7 @@ declare const fullApi: ApiFromModules<{
   emailsActions: typeof emailsActions;
   entitlements: typeof entitlements;
   featureFlags: typeof featureFlags;
+  files: typeof files;
   governance: typeof governance;
   health: typeof health;
   http: typeof http;

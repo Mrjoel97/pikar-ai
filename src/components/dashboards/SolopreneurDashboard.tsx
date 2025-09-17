@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { useMutation, useQuery, useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -48,6 +48,9 @@ export function SolopreneurDashboard({
     const addDump = useMutation(api.initiatives.addBrainDump as any);
     const addVoiceDump = useMutation(api.initiatives.addVoiceBrainDump as any);
     const deleteDump = useMutation(api.initiatives.deleteBrainDump as any);
+    const updateTags = useMutation(api.initiatives.updateBrainDumpTags as any);
+    const softDelete = useMutation(api.initiatives.softDeleteBrainDump as any);
+    const restoreDump = useMutation(api.initiatives.restoreBrainDump as any);
 
     const [text, setText] = React.useState("");
     const [saving, setSaving] = React.useState(false);
@@ -91,138 +94,419 @@ export function SolopreneurDashboard({
     // Add local loading state for restore
     const [lastDeleted, setLastDeleted] = React.useState<any | null>(null);
 
+    // New: search across content/transcript/summary
+    const [searchQ, setSearchQ] = React.useState("");
+    const searchResults = useQuery(
+      api.initiatives.searchBrainDumps as any,
+      initiativeId && searchQ.trim()
+        ? { initiativeId, q: searchQ.trim(), limit: 20 }
+        : ("skip" as any)
+    );
+
+    // Audio recording + upload + transcription
+    const mediaRecorderRef = React.useRef<MediaRecorder | null>(null);
+    const chunksRef = React.useRef<Blob[]>([]);
+    const [audioUrl, setAudioUrl] = React.useState<string>("");
+    const [uploading, setUploading] = React.useState(false);
+    const getUploadUrl = useAction(api.files.getUploadUrl as any);
+    const transcribeAudio = useAction(api.openai.transcribeAudio as any);
+
+    const startRecording = async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const mr = new MediaRecorder(stream);
+        chunksRef.current = [];
+        mr.ondataavailable = (e) => {
+          if (e.data && e.data.size > 0) chunksRef.current.push(e.data);
+        };
+        mr.onstop = () => {
+          const blob = new Blob(chunksRef.current, { type: "audio/webm" });
+          const url = URL.createObjectURL(blob);
+          setAudioUrl(url);
+        };
+        mediaRecorderRef.current = mr;
+        mr.start();
+        toast("Recording started");
+      } catch (e: any) {
+        toast.error(e?.message ?? "Mic permission denied");
+      }
+    };
+
+    const stopRecording = () => {
+      try {
+        mediaRecorderRef.current?.stop();
+        toast("Recording stopped");
+      } catch {}
+    };
+
+    const handleUploadAndTranscribe = async () => {
+      if (!audioUrl) {
+        toast("Record audio first");
+        return;
+      }
+      if (!initiativeId) {
+        toast("No initiative found. Run setup first.");
+        return;
+      }
+      try {
+        setUploading(true);
+        const res = await fetch(audioUrl);
+        const blob = await res.blob();
+
+        const { url } = (await getUploadUrl({})) as any;
+        const putRes = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": blob.type || "application/octet-stream" },
+          body: blob,
+        });
+        if (!putRes.ok) throw new Error("Upload failed");
+        const uploaded = await putRes.json(); // { storageId }
+        const fileId = uploaded.storageId;
+
+        const tx = (await transcribeAudio({ fileId })) as any;
+        const tTranscript = tx?.transcript || "";
+        const tSummary = tx?.summary || "";
+
+        const tags = tagIdea((tSummary || tTranscript).trim());
+        if (addVoiceDump) {
+          await addVoiceDump({
+            initiativeId,
+            content: (text || tSummary || tTranscript || "Voice note").trim(),
+            transcript: tTranscript || undefined,
+            summary: tSummary || undefined,
+            tags,
+            audioFileId: fileId,
+          } as any);
+        } else {
+          await addDump({ initiativeId, content: tSummary || "Voice note" } as any);
+        }
+        setText("");
+        toast.success("Voice note uploaded and saved.");
+      } catch (e: any) {
+        toast.error(e?.message ?? "Upload/transcription failed");
+      } finally {
+        setUploading(false);
+      }
+    };
+
     return (
       <Card className="p-4 mt-6">
-        <div className="flex items-center justify-between">
-          <h3 className="text-lg font-semibold">Brain Dump</h3>
-          <span className="text-xs text-muted-foreground">Capture rough ideas quickly</span>
+        {/* Header + quick controls */}
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h3 className="text-lg font-semibold">Brain Dump</h3>
+            <span className="text-xs text-muted-foreground">Capture rough ideas quickly</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Input
+              placeholder="Search ideas (content, transcript, summary)"
+              value={searchQ}
+              onChange={(e) => setSearchQ(e.target.value)}
+              className="h-8 w-56"
+            />
+          </div>
         </div>
+
         <Separator className="my-3" />
-        <div className="space-y-3">
-          <div className="flex items-center gap-2 mb-2">
-            <Button size="sm" variant={isRecording ? "default" : "outline"} className={isRecording ? "bg-emerald-600 text-white hover:bg-emerald-700" : ""} onClick={isRecording ? stopVoice : startVoice}>
-              {isRecording ? "Stop Recording" : "Record Voice Note"}
-            </Button>
-            {transcript && <Badge variant="outline">Transcript ready</Badge>}
-            {detectedTags.length > 0 && (
-              <div className="flex items-center gap-1">
-                <span className="text-xs text-muted-foreground">Tags:</span>
-                {detectedTags.map((t) => (
-                  <Badge key={`detected_${t}`} variant="secondary" className="capitalize">{t}</Badge>
-                ))}
-              </div>
-            )}
-          </div>
-          {transcript && (
-            <div className="text-xs text-muted-foreground mb-2">
-              <span className="font-medium">Heard:</span> {transcript}
-            </div>
+
+        {/* Voice: browser speech + audio recording */}
+        <div className="flex flex-wrap items-center gap-2 mb-2">
+          <Button
+            size="sm"
+            variant={isRecording ? "default" : "outline"}
+            className={isRecording ? "bg-emerald-600 text-white hover:bg-emerald-700" : ""}
+            onClick={isRecording ? stopVoice : startVoice}
+          >
+            {isRecording ? "Stop Voice Recognition" : "Voice Recognition"}
+          </Button>
+
+          <Button
+            size="sm"
+            variant={mediaRecorderRef.current ? "default" : "outline"}
+            className={mediaRecorderRef.current ? "bg-emerald-600 text-white hover:bg-emerald-700" : ""}
+            onClick={mediaRecorderRef.current ? stopRecording : startRecording}
+          >
+            {mediaRecorderRef.current ? "Stop Recording" : "Record Audio"}
+          </Button>
+
+          <Button size="sm" variant="outline" onClick={handleUploadAndTranscribe} disabled={uploading || !initiativeId}>
+            {uploading ? "Uploading..." : "Upload & Transcribe"}
+          </Button>
+
+          {audioUrl && (
+            <audio src={audioUrl} controls className="h-9" />
           )}
-          {summary && (
-            <div className="text-xs text-muted-foreground mb-2">
-              <span className="font-medium">Summary:</span> {summary}
-            </div>
-          )}
-          <Textarea
-            placeholder="Write freely here... (e.g., campaign idea, positioning, offer notes)"
-            value={text}
-            onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setText(e.target.value)}
-            className="min-h-24"
-          />
-          <div className="flex justify-end gap-2">
-            {summary && (
-              <Button variant="outline" onClick={handleSave} disabled={saving || !initiativeId}>
-                {saving ? "Saving..." : "Save Voice Idea"}
-              </Button>
-            )}
-            <Button onClick={handleSave} disabled={saving || !initiativeId}>
-              {saving ? "Saving..." : "Save Idea"}
-            </Button>
-          </div>
-        </div>
-        <Separator className="my-4" />
-        <div className="space-y-2">
-          <div className="text-sm font-medium">Recent ideas</div>
-          <div className="flex items-center gap-2 mb-2">
-            <span className="text-xs text-muted-foreground">Filter:</span>
-              {(["", "content", "offer", "ops"] as const).map((tag) => (
-                <Button
-                  key={`tag_${tag || "all"}`}
-                  size="sm"
-                  variant={activeTagFilter === tag ? "default" : "outline"}
-                  className={activeTagFilter === tag ? "bg-emerald-600 text-white hover:bg-emerald-700" : ""}
-                  onClick={() => setActiveTagFilter(tag as any)}
-                >
-                  {tag || "All"}
-                </Button>
+
+          {transcript && <Badge variant="outline">Transcript ready</Badge>}
+          {detectedTags.length > 0 && (
+            <div className="flex items-center gap-1">
+              <span className="text-xs text-muted-foreground">Tags:</span>
+              {detectedTags.map((t) => (
+                <Badge key={`detected_${t}`} variant="secondary" className="capitalize">
+                  {t}
+                </Badge>
               ))}
+            </div>
+          )}
+        </div>
+
+        {transcript && (
+          <div className="text-xs text-muted-foreground mb-2">
+            <span className="font-medium">Heard:</span> {transcript}
           </div>
-          {Array.isArray(dumps) && dumps.length > 0 ? (
-            dumps
-              .filter((d: any) => {
-                if (!activeTagFilter) return true;
-                const inferred = tagIdea(String(d.content || ""));
-                return inferred.includes(activeTagFilter as any);
-              })
-              .map((d: any) => (
-                <div key={String(d._id)} className="rounded-md border p-3 text-sm">
-                  <div className="text-muted-foreground text-xs mb-1">
-                    {new Date(d.createdAt).toLocaleString()}
-                  </div>
-                  <div className="flex items-center gap-2 mb-1">
-                    {tagIdea(String(d.content || "")).map((t) => (
-                      <Badge key={`${String(d._id)}_${t}`} variant="outline" className="capitalize">{t}</Badge>
-                    ))}
-                  </div>
-                  <div className="whitespace-pre-wrap">{d.content}</div>
+        )}
+        {summary && (
+          <div className="text-xs text-muted-foreground mb-2">
+            <span className="font-medium">Summary:</span> {summary}
+          </div>
+        )}
+        <Textarea
+          placeholder="Write freely here... (e.g., campaign idea, positioning, offer notes)"
+          value={text}
+          onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setText(e.target.value)}
+          className="min-h-24"
+        />
+        <div className="flex justify-end gap-2">
+          {summary && (
+            <Button variant="outline" onClick={handleSave} disabled={saving || !initiativeId}>
+              {saving ? "Saving..." : "Save Voice Idea"}
+            </Button>
+          )}
+          <Button onClick={handleSave} disabled={saving || !initiativeId}>
+            {saving ? "Saving..." : "Save Idea"}
+          </Button>
+        </div>
+
+        <Separator className="my-4" />
+
+        {/* Filter chips */}
+        <div className="text-sm font-medium">Recent ideas</div>
+        <div className="flex items-center gap-2 mb-2">
+          <span className="text-xs text-muted-foreground">Filter:</span>
+            {(["", "content", "offer", "ops"] as const).map((tag) => (
+              <Button
+                key={`tag_${tag || "all"}`}
+                size="sm"
+                variant={activeTagFilter === tag ? "default" : "outline"}
+                className={activeTagFilter === tag ? "bg-emerald-600 text-white hover:bg-emerald-700" : ""}
+                onClick={() => setActiveTagFilter(tag as any)}
+              >
+                {tag || "All"}
+              </Button>
+            ))}
+        </div>
+
+        {/* Results: if searching, show results; else show default list */}
+        {searchQ.trim() && Array.isArray(searchResults) ? (
+          <div className="space-y-2">
+            {searchResults.map((d: any) => (
+              <div key={String(d._id)} className="rounded-md border p-3 text-sm">
+                <div className="text-muted-foreground text-xs mb-1">
+                  {new Date(d.createdAt).toLocaleString()}
+                </div>
+                <div className="flex items-center gap-2 mb-1">
+                  {(Array.isArray(d.tags) && d.tags.length > 0 ? d.tags : tagIdea(String(d.content || ""))).map((t: string) => (
+                    <Badge key={`${String(d._id)}_${t}`} variant="outline" className="capitalize">
+                      {t}
+                    </Badge>
+                  ))}
+                </div>
+                <div className="whitespace-pre-wrap">{d.content}</div>
+                {d.transcript && (
+                  <div className="text-xs text-muted-foreground mt-1">Transcript: {d.transcript}</div>
+                )}
+                {/* Actions: create workflow, edit tags, soft delete */}
+                <div className="mt-2 flex flex-wrap gap-2">
                   <Button size="sm" variant="secondary" onClick={() => handleCreateWorkflowFromIdea(d.content)}>
                     Create workflow
                   </Button>
                   <Button
                     size="sm"
                     variant="outline"
-                    className="ml-2"
                     onClick={async () => {
+                      const cur = Array.isArray(d.tags) ? d.tags.join(",") : "";
+                      const next = window.prompt("Edit tags (comma-separated):", cur);
+                      if (next === null) return;
+                      const tags = next
+                        .split(",")
+                        .map((s) => s.trim())
+                        .filter(Boolean);
                       try {
-                        await deleteDump({ brainDumpId: d._id } as any);
-                        setLastDeleted(d);
-                        toast("Deleted");
+                        await updateTags({ brainDumpId: d._id, tags } as any);
+                        toast.success("Tags updated");
                       } catch (e: any) {
-                        toast.error(e?.message ?? "Failed to delete");
+                        toast.error(e?.message ?? "Failed to update tags");
                       }
                     }}
                   >
-                    Delete
+                    Edit tags
+                  </Button>
+                  {!d.deletedAt ? (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={async () => {
+                        try {
+                          await softDelete({ brainDumpId: d._id } as any);
+                          toast("Moved to trash");
+                        } catch (e: any) {
+                          toast.error(e?.message ?? "Failed to delete");
+                        }
+                      }}
+                    >
+                      Delete
+                    </Button>
+                  ) : (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={async () => {
+                        try {
+                          await restoreDump({ brainDumpId: d._id } as any);
+                          toast.success("Restored");
+                        } catch (e: any) {
+                          toast.error(e?.message ?? "Failed to restore");
+                        }
+                      }}
+                    >
+                      Restore
+                    </Button>
+                  )}
+                </div>
+              </div>
+            ))}
+            {searchResults.length === 0 && (
+              <div className="text-muted-foreground text-sm">No results for your search.</div>
+            )}
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {Array.isArray(dumps) && dumps.length > 0 ? (
+              dumps
+                .filter((d: any) => !d.deletedAt)
+                .filter((d: any) => {
+                  if (!activeTagFilter) return true;
+                  const inferred = Array.isArray(d.tags) && d.tags.length > 0 ? d.tags : tagIdea(String(d.content || ""));
+                  return inferred.includes(activeTagFilter as any);
+                })
+                .map((d: any) => (
+                  <div key={String(d._id)} className="rounded-md border p-3 text-sm">
+                    <div className="text-muted-foreground text-xs mb-1">
+                      {new Date(d.createdAt).toLocaleString()}
+                    </div>
+                    <div className="flex items-center gap-2 mb-1">
+                      {(Array.isArray(d.tags) && d.tags.length > 0 ? d.tags : tagIdea(String(d.content || ""))).map((t: string) => (
+                        <Badge key={`${String(d._id)}_${t}`} variant="outline" className="capitalize">
+                          {t}
+                        </Badge>
+                      ))}
+                    </div>
+                    <div className="whitespace-pre-wrap">{d.content}</div>
+                    {d.transcript && (
+                      <div className="text-xs text-muted-foreground mt-1">Transcript: {d.transcript}</div>
+                    )}
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      <Button size="sm" variant="secondary" onClick={() => handleCreateWorkflowFromIdea(d.content)}>
+                        Create workflow
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={async () => {
+                          const cur = Array.isArray(d.tags) ? d.tags.join(",") : "";
+                          const next = window.prompt("Edit tags (comma-separated):", cur);
+                          if (next === null) return;
+                          const tags = next
+                            .split(",")
+                            .map((s) => s.trim())
+                            .filter(Boolean);
+                          try {
+                            await updateTags({ brainDumpId: d._id, tags } as any);
+                            toast.success("Tags updated");
+                          } catch (e: any) {
+                            toast.error(e?.message ?? "Failed to update tags");
+                          }
+                        }}
+                      >
+                        Edit tags
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="ml-2"
+                        onClick={async () => {
+                          try {
+                            await softDelete({ brainDumpId: d._id } as any);
+                            setLastDeleted(d);
+                            toast("Moved to trash");
+                          } catch (e: any) {
+                            toast.error(e?.message ?? "Failed to delete");
+                          }
+                        }}
+                      >
+                        Delete
+                      </Button>
+                    </div>
+                  </div>
+                ))
+            ) : (
+              <div className="text-muted-foreground text-sm">No entries yet.</div>
+            )}
+            {lastDeleted && (
+              <div className="mb-3 flex items-center justify-between rounded-md border p-2 bg-amber-50 text-amber-800">
+                <span className="text-xs">Idea moved to trash.</span>
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={async () => {
+                      try {
+                        await restoreDump({ brainDumpId: lastDeleted._id } as any);
+                        setLastDeleted(null);
+                        toast.success("Restored");
+                      } catch (e: any) {
+                        toast.error(e?.message ?? "Failed to restore");
+                      }
+                    }}
+                  >
+                    Undo
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => setLastDeleted(null)}>
+                    Dismiss
                   </Button>
                 </div>
-              ))
-          ) : (
-            <div className="text-muted-foreground text-sm">No entries yet.</div>
-          )}
-          {lastDeleted && (
-            <div className="mb-3 flex items-center justify-between rounded-md border p-2 bg-amber-50 text-amber-800">
-              <span className="text-xs">Idea deleted.</span>
-              <div className="flex items-center gap-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={async () => {
-                    try {
-                      await addDump({ initiativeId, content: String(lastDeleted.content || "") } as any);
-                      setLastDeleted(null);
-                      toast.success("Restored idea.");
-                    } catch (e: any) {
-                      toast.error(e?.message ?? "Failed to restore");
-                    }
-                  }}
-                >
-                  Undo
-                </Button>
-                <Button size="sm" variant="ghost" onClick={() => setLastDeleted(null)}>Dismiss</Button>
               </div>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
+        )}
+
+        {/* Bulk tag merge (simple CTA) */}
+        {initiativeId && (
+          <div className="mt-3 flex items-center gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={async () => {
+                const fromTag = window.prompt("Merge FROM tag:");
+                if (!fromTag) return;
+                const toTag = window.prompt(`Merge "${fromTag}" INTO tag:`);
+                if (!toTag) return;
+                try {
+                  await (useMutation(api.initiatives.mergeTagsForInitiative as any) as any)({
+                    initiativeId,
+                    fromTag,
+                    toTag,
+                  });
+                  toast.success("Tags merged");
+                } catch (e: any) {
+                  toast.error(e?.message ?? "Failed to merge tags");
+                }
+              }}
+            >
+              Merge Tags
+            </Button>
+          </div>
+        )}
       </Card>
     );
   }
