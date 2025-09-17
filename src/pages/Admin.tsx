@@ -8,6 +8,8 @@ import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import { useNavigate } from "react-router";
 import { useMemo } from "react";
+import { useEffect } from "react";
+import { Progress } from "@/components/ui/progress";
 
 export default function AdminPage() {
   const navigate = useNavigate();
@@ -53,6 +55,38 @@ export default function AdminPage() {
     if (!adminList) return null;
     return null;
   }, [adminList]);
+
+  // Add: health and feature flags queries
+  const env = useQuery(api.health.envStatus, {} as any);
+  const flags = useQuery(api.featureFlags.getFeatureFlags as any, hasAdminAccess ? {} : undefined) as Array<{
+    _id: string;
+    flagName: string;
+    isEnabled: boolean;
+    rolloutPercentage?: number;
+    businessId?: string | null;
+  }> | undefined;
+  const flagAnalytics = useQuery(api.featureFlags.getFeatureFlagAnalytics as any, hasAdminAccess ? {} : undefined) as
+    | {
+        flags: any[];
+        totalFlags: number;
+        enabledFlags: number;
+        usageEvents: number;
+      }
+    | undefined;
+
+  const toggleFlag = useMutation(api.featureFlags.toggleFeatureFlag);
+
+  // Derived metrics
+  const kpis = useMemo(() => {
+    return {
+      admins: (adminList || []).length,
+      pending: (pending || []).length,
+      flagsTotal: flagAnalytics?.totalFlags ?? (flags?.length ?? 0),
+      flagsEnabled: flagAnalytics?.enabledFlags ?? (flags?.filter((f) => f.isEnabled).length ?? 0),
+      emailQueueDepth: env?.emailQueueDepth ?? 0,
+      overdueApprovals: env?.overdueApprovalsCount ?? 0,
+    };
+  }, [adminList, pending, flags, flagAnalytics, env]);
 
   const handleLogout = () => {
     localStorage.removeItem("adminSessionToken");
@@ -156,28 +190,131 @@ export default function AdminPage() {
         </div>
       </div>
 
+      {/* System Health Strip */}
       <Card>
         <CardHeader>
-          <CardTitle>Overview</CardTitle>
+          <CardTitle>System Health</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="flex flex-wrap gap-2">
-            <Badge variant="outline" className="border-emerald-300 text-emerald-700">
-              Access: {isAdminSession ? `Admin Portal (${adminRole})` : "User Admin"}
+            <Badge variant={env?.hasRESEND ? "outline" : "destructive"}>
+              RESEND: {env?.hasRESEND ? "Configured" : "Missing"}
             </Badge>
-            {isAdminSession && adminSession?.email && (
-              <Badge variant="outline" className="border-blue-300 text-blue-700">
-                {adminSession.email}
-              </Badge>
-            )}
+            <Badge variant={env?.hasSALES_INBOX || env?.hasPUBLIC_SALES_INBOX ? "outline" : "destructive"}>
+              Sales Inbox: {env?.hasSALES_INBOX || env?.hasPUBLIC_SALES_INBOX ? "OK" : "Missing"}
+            </Badge>
+            <Badge variant={env?.hasBASE_URL ? "outline" : "destructive"}>
+              Public Base URL: {env?.hasBASE_URL ? "OK" : "Missing"}
+            </Badge>
+            <Badge variant={env?.devSafeEmailsEnabled ? "secondary" : "outline"}>
+              Email Mode: {env?.devSafeEmailsEnabled ? "DEV SAFE (stubbed)" : "Live"}
+            </Badge>
           </div>
-          <p className="text-sm text-muted-foreground">
-            This is the admin-only area. Share the features/workflows you want here and I'll wire them up.
-          </p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="p-3 rounded-md border">
+              <div className="text-sm text-muted-foreground">Email Queue Depth</div>
+              <div className="text-xl font-semibold">{kpis.emailQueueDepth}</div>
+            </div>
+            <div className="p-3 rounded-md border">
+              <div className="text-sm text-muted-foreground">Overdue Approvals</div>
+              <div className="text-xl font-semibold">{kpis.overdueApprovals}</div>
+            </div>
+            <div className="p-3 rounded-md border">
+              <div className="text-sm text-muted-foreground">Cron Freshness</div>
+              <div className="text-xs text-muted-foreground">
+                {env?.cronLastProcessed ? new Date(env.cronLastProcessed).toLocaleString() : "Unknown"}
+              </div>
+            </div>
+          </div>
         </CardContent>
       </Card>
 
-      {/* Pending Requests (Super Admin only): pending list appears only if API returns data */}
+      {/* KPI Snapshot Row */}
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+        <Card>
+          <CardHeader className="pb-2"><CardTitle className="text-sm">Admins</CardTitle></CardHeader>
+          <CardContent><div className="text-2xl font-semibold">{kpis.admins}</div></CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2"><CardTitle className="text-sm">Pending Requests</CardTitle></CardHeader>
+          <CardContent><div className="text-2xl font-semibold">{kpis.pending}</div></CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2"><CardTitle className="text-sm">Flags Enabled</CardTitle></CardHeader>
+          <CardContent>
+            <div className="text-2xl font-semibold">{kpis.flagsEnabled}</div>
+            <div className="text-xs text-muted-foreground">of {kpis.flagsTotal}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2"><CardTitle className="text-sm">Email Queue</CardTitle></CardHeader>
+          <CardContent><div className="text-2xl font-semibold">{kpis.emailQueueDepth}</div></CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2"><CardTitle className="text-sm">SLA Overdue</CardTitle></CardHeader>
+          <CardContent><div className="text-2xl font-semibold">{kpis.overdueApprovals}</div></CardContent>
+        </Card>
+      </div>
+
+      {/* Feature Flags Panel */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Feature Flags</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-sm text-muted-foreground">
+            Manage global and tenant-specific feature flags. Toggling immediately updates availability.
+          </p>
+          <div className="rounded-md border overflow-hidden">
+            <div className="grid grid-cols-3 md:grid-cols-5 gap-2 p-3 bg-muted/40 text-xs font-medium">
+              <div>Name</div>
+              <div>Status</div>
+              <div>Rollout %</div>
+              <div className="hidden md:block">Scope</div>
+              <div className="text-right">Action</div>
+            </div>
+            <Separator />
+            <div className="divide-y">
+              {(flags || []).map((f) => (
+                <div key={f._id} className="grid grid-cols-3 md:grid-cols-5 gap-2 p-3 text-sm items-center">
+                  <div className="truncate">{f.flagName}</div>
+                  <div>
+                    <Badge variant={f.isEnabled ? "outline" : "secondary"}>
+                      {f.isEnabled ? "Enabled" : "Disabled"}
+                    </Badge>
+                  </div>
+                  <div>{typeof f.rolloutPercentage === "number" ? `${f.rolloutPercentage}%` : "—"}</div>
+                  <div className="hidden md:block">{f.businessId ? "Tenant" : "Global"}</div>
+                  <div className="text-right">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={async () => {
+                        try {
+                          const newVal = await toggleFlag({ flagId: f._id as any });
+                          toast.success(`Flag "${f.flagName}" is now ${newVal ? "Enabled" : "Disabled"}`);
+                        } catch (e: any) {
+                          toast.error(e?.message || "Failed to toggle flag");
+                        }
+                      }}
+                    >
+                      Toggle
+                    </Button>
+                  </div>
+                </div>
+              ))}
+              {(!flags || flags.length === 0) && (
+                <div className="p-3 text-sm text-muted-foreground">No flags configured yet.</div>
+              )}
+            </div>
+          </div>
+          <div className="text-xs text-muted-foreground">
+            Usage events observed: {flagAnalytics?.usageEvents ?? 0}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Pending Senior Admin Requests (if any) */}
       {(pending && pending.length > 0) && (
         <Card>
           <CardHeader>
@@ -225,6 +362,7 @@ export default function AdminPage() {
         </Card>
       )}
 
+      {/* Administrators Table */}
       <Card>
         <CardHeader>
           <CardTitle>Administrators</CardTitle>
