@@ -255,3 +255,48 @@ export const winsSummary = query({
     };
   },
 });
+
+// Admin-only: list most recent audit events across all tenants
+export const listRecent = query({
+  args: {
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity?.email) {
+      throw new Error("[ERR_NOT_AUTHENTICATED] Admin access required.");
+    }
+
+    const email = identity.email.toLowerCase();
+
+    // Check admins table
+    const admin = await ctx.db
+      .query("admins")
+      .withIndex("by_email", (q) => q.eq("email", email))
+      .unique();
+
+    // Check allowlist env
+    const allowlist = (process.env.ADMIN_EMAILS || "")
+      .split(",")
+      .map((e) => e.trim().toLowerCase())
+      .filter(Boolean);
+
+    const isAllowedByEnv = allowlist.includes(email);
+    const hasAdminRole =
+      !!admin && admin.role !== "pending_senior"; // pending_senior does not grant access
+
+    if (!hasAdminRole && !isAllowedByEnv) {
+      throw new Error("[ERR_FORBIDDEN] Admin access required.");
+    }
+
+    const limit = Math.max(1, Math.min(args.limit ?? 100, 500));
+
+    const logs = await ctx.db
+      .query("audit_logs")
+      .withIndex("by_created_at")
+      .order("desc")
+      .take(limit);
+
+    return logs;
+  },
+});

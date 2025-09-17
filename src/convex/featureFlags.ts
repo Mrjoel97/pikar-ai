@@ -1,6 +1,5 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import { Doc } from "./_generated/dataModel";
 
 // Make getFeatureFlags fully guest-safe; never require auth and never throw
 export const getFeatureFlags = query({
@@ -207,5 +206,46 @@ export const getFeatureFlagAnalytics = query({
     } catch {
       return { flags: [], totalFlags: 0, enabledFlags: 0, usageEvents: 0 };
     }
+  },
+});
+
+export const updateFeatureFlag = mutation({
+  args: {
+    flagId: v.id("featureFlags"),
+    rolloutPercentage: v.optional(v.number()),
+    businessId: v.optional(v.union(v.id("businesses"), v.null())),
+    isEnabled: v.optional(v.boolean()),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Not authenticated");
+    }
+
+    const flag = await ctx.db.get(args.flagId);
+    if (!flag) throw new Error("Feature flag not found");
+
+    const patch: Record<string, any> = { updatedAt: Date.now() };
+
+    if (typeof args.rolloutPercentage === "number") {
+      const pct = Math.max(0, Math.min(100, args.rolloutPercentage));
+      patch.rolloutPercentage = pct;
+    }
+
+    if (typeof args.isEnabled === "boolean") {
+      patch.isEnabled = args.isEnabled;
+    }
+
+    if ("businessId" in args) {
+      // Null => make global (remove tenant scope). Otherwise set specific tenant.
+      if (args.businessId === null) {
+        patch.businessId = undefined;
+      } else {
+        patch.businessId = args.businessId;
+      }
+    }
+
+    await ctx.db.patch(args.flagId, patch);
+    return true;
   },
 });
