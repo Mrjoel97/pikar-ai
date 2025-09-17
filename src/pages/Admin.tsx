@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -11,13 +11,15 @@ import { useMemo } from "react";
 
 export default function AdminPage() {
   const navigate = useNavigate();
-  const [adminToken, setAdminToken] = useState<string | null>(null);
-
-  // Load admin token from localStorage on mount
-  useEffect(() => {
-    const token = localStorage.getItem("adminSessionToken");
-    setAdminToken(token);
-  }, []);
+  const [adminToken, setAdminToken] = useState<string | null>(() => {
+    try {
+      return typeof window !== "undefined"
+        ? localStorage.getItem("adminSessionToken")
+        : null;
+    } catch {
+      return null;
+    }
+  });
 
   // Validate admin session
   const adminSession = useQuery(
@@ -32,7 +34,7 @@ export default function AdminPage() {
   const approveSenior = useMutation(api.admin.approveSeniorAdmin);
 
   // Determine if user has admin access via either method
-  const hasAdminAccess = (adminSession?.valid && adminSession.email) || isAdmin;
+  const hasAdminAccess = Boolean((adminSession?.valid && adminSession.email) || isAdmin);
   const adminRole = adminSession?.valid ? adminSession.role : null;
   const isAdminSession = adminSession?.valid || false;
 

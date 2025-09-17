@@ -73,8 +73,12 @@ export const ensureAdminRole = internalMutation({
 
 // Public query (NON-Node file)
 export const validateSession = query({
-  args: { token: v.string() },
+  args: { token: v.optional(v.string()) },
   handler: async (ctx, args) => {
+    if (!args.token) {
+      return { valid: false };
+    }
+
     const session = await ctx.db
       .query("adminSessions")
       .withIndex("by_token", (q: any) => q.eq("token", args.token))
