@@ -298,6 +298,32 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
                           <UserX className="mr-2 h-4 w-4" />
                           Continue as Guest
                         </Button>
+
+                        <div className="mt-4 text-center text-xs sm:text-sm">
+                          {authMode === "signup" ? (
+                            <span className="text-muted-foreground">
+                              Already have an account?{" "}
+                              <button
+                                type="button"
+                                onClick={() => setAuthMode("login")}
+                                className="text-primary underline underline-offset-4 hover:opacity-90"
+                              >
+                                Log in
+                              </button>
+                            </span>
+                          ) : (
+                            <span className="text-muted-foreground">
+                              New here?{" "}
+                              <button
+                                type="button"
+                                onClick={() => setAuthMode("signup")}
+                                className="text-primary underline underline-offset-4 hover:opacity-90"
+                              >
+                                Create an account
+                              </button>
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </CardContent>
                   </form>
