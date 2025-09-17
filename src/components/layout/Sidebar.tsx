@@ -1,5 +1,5 @@
 import { Input } from "@/components/ui/input";
-import { LogOut, CheckCircle, Target, ListChecks } from "lucide-react";
+import { LogOut } from "lucide-react";
 import React from "react";
 
 type NavItem = { label: string; icon: React.ComponentType<any>; to: string };
@@ -73,6 +73,22 @@ export function Sidebar({
             <span className="text-sm">Logout</span>
           </button>
         </div>
+
+        {/* Settings Shortcut */}
+        <a
+          href="/settings"
+          onClick={(e) => {
+            e.preventDefault();
+            onNavigate("/settings");
+          }}
+          className="flex items-center gap-2 px-3 py-2 rounded-md text-sm hover:bg-accent hover:text-accent-foreground"
+          data-testid="sidebar-settings-link"
+          aria-label="Open settings"
+          role="button"
+        >
+          <span className="i-lucide-settings w-4 h-4" />
+          <span>Settings</span>
+        </a>
       </div>
     </aside>
   );

@@ -248,6 +248,49 @@ export default defineSchema({
     .index("by_business_unit", ["businessId", "unit"])
     .index("by_business_channel", ["businessId", "channel"]),
 
+  // Added: Table for workflow execution runs used by activity, telemetry, entitlements, etc.
+  workflowRuns: defineTable({
+    workflowId: v.id("workflows"),
+    businessId: v.id("businesses"),
+    status: v.union(
+      v.literal("queued"),
+      v.literal("running"),
+      v.literal("succeeded"),
+      v.literal("failed")
+    ),
+    // execution mode (optional)
+    mode: v.optional(v.union(v.literal("auto"), v.literal("manual"))),
+    errorMessage: v.optional(v.string()),
+    startedAt: v.number(),
+    completedAt: v.optional(v.number()),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_workflow", ["workflowId"]),
+
+  // Added: Table for workflow templates (used by template pinning and seeding)
+  workflowTemplates: defineTable({
+    name: v.string(),
+    description: v.optional(v.string()),
+    tier: v.optional(v.string()),
+    category: v.optional(v.string()),
+    createdBy: v.optional(v.id("users")),
+    // Add optional fields to match existing seeded documents
+    industryTags: v.optional(v.array(v.string())),
+    recommendedAgents: v.optional(v.array(v.string())),
+    // Accept legacy 'tags' on existing documents
+    tags: v.optional(v.array(v.string())),
+    steps: v.optional(
+      v.array(
+        v.object({
+          title: v.string(),
+          type: v.string(),
+          agentType: v.optional(v.string()),
+          config: v.optional(v.any()),
+        })
+      )
+    ),
+  }).index("by_name", ["name"]),
+
   // Feature Flag System
   featureFlags: defineTable({
     businessId: v.optional(v.id("businesses")),
@@ -356,7 +399,9 @@ export default defineSchema({
       approvals: v.boolean(),
       slaWarnings: v.boolean(),
       integrationErrors: v.boolean(),
-      workflowColpmetions: v.boolean(),
+      // Accept legacy misspelling from historical documents to prevent schema validation failures
+      workflowColpmetions: v.optional(v.boolean()),
+      workflowCompletions: v.boolean(),
       systemAlerts: v.boolean(),
     }),
     rateLimits: v.object({
@@ -922,4 +967,5 @@ export default defineSchema({
     createdAt: v.number(),
   })
     .index("by_user_and_time", ["userId", "scheduledAt"]),
+
 });

@@ -299,56 +299,6 @@ export default function Dashboard() {
           </Card>
         )}
 
-        {/* System Health strip (auth only) */}
-        {!guestMode && slaSummary && (
-          <Card className="mb-6 border-slate-200 bg-white">
-            <CardContent className="p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-              <div className="flex flex-wrap items-center gap-2">
-                <Badge
-                  variant="outline"
-                  className={
-                    slaSummary.hasRESEND ? "border-emerald-300 text-emerald-700" : "border-amber-400 text-amber-700"
-                  }
-                >
-                  Email: {slaSummary.hasRESEND ? "Configured" : "Missing RESEND_API_KEY"}
-                </Badge>
-                <Badge
-                  variant="outline"
-                  className={
-                    slaSummary.hasBASE_URL ? "border-emerald-300 text-emerald-700" : "border-amber-400 text-amber-700"
-                  }
-                >
-                  Base URL: {slaSummary.hasBASE_URL ? "OK" : "Missing VITE_PUBLIC_BASE_URL"}
-                </Badge>
-                <Badge
-                  variant="outline"
-                  className={
-                    slaSummary.emailQueueDepth > 100
-                      ? "border-red-300 text-red-700"
-                      : "border-emerald-300 text-emerald-700"
-                  }
-                >
-                  Queue: {slaSummary.emailQueueDepth}
-                </Badge>
-                {typeof slaSummary.cronLastProcessed === "number" && (
-                  <Badge variant="outline" className="border-slate-300 text-slate-700">
-                    Cron: {Math.max(0, Math.floor((Date.now() - slaSummary.cronLastProcessed) / 60000))}m ago
-                  </Badge>
-                )}
-              </div>
-              <div className="text-xs text-slate-500">
-                Status helps ensure timely sends and approvals.{" "}
-                <button
-                  className="underline"
-                  onClick={() => logTelemetry("health_strip_view_details")}
-                >
-                  Learn more
-                </button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
         {/* Add: Solopreneur quick-start card */}
         {effectiveTier === "solopreneur" && (
           <Card className="mb-6 border-emerald-200 bg-white">

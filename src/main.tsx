@@ -22,6 +22,7 @@ import PricingPage from "./pages/Pricing.tsx";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { toast } from "sonner";
+import SettingsPage from "@/pages/Settings.tsx";
 
 class ErrorBoundary extends Component<
   { children: React.ReactNode },
@@ -144,6 +145,7 @@ createRoot(document.getElementById("root")!).render(
               <Route path="/workflows/templates" element={<WorkflowTemplatesPage />} />
               <Route path="/business" element={<BusinessPage />} />
               <Route path="/analytics" element={<AnalyticsPage />} />
+              <Route path="/settings" element={<SettingsPage />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
