@@ -216,12 +216,12 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
                           size="icon"
                           disabled={isLoading || !isValidEmail}
                           aria-label="Send verification code"
-                          className="neu-raised rounded-xl bg-emerald-700 hover:bg-emerald-600 text-white shadow"
+                          className="neu-raised rounded-xl bg-white hover:bg-emerald-50 text-emerald-700 shadow border border-emerald-200"
                         >
                           {isLoading ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
+                            <Loader2 className="h-4 w-4 animate-spin text-emerald-600" />
                           ) : (
-                            <ArrowRight className="h-5 w-5 text-white" />
+                            <ArrowRight className="h-5 w-5 text-emerald-600" />
                           )}
                         </Button>
                       </div>
