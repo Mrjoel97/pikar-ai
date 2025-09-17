@@ -12,9 +12,16 @@ export default function AdminPage() {
   const navigate = useNavigate();
   const isAdmin = useQuery(api.admin.getIsAdmin, {} as any);
   const ensureAdmin = useMutation(api.admin.ensureAdminSelf);
-  const admins = useQuery(api.admin.listAdmins as any, isAdmin ? {} : undefined) as
-    | Array<{ email: string; role: string; _id: string }>
-    | undefined;
+  const requestSenior = useMutation(api.admin.requestSeniorAdmin);
+  const approveSenior = useMutation(api.admin.approveSeniorAdmin);
+  const pending = useQuery(
+    api.admin.listPendingAdminRequests as any,
+    isAdmin ? {} : undefined
+  ) as Array<{ email: string; role: string; _id: string }> | undefined;
+  const adminList = useQuery(
+    api.admin.listAdmins as any,
+    isAdmin ? {} : undefined
+  ) as Array<{ _id: string; email: string; role: string }> | undefined;
 
   if (isAdmin === undefined) {
     return (
@@ -35,28 +42,43 @@ export default function AdminPage() {
           </CardHeader>
           <CardContent className="space-y-3">
             <p className="text-sm text-muted-foreground">
-              You don’t have access to the Admin Panel.
+              You don't have access to the Admin Panel.
             </p>
             <p className="text-xs text-muted-foreground">
-              If your email is in the ADMIN_EMAILS allowlist (comma-separated), you can claim admin:
+              If your email is in the ADMIN_EMAILS allowlist (comma-separated), you can claim super admin:
             </p>
-            <Button
-              variant="outline"
-              onClick={async () => {
-                try {
-                  await ensureAdmin({});
-                  toast.success("Admin access claimed. Reloading...");
-                  window.location.reload();
-                } catch (e: any) {
-                  toast.error(e?.message || "Failed to claim admin");
-                }
-              }}
-            >
-              Claim Admin (Allowlist)
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant="outline"
+                onClick={async () => {
+                  try {
+                    await ensureAdmin({});
+                    toast.success("Admin access claimed. Reloading...");
+                    window.location.reload();
+                  } catch (e: any) {
+                    toast.error(e?.message || "Failed to claim admin");
+                  }
+                }}
+              >
+                Claim Super Admin (Allowlist)
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={async () => {
+                  try {
+                    await requestSenior({});
+                    toast.success("Requested Senior Admin access. A Super Admin must approve.");
+                  } catch (e: any) {
+                    toast.error(e?.message || "Failed to request Senior Admin");
+                  }
+                }}
+              >
+                Request Senior Admin
+              </Button>
+            </div>
             <Separator />
-            <Button variant="secondary" onClick={() => navigate("/")}>
-              Back to Home
+            <Button variant="secondary" onClick={() => navigate("/auth")}>
+              Sign in / Create Account
             </Button>
           </CardContent>
         </Card>
@@ -84,10 +106,58 @@ export default function AdminPage() {
             </Badge>
           </div>
           <p className="text-sm text-muted-foreground">
-            This is the admin-only area. Share the features/workflows you want here and I’ll wire them up.
+            This is the admin-only area. Share the features/workflows you want here and I'll wire them up.
           </p>
         </CardContent>
       </Card>
+
+      {/* Pending Requests (Super Admin only): pending list appears only if API returns data */}
+      {(pending && pending.length > 0) && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Pending Senior Admin Requests</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Approve requests to grant Senior Admin privileges.
+            </p>
+            <div className="rounded-md border">
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-2 p-3 bg-muted/40 text-xs font-medium">
+                <div>Email</div>
+                <div>Status</div>
+                <div className="hidden md:block">Action</div>
+              </div>
+              <Separator />
+              <div className="divide-y">
+                {pending.map((p) => (
+                  <div key={p._id} className="grid grid-cols-2 md:grid-cols-3 gap-2 p-3 text-sm items-center">
+                    <div>{p.email}</div>
+                    <div>
+                      <Badge variant="outline">Pending</Badge>
+                    </div>
+                    <div className="hidden md:flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="default"
+                        onClick={async () => {
+                          try {
+                            await approveSenior({ email: p.email });
+                            toast.success(`Approved ${p.email} as Senior Admin`);
+                          } catch (e: any) {
+                            toast.error(e?.message || "Approval failed");
+                          }
+                        }}
+                      >
+                        Approve
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>
@@ -105,7 +175,7 @@ export default function AdminPage() {
             </div>
             <Separator />
             <div className="divide-y">
-              {(admins || []).map((a) => (
+              {(adminList || []).map((a) => (
                 <div key={a._id} className="grid grid-cols-2 md:grid-cols-3 gap-2 p-3 text-sm">
                   <div>{a.email}</div>
                   <div>
@@ -114,7 +184,7 @@ export default function AdminPage() {
                   <div className="hidden md:block text-muted-foreground">{a._id}</div>
                 </div>
               ))}
-              {(!admins || admins.length === 0) && (
+              {(!adminList || adminList.length === 0) && (
                 <div className="p-3 text-sm text-muted-foreground">No admins found yet.</div>
               )}
             </div>

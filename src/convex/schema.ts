@@ -993,7 +993,12 @@ export default defineSchema({
 
   admins: defineTable({
     email: v.string(),
-    role: v.union(v.literal("superadmin"), v.literal("admin")),
+    role: v.union(
+      v.literal("superadmin"),
+      v.literal("senior"),
+      v.literal("pending_senior"),
+      v.literal("admin"),
+    ),
     createdAt: v.number(),
   })
     .index("by_email", ["email"]),
