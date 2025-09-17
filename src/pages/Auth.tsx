@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/input-otp";
 
 import { useAuth } from "@/hooks/use-auth";
-import { ArrowRight, Loader2, Mail, UserX } from "lucide-react";
+import { ArrowRight, Loader2, Mail, UserX, Brain } from "lucide-react";
 import { Suspense, useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -181,12 +181,8 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
                 <>
                   <CardHeader className="text-center">
                     <div className="flex justify-center">
-                      <img
-                        src="./logo.svg"
-                        alt="Lock Icon"
-                        width={64}
-                        height={64}
-                        className="rounded-xl mb-4 mt-4 cursor-pointer bg-primary/10 p-2"
+                      <Brain
+                        className="h-16 w-16 rounded-xl mb-4 mt-4 cursor-pointer bg-primary/10 p-2"
                         onClick={() => navigate("/")}
                       />
                     </div>
