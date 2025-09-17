@@ -212,15 +212,16 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
                         </div>
                         <Button
                           type="submit"
-                          variant="outline"
+                          variant="default"
                           size="icon"
                           disabled={isLoading || !isValidEmail}
-                          className="neu-flat rounded-xl text-emerald-50 border-emerald-300/70 hover:bg-emerald-700"
+                          aria-label="Send verification code"
+                          className="neu-raised rounded-xl bg-emerald-700 hover:bg-emerald-600 text-white shadow"
                         >
                           {isLoading ? (
                             <Loader2 className="h-4 w-4 animate-spin" />
                           ) : (
-                            <ArrowRight className="h-4 w-4 text-white" />
+                            <ArrowRight className="h-5 w-5 text-white" />
                           )}
                         </Button>
                       </div>
