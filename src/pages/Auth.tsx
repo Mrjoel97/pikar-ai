@@ -220,7 +220,7 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
                           {isLoading ? (
                             <Loader2 className="h-4 w-4 animate-spin" />
                           ) : (
-                            <ArrowRight className="h-4 w-4" />
+                            <ArrowRight className="h-4 w-4 text-white" />
                           )}
                         </Button>
                       </div>
