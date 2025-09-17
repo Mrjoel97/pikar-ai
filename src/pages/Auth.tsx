@@ -161,33 +161,6 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
   return (
     <div className="min-h-screen flex items-center justify-center px-4 py-10">
       <div className="w-full max-w-md space-y-4 md:space-y-6">
-        {/* Add: top helper toggle for returning/new users */}
-        <div className="flex items-center justify-end text-xs sm:text-sm">
-          {authMode === "signup" ? (
-            <span className="text-muted-foreground">
-              Already have an account?{" "}
-              <button
-                type="button"
-                onClick={() => setAuthMode("login")}
-                className="text-primary underline underline-offset-4 hover:opacity-90"
-              >
-                Log in
-              </button>
-            </span>
-          ) : (
-            <span className="text-muted-foreground">
-              New here?{" "}
-              <button
-                type="button"
-                onClick={() => setAuthMode("signup")}
-                className="text-primary underline underline-offset-4 hover:opacity-90"
-              >
-                Create an account
-              </button>
-            </span>
-          )}
-        </div>
-
         {/* Optional: light heading to reflect mode without disrupting existing Card header */}
         <div className="text-center">
           <h2 className="text-2xl font-semibold tracking-tight">
