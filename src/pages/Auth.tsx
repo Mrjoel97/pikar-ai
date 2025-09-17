@@ -22,13 +22,16 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+/* removed duplicate useEffect import */
+import { useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
 
 interface AuthProps {
   redirectAfterAuth?: string;
 }
 
 function Auth({ redirectAfterAuth }: AuthProps = {}) {
-  const { isLoading: authLoading, isAuthenticated, signIn } = useAuth();
+  const { isAuthenticated, authLoading, signIn } = useAuth();
   const navigate = useNavigate();
   const [step, setStep] = useState<"signIn" | { email: string }>("signIn");
   const [otp, setOtp] = useState("");
@@ -43,12 +46,25 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
   const [guestDialogOpen, setGuestDialogOpen] = useState(false);
   const [guestTier, setGuestTier] = useState<"solopreneur" | "startup" | "sme" | "enterprise" | "">("");
 
+  // Add: onboarding status query (skip until authenticated)
+  const onboardingStatus = useQuery(
+    api.onboarding.getOnboardingStatus,
+    isAuthenticated ? {} : undefined
+  );
+
   useEffect(() => {
+    if (authLoading) return;
+    if (!isAuthenticated) return;
+    // If authenticated and onboarding status says we need onboarding, route there
+    if (onboardingStatus && onboardingStatus.needsOnboarding) {
+      navigate("/onboarding");
+      return;
+    }
     if (!authLoading && isAuthenticated) {
       const redirect = redirectAfterAuth || "/";
       navigate(redirect);
     }
-  }, [authLoading, isAuthenticated, navigate, redirectAfterAuth]);
+  }, [isAuthenticated, authLoading, onboardingStatus, navigate, redirectAfterAuth]);
 
   const handleEmailSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();

@@ -12,7 +12,7 @@ async function assertCanManageBusiness(ctx: any, businessId: any) {
   const email = identity.email.toLowerCase();
   const user = await ctx.db
     .query("users")
-    .withIndex("by_email", (q: any) => q.eq("email", email))
+    .withIndex("email", (q: any) => q.eq("email", email))
     .unique();
   if (!user?._id) throw new Error("Forbidden");
 
