@@ -76,7 +76,13 @@ export default function AdminPage() {
   const updateFlag = useMutation(api.featureFlags.updateFeatureFlag);
   const recentAudits = useQuery(
     api.audit.listRecent as any,
-    hasAdminAccess ? { limit: 200 } : undefined
+    hasAdminAccess
+      ? (
+          isAdminSession
+            ? { limit: 200, adminToken }  // pass token when using independent Admin Portal session
+            : { limit: 200 }              // user-based admin
+        )
+      : undefined
   ) as
     | Array<{
         _id: string;

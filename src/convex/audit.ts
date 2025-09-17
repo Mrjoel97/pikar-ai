@@ -1,5 +1,6 @@
 import { internalMutation, query, mutation } from "./_generated/server";
 import { v } from "convex/values";
+import { api } from "./_generated/api";
 
 /**
  * Internal writer for audit logs. Use from other mutations:
@@ -260,37 +261,55 @@ export const winsSummary = query({
 export const listRecent = query({
   args: {
     limit: v.optional(v.number()),
+    // Add: optional admin token to support independent Admin Portal sessions
+    adminToken: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity?.email) {
-      throw new Error("[ERR_NOT_AUTHENTICATED] Admin access required.");
+    // If an adminToken is provided, validate it via the independent Admin Portal
+    if (args.adminToken) {
+      try {
+        const res = await ctx.runQuery(api.adminAuthData.validateSession as any, { token: args.adminToken });
+        if (res?.valid === true) {
+          const limit = Math.max(1, Math.min(args.limit ?? 100, 500));
+          const logs = await ctx.db
+            .query("audit_logs")
+            .withIndex("by_created_at")
+            .order("desc")
+            .take(limit);
+          return logs;
+        }
+      } catch {
+        // fall through to user-based auth checks
+      }
     }
 
+    // Fallback: user-based admin authorization; make guest-safe by returning [] instead of throwing
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity?.email) {
+      // Guest-safe: no admin session and not signed in => return empty list
+      return [];
+    }
     const email = identity.email.toLowerCase();
 
-    // Check admins table
     const admin = await ctx.db
       .query("admins")
       .withIndex("by_email", (q) => q.eq("email", email))
       .unique();
 
-    // Check allowlist env
     const allowlist = (process.env.ADMIN_EMAILS || "")
       .split(",")
       .map((e) => e.trim().toLowerCase())
       .filter(Boolean);
 
     const isAllowedByEnv = allowlist.includes(email);
-    const hasAdminRole =
-      !!admin && admin.role !== "pending_senior"; // pending_senior does not grant access
+    const hasAdminRole = !!admin && admin.role !== "pending_senior";
 
     if (!hasAdminRole && !isAllowedByEnv) {
-      throw new Error("[ERR_FORBIDDEN] Admin access required.");
+      // Guest-safe: signed-in but not an admin => return empty list
+      return [];
     }
 
     const limit = Math.max(1, Math.min(args.limit ?? 100, 500));
-
     const logs = await ctx.db
       .query("audit_logs")
       .withIndex("by_created_at")

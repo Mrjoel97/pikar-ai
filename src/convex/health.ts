@@ -28,14 +28,13 @@ export const envStatus = query({
     
     const emailQueueDepth = queuedEmails.length + scheduledEmails.length + sendingEmails.length;
     
-    // Cron last processed - use latest audit log by createdAt (best-effort)
-    const cronAudit = await ctx.db
+    // Cron last processed - compute latest by _creationTime without requiring a custom index
+    const lastAudit = await ctx.db
       .query("audit_logs")
-      .withIndex("by_created_at")
       .order("desc")
       .first();
-    
-    const cronLastProcessed = cronAudit?._creationTime || null;
+
+    const cronLastProcessed = lastAudit?._creationTime ?? null;
     
     // Overdue approvals count
     const now = Date.now();
