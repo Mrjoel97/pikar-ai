@@ -106,17 +106,17 @@ export const getByOwner = query({
   args: {},
   handler: async (ctx) => {
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
+    if (!identity?.email) {
+      return [];
     }
 
     const user = await ctx.db
       .query("users")
-      .withIndex("by_email", (q) => q.eq("email", identity.email!))
+      .withIndex("by_email", (q) => q.eq("email", identity.email))
       .first();
-    
+
     if (!user) {
-      throw new Error("User not found");
+      return [];
     }
 
     return await ctx.db
@@ -130,17 +130,17 @@ export const getById = query({
   args: { id: v.id("businesses") },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
+    if (!identity?.email) {
+      return null;
     }
 
     const user = await ctx.db
       .query("users")
-      .withIndex("by_email", (q) => q.eq("email", identity.email!))
+      .withIndex("by_email", (q) => q.eq("email", identity.email))
       .first();
-    
+
     if (!user) {
-      throw new Error("User not found");
+      return null;
     }
 
     const business = await ctx.db.get(args.id);
@@ -149,7 +149,7 @@ export const getById = query({
     }
 
     if (business.ownerId !== user._id && !business.teamMembers.includes(user._id)) {
-      throw new Error("Not authorized to access this business");
+      return null;
     }
 
     return business;
@@ -314,8 +314,9 @@ export const currentUserBusiness = query({
   args: {},
   handler: async (ctx) => {
     const identity = await ctx.auth.getUserIdentity();
+    // Return null for guests/unauthenticated users instead of throwing
     if (!identity) {
-      throw new Error("Not authenticated");
+      return null;
     }
 
     const user = await ctx.db
@@ -323,8 +324,9 @@ export const currentUserBusiness = query({
       .withIndex("by_email", (q) => q.eq("email", identity.email!))
       .first();
     
+    // Return null if user not found (graceful for guest-like states)
     if (!user) {
-      throw new Error("User not found");
+      return null;
     }
 
     let business = await ctx.db
