@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { useNavigate } from "react-router";
-import { useQuery, useAction } from "convex/react";
+import { useQuery, useAction, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -17,6 +17,22 @@ export default function SettingsPage() {
   const sendSalesInquiry = useAction(api.emailsActions.sendSalesInquiry);
   const sendTestEmailAction = useAction(api.emailsActions.sendTestEmail);
   const business = useQuery(api.businesses.currentUserBusiness, {} as any);
+
+  const workspace = useQuery(
+    api.emailConfig.getForBusinessSummary as any,
+    business?._id ? { businessId: business._id } : undefined
+  ) as
+    | {
+        hasResendKey: boolean;
+        salesInbox: string | null;
+        publicBaseUrl: string | null;
+        fromEmail: string | null;
+        fromName: string | null;
+        replyTo: string | null;
+      }
+    | undefined;
+
+  const saveWorkspace = useMutation(api.emailConfig.saveForBusiness as any);
 
   const status = env ?? {};
   const baseUrlOk = Boolean(status.hasBASE_URL ?? status.hasPublicBaseUrl);
@@ -50,6 +66,23 @@ export default function SettingsPage() {
   const [testSubject, setTestSubject] = useState("Pikar AI Test Email");
   const [sendingInboxTest, setSendingInboxTest] = useState(false);
   const [sendingTestEmail, setSendingTestEmail] = useState(false);
+
+  // Workspace form state
+  const [wsResendKey, setWsResendKey] = useState("");
+  const [wsFromEmail, setWsFromEmail] = useState("");
+  const [wsFromName, setWsFromName] = useState("");
+  const [wsReplyTo, setWsReplyTo] = useState("");
+  const [wsSalesInbox, setWsSalesInbox] = useState("");
+  const [wsBaseUrl, setWsBaseUrl] = useState("");
+
+  React.useEffect(() => {
+    if (!workspace) return;
+    setWsFromEmail(workspace.fromEmail || "");
+    setWsFromName(workspace.fromName || "");
+    setWsReplyTo(workspace.replyTo || "");
+    setWsSalesInbox(workspace.salesInbox || "");
+    setWsBaseUrl(workspace.publicBaseUrl || "");
+  }, [workspace?._creationTime, !!workspace]);
 
   // Simple validator
   function isEmail(s: string) {
@@ -128,6 +161,30 @@ export default function SettingsPage() {
       }
     } else {
       toast.error("No Base URL detected in frontend env (VITE_PUBLIC_BASE_URL).");
+    }
+  }
+
+  async function handleSaveWorkspace() {
+    if (!business?._id) {
+      toast.error("Sign in to save workspace settings.");
+      return;
+    }
+    try {
+      toast("Saving workspace email settings...");
+      await saveWorkspace({
+        businessId: business._id,
+        // Only send fields if provided; send null to clear
+        resendApiKey: wsResendKey ? wsResendKey : undefined,
+        fromEmail: wsFromEmail || null,
+        fromName: wsFromName || null,
+        replyTo: wsReplyTo || null,
+        salesInbox: wsSalesInbox || null,
+        publicBaseUrl: wsBaseUrl || null,
+      });
+      setWsResendKey("");
+      toast.success("Workspace email settings saved.");
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to save workspace settings");
     }
   }
 
@@ -229,6 +286,96 @@ export default function SettingsPage() {
               </Button>
             </div>
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Workspace Email Settings</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge variant="outline" className={workspace?.hasResendKey ? "border-emerald-300 text-emerald-700" : "border-amber-400 text-amber-700"}>
+              Workspace Resend Key: {workspace?.hasResendKey ? "Configured" : "Missing"}
+            </Badge>
+            <Badge variant="outline" className={wsSalesInbox ? "border-emerald-300 text-emerald-700" : "border-amber-400 text-amber-700"}>
+              Workspace Sales Inbox: {wsSalesInbox ? "Configured" : "Missing"}
+            </Badge>
+            <Badge variant="outline" className={wsBaseUrl ? "border-emerald-300 text-emerald-700" : "border-amber-400 text-amber-700"}>
+              Workspace Base URL: {wsBaseUrl ? "Configured" : "Missing"}
+            </Badge>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="wsResend">Resend API Key (workspace)</Label>
+              <Input
+                id="wsResend"
+                type="password"
+                placeholder="re_********************************"
+                value={wsResendKey}
+                onChange={(e) => setWsResendKey(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">
+                Used for your own emails. Not shown after save for security.
+              </p>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="wsSalesInbox">Sales Inbox (workspace)</Label>
+              <Input
+                id="wsSalesInbox"
+                placeholder="sales@yourdomain.com"
+                value={wsSalesInbox}
+                onChange={(e) => setWsSalesInbox(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="wsBaseUrl">Public Base URL (workspace)</Label>
+              <Input
+                id="wsBaseUrl"
+                placeholder="https://app.yourdomain.com"
+                value={wsBaseUrl}
+                onChange={(e) => setWsBaseUrl(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="wsFromEmail">Default From Email</Label>
+              <Input
+                id="wsFromEmail"
+                placeholder="noreply@yourdomain.com"
+                value={wsFromEmail}
+                onChange={(e) => setWsFromEmail(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="wsFromName">Default From Name</Label>
+              <Input
+                id="wsFromName"
+                placeholder="Your Brand"
+                value={wsFromName}
+                onChange={(e) => setWsFromName(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="wsReplyTo">Default Reply-To</Label>
+              <Input
+                id="wsReplyTo"
+                placeholder="support@yourdomain.com"
+                value={wsReplyTo}
+                onChange={(e) => setWsReplyTo(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Button size="sm" onClick={handleSaveWorkspace}>
+              Save Workspace Settings
+            </Button>
+          </div>
+
+          <p className="text-xs text-muted-foreground">
+            Workspace settings override global env for your own sends. Admin communications keep using the platform's global configuration.
+          </p>
         </CardContent>
       </Card>
 

@@ -37,15 +37,20 @@ export const sendTestEmail = action({
   handler: async (ctx, args) => {
     const DEV_SAFE = process.env.DEV_SAFE_EMAILS === "true";
 
+    // Prefer per-business Resend key, fallback to global
+    const cfg: any = await ctx.runQuery(internal.emailConfig.getByBusiness, {
+      businessId: args.businessId,
+    });
+    const RESEND_KEY: string | undefined = (cfg?.resendApiKey as string | undefined) || process.env.RESEND_API_KEY;
+
     // Safe stub if not configured and DEV_SAFE_EMAILS enabled
-    if (!process.env.RESEND_API_KEY) {
+    if (!RESEND_KEY) {
       if (DEV_SAFE) {
         console.warn("[EMAIL][STUB] RESEND_API_KEY missing. Stubbing test email send.", {
           to: args.to,
           subject: args.subject,
         });
 
-        // Still record unsubscribe token for link generation parity
         await ctx.runMutation(internal.emails.ensureTokenMutation, {
           businessId: args.businessId,
           email: args.to,
@@ -56,8 +61,7 @@ export const sendTestEmail = action({
       throw new Error("RESEND_API_KEY not configured");
     }
 
-    // Instantiate Resend per-call to pick up latest key
-    const resend = new Resend(process.env.RESEND_API_KEY!);
+    const resend: Resend = new Resend(RESEND_KEY);
 
     // Generate (or reuse) unsubscribe token for recipient
     const token = await ctx.runMutation(internal.emails.ensureTokenMutation, {
@@ -93,7 +97,7 @@ export const sendTestEmail = action({
       unsubscribeUrl,
     });
 
-    const { data, error } = await resend.emails.send({
+    const { data, error }: { data: any; error: any } = await resend.emails.send({
       from: args.fromName ? `${args.fromName} <${args.fromEmail}>` : args.fromEmail,
       to: [args.to],
       subject: args.subject,
@@ -152,9 +156,12 @@ export const sendCampaignInternal = internalAction({
         return;
       }
 
-      const RESEND_KEY = process.env.RESEND_API_KEY;
+      const cfg: any = await ctx.runQuery(internal.emailConfig.getByBusiness, {
+        businessId: campaign.businessId,
+      });
+      const RESEND_KEY: string | undefined = (cfg?.resendApiKey as string | undefined) || process.env.RESEND_API_KEY;
       const devSafeEmails = process.env.DEV_SAFE_EMAILS === "true";
-      const resend = RESEND_KEY ? new Resend(RESEND_KEY) : null;
+      const resend: Resend | null = RESEND_KEY ? new Resend(RESEND_KEY) : null;
       const sendIds: string[] = [];
       let successCount = 0;
       let lastError: string | undefined;
@@ -189,12 +196,12 @@ export const sendCampaignInternal = internalAction({
             continue;
           }
 
-          const { data, error } = await resend.emails.send({
-            from: campaign.fromEmail || "noreply@pikar.ai",
+          const { data, error }: { data: any; error: any } = await resend!.emails.send({
+            from: campaign.fromEmail || cfg?.fromEmail || "noreply@pikar.ai",
             to: [targetEmail],
             subject: campaign.subject,
             html: campaign.htmlContent || campaign.body || "",
-            reply_to: campaign.fromEmail || "noreply@pikar.ai",
+            reply_to: campaign.fromEmail || cfg?.replyTo || cfg?.fromEmail || "noreply@pikar.ai",
           });
 
           if (error) {
@@ -274,6 +281,7 @@ export const sendSalesInquiry = action({
     message: v.string(),
   },
   handler: async (ctx, args) => {
+    // NOTE: Always use global env for admin communications
     const inbox = process.env.SALES_INBOX || process.env.PUBLIC_SALES_INBOX || "";
     const RESEND_KEY = process.env.RESEND_API_KEY;
     const DEV_SAFE = process.env.DEV_SAFE_EMAILS === "true";

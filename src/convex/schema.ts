@@ -968,4 +968,25 @@ export default defineSchema({
   })
     .index("by_user_and_time", ["userId", "scheduledAt"]),
 
+  /**
+   * Per-business email configuration (tenant-level).
+   * Stores workspace-scoped Resend key, inbox, and base URL overrides.
+   */
+  emailConfigs: defineTable({
+    businessId: v.id("businesses"),
+    resendApiKey: v.optional(v.string()),
+    salesInbox: v.optional(v.string()),
+    publicBaseUrl: v.optional(v.string()),
+    fromEmail: v.optional(v.string()),
+    fromName: v.optional(v.string()),
+    replyTo: v.optional(v.string()),
+    updatedAt: v.number(),
+  }).index("by_business", ["businessId"]),
+
+  admins: defineTable({
+    email: v.string(),
+    role: v.union(v.literal("superadmin"), v.literal("admin")),
+    createdAt: v.number(),
+  })
+    .index("by_email", ["email"]),
 });

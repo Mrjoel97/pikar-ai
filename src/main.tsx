@@ -23,6 +23,7 @@ import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { toast } from "sonner";
 import SettingsPage from "@/pages/Settings.tsx";
+import AdminPage from "./pages/Admin";
 
 class ErrorBoundary extends Component<
   { children: React.ReactNode },
@@ -147,6 +148,7 @@ createRoot(document.getElementById("root")!).render(
               <Route path="/analytics" element={<AnalyticsPage />} />
               <Route path="/settings" element={<SettingsPage />} />
               <Route path="*" element={<NotFound />} />
+              <Route path="/admin" element={<AdminPage />} />
             </Routes>
           </BrowserRouter>
           <Toaster />

@@ -15,6 +15,7 @@ import type {
 } from "convex/server";
 import type * as activity from "../activity.js";
 import type * as activityFeed from "../activityFeed.js";
+import type * as admin from "../admin.js";
 import type * as agentProfile from "../agentProfile.js";
 import type * as aiAgents from "../aiAgents.js";
 import type * as approvals from "../approvals.js";
@@ -25,6 +26,7 @@ import type * as businesses from "../businesses.js";
 import type * as contacts from "../contacts.js";
 import type * as cron from "../cron.js";
 import type * as diagnostics from "../diagnostics.js";
+import type * as emailConfig from "../emailConfig.js";
 import type * as emails from "../emails.js";
 import type * as emailsActions from "../emailsActions.js";
 import type * as entitlements from "../entitlements.js";
@@ -64,6 +66,7 @@ import type * as workflows from "../workflows.js";
 declare const fullApi: ApiFromModules<{
   activity: typeof activity;
   activityFeed: typeof activityFeed;
+  admin: typeof admin;
   agentProfile: typeof agentProfile;
   aiAgents: typeof aiAgents;
   approvals: typeof approvals;
@@ -74,6 +77,7 @@ declare const fullApi: ApiFromModules<{
   contacts: typeof contacts;
   cron: typeof cron;
   diagnostics: typeof diagnostics;
+  emailConfig: typeof emailConfig;
   emails: typeof emails;
   emailsActions: typeof emailsActions;
   entitlements: typeof entitlements;
