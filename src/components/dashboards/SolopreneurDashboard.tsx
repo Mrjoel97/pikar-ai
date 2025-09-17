@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useAuth } from "@/hooks/use-auth";
 import CampaignComposer from "@/components/email/CampaignComposer";
+import { motion } from "framer-motion";
 
 interface SolopreneurDashboardProps {
   business: any;
@@ -86,6 +87,9 @@ export function SolopreneurDashboard({
         setSaving(false);
       }
     };
+
+    // Add local loading state for restore
+    const [lastDeleted, setLastDeleted] = React.useState<any | null>(null);
 
     return (
       <Card className="p-4 mt-6">
@@ -181,6 +185,7 @@ export function SolopreneurDashboard({
                     onClick={async () => {
                       try {
                         await deleteDump({ brainDumpId: d._id } as any);
+                        setLastDeleted(d);
                         toast("Deleted");
                       } catch (e: any) {
                         toast.error(e?.message ?? "Failed to delete");
@@ -193,6 +198,29 @@ export function SolopreneurDashboard({
               ))
           ) : (
             <div className="text-muted-foreground text-sm">No entries yet.</div>
+          )}
+          {lastDeleted && (
+            <div className="mb-3 flex items-center justify-between rounded-md border p-2 bg-amber-50 text-amber-800">
+              <span className="text-xs">Idea deleted.</span>
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={async () => {
+                    try {
+                      await addDump({ initiativeId, content: String(lastDeleted.content || "") } as any);
+                      setLastDeleted(null);
+                      toast.success("Restored idea.");
+                    } catch (e: any) {
+                      toast.error(e?.message ?? "Failed to restore");
+                    }
+                  }}
+                >
+                  Undo
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => setLastDeleted(null)}>Dismiss</Button>
+              </div>
+            </div>
           )}
         </div>
       </Card>
@@ -577,10 +605,11 @@ export function SolopreneurDashboard({
 
   // Add state for Schedule Assistant (Week 4)
   const [scheduleOpen, setScheduleOpen] = useState(false);
+  // Add: per-channel filter for Schedule Assistant and bulk add
+  const [channelFilter, setChannelFilter] = useState<"All" | "Post" | "Email">("All");
 
   // Compute suggested schedule slots (simple best-time defaults for this week)
   const suggestedSlots: Array<{ label: string; when: string; channel: "Post" | "Email" }> = React.useMemo(() => {
-    // Simple heuristic: Tue/Thu 10:00 for Posts; Wed 14:00 for Email
     const base = new Date();
     const toDateString = (d: Date) =>
       d.toLocaleString(undefined, { weekday: "short", hour: "2-digit", minute: "2-digit" });
@@ -591,12 +620,50 @@ export function SolopreneurDashboard({
       d.setHours(hour, 0, 0, 0);
       return d;
     };
-    return [
-      { label: "Weekly Post", when: toDateString(nextDow(2, 10)), channel: "Post" },  // Tue 10:00
-      { label: "Newsletter", when: toDateString(nextDow(3, 14)), channel: "Email" },  // Wed 14:00
-      { label: "Follow-up Post", when: toDateString(nextDow(4, 10)), channel: "Post" }, // Thu 10:00
-    ];
-  }, []);
+    const cadence = agentProfile?.cadence || "standard";
+    const list: Array<{ label: string; when: string; channel: "Post" | "Email" }> = [];
+
+    // Baseline: Tue/Thu Post mornings, Wed Email afternoon
+    list.push({ label: "Weekly Post", when: toDateString(nextDow(2, 10)), channel: "Post" });  // Tue 10:00
+    list.push({ label: "Newsletter", when: toDateString(nextDow(3, 14)), channel: "Email" });  // Wed 14:00
+    list.push({ label: "Follow-up Post", when: toDateString(nextDow(4, 10)), channel: "Post" }); // Thu 10:00
+
+    if (cadence === "aggressive") {
+      // Add more touchpoints for momentum
+      list.push({ label: "Momentum Post", when: toDateString(nextDow(1, 9)), channel: "Post" });   // Mon 09:00
+      list.push({ label: "Weekend Teaser", when: toDateString(nextDow(6, 11)), channel: "Post" }); // Sat 11:00
+      list.push({ label: "Promo Email", when: toDateString(nextDow(5, 15)), channel: "Email" });   // Fri 15:00
+    } else if (cadence === "light") {
+      // Keep it minimal: just ensure one post and an email
+      return [
+        { label: "Single Post", when: toDateString(nextDow(3, 10)), channel: "Post" }, // Wed 10:00
+        { label: "Light Newsletter", when: toDateString(nextDow(4, 14)), channel: "Email" }, // Thu 14:00
+      ];
+    }
+
+    return list;
+  }, [agentProfile?.cadence]);
+
+  const filteredSuggested = React.useMemo(() => {
+    if (channelFilter === "All") return suggestedSlots;
+    return suggestedSlots.filter((s) => s.channel === channelFilter);
+  }, [suggestedSlots, channelFilter]);
+
+  const handleAddAllShown = async () => {
+    if (isGuest) {
+      toast("Sign in to add schedule slots.");
+      onUpgrade?.();
+      return;
+    }
+    try {
+      for (const s of filteredSuggested) {
+        await handleAddSlot(s);
+      }
+      toast.success(`Added ${filteredSuggested.length} slots`);
+    } catch (e: any) {
+      toast.error(e?.message ?? "Failed to add all slots");
+    }
+  };
 
   // Schedule slots persistence
   const listSlots = !isGuest && business?._id
@@ -934,6 +1001,13 @@ export function SolopreneurDashboard({
   // Local UI
   const [composerOpen, setComposerOpen] = React.useState(false);
 
+  // Add: simple preflight checks for the composer
+  const preflightWarnings: string[] = [];
+  if (env && !env.hasRESEND) preflightWarnings.push("Email API is not configured (RESEND_API_KEY).");
+  if (env && !env.hasBASE_URL) preflightWarnings.push("Public base URL is missing (VITE_PUBLIC_BASE_URL).");
+  if (!businessId) preflightWarnings.push("No business configured — finish onboarding.");
+  const defaultReplyTo = `noreply@${typeof window !== "undefined" ? window.location.hostname : "example.com"}`;
+
   // Inject default schedule time into existing CampaignComposer usage, if present
   const nextEmailSlot = useQuery(
     api.schedule.nextSlotByChannel,
@@ -999,7 +1073,7 @@ export function SolopreneurDashboard({
   );
 
   return (
-    <div className="space-y-4">
+    <motion.div className="space-y-4" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }}>
       {/* DEV Safe Mode banner */}
       {env?.devSafeEmailsEnabled && (
         <div className="rounded-md border border-amber-400/50 bg-amber-50 px-4 py-2 text-amber-800">
@@ -1026,9 +1100,9 @@ export function SolopreneurDashboard({
             <Badge variant={env?.devSafeEmailsEnabled ? "secondary" : "default"}>
               Send Mode: {env?.devSafeEmailsEnabled ? "DEV (stubbed)" : "LIVE"}
             </Badge>
-<Badge variant="outline">
-  Cron Freshness: {env?.cronLastProcessed ? `${Math.max(0, Math.round((Date.now() - env.cronLastProcessed) / 60000))}m ago` : "n/a"}
-</Badge>
+            <Badge variant="outline">
+              Cron Freshness: {env?.cronLastProcessed ? `${Math.max(0, Math.round((Date.now() - env.cronLastProcessed) / 60000))}m ago` : "n/a"}
+            </Badge>
           </div>
         </CardContent>
       </Card>
@@ -1063,6 +1137,14 @@ export function SolopreneurDashboard({
           <DialogHeader>
             <DialogTitle>Quick Newsletter</DialogTitle>
           </DialogHeader>
+          {preflightWarnings.length > 0 && (
+            <div className="mb-3 rounded-md border border-amber-300 bg-amber-50 p-2 text-amber-800">
+              <div className="text-sm font-medium">Compliance preflight</div>
+              <ul className="list-disc pl-5 text-xs">
+                {preflightWarnings.map((w, i) => (<li key={i}>{w}</li>))}
+              </ul>
+            </div>
+          )}
           {businessId ? (
             <CampaignComposerAny
               businessId={businessId}
@@ -1072,6 +1154,8 @@ export function SolopreneurDashboard({
               onClose={() => setComposerOpen(false)}
               onCreated={() => toast.success("Newsletter scheduled")}
               defaultScheduledAt={nextEmailSlot ? nextEmailSlot.scheduledAt : undefined}
+              // Provide a default reply-to suggestion; ignored if component doesn't support it
+              defaultReplyTo={defaultReplyTo}
             />
           ) : (
             <div className="text-sm text-muted-foreground">Finish onboarding to create a business first.</div>
@@ -1262,11 +1346,7 @@ export function SolopreneurDashboard({
                 </div>
                 <p className="text-sm text-muted-foreground">{t.description}</p>
                 <div className="pt-1">
-                  <Button
-                    size="sm"
-                    onClick={() => handleUseTemplateEnhanced(t)}
-                    className="bg-emerald-600 text-white hover:bg-emerald-700"
-                  >
+                  <Button size="sm" onClick={() => handleUseTemplateEnhanced(t)} className="bg-emerald-600 text-white hover:bg-emerald-700">
                     Use
                   </Button>
                 </div>
@@ -1650,14 +1730,35 @@ export function SolopreneurDashboard({
             <p className="text-sm text-muted-foreground">
               Suggested slots based on best‑time defaults and simple cadence. Add with one click.
             </p>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground">Channel:</span>
+                {(["All","Post","Email"] as const).map((c) => (
+                  <Button
+                    key={c}
+                    size="sm"
+                    variant={channelFilter === c ? "default" : "outline"}
+                    className={channelFilter === c ? "bg-emerald-600 text-white hover:bg-emerald-700" : ""}
+                    onClick={() => setChannelFilter(c)}
+                  >
+                    {c}
+                  </Button>
+                ))}
+              </div>
+              <Button size="sm" variant="outline" onClick={handleAddAllShown} disabled={isGuest || filteredSuggested.length === 0}>
+                Add All Shown
+              </Button>
+            </div>
             <div className="space-y-2">
-              {suggestedSlots.map((s, idx) => (
+              {filteredSuggested.map((s, idx) => (
                 <div key={`${s.label}-${idx}`} className="flex items-center justify-between rounded-md border p-2">
                   <div>
                     <div className="text-sm font-medium">{s.label} • {s.channel}</div>
                     <div className="text-xs text-muted-foreground">{s.when}</div>
                   </div>
-                  <Button size="sm" onClick={() => handleAddSlot(s)} disabled={isGuest}>Add</Button>
+                  <Button size="sm" onClick={() => handleAddSlot(s)} disabled={isGuest}>
+                    Add
+                  </Button>
                 </div>
               ))}
             </div>
@@ -1868,6 +1969,7 @@ export function SolopreneurDashboard({
           <Button
             onClick={async () => {
               try {
+                if (!window.confirm("Seed demo data for your account? This may create example records.")) return;
                 const res = await seedForMe({});
                 toast.success("Demo data seeded");
                 if ((res as any)?.businessId) {
@@ -1882,6 +1984,6 @@ export function SolopreneurDashboard({
           </Button>
         </div>
       )}
-    </div>
+    </motion.div>
   );
 }
