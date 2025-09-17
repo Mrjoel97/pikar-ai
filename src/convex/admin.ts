@@ -74,7 +74,9 @@ export const listAdmins = query({
     // Inline admin check to avoid invalid ctx.runQuery({ path: ... })
     const identity = await ctx.auth.getUserIdentity();
     const email = identity?.email?.toLowerCase();
-    if (!email) throw new Error("Forbidden");
+
+    // If not signed in, return empty list instead of throwing
+    if (!email) return [];
 
     const envAllowlist = (process.env.ADMIN_EMAILS || "")
       .split(",")
@@ -91,7 +93,9 @@ export const listAdmins = query({
       isAdmin = !!admin;
     }
 
-    if (!isAdmin) throw new Error("Forbidden");
+    // Not an admin? Return an empty list (guest-safe)
+    if (!isAdmin) return [];
+
     const admins = await ctx.db.query("admins").collect();
     return admins;
   },
