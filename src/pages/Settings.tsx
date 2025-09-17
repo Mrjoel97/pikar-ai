@@ -1,16 +1,22 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import { useNavigate } from "react-router";
-import { useQuery } from "convex/react";
+import { useQuery, useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 export default function SettingsPage() {
   const navigate = useNavigate();
   const env = useQuery(api.health.envStatus, {}) as any;
+
+  const sendSalesInquiry = useAction(api.emailsActions.sendSalesInquiry);
+  const sendTestEmailAction = useAction(api.emailsActions.sendTestEmail);
+  const business = useQuery(api.businesses.currentUserBusiness, {} as any);
 
   const status = env ?? {};
   const baseUrlOk = Boolean(status.hasBASE_URL ?? status.hasPublicBaseUrl);
@@ -35,6 +41,94 @@ export default function SettingsPage() {
     navigator.clipboard.writeText(text).then(() => {
       toast.success(`Copied "${text}"`);
     });
+  }
+
+  // Local state for test email form
+  const [testTo, setTestTo] = useState("");
+  const [testFromEmail, setTestFromEmail] = useState("");
+  const [testFromName, setTestFromName] = useState("");
+  const [testSubject, setTestSubject] = useState("Pikar AI Test Email");
+  const [sendingInboxTest, setSendingInboxTest] = useState(false);
+  const [sendingTestEmail, setSendingTestEmail] = useState(false);
+
+  // Simple validator
+  function isEmail(s: string) {
+    return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(s);
+  }
+
+  async function handleSendInboxTest() {
+    if (!hasResend || !hasSalesInbox) {
+      toast.error("Configure Resend and Sales Inbox first.");
+      return;
+    }
+    try {
+      setSendingInboxTest(true);
+      toast("Sending sales inbox test...");
+      await sendSalesInquiry({
+        name: "Settings Test",
+        email: "test@resend.dev",
+        plan: "Validation",
+        message: "This is a test message to validate Sales Inbox & Resend configuration.",
+      });
+      toast.success("Sales inbox test sent (or stubbed in DEV safe mode). Check your inbox.");
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to send sales inbox test");
+    } finally {
+      setSendingInboxTest(false);
+    }
+  }
+
+  async function handleSendTestEmail() {
+    if (!hasResend) {
+      toast.error("Configure Resend first.");
+      return;
+    }
+    if (!business?._id) {
+      toast.error("Sign in to send a test email.");
+      return;
+    }
+    if (!isEmail(testTo)) {
+      toast.error("Enter a valid 'To' email.");
+      return;
+    }
+    if (!isEmail(testFromEmail)) {
+      toast.error("Enter a valid 'From' email (must be a verified sender).");
+      return;
+    }
+    try {
+      setSendingTestEmail(true);
+      toast("Sending test email...");
+      await sendTestEmailAction({
+        businessId: business._id,
+        to: testTo,
+        subject: testSubject || "Pikar AI Test Email",
+        fromEmail: testFromEmail,
+        fromName: testFromName || undefined,
+        replyTo: testFromEmail,
+        previewText: "This is a test email from Settings",
+        htmlContent:
+          "<p>Hello! This is a <strong>Pikar AI</strong> test email from the Settings page.</p><p>If you received this, your sending configuration works.</p>",
+      });
+      toast.success("Test email sent (or stubbed in DEV safe mode). Check your inbox.");
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to send test email");
+    } finally {
+      setSendingTestEmail(false);
+    }
+  }
+
+  function handleCheckBaseUrl() {
+    const base = (import.meta as any)?.env?.VITE_PUBLIC_BASE_URL as string | undefined;
+    if (base && typeof base === "string" && base.length > 0) {
+      toast.success(`Base URL detected: ${base}`);
+      try {
+        window.open(base, "_blank", "noopener,noreferrer");
+      } catch {
+        // ignore
+      }
+    } else {
+      toast.error("No Base URL detected in frontend env (VITE_PUBLIC_BASE_URL).");
+    }
   }
 
   return (
@@ -140,6 +234,104 @@ export default function SettingsPage() {
 
       <Card>
         <CardHeader>
+          <CardTitle>Validate & Test</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="font-medium">Sales Inbox Test</div>
+              <Button
+                size="sm"
+                onClick={handleSendInboxTest}
+                disabled={!hasResend || !hasSalesInbox || sendingInboxTest}
+              >
+                {sendingInboxTest ? "Sending..." : "Send Sales Inbox Test"}
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Sends a lightweight test via your configured Sales Inbox to confirm email delivery (uses Resend).
+            </p>
+          </div>
+
+          <Separator />
+
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="font-medium">Send Test Email</div>
+              <Button
+                size="sm"
+                onClick={handleSendTestEmail}
+                disabled={!hasResend || !business?._id || sendingTestEmail}
+              >
+                {sendingTestEmail ? "Sending..." : "Send Test Email"}
+              </Button>
+            </div>
+            {!business?._id && (
+              <p className="text-xs text-amber-700">
+                Sign in to your workspace to send a test email.
+              </p>
+            )}
+            <div className="grid md:grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="toEmail">To</Label>
+                <Input
+                  id="toEmail"
+                  placeholder="you@example.com"
+                  value={testTo}
+                  onChange={(e) => setTestTo(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="fromEmail">From</Label>
+                <Input
+                  id="fromEmail"
+                  placeholder="sender@yourdomain.com"
+                  value={testFromEmail}
+                  onChange={(e) => setTestFromEmail(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="fromName">From Name (optional)</Label>
+                <Input
+                  id="fromName"
+                  placeholder="Your Brand"
+                  value={testFromName}
+                  onChange={(e) => setTestFromName(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="subject">Subject</Label>
+                <Input
+                  id="subject"
+                  placeholder="Pikar AI Test Email"
+                  value={testSubject}
+                  onChange={(e) => setTestSubject(e.target.value)}
+                />
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Requires a verified sender in Resend. "From" must be a domain/address that's verified in your Resend account.
+            </p>
+          </div>
+
+          <Separator />
+
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="font-medium">Check Base URL</div>
+              <Button size="sm" variant="outline" onClick={handleCheckBaseUrl}>
+                Show & Open Base URL
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Quickly verify the configured public base URL used in links (unsubscribe, callbacks).
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
           <CardTitle>System Health</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -172,7 +364,7 @@ export default function SettingsPage() {
           <ol className="list-decimal ml-5 space-y-1">
             <li>Open the Integrations tab (top bar) and add/update API keys.</li>
             <li>Set RESEND_API_KEY and verify your sender domain in Resend.</li>
-            <li>Set VITE_PUBLIC_BASE_URL to your app’s public URL.</li>
+            <li>Set VITE_PUBLIC_BASE_URL to your app's public URL.</li>
             <li>Set SALES_INBOX or PUBLIC_SALES_INBOX to a monitored email address.</li>
             <li>Reload the app to apply changes.</li>
           </ol>
