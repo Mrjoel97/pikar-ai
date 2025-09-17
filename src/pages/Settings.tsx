@@ -18,9 +18,10 @@ export default function SettingsPage() {
   const sendTestEmailAction = useAction(api.emailsActions.sendTestEmail);
   const business = useQuery(api.businesses.currentUserBusiness, {} as any);
 
+  // Simplify: always query summary with {} (server derives current user's business)
   const workspace = useQuery(
     api.emailConfig.getForBusinessSummary as any,
-    business?._id ? { businessId: business._id } : undefined
+    {}
   ) as
     | {
         hasResendKey: boolean;
@@ -29,7 +30,9 @@ export default function SettingsPage() {
         fromEmail: string | null;
         fromName: string | null;
         replyTo: string | null;
+        updatedAt: number | null;
       }
+    | null
     | undefined;
 
   const saveWorkspace = useMutation(api.emailConfig.saveForBusiness as any);
@@ -82,7 +85,7 @@ export default function SettingsPage() {
     setWsReplyTo(workspace.replyTo || "");
     setWsSalesInbox(workspace.salesInbox || "");
     setWsBaseUrl(workspace.publicBaseUrl || "");
-  }, [workspace?._creationTime, !!workspace]);
+  }, [workspace?.updatedAt]);
 
   // Simple validator
   function isEmail(s: string) {

@@ -43,6 +43,12 @@ export const sendTestEmail = action({
     });
     const RESEND_KEY: string | undefined = (cfg?.resendApiKey as string | undefined) || process.env.RESEND_API_KEY;
 
+    // Prefer a workspace-specific public base URL, then env fallback
+    const publicBaseUrl: string =
+      (cfg?.publicBaseUrl as string | undefined) ||
+      process.env.VITE_PUBLIC_BASE_URL ||
+      "";
+
     // Safe stub if not configured and DEV_SAFE_EMAILS enabled
     if (!RESEND_KEY) {
       if (DEV_SAFE) {
@@ -69,7 +75,7 @@ export const sendTestEmail = action({
       email: args.to,
     });
 
-    const unsubscribeUrl = `${process.env.VITE_PUBLIC_BASE_URL || ""}/api/unsubscribe?token=${encodeURIComponent(
+    const unsubscribeUrl = `${publicBaseUrl}/api/unsubscribe?token=${encodeURIComponent(
       token
     )}&businessId=${encodeURIComponent(String(args.businessId))}&email=${encodeURIComponent(args.to)}`;
 

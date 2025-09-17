@@ -1,4 +1,5 @@
 import { query, mutation, internalQuery } from "./_generated/server";
+import { api } from "./_generated/api";
 import { v } from "convex/values";
 
 /**
@@ -26,13 +27,17 @@ async function assertCanManageBusiness(ctx: any, businessId: any) {
 }
 
 /**
- * Public: Get a safe summary of the workspace email config for a business
- * (does not include the raw Resend API key).
+ * Public: Get a safe summary of the workspace email config for the current user's business.
+ * No args required; derives business via currentUserBusiness. Guest-safe (returns null).
  */
 export const getForBusinessSummary = query({
-  args: { businessId: v.id("businesses") },
-  handler: async (ctx, { businessId }) => {
-    await assertCanManageBusiness(ctx, businessId);
+  args: {},
+  handler: async (ctx) => {
+    // Derive business from the signed-in user; guest-safe (returns null if none)
+    const business = await ctx.runQuery(api.businesses.currentUserBusiness, {} as any);
+    const businessId = business?._id;
+    if (!businessId) return null;
+
     const existing = await ctx.db
       .query("emailConfigs")
       .withIndex("by_business", (q) => q.eq("businessId", businessId))
