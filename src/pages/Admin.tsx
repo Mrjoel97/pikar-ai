@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react";
 import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -12,7 +12,10 @@ import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription, DrawerTrigger } from "@/components/ui/drawer";
 import { Select } from "@/components/ui/select"; // Add: for mode dropdown in assistant
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 
+// Add local types for transcript steps
 export default function AdminPage() {
   const navigate = useNavigate();
   const [adminToken, setAdminToken] = useState<string | null>(() => {
@@ -25,6 +28,9 @@ export default function AdminPage() {
     }
   });
   const [safeModeDismissed, setSafeModeDismissed] = useState(false);
+
+  // Add: Health drawer UI state
+  const [healthOpen, setHealthOpen] = useState(false);
 
   // Validate admin session
   const adminSession = useQuery(
@@ -98,6 +104,68 @@ export default function AdminPage() {
       }>
     | undefined;
 
+  // Add: Tenants & selection
+  const [selectedTenantId, setSelectedTenantId] = useState<string>("");
+  const tenants = useQuery(
+    api.admin.listTenants as any,
+    hasAdminAccess ? {} : undefined
+  ) as Array<{ _id: string; name?: string; plan?: string; status?: string }> | undefined;
+
+  const tenantUsers = useQuery(
+    api.admin.listTenantUsers as any,
+    selectedTenantId ? { businessId: selectedTenantId } : undefined
+  ) as Array<{ _id: string; name?: string; email?: string; role?: string }> | undefined;
+
+  // Add: API Keys panel state & operations
+  const apiKeys = useQuery(
+    api.admin.listApiKeys as any,
+    selectedTenantId ? { tenantId: selectedTenantId } : undefined
+  ) as Array<{ _id: string; name: string; scopes: string[]; createdAt: number; revokedAt?: number }> | undefined;
+
+  const createApiKey = useMutation(api.admin.createApiKey as any);
+  const revokeApiKey = useMutation(api.admin.revokeApiKey as any);
+  const [newKeyName, setNewKeyName] = useState<string>("");
+  const [newKeyScopes, setNewKeyScopes] = useState<string>("");
+  const [freshSecret, setFreshSecret] = useState<string | null>(null);
+
+  // Add: Alerts & Incidents operations
+  const alerts = useQuery(
+    api.admin.listAlerts as any,
+    hasAdminAccess ? (selectedTenantId ? { tenantId: selectedTenantId } : {}) : undefined
+  ) as Array<{ _id: string; title: string; severity: "low" | "medium" | "high"; status: "open" | "resolved"; createdAt: number }> | undefined;
+
+  const createAlertMutation = useMutation(api.admin.createAlert as any);
+  const resolveAlertMutation = useMutation(api.admin.resolveAlert as any);
+
+  // Add: Usage & Billing panels
+  const usage = useQuery(
+    api.admin.getUsageSummary as any,
+    selectedTenantId ? { tenantId: selectedTenantId } : undefined
+  ) as { workflows?: number; runs?: number; agents?: number; emailsSentLast7?: number } | undefined;
+
+  const billingEvents = useQuery(
+    api.admin.listBillingEvents as any,
+    selectedTenantId ? { tenantId: selectedTenantId } : undefined
+  ) as Array<{ _id: string; type: string; amount: number; currency: string; status: string; _creationTime?: number }> | undefined;
+
+  // Add Admin Assistant transcript + dry-run state
+  const [assistantTranscriptOpen, setAssistantTranscriptOpen] = useState(false);
+  const [assistantSteps, setAssistantSteps] = useState<Array<{ tool: string; title: string; data: any }>>([]);
+  const [assistantSummaryText, setAssistantSummaryText] = useState<string | undefined>(undefined);
+  const [assistantDryRun, setAssistantDryRun] = useState<boolean>(false);
+
+  // Add: Assistant core UI state and action hook
+  const [assistantMode, setAssistantMode] = useState<"explain" | "confirm" | "auto">("explain");
+  const [assistantTools, setAssistantTools] = useState<{ health: boolean; flags: boolean; alerts: boolean }>({
+    health: true,
+    flags: true,
+    alerts: true,
+  });
+  const [assistantMessages, setAssistantMessages] = useState<Array<{ role: "user" | "assistant"; content: string; steps?: any[] }>>([]);
+  const [assistantInput, setAssistantInput] = useState<string>("");
+  const [assistantBusy, setAssistantBusy] = useState<boolean>(false);
+  const sendAssistantMessage = useAction(api.adminAssistant.sendMessage as any);
+
   // Audit Explorer filters
   const [actionFilter, setActionFilter] = useState("");
   const [entityFilter, setEntityFilter] = useState("");
@@ -107,116 +175,6 @@ export default function AdminPage() {
   const [alertSeverity, setAlertSeverity] = useState<"low" | "medium" | "high">("low");
   const [alertTitle, setAlertTitle] = useState<string>("");
   const [alertDesc, setAlertDesc] = useState<string>("");
-
-  const filteredAudits = useMemo(() => {
-    if (!recentAudits) return [];
-    const since = Date.now() - Math.max(0, sinceDays) * 24 * 60 * 60 * 1000;
-    return recentAudits.filter((a) => {
-      const actionOk = actionFilter ? a.action.toLowerCase().includes(actionFilter.toLowerCase()) : true;
-      const entityOk = entityFilter ? a.entityType.toLowerCase().includes(entityFilter.toLowerCase()) : true;
-      const timeOk = a.createdAt >= since;
-      return actionOk && entityOk && timeOk;
-    });
-  }, [recentAudits, actionFilter, entityFilter, sinceDays]);
-
-  const exportAuditsCsv = () => {
-    const rows = [
-      ["createdAt", "businessId", "userId", "action", "entityType", "entityId", "details"],
-      ...filteredAudits.map((a) => [
-        new Date(a.createdAt).toISOString(),
-        a.businessId,
-        a.userId || "",
-        a.action,
-        a.entityType,
-        a.entityId,
-        JSON.stringify(a.details || {}),
-      ]),
-    ];
-    const csv = rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n");
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `audit_export_${Date.now()}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
-  };
-
-  const kpis = useMemo(() => {
-    return {
-      admins: (adminList || []).length,
-      pending: (pending || []).length,
-      flagsTotal: flagAnalytics?.totalFlags ?? (flags?.length ?? 0),
-      flagsEnabled: flagAnalytics?.enabledFlags ?? (flags?.filter((f) => f.isEnabled).length ?? 0),
-      emailQueueDepth: env?.emailQueueDepth ?? 0,
-      overdueApprovals: env?.overdueApprovalsCount ?? 0,
-    };
-  }, [adminList, pending, flags, flagAnalytics, env]);
-
-  const [selectedTenantId, setSelectedTenantId] = useState<string | "">("");
-  const [newKeyName, setNewKeyName] = useState("");
-  const [newKeyScopes, setNewKeyScopes] = useState("admin:read,admin:write");
-  const [freshSecret, setFreshSecret] = useState<string | null>(null);
-  const [healthOpen, setHealthOpen] = useState(false);
-
-  // Tenants & API Keys state
-  const tenants = useQuery(
-    api.admin.listTenants as any,
-    hasAdminAccess ? {} : undefined
-  ) as Array<{ _id: string; name: string; plan?: string; ownerId?: string; status?: string }> | undefined;
-
-  // Tenant users (derived) - only load when one is selected
-  const tenantUsers = useQuery(
-    api.admin.listTenantUsers as any,
-    hasAdminAccess && selectedTenantId ? { businessId: selectedTenantId } : undefined
-  ) as Array<{ _id: string; name: string; email?: string; role?: string }> | undefined;
-
-  // API Keys
-  const apiKeys = useQuery(
-    api.admin.listApiKeys as any,
-    hasAdminAccess && selectedTenantId ? { tenantId: selectedTenantId } : undefined
-  ) as Array<{ _id: string; name: string; scopes: string[]; createdAt: number; revokedAt?: number }> | undefined;
-
-  const createApiKey = useMutation(api.admin.createApiKey as any);
-  const revokeApiKey = useMutation(api.admin.revokeApiKey as any);
-
-  // Usage & Billing queries (tenant-scoped)
-  const usage = useQuery(
-    api.admin.getUsageSummary as any,
-    hasAdminAccess && selectedTenantId ? { tenantId: selectedTenantId } : undefined
-  ) as { workflows: number; runs: number; agents: number; emailsSentLast7: number } | undefined;
-
-  const billingEvents = useQuery(
-    api.admin.listBillingEvents as any,
-    hasAdminAccess ? { tenantId: selectedTenantId || undefined, limit: 20 } : undefined
-  ) as Array<{ _id: string; type?: string; amount?: number; currency?: string; status?: string; _creationTime?: number; description?: string }> | undefined;
-
-  // Alerts & Incidents
-  const alerts = useQuery(
-    api.admin.listAlerts as any,
-    hasAdminAccess ? { tenantId: selectedTenantId || undefined } : undefined
-  ) as Array<{ _id: string; title: string; severity: string; status?: string; createdAt?: number; description?: string }> | undefined;
-
-  const createAlertMutation = useMutation(api.admin.createAlert as any);
-  const resolveAlertMutation = useMutation(api.admin.resolveAlert as any);
-
-  // Add: assistant action
-  const sendAssistantMessage = useAction(api.adminAssistant.sendMessage as any);
-
-  // Assistant state
-  const [assistantMessages, setAssistantMessages] = useState<
-    Array<{ role: "user" | "assistant"; content: string; steps?: any[] }>
-  >([]);
-  const [assistantInput, setAssistantInput] = useState("");
-  const [assistantMode, setAssistantMode] = useState<"explain" | "confirm" | "auto">("explain");
-  const [assistantTools, setAssistantTools] = useState<{ health: boolean; flags: boolean; alerts: boolean }>({
-    health: true,
-    flags: true,
-    alerts: true,
-  });
-  const [assistantBusy, setAssistantBusy] = useState(false);
 
   const handleLogout = () => {
     localStorage.removeItem("adminSessionToken");
@@ -311,6 +269,63 @@ export default function AdminPage() {
       el.scrollIntoView({ behavior: "smooth", block: "start" });
     }
   };
+
+  // Add: KPI snapshot computed from queries
+  const kpis = useMemo(() => {
+    const flagsTotal = (flagAnalytics?.totalFlags ?? (flags?.length ?? 0)) as number;
+    const flagsEnabled = (flagAnalytics?.enabledFlags ?? (flags ? flags.filter((f) => f.isEnabled).length : 0)) as number;
+    return {
+      admins: (adminList?.length ?? 0) as number,
+      pending: (pending?.length ?? 0) as number,
+      flagsEnabled,
+      flagsTotal,
+      emailQueueDepth: (env?.emailQueueDepth ?? 0) as number,
+      overdueApprovals: (env?.overdueApprovalsCount ?? 0) as number,
+    };
+  }, [adminList, pending, flags, flagAnalytics, env]);
+
+  // Add: Audit filtering and CSV export helper
+  const filteredAudits = useMemo(() => {
+    const cutoff = Date.now() - (sinceDays || 0) * 24 * 60 * 60 * 1000;
+    const list = (recentAudits || []) as any[];
+    const af = (actionFilter || "").toLowerCase();
+    const ef = (entityFilter || "").toLowerCase();
+    return list.filter((a) => {
+      if (typeof a.createdAt === "number" && a.createdAt < cutoff) return false;
+      if (af && !(a.action || "").toLowerCase().includes(af)) return false;
+      const entity = ((a.entityType || "") + (a.entityId ? `:${a.entityId}` : "")).toLowerCase();
+      if (ef && !entity.includes(ef)) return false;
+      return true;
+    });
+  }, [recentAudits, actionFilter, entityFilter, sinceDays]);
+
+  const exportAuditsCsv = useCallback(() => {
+    const header = ["createdAt", "businessId", "action", "entityType", "entityId", "userId"].join(",");
+    const body = filteredAudits
+      .map((a) =>
+        [
+          a.createdAt,
+          a.businessId ?? "",
+          a.action ?? "",
+          a.entityType ?? "",
+          a.entityId ?? "",
+          a.userId ?? "",
+        ]
+          .map((v) => `"${String(v).replace(/"/g, '""')}"`)
+          .join(",")
+      )
+      .join("\n");
+    const csv = [header, body].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `audits_${Date.now()}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }, [filteredAudits]);
 
   return (
     <>
@@ -1505,14 +1520,19 @@ export default function AdminPage() {
                         toolsAllowed: Object.entries(assistantTools)
                           .filter(([, v]) => v)
                           .map(([k]) => k),
+                        dryRun: assistantDryRun,
                         // Add: pass adminToken when independent Admin Portal session is valid
                         adminToken: (adminSession?.valid === true) ? adminToken ?? undefined : undefined,
                       } as any);
+
+                      // Capture transcript for the drawer
+                      setAssistantSteps(res?.steps || []);
+                      setAssistantSummaryText((res?.summaryText || res?.notice || "Done.") as string);
+
                       setAssistantMessages((m) => [
                         ...m,
                         {
                           role: "assistant",
-                          // Prefer LLM summary when available
                           content: (res?.summaryText || res?.notice || "Done.") as string,
                           steps: res?.steps || [],
                         },
@@ -1540,14 +1560,19 @@ export default function AdminPage() {
                       toolsAllowed: Object.entries(assistantTools)
                         .filter(([, v]) => v)
                         .map(([k]) => k),
+                      dryRun: assistantDryRun,
                       // Add: pass adminToken when independent Admin Portal session is valid
                       adminToken: (adminSession?.valid === true) ? adminToken ?? undefined : undefined,
                     } as any);
+
+                    // Capture transcript for the drawer
+                    setAssistantSteps(res?.steps || []);
+                    setAssistantSummaryText((res?.summaryText || res?.notice || "Done.") as string);
+
                     setAssistantMessages((m) => [
                       ...m,
                       {
                         role: "assistant",
-                        // Prefer LLM summary when available
                         content: (res?.summaryText || res?.notice || "Done.") as string,
                         steps: res?.steps || [],
                       },
@@ -1561,6 +1586,53 @@ export default function AdminPage() {
               >
                 {assistantBusy ? "Working..." : "Send"}
               </Button>
+
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <Switch id="assistant-dryrun" checked={assistantDryRun} onCheckedChange={setAssistantDryRun} />
+                  <Label htmlFor="assistant-dryrun" className="text-sm">Dry Run</Label>
+                </div>
+                <button
+                  type="button"
+                  className="text-sm underline text-emerald-700 hover:text-emerald-900"
+                  onClick={() => setAssistantTranscriptOpen(true)}
+                >
+                  Open Transcript
+                </button>
+              </div>
+
+              {/* Minimal Transcript Drawer */}
+              <Drawer open={assistantTranscriptOpen} onOpenChange={setAssistantTranscriptOpen}>
+                <DrawerTrigger asChild>
+                  <span />
+                </DrawerTrigger>
+                <DrawerContent className="max-h-[85vh]">
+                  <DrawerHeader>
+                    <DrawerTitle>Assistant Transcript</DrawerTitle>
+                    <DrawerDescription>Step-by-step results of the last assistant run.</DrawerDescription>
+                  </DrawerHeader>
+                  <div className="px-4 pb-6 space-y-3 overflow-y-auto">
+                    {assistantSummaryText ? (
+                      <div className="p-3 rounded-md bg-emerald-50 text-emerald-900 text-sm whitespace-pre-wrap">
+                        {assistantSummaryText}
+                      </div>
+                    ) : null}
+                    <div className="space-y-2">
+                      {assistantSteps.map((s, i) => (
+                        <div key={i} className="rounded-lg border p-3">
+                          <div className="text-xs uppercase text-muted-foreground tracking-wide">{s.tool}</div>
+                          <div className="font-medium">{s.title}</div>
+                          <pre className="mt-2 text-xs overflow-x-auto whitespace-pre-wrap">{JSON.stringify(s.data, null, 2)}</pre>
+                        </div>
+                      ))}
+                      {assistantSteps.length === 0 && (
+                        <div className="text-sm text-muted-foreground">No transcript available yet. Run the assistant to see steps.</div>
+                      )}
+                    </div>
+                  </div>
+                </DrawerContent>
+              </Drawer>
+
             </div>
 
             <div className="text-xs text-muted-foreground">

@@ -29,6 +29,24 @@ function isRateLimited(key: string): { limited: boolean; remaining: number } {
   return { limited: arr.length >= RATE_MAX_CALLS, remaining: Math.max(0, RATE_MAX_CALLS - arr.length) };
 }
 
+function canUseToolAction(role: "superadmin" | "senior" | "admin", tool: ToolKey, action: "read" | "toggle" | "create" | "resolve"): boolean {
+  // Granular permissions per role and tool/action
+  // - superadmin: full
+  // - senior: full for health read; flags toggle allowed; alerts create/resolve allowed
+  // - admin: read-only for all tools by default; may use confirm/auto to request actions but blocked here
+  if (role === "superadmin") return true;
+
+  if (role === "senior") {
+    if (action === "read") return true;
+    if (tool === "flags" && action === "toggle") return true;
+    if (tool === "alerts" && (action === "create" || action === "resolve")) return true;
+    return false;
+  }
+
+  // role === "admin"
+  return action === "read";
+}
+
 export const sendMessage = action({
   args: {
     message: v.string(),
@@ -93,7 +111,7 @@ export const sendMessage = action({
     const steps: AssistantStep[] = [];
     const q = args.message.toLowerCase();
 
-    // Health tool
+    // Health tool (read-only)
     if (args.toolsAllowed.includes("health")) {
       try {
         const env = await ctx.runQuery(api.health.envStatus as any, {} as any);
@@ -132,15 +150,12 @@ export const sendMessage = action({
       }
 
       if (args.mode !== "explain") {
-        // naive parse: "toggle flag <name>"
         const m = q.match(/toggle\s+flag\s+([a-z0-9_\-\.]+)/i);
         if (m?.[1]) {
           const flagName = m[1];
-
-          // Guardrail: allow toggle only if role is superadmin OR in confirm/auto modes (already) and not dryRun blocked by role
-          const canToggle = role === "superadmin" || args.mode === "confirm" || args.mode === "auto";
-          if (!canToggle) {
-            steps.push({ tool: "flags", title: `Toggle blocked by permissions`, data: { flagName } });
+          const permitted = canUseToolAction(role, "flags", "toggle");
+          if (!permitted) {
+            steps.push({ tool: "flags", title: `Toggle blocked by permissions`, data: { flagName, role } });
           } else if (args.dryRun === true) {
             steps.push({ tool: "flags", title: `Dry Run: would toggle "${flagName}"`, data: { flagName } });
           } else {
@@ -148,16 +163,13 @@ export const sendMessage = action({
               const all = (await ctx.runQuery(api.featureFlags.getFeatureFlags as any, {} as any)) as any[];
               const match = all.find((f) => String(f.flagName).toLowerCase() === flagName.toLowerCase());
               if (match?._id) {
-                // Record undo snapshot
                 const prev = !!match.isEnabled;
                 const stack = flagUndoStacks.get(callerKey) ?? [];
                 stack.push({ at: Date.now(), flagName: match.flagName, previousEnabled: prev });
-                // prune old
                 flagUndoStacks.set(
                   callerKey,
                   stack.filter((e) => Date.now() - e.at <= UNDO_WINDOW_MS).slice(-50)
                 );
-
                 const toggled = await ctx.runMutation(api.featureFlags.toggleFeatureFlag as any, { flagId: match._id } as any);
                 steps.push({ tool: "flags", title: `Toggled flag "${match.flagName}"`, data: { nowEnabled: !!toggled } });
               } else {
@@ -169,28 +181,34 @@ export const sendMessage = action({
           }
         }
 
-        // Undo flag toggle: "undo flag <name>"
+        // Undo flag toggle
         const undoMatch = q.match(/undo\s+flag\s+([a-z0-9_\-\.]+)/i);
         if (undoMatch?.[1]) {
           const uName = undoMatch[1];
-          const stack = (flagUndoStacks.get(callerKey) ?? []).filter((e) => Date.now() - e.at <= UNDO_WINDOW_MS);
-          const last = [...stack].reverse().find((e) => e.flagName.toLowerCase() === uName.toLowerCase());
-          if (!last) {
-            steps.push({ tool: "flags", title: `No undo available for "${uName}"`, data: {} });
+          const permitted = canUseToolAction(role, "flags", "toggle");
+          if (!permitted) {
+            steps.push({ tool: "flags", title: `Undo blocked by permissions`, data: { flagName: uName, role } });
           } else if (args.dryRun === true) {
-            steps.push({ tool: "flags", title: `Dry Run: would undo "${uName}" to ${last.previousEnabled ? "enabled" : "disabled"}`, data: {} });
+            const stack = (flagUndoStacks.get(callerKey) ?? []).filter((e) => Date.now() - e.at <= UNDO_WINDOW_MS);
+            const last = [...stack].reverse().find((e) => e.flagName.toLowerCase() === uName.toLowerCase());
+            steps.push({ tool: "flags", title: `Dry Run: would undo "${uName}"`, data: { to: last?.previousEnabled } });
           } else {
             try {
-              const all = (await ctx.runQuery(api.featureFlags.getFeatureFlags as any, {} as any)) as any[];
-              const match = all.find((f) => String(f.flagName).toLowerCase() === uName.toLowerCase());
-              if (match?._id) {
-                // Set explicit state if needed: if current equals desired, no-op; otherwise toggle
-                if (!!match.isEnabled !== !!last.previousEnabled) {
-                  await ctx.runMutation(api.featureFlags.toggleFeatureFlag as any, { flagId: match._id } as any);
-                }
-                steps.push({ tool: "flags", title: `Undid flag "${match.flagName}"`, data: { nowEnabled: last.previousEnabled } });
+              const stack = (flagUndoStacks.get(callerKey) ?? []).filter((e) => Date.now() - e.at <= UNDO_WINDOW_MS);
+              const last = [...stack].reverse().find((e) => e.flagName.toLowerCase() === uName.toLowerCase());
+              if (!last) {
+                steps.push({ tool: "flags", title: `No undo available for "${uName}"`, data: {} });
               } else {
-                steps.push({ tool: "flags", title: `Flag not found for undo: ${uName}`, data: {} });
+                const all = (await ctx.runQuery(api.featureFlags.getFeatureFlags as any, {} as any)) as any[];
+                const match = all.find((f) => String(f.flagName).toLowerCase() === uName.toLowerCase());
+                if (match?._id) {
+                  if (!!match.isEnabled !== !!last.previousEnabled) {
+                    await ctx.runMutation(api.featureFlags.toggleFeatureFlag as any, { flagId: match._id } as any);
+                  }
+                  steps.push({ tool: "flags", title: `Undid flag "${match.flagName}"`, data: { nowEnabled: last.previousEnabled } });
+                } else {
+                  steps.push({ tool: "flags", title: `Flag not found for undo: ${uName}`, data: {} });
+                }
               }
             } catch (e: any) {
               steps.push({ tool: "flags", title: "Undo flag failed", data: { error: e?.message || String(e) } });
@@ -210,19 +228,17 @@ export const sendMessage = action({
       }
 
       if (args.mode !== "explain") {
-        // Optional tenant scope: "for tenant <id>:" prefix
         const tenantScopeMatch = q.match(/for\s+tenant\s+([a-z0-9]{10,})/i);
         const scopedTenantId = tenantScopeMatch ? tenantScopeMatch[1] : undefined;
 
-        // create alert: "create alert <severity>: <title>"
+        // create alert
         const createMatch = q.match(/create\s+alert\s+(low|medium|high)\s*:\s*(.+)$/i);
         if (createMatch) {
           const severity = createMatch[1] as "low" | "medium" | "high";
           const title = createMatch[2].trim();
-          // Guardrail: admins allowed; require confirm/auto or superadmin for non-explain paths
-          const canCreate = role === "superadmin" || args.mode === "confirm" || args.mode === "auto";
-          if (!canCreate) {
-            steps.push({ tool: "alerts", title: "Create alert blocked by permissions", data: { severity, title } });
+          const permitted = canUseToolAction(role, "alerts", "create");
+          if (!permitted) {
+            steps.push({ tool: "alerts", title: "Create alert blocked by permissions", data: { severity, title, role } });
           } else if (args.dryRun === true) {
             steps.push({ tool: "alerts", title: "Dry Run: would create alert", data: { severity, title, tenantId: scopedTenantId ?? null } });
           } else {
@@ -239,13 +255,13 @@ export const sendMessage = action({
           }
         }
 
-        // resolve alert: "resolve alert <id>"
+        // resolve alert
         const resolveMatch = q.match(/resolve\s+alert\s+([a-z0-9]{10,})/i);
         if (resolveMatch) {
           const alertId = resolveMatch[1];
-          const canResolve = role === "superadmin" || args.mode === "confirm" || args.mode === "auto";
-          if (!canResolve) {
-            steps.push({ tool: "alerts", title: "Resolve alert blocked by permissions", data: { alertId } });
+          const permitted = canUseToolAction(role, "alerts", "resolve");
+          if (!permitted) {
+            steps.push({ tool: "alerts", title: "Resolve alert blocked by permissions", data: { alertId, role } });
           } else if (args.dryRun === true) {
             steps.push({ tool: "alerts", title: "Dry Run: would resolve alert", data: { alertId } });
           } else {
