@@ -1505,12 +1505,15 @@ export default function AdminPage() {
                         toolsAllowed: Object.entries(assistantTools)
                           .filter(([, v]) => v)
                           .map(([k]) => k),
+                        // Add: pass adminToken when independent Admin Portal session is valid
+                        adminToken: (adminSession?.valid === true) ? adminToken ?? undefined : undefined,
                       } as any);
                       setAssistantMessages((m) => [
                         ...m,
                         {
                           role: "assistant",
-                          content: res?.notice || "Done.",
+                          // Prefer LLM summary when available
+                          content: (res?.summaryText || res?.notice || "Done.") as string,
                           steps: res?.steps || [],
                         },
                       ]);
@@ -1537,12 +1540,15 @@ export default function AdminPage() {
                       toolsAllowed: Object.entries(assistantTools)
                         .filter(([, v]) => v)
                         .map(([k]) => k),
+                      // Add: pass adminToken when independent Admin Portal session is valid
+                      adminToken: (adminSession?.valid === true) ? adminToken ?? undefined : undefined,
                     } as any);
                     setAssistantMessages((m) => [
                       ...m,
                       {
                         role: "assistant",
-                        content: res?.notice || "Done.",
+                        // Prefer LLM summary when available
+                        content: (res?.summaryText || res?.notice || "Done.") as string,
                         steps: res?.steps || [],
                       },
                     ]);

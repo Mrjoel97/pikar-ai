@@ -91,11 +91,11 @@ export const transcribeAudio = action({
       };
     }
 
-    // Whisper API expects multipart/form-data. Build it manually.
-    const buf = Buffer.from(await file.arrayBuffer());
-    const form = new FormData();
-    const blob = new Blob([buf], { type: "audio/webm" });
-    form.append("file", blob, "note.webm");
+    // Build multipart/form-data without relying on Node Buffer/DOM typings
+    const form = new (globalThis as any).FormData();
+    const arrBuf = await file.arrayBuffer();
+    const blob = new (globalThis as any).Blob([arrBuf], { type: "audio/webm" });
+    form.append("file", blob as any, "note.webm");
     form.append("model", "whisper-1");
     form.append("response_format", "json");
 

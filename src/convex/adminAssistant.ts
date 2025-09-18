@@ -4,302 +4,157 @@ import { action } from "./_generated/server";
 import { v } from "convex/values";
 import { api } from "./_generated/api";
 
-// Modes dictate whether to execute mutating steps.
-// MVP: read-only; future: "confirm" gating for mutating ops.
 type AssistantMode = "explain" | "confirm" | "auto";
-type ToolName = "health" | "flags" | "alerts";
-
-// Add an explicit return type for the assistant action to satisfy TS
-type SendMessageResult = {
-  mode: AssistantMode;
-  toolsUsed: ToolName[];
-  steps: Array<string>;
-  data: { results: Array<{ tool: ToolName; data: any }> };
-  notices: Array<string>;
-  summaryText: string | null;
-};
+type ToolKey = "health" | "flags" | "alerts";
+type AssistantStep = { tool: ToolKey; title: string; data: any };
+type SendMessageResult = { notice: string; steps: AssistantStep[]; summaryText?: string };
 
 export const sendMessage = action({
   args: {
     message: v.string(),
     mode: v.union(v.literal("explain"), v.literal("confirm"), v.literal("auto")),
-    toolsAllowed: v.array(
-      v.union(v.literal("health"), v.literal("flags"), v.literal("alerts"))
-    ),
+    toolsAllowed: v.array(v.union(v.literal("health"), v.literal("flags"), v.literal("alerts"))),
+    adminToken: v.optional(v.string()),
   },
   handler: async (ctx, args): Promise<SendMessageResult> => {
-    // Guard: only platform admins may use the assistant.
-    const isAdmin = await ctx.runQuery(api.admin.getIsAdmin, {});
-    if (!isAdmin) {
-      throw new Error("Admin access required");
-    }
-
-    const normalized = args.message.trim().toLowerCase();
-    const tools: Array<ToolName> = args.toolsAllowed as any;
-
-    const results: Array<{ tool: ToolName; data: any }> = [];
-
-    // Add: tracking state for transcript + context used by LLM summary
-    const mode = args.mode as AssistantMode;
-    const userMessage = args.message;
-    const steps: Array<string> = [];
-    const notices: Array<string> = [];
-    const toolsUsedSet = new Set<ToolName>();
-
-    // Tool: health (env posture, queues, cron)
-    if (tools.includes("health") && (normalized.includes("health") || normalized.includes("status"))) {
-      try {
-        const env = await ctx.runQuery(api.health.envStatus, {});
-        results.push({ tool: "health", data: env });
-        // New: record usage + transcript step
-        toolsUsedSet.add("health");
-        steps.push("Queried environment status");
-      } catch (e: any) {
-        results.push({ tool: "health", data: { error: e?.message || "health failed" } });
-      }
-    }
-
-    // Tool: flags (list)
-    if (tools.includes("flags") && (normalized.includes("flag") || normalized.includes("feature"))) {
-      try {
-        const flags = await ctx.runQuery(api.featureFlags.getFeatureFlags as any, {});
-        results.push({ tool: "flags", data: flags });
-        // New
-        toolsUsedSet.add("flags");
-        steps.push("Listed feature flags");
-      } catch (e: any) {
-        results.push({ tool: "flags", data: { error: e?.message || "flags failed" } });
-      }
-    }
-
-    // Tool: alerts (list)
-    if (tools.includes("alerts") && (normalized.includes("alert") || normalized.includes("incident"))) {
-      try {
-        const alerts = await ctx.runQuery(api.admin.listAlerts as any, { tenantId: undefined });
-        results.push({ tool: "alerts", data: alerts });
-        // New
-        toolsUsedSet.add("alerts");
-        steps.push("Listed alerts");
-      } catch (e: any) {
-        results.push({ tool: "alerts", data: { error: e?.message || "alerts failed" } });
-      }
-    }
-
-    // READ-ONLY tools (health, flags, alerts) already implemented above.
-    // Phase 2: Enable safe execution in "confirm" or "auto" modes.
-    const canExecute = args.mode !== "explain";
-    // New: mode notice
-    notices.push(canExecute ? "Executing allowed operations (confirm/auto)" : "Explain mode: read-only");
-
-    if (canExecute) {
-      // 1) Toggle feature flag by name:
-      if (normalized.includes("toggle flag")) {
-        try {
-          const match = normalized.match(/toggle flag\s+["']?([a-z0-9_\-\. \s]+)["']?/i);
-          if (match && match[1]) {
-            const name = match[1].trim().toLowerCase();
-            const flags = await ctx.runQuery(api.featureFlags.getFeatureFlags as any, {});
-            const found = (flags || []).find((f: any) => String(f.flagName || "").toLowerCase() === name);
-            if (!found) {
-              results.push({
-                tool: "flags",
-                data: { error: `Flag "${name}" not found`, available: (flags || []).map((f: any) => f.flagName) },
-              });
-            } else {
-              const before = !!found.isEnabled;
-              const after = await ctx.runMutation(api.featureFlags.toggleFeatureFlag as any, { flagId: found._id });
-              results.push({
-                tool: "flags",
-                data: { action: "toggleFlag", flagId: found._id, flagName: found.flagName, before, after },
-              });
-              // New: record step
-              steps.push(`Toggled feature flag ${name}`);
-              toolsUsedSet.add("flags");
-            }
-          } else {
-            results.push({
-              tool: "flags",
-              data: { error: 'Could not parse flag name. Try: toggle flag "my_flag_name"' },
-            });
-          }
-        } catch (e: any) {
-          results.push({ tool: "flags", data: { error: e?.message || "toggle flag failed" } });
-        }
-      }
-
-      // 2) Create alert:
-      if (normalized.includes("create alert")) {
-        try {
-          const sevMatch = normalized.match(/\b(low|medium|high)\b/);
-          const severity = (sevMatch?.[1] as "low" | "medium" | "high" | undefined) || undefined;
-          let title = "";
-          const titleAfterColon = args.message.split(":").slice(1).join(":").trim();
-          if (titleAfterColon) title = titleAfterColon;
-          if (!title) {
-            title = args.message.replace(/create alert/i, "").replace(/\b(low|medium|high)\b/i, "").replace(/:/g, "").trim();
-          }
-
-          if (!severity || !title) {
-            results.push({
-              tool: "alerts",
-              data: { error: 'Usage: create alert <low|medium|high>: <title>' },
-            });
-          } else {
-            const created = await ctx.runMutation(api.admin.createAlert as any, {
-              severity,
-              title,
-              description: undefined,
-              tenantId: undefined,
-            });
-            results.push({
-              tool: "alerts",
-              data: { action: "createAlert", severity, title, created },
-            });
-            // New: record step
-            steps.push(`Created alert (${severity}): ${title}`);
-            toolsUsedSet.add("alerts");
-          }
-        } catch (e: any) {
-          results.push({ tool: "alerts", data: { error: e?.message || "create alert failed" } });
-        }
-      }
-
-      // 3) Resolve alert by id:
-      if (normalized.includes("resolve alert")) {
-        try {
-          let id = "";
-          const quoted = args.message.match(/resolve alert\s+["']([^"']+)["']/i);
-          if (quoted?.[1]) {
-            id = quoted[1].trim();
-          } else {
-            const parts = args.message.trim().split(/\s+/);
-            id = parts[parts.length - 1];
-          }
-          if (!id || /resolve/i.test(id)) {
-            results.push({
-              tool: "alerts",
-              data: { error: 'Usage: resolve alert "<alertId>"' },
-            });
-          } else {
-            const res = await ctx.runMutation(api.admin.resolveAlert as any, { alertId: id });
-            results.push({
-              tool: "alerts",
-              data: { action: "resolveAlert", alertId: id, result: res ?? "ok" },
-            });
-            // New: record step
-            steps.push(`Resolved alert ${id}`);
-            toolsUsedSet.add("alerts");
-          }
-        } catch (e: any) {
-          results.push({ tool: "alerts", data: { error: e?.message || "resolve alert failed" } });
-        }
-      }
-
-      // 4) Check base URL posture (server-side view via envStatus)
-      if (normalized.includes("check base url")) {
-        try {
-          const env = await ctx.runQuery(api.health.envStatus, {});
-          results.push({
-            tool: "health",
-            data: {
-              action: "checkBaseUrl",
-              hasBASE_URL: !!env?.hasBASE_URL,
-              note: "Frontend can open Settings or the base URL for further verification.",
-            },
-          });
-          // New: record step
-          steps.push("Checked base URL posture");
-          toolsUsedSet.add("health");
-        } catch (e: any) {
-          results.push({ tool: "health", data: { error: e?.message || "check base url failed" } });
-        }
-      }
-
-      // 5) Open settings (instruction only; frontend should handle navigation)
-      if (normalized.includes("open settings")) {
-        results.push({
-          tool: "health",
-          data: { action: "openSettings", instruction: "Client should navigate to /settings" },
-        });
-        // New: record step
-        steps.push("Requested to open settings UI");
-      }
-    }
-
-    // Default/fallback: if no specific cues, provide overview via health + flags summary
-    if (results.length === 0) {
-      try {
-        const env = tools.includes("health") ? await ctx.runQuery(api.health.envStatus, {}) : null;
-        const flags = tools.includes("flags")
-          ? await ctx.runQuery(api.featureFlags.getFeatureFlags as any, {})
-          : [];
-        results.push({
-          tool: (env ? "health" : "flags") as ToolName,
-          data: { env, flags },
-        });
-        // New: record usage + step
-        if (env) toolsUsedSet.add("health");
-        if (Array.isArray(flags)) toolsUsedSet.add("flags");
-        steps.push("Provided overview of health and flags");
-      } catch (e: any) {
-        results.push({ tool: "health", data: { error: e?.message || "assistant failed" } });
-      }
-    }
-
-    // New: finalize structured result for LLM prompt and response payload
-    const toolsUsed: Array<ToolName> = Array.from(toolsUsedSet);
-    const data = { results };
-
-    let summaryText: string | null = null;
+    // Gate: allow via independent Admin Portal session OR user-based admin
+    let allowed = false;
     try {
-      const hasOpenAI =
-        !!process.env.OPENAI_API_KEY || !!process.env.OPENAI_API_KEY?.toString();
-      if (hasOpenAI) {
-        const compactSteps = Array.isArray(steps)
-          ? steps.map((s: any, i: number) => `Step ${i + 1}: ${typeof s === "string" ? s : JSON.stringify(s)}`).join("\n")
-          : "";
-        const compactData = data
-          ? JSON.stringify(data, (_k, v) => (typeof v === "string" && v.length > 500 ? v.slice(0, 500) + "…" : v), 2)
-          : "";
-        const compactTools = Array.isArray(toolsUsed) ? toolsUsed.join(", ") : String(toolsUsed || "");
+      if (args.adminToken) {
+        const res = await ctx.runQuery(api.adminAuthData.validateSession as any, { token: args.adminToken } as any);
+        allowed = !!(res && (res as any).valid);
+      }
+    } catch {}
+    if (!allowed) {
+      try {
+        const isAdmin = await ctx.runQuery(api.admin.getIsAdmin as any, {} as any);
+        allowed = !!isAdmin;
+      } catch {}
+    }
+    if (!allowed) {
+      return { notice: "Unauthorized", steps: [] };
+    }
 
-        const prompt = [
-          "You are the Admin Copilot for Pikar AI.",
-          "Summarize the results clearly for an admin. Be concise, actionable, and accurate.",
-          `Mode: ${mode || "explain"}`,
-          `Tools Used: ${compactTools || "none"}`,
-          compactSteps ? `Actions/Steps:\n${compactSteps}` : "",
-          compactData ? `Structured Data:\n${compactData}` : "",
-          userMessage ? `User Prompt:\n${userMessage}` : "",
-          "Output format:",
-          "- 1–3 bullet summary",
-          "- Key findings",
-          "- Next best actions (if any)",
-        ]
-          .filter(Boolean)
-          .join("\n\n");
+    const steps: AssistantStep[] = [];
+    const q = args.message.toLowerCase();
 
-        const llm: { text?: string } | null = (await ctx.runAction(api.openai.generate, {
-          prompt,
-          model: "gpt-4o-mini",
-          temperature: 0.2,
-          maxTokens: 600,
-        })) as any;
-        if (llm?.text && typeof llm.text === "string") {
-          summaryText = llm.text.trim();
+    // Health tool
+    if (args.toolsAllowed.includes("health")) {
+      try {
+        const env = await ctx.runQuery(api.health.envStatus as any, {} as any);
+        steps.push({ tool: "health", title: "Environment & System Health", data: env });
+      } catch (e: any) {
+        steps.push({ tool: "health", title: "Health check failed", data: { error: e?.message || String(e) } });
+      }
+    }
+
+    // Flags tool
+    if (args.toolsAllowed.includes("flags")) {
+      try {
+        const flags = await ctx.runQuery(api.featureFlags.getFeatureFlags as any, {} as any);
+        steps.push({ tool: "flags", title: "Feature Flags", data: flags });
+      } catch (e: any) {
+        steps.push({ tool: "flags", title: "Failed to load flags", data: { error: e?.message || String(e) } });
+      }
+
+      if (args.mode !== "explain") {
+        // naive parse: "toggle flag <name>"
+        const m = q.match(/toggle\s+flag\s+([a-z0-9_\-\.]+)/i);
+        if (m?.[1]) {
+          try {
+            const flagName = m[1];
+            const all = (await ctx.runQuery(api.featureFlags.getFeatureFlags as any, {} as any)) as any[];
+            const match = all.find((f) => String(f.flagName).toLowerCase() === flagName.toLowerCase());
+            if (match?._id) {
+              const toggled = await ctx.runMutation(api.featureFlags.toggleFeatureFlag as any, { flagId: match._id } as any);
+              steps.push({ tool: "flags", title: `Toggled flag "${match.flagName}"`, data: { nowEnabled: !!toggled } });
+            } else {
+              steps.push({ tool: "flags", title: `Flag not found: ${flagName}`, data: {} });
+            }
+          } catch (e: any) {
+            steps.push({ tool: "flags", title: "Toggle flag failed", data: { error: e?.message || String(e) } });
+          }
         }
       }
-    } catch (e) {
-      console.error("AdminAssistant LLM summarization failed:", (e as any)?.message || e);
-      summaryText = null;
     }
+
+    // Alerts tool
+    if (args.toolsAllowed.includes("alerts")) {
+      try {
+        const alerts = await ctx.runQuery(api.admin.listAlerts as any, {} as any);
+        steps.push({ tool: "alerts", title: "Open Alerts", data: alerts });
+      } catch (e: any) {
+        steps.push({ tool: "alerts", title: "Failed to list alerts", data: { error: e?.message || String(e) } });
+      }
+
+      if (args.mode !== "explain") {
+        // create alert: "create alert <severity>: <title>"
+        const createMatch = q.match(/create\s+alert\s+(low|medium|high)\s*:\s*(.+)$/i);
+        if (createMatch) {
+          const severity = createMatch[1] as "low" | "medium" | "high";
+          const title = createMatch[2].trim();
+          try {
+            const created = await ctx.runMutation(api.admin.createAlert as any, {
+              title,
+              severity,
+            } as any);
+            steps.push({ tool: "alerts", title: "Created alert", data: created });
+          } catch (e: any) {
+            steps.push({ tool: "alerts", title: "Create alert failed", data: { error: e?.message || String(e) } });
+          }
+        }
+
+        // resolve alert: "resolve alert <id>"
+        const resolveMatch = q.match(/resolve\s+alert\s+([a-z0-9]{10,})/i);
+        if (resolveMatch) {
+          const alertId = resolveMatch[1];
+          try {
+            const res = await ctx.runMutation(api.admin.resolveAlert as any, { alertId } as any);
+            steps.push({ tool: "alerts", title: `Resolved alert ${alertId}`, data: res });
+          } catch (e: any) {
+            steps.push({ tool: "alerts", title: "Resolve alert failed", data: { error: e?.message || String(e) } });
+          }
+        }
+      }
+    }
+
+    // LLM summary (optional)
+    let summaryText: string | undefined;
+    try {
+      const prompt = [
+        "You are an admin assistant. Summarize these tool results concisely for an admin.",
+        `Mode: ${args.mode}`,
+        `User prompt: ${args.message}`,
+        "Steps JSON:",
+        JSON.stringify(steps).slice(0, 12000),
+        "Provide at most 4 bullet points."
+      ].join("\n");
+      const llm = (await ctx.runAction(api.openai.generate as any, { prompt } as any)) as any;
+      const text = llm?.text || llm?.content || llm?.output;
+      if (typeof text === "string" && text.trim()) {
+        summaryText = text.trim();
+      }
+    } catch {}
+
+    // Audit (best-effort, non-blocking)
+    try {
+      await ctx.runMutation(api.audit.write as any, {
+        action: "admin_assistant_run",
+        entityType: "admin_assistant",
+        entityId: "assistant",
+        details: {
+          mode: args.mode,
+          tools: args.toolsAllowed,
+          message: args.message,
+          steps,
+          summaryText,
+        },
+      } as any);
+    } catch {}
 
     return {
-      mode: args.mode as AssistantMode,
-      toolsUsed,
+      notice: "Assistant processed your request.",
       steps,
-      data,
-      notices,
       summaryText,
     };
   },
