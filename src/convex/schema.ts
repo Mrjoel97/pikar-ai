@@ -1020,6 +1020,18 @@ export default defineSchema({
     .index("by_token", ["token"])
     .index("by_email", ["email"]),
 
+  // New table: API keys for tenants
+  api_keys: defineTable({
+    tenantId: v.id("businesses"),
+    keyHash: v.string(),
+    name: v.string(),
+    scopes: v.array(v.string()),
+    createdAt: v.number(),
+    revokedAt: v.optional(v.number()),
+  })
+    .index("by_tenant", ["tenantId"])
+    .index("by_tenant_and_name", ["tenantId", "name"]),
+
   // Append Convex Auth required tables inside the schema (excluding users to avoid conflicts)
   ...authWithoutUsers,
 });

@@ -10,6 +10,7 @@ import { useNavigate } from "react-router";
 import { useMemo } from "react";
 import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription, DrawerTrigger } from "@/components/ui/drawer";
 
 export default function AdminPage() {
   const navigate = useNavigate();
@@ -148,6 +149,33 @@ export default function AdminPage() {
     };
   }, [adminList, pending, flags, flagAnalytics, env]);
 
+  const [selectedTenantId, setSelectedTenantId] = useState<string | "">("");
+  const [newKeyName, setNewKeyName] = useState("");
+  const [newKeyScopes, setNewKeyScopes] = useState("admin:read,admin:write");
+  const [freshSecret, setFreshSecret] = useState<string | null>(null);
+  const [healthOpen, setHealthOpen] = useState(false);
+
+  // Tenants & API Keys state
+  const tenants = useQuery(
+    api.admin.listTenants as any,
+    hasAdminAccess ? {} : undefined
+  ) as Array<{ _id: string; name: string; plan?: string; ownerId?: string; status?: string }> | undefined;
+
+  // Tenant users (derived) - only load when one is selected
+  const tenantUsers = useQuery(
+    api.admin.listTenantUsers as any,
+    hasAdminAccess && selectedTenantId ? { businessId: selectedTenantId } : undefined
+  ) as Array<{ _id: string; name: string; email?: string; role?: string }> | undefined;
+
+  // API Keys
+  const apiKeys = useQuery(
+    api.admin.listApiKeys as any,
+    hasAdminAccess && selectedTenantId ? { tenantId: selectedTenantId } : undefined
+  ) as Array<{ _id: string; name: string; scopes: string[]; createdAt: number; revokedAt?: number }> | undefined;
+
+  const createApiKey = useMutation(api.admin.createApiKey as any);
+  const revokeApiKey = useMutation(api.admin.revokeApiKey as any);
+
   const handleLogout = () => {
     localStorage.removeItem("adminSessionToken");
     setAdminToken(null);
@@ -285,6 +313,18 @@ export default function AdminPage() {
             Administrators
           </button>
           <button
+            onClick={() => scrollToSection("section-tenants")}
+            className="text-left px-3 py-2 rounded-md hover:bg-white/10 transition"
+          >
+            Tenants
+          </button>
+          <button
+            onClick={() => scrollToSection("section-api-keys")}
+            className="text-left px-3 py-2 rounded-md hover:bg-white/10 transition"
+          >
+            API Keys
+          </button>
+          <button
             onClick={() => scrollToSection("section-audit-explorer")}
             className="text-left px-3 py-2 rounded-md hover:bg-white/10 transition"
           >
@@ -336,9 +376,83 @@ export default function AdminPage() {
 
         {/* System Health Strip with drill-down tooltips */}
         <Card>
-<CardHeader>
-  <CardTitle id="section-system-health">System Health</CardTitle>
-</CardHeader>
+          <CardHeader>
+            <CardTitle id="section-system-health" className="flex items-center gap-2">
+              <span>System Health</span>
+              <Drawer open={healthOpen} onOpenChange={setHealthOpen}>
+                <DrawerTrigger asChild>
+                  <Button size="xs" variant="outline">Details</Button>
+                </DrawerTrigger>
+                <DrawerContent>
+                  <DrawerHeader>
+                    <DrawerTitle>System Health Details</DrawerTitle>
+                    <DrawerDescription className="text-sm">
+                      Quick remediation and validation tools.
+                    </DrawerDescription>
+                  </DrawerHeader>
+                  <div className="px-6 pb-6 space-y-4">
+                    <div className="space-y-1">
+                      <div className="font-medium">RESEND</div>
+                      <div className="text-sm text-muted-foreground">
+                        {env?.hasRESEND ? "Configured. You can send emails." : "Missing. Set RESEND_API_KEY in Integrations."}
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            toast("Opening Settings...");
+                            // Navigate to Settings so admins can run tests from there
+                            window.location.href = "/settings";
+                          }}
+                        >
+                          Open Settings
+                        </Button>
+                      </div>
+                    </div>
+
+                    <Separator />
+
+                    <div className="space-y-1">
+                      <div className="font-medium">Public Base URL</div>
+                      <div className="text-sm text-muted-foreground">
+                        {env?.hasBASE_URL ? "Configured" : "Missing (VITE_PUBLIC_BASE_URL)"}
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            const base = (import.meta as any)?.env?.VITE_PUBLIC_BASE_URL as string | undefined;
+                            if (base) {
+                              toast.success(`Base URL: ${base}`);
+                              try { window.open(base, "_blank", "noopener,noreferrer"); } catch {}
+                            } else {
+                              toast.error("VITE_PUBLIC_BASE_URL not set in frontend env.");
+                            }
+                          }}
+                        >
+                          Show & Open Base URL
+                        </Button>
+                      </div>
+                    </div>
+
+                    <Separator />
+
+                    <div className="space-y-1">
+                      <div className="font-medium">Operational Signals</div>
+                      <div className="text-sm text-muted-foreground">
+                        Queue depth: {env?.emailQueueDepth ?? 0} • Overdue approvals: {env?.overdueApprovalsCount ?? 0}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        Cron last processed: {env?.cronLastProcessed ? new Date(env.cronLastProcessed).toLocaleString() : "Unknown"}
+                      </div>
+                    </div>
+                  </div>
+                </DrawerContent>
+              </Drawer>
+            </CardTitle>
+          </CardHeader>
           <CardContent className="space-y-3">
             <TooltipProvider>
               <div className="flex flex-wrap gap-2">
@@ -436,9 +550,9 @@ export default function AdminPage() {
 
         {/* Feature Flags Panel with inline rollout % and scope controls */}
         <Card>
-<CardHeader>
-  <CardTitle id="section-feature-flags">Feature Flags</CardTitle>
-</CardHeader>
+          <CardHeader>
+            <CardTitle id="section-feature-flags">Feature Flags</CardTitle>
+          </CardHeader>
           <CardContent className="space-y-3">
             <p className="text-sm text-muted-foreground">
               Manage global and tenant-specific feature flags. Toggling and edits take effect immediately.
@@ -551,11 +665,11 @@ export default function AdminPage() {
         </Card>
 
         {/* Pending Senior Admin Requests (unchanged) */}
-{(pending && pending.length > 0) && (
-  <Card>
-    <CardHeader>
-      <CardTitle id="section-pending-senior">Pending Senior Admin Requests</CardTitle>
-    </CardHeader>
+        {(pending && pending.length > 0) && (
+          <Card>
+            <CardHeader>
+              <CardTitle id="section-pending-senior">Pending Senior Admin Requests</CardTitle>
+            </CardHeader>
             <CardContent className="space-y-3">
               <p className="text-sm text-muted-foreground">
                 Approve requests to grant Senior Admin privileges.
@@ -600,9 +714,9 @@ export default function AdminPage() {
 
         {/* Administrators Table (unchanged) */}
         <Card>
-<CardHeader>
-  <CardTitle id="section-admins">Administrators</CardTitle>
-</CardHeader>
+          <CardHeader>
+            <CardTitle id="section-admins">Administrators</CardTitle>
+          </CardHeader>
           <CardContent className="space-y-3">
             <p className="text-sm text-muted-foreground">
               Allowlist: set ADMIN_EMAILS (comma-separated). You can also persist admins in the table below.
@@ -632,11 +746,238 @@ export default function AdminPage() {
           </CardContent>
         </Card>
 
+        {/* Tenants Panel (read-only) */}
+        <Card>
+          <CardHeader>
+            <CardTitle id="section-tenants">Tenants</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Read-only list of tenants. Select a tenant to view its users and API keys.
+            </p>
+
+            <div className="rounded-md border overflow-hidden">
+              <div className="grid grid-cols-3 md:grid-cols-5 gap-2 p-3 bg-muted/40 text-xs font-medium">
+                <div>Name</div>
+                <div className="hidden md:block">Plan</div>
+                <div>Status</div>
+                <div className="hidden md:block">Id</div>
+                <div className="text-right">Select</div>
+              </div>
+              <Separator />
+              <div className="divide-y">
+                {(tenants || []).map((t) => (
+                  <div key={t._id} className="grid grid-cols-3 md:grid-cols-5 gap-2 p-3 text-sm items-center">
+                    <div className="truncate">{t.name || "Tenant"}</div>
+                    <div className="hidden md:block">{t.plan || "—"}</div>
+                    <div>{t.status || "active"}</div>
+                    <div className="hidden md:block text-muted-foreground truncate">{t._id}</div>
+                    <div className="text-right">
+                      <Button
+                        size="sm"
+                        variant={selectedTenantId === t._id ? "default" : "outline"}
+                        onClick={() => setSelectedTenantId(selectedTenantId === t._id ? "" : t._id)}
+                      >
+                        {selectedTenantId === t._id ? "Selected" : "Select"}
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+                {(!tenants || tenants.length === 0) && (
+                  <div className="p-3 text-sm text-muted-foreground">No tenants found.</div>
+                )}
+              </div>
+            </div>
+
+            {selectedTenantId && (
+              <div className="rounded-md border p-3">
+                <div className="font-medium mb-2">Tenant Users</div>
+                <div className="rounded-md border overflow-hidden">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2 p-3 bg-muted/40 text-xs font-medium">
+                    <div>Name</div>
+                    <div>Email</div>
+                    <div className="hidden md:block">Role</div>
+                    <div className="text-right">Id</div>
+                  </div>
+                  <Separator />
+                  <div className="divide-y">
+                    {(tenantUsers || []).map((u) => (
+                      <div key={u._id} className="grid grid-cols-2 md:grid-cols-4 gap-2 p-3 text-sm items-center">
+                        <div className="truncate">{u.name || "User"}</div>
+                        <div className="truncate">{u.email || "—"}</div>
+                        <div className="hidden md:block">{u.role || "member"}</div>
+                        <div className="text-right text-muted-foreground truncate">{u._id}</div>
+                      </div>
+                    ))}
+                    {(!tenantUsers || tenantUsers.length === 0) && (
+                      <div className="p-3 text-sm text-muted-foreground">No users for this tenant.</div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* API Keys Panel (generate/revoke) */}
+        <Card>
+          <CardHeader>
+            <CardTitle id="section-api-keys">API Keys</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Keys are scoped to the selected tenant. New keys are shown once; the secret cannot be retrieved again.
+            </p>
+
+            <div className="grid md:grid-cols-3 gap-3">
+              <div className="space-y-1.5">
+                <div className="text-sm font-medium">Tenant</div>
+                <select
+                  className="h-9 rounded-md border bg-background px-3 text-sm"
+                  value={selectedTenantId}
+                  onChange={(e) => setSelectedTenantId(e.target.value)}
+                >
+                  <option value="">Select a tenant</option>
+                  {(tenants || []).map((t) => (
+                    <option key={t._id} value={t._id}>
+                      {t.name || t._id}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-1.5">
+                <div className="text-sm font-medium">Key Name</div>
+                <Input
+                  placeholder="Server Key"
+                  value={newKeyName}
+                  onChange={(e) => setNewKeyName(e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <div className="text-sm font-medium">Scopes (comma-separated)</div>
+                <Input
+                  placeholder="admin:read,admin:write"
+                  value={newKeyScopes}
+                  onChange={(e) => setNewKeyScopes(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                onClick={async () => {
+                  if (!selectedTenantId) {
+                    toast.error("Select a tenant first.");
+                    return;
+                  }
+                  if (!newKeyName.trim()) {
+                    toast.error("Enter a key name.");
+                    return;
+                  }
+                  try {
+                    toast("Creating API key...");
+                    const scopesArr = newKeyScopes
+                      .split(",")
+                      .map((s) => s.trim())
+                      .filter(Boolean);
+                    const res = await createApiKey({
+                      tenantId: selectedTenantId,
+                      name: newKeyName.trim(),
+                      scopes: scopesArr,
+                    } as any);
+                    // Expect { secret: string }
+                    setFreshSecret(res?.secret || null);
+                    if (res?.secret) {
+                      toast.success("Key created. Copy and store it securely.");
+                    } else {
+                      toast.success("Key created.");
+                    }
+                    setNewKeyName("");
+                  } catch (e: any) {
+                    toast.error(e?.message || "Failed to create API key");
+                  }
+                }}
+                disabled={!selectedTenantId}
+              >
+                Generate Key
+              </Button>
+
+              {freshSecret && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    navigator.clipboard.writeText(freshSecret).then(() => {
+                      toast.success("Copied API key secret");
+                    });
+                  }}
+                >
+                  Copy New Key
+                </Button>
+              )}
+            </div>
+
+            {freshSecret && (
+              <div className="p-3 rounded-md border bg-amber-50 text-amber-900 text-sm">
+                This secret will not be shown again. Copy and store it securely now.
+              </div>
+            )}
+
+            <div className="rounded-md border overflow-hidden">
+              <div className="grid grid-cols-3 md:grid-cols-6 gap-2 p-3 bg-muted/40 text-xs font-medium">
+                <div>Name</div>
+                <div className="hidden md:block">Scopes</div>
+                <div>Created</div>
+                <div className="hidden md:block">Revoked</div>
+                <div className="hidden md:block">Id</div>
+                <div className="text-right">Action</div>
+              </div>
+              <Separator />
+              <div className="divide-y">
+                {(apiKeys || []).map((k) => (
+                  <div key={k._id} className="grid grid-cols-3 md:grid-cols-6 gap-2 p-3 text-sm items-center">
+                    <div className="truncate">{k.name}</div>
+                    <div className="hidden md:block truncate">{(k.scopes || []).join(", ") || "—"}</div>
+                    <div className="truncate">{new Date(k.createdAt).toLocaleString()}</div>
+                    <div className="hidden md:block">{k.revokedAt ? new Date(k.revokedAt).toLocaleString() : "—"}</div>
+                    <div className="hidden md:block text-muted-foreground truncate">{k._id}</div>
+                    <div className="text-right">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={!!k.revokedAt}
+                        onClick={async () => {
+                          try {
+                            await revokeApiKey({ apiKeyId: k._id } as any);
+                            toast.success("Key revoked");
+                          } catch (e: any) {
+                            toast.error(e?.message || "Failed to revoke key");
+                          }
+                        }}
+                      >
+                        Revoke
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+                {(!apiKeys || apiKeys.length === 0) && (
+                  <div className="p-3 text-sm text-muted-foreground">
+                    {selectedTenantId ? "No API keys for this tenant yet." : "Select a tenant to view keys."}
+                  </div>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Audit Explorer (MVP) */}
         <Card>
-<CardHeader>
-  <CardTitle id="section-audit-explorer">Audit Explorer</CardTitle>
-</CardHeader>
+          <CardHeader>
+            <CardTitle id="section-audit-explorer">Audit Explorer</CardTitle>
+          </CardHeader>
           <CardContent className="space-y-3">
             <div className="grid grid-cols-1 md:grid-cols-5 gap-2">
               <Input

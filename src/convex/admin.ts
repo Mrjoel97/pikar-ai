@@ -1,5 +1,6 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
+import { Id } from "./_generated/dataModel";
 
 /**
  * Admin determination rules:
@@ -125,6 +126,26 @@ async function isSuperAdmin(ctx: any): Promise<boolean> {
   return admin?.role === "superadmin";
 }
 
+// Add helper to check platform admin (allowlist or admins table, excluding 'pending_senior')
+async function isPlatformAdmin(ctx: any): Promise<boolean> {
+  const identity = await ctx.auth.getUserIdentity();
+  const email = identity?.email?.toLowerCase();
+  if (!email) return false;
+
+  const envAllow = (process.env.ADMIN_EMAILS || "")
+    .split(",")
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean);
+  if (envAllow.includes(email)) return true;
+
+  const admin = await ctx.db
+    .query("admins")
+    .withIndex("by_email", (q: any) => q.eq("email", email))
+    .unique();
+  const role = admin?.role;
+  return role === "superadmin" || role === "senior" || role === "admin";
+}
+
 // Request Senior Admin: create a pending request
 export const requestSeniorAdmin = mutation({
   args: {},
@@ -195,5 +216,135 @@ export const listPendingAdminRequests = query({
     if (!superOk) return [];
     const pending = await ctx.db.query("admins").collect();
     return pending.filter((a: any) => a.role === "pending_senior");
+  },
+});
+
+// List tenants (businesses) - admin only
+export const listTenants = query({
+  args: {},
+  handler: async (ctx) => {
+    const ok = await isPlatformAdmin(ctx);
+    if (!ok) return [];
+    const tenants = await ctx.db.query("businesses").collect();
+    return tenants;
+  },
+});
+
+// List API keys for a tenant - admin only
+export const listApiKeys = query({
+  args: { tenantId: v.id("businesses") },
+  handler: async (ctx, args) => {
+    const ok = await isPlatformAdmin(ctx);
+    if (!ok) return [];
+    const keys = await ctx.db
+      .query("api_keys")
+      .withIndex("by_tenant", (q) => q.eq("tenantId", args.tenantId))
+      .collect();
+    return keys;
+  },
+});
+
+// Create API key for a tenant - admin only
+export const createApiKey = mutation({
+  args: {
+    tenantId: v.id("businesses"),
+    name: v.string(),
+    scopes: v.array(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const ok = await isPlatformAdmin(ctx);
+    if (!ok) throw new Error("Admin access required");
+
+    // Best-effort secret generation (no Node crypto in mutations)
+    const rand = Array.from({ length: 32 }, () =>
+      Math.floor(Math.random() * 36).toString(36)
+    ).join("");
+    const secret = `pk_${rand}`;
+
+    // Placeholder non-recoverable representation
+    const keyHash = `naive_${rand.slice(-16)}`;
+
+    await ctx.db.insert("api_keys", {
+      tenantId: args.tenantId,
+      name: args.name,
+      scopes: args.scopes,
+      keyHash,
+      createdAt: Date.now(),
+    });
+
+    return { secret };
+  },
+});
+
+// Revoke API key - admin only
+export const revokeApiKey = mutation({
+  args: { apiKeyId: v.id("api_keys") },
+  handler: async (ctx, args) => {
+    const ok = await isPlatformAdmin(ctx);
+    if (!ok) throw new Error("Admin access required");
+    await ctx.db.patch(args.apiKeyId, { revokedAt: Date.now() });
+    return true;
+  },
+});
+
+// List users for a given tenant (business) using ownerId + teamMembers
+export const listTenantUsers = query({
+  args: { businessId: v.id("businesses") },
+  handler: async (ctx, args) => {
+    const biz = await ctx.db.get(args.businessId);
+    if (!biz) {
+      throw new Error("Business not found");
+    }
+
+    // Admin gating: only allow platform admins to use this endpoint
+    // Try checking admins table and ADMIN_EMAILS
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Admin access required");
+    }
+    // Check ADMIN_EMAILS allowlist or existing admins table membership
+    const envAllow = (process.env.ADMIN_EMAILS || "")
+      .split(",")
+      .map((s) => s.trim().toLowerCase())
+      .filter(Boolean);
+    const isAllowlisted = envAllow.includes(identity.email!.toLowerCase());
+
+    const adminRecord = await ctx.db
+      .query("admins")
+      .withIndex("by_email", (q) => q.eq("email", identity.email!))
+      .first()
+      .catch(() => null);
+
+    const role = adminRecord?.role;
+    const hasAdminAccess =
+      isAllowlisted ||
+      role === "superadmin" ||
+      role === "senior" ||
+      role === "admin";
+
+    if (!hasAdminAccess) {
+      throw new Error("Admin access required");
+    }
+
+    const userIds: Array<Id<"users">> = [];
+    if (biz.ownerId) userIds.push(biz.ownerId);
+    if (Array.isArray(biz.teamMembers)) {
+      for (const uid of biz.teamMembers as Array<Id<"users">>) userIds.push(uid);
+    }
+
+    const users: Array<any> = [];
+    for (const uid of userIds) {
+      const u = await ctx.db.get(uid);
+      if (u) {
+        const roleLabel = String(uid) === String(biz.ownerId) ? "owner" : "member";
+        users.push({
+          _id: u._id,
+          name: (u as any).name ?? (u as any).email ?? "User",
+          email: (u as any).email ?? "",
+          role: roleLabel,
+        });
+      }
+    }
+    return users;
   },
 });
