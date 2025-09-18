@@ -232,13 +232,17 @@ export const listTenants = query({
 
 // List API keys for a tenant - admin only
 export const listApiKeys = query({
-  args: { tenantId: v.id("businesses") },
+  // Make tenantId optional so initial UI render doesn't throw
+  args: { tenantId: v.optional(v.id("businesses")) },
   handler: async (ctx, args) => {
     const ok = await isPlatformAdmin(ctx);
     if (!ok) return [];
-    const keys = await ctx.db
-      .query("api_keys")
-      .withIndex("by_tenant", (q) => q.eq("tenantId", args.tenantId))
+    if (!args.tenantId) return []; // no tenant selected yet
+
+    // Use loose typing to avoid TS errors if _generated types aren't refreshed yet
+    const keys = await (ctx.db as any)
+      .query("api_keys" as any)
+      .withIndex("by_tenant", (q: any) => q.eq("tenantId", args.tenantId))
       .collect();
     return keys;
   },
@@ -264,7 +268,7 @@ export const createApiKey = mutation({
     // Placeholder non-recoverable representation
     const keyHash = `naive_${rand.slice(-16)}`;
 
-    await ctx.db.insert("api_keys", {
+    await (ctx.db as any).insert("api_keys" as any, {
       tenantId: args.tenantId,
       name: args.name,
       scopes: args.scopes,
@@ -278,31 +282,36 @@ export const createApiKey = mutation({
 
 // Revoke API key - admin only
 export const revokeApiKey = mutation({
-  args: { apiKeyId: v.id("api_keys") },
+  // Accept string to avoid compile-time coupling to Id<"api_keys"> before generated types refresh
+  args: { apiKeyId: v.string() },
   handler: async (ctx, args) => {
     const ok = await isPlatformAdmin(ctx);
     if (!ok) throw new Error("Admin access required");
-    await ctx.db.patch(args.apiKeyId, { revokedAt: Date.now() });
+    await (ctx.db as any).patch(args.apiKeyId as any, { revokedAt: Date.now() });
     return true;
   },
 });
 
 // List users for a given tenant (business) using ownerId + teamMembers
 export const listTenantUsers = query({
-  args: { businessId: v.id("businesses") },
+  // Make businessId optional so initial UI render doesn't throw
+  args: { businessId: v.optional(v.id("businesses")) },
   handler: async (ctx, args) => {
+    if (!args.businessId) {
+      // No tenant selected yet — return empty list (guest-safe)
+      return [];
+    }
+
     const biz = await ctx.db.get(args.businessId);
     if (!biz) {
       throw new Error("Business not found");
     }
 
     // Admin gating: only allow platform admins to use this endpoint
-    // Try checking admins table and ADMIN_EMAILS
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) {
       throw new Error("Admin access required");
     }
-    // Check ADMIN_EMAILS allowlist or existing admins table membership
     const envAllow = (process.env.ADMIN_EMAILS || "")
       .split(",")
       .map((s) => s.trim().toLowerCase())
@@ -329,18 +338,18 @@ export const listTenantUsers = query({
     const userIds: Array<Id<"users">> = [];
     if (biz.ownerId) userIds.push(biz.ownerId);
     if (Array.isArray(biz.teamMembers)) {
-      for (const uid of biz.teamMembers as Array<Id<"users">>) userIds.push(uid);
+      for (const uid of (biz.teamMembers as Array<Id<"users">>)) userIds.push(uid);
     }
 
     const users: Array<any> = [];
     for (const uid of userIds) {
-      const u = await ctx.db.get(uid);
+      const u = (await ctx.db.get(uid)) as any;
       if (u) {
         const roleLabel = String(uid) === String(biz.ownerId) ? "owner" : "member";
         users.push({
           _id: u._id,
-          name: (u as any).name ?? (u as any).email ?? "User",
-          email: (u as any).email ?? "",
+          name: u?.name ?? u?.email ?? "User",
+          email: u?.email ?? "",
           role: roleLabel,
         });
       }
