@@ -273,7 +273,6 @@ export const listRecent = query({
           const limit = Math.max(1, Math.min(args.limit ?? 100, 500));
           const logs = await ctx.db
             .query("audit_logs")
-            .withIndex("by_created_at")
             .order("desc")
             .take(limit);
           return logs;
@@ -312,7 +311,6 @@ export const listRecent = query({
     const limit = Math.max(1, Math.min(args.limit ?? 100, 500));
     const logs = await ctx.db
       .query("audit_logs")
-      .withIndex("by_created_at")
       .order("desc")
       .take(limit);
 

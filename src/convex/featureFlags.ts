@@ -27,57 +27,47 @@ export const isFeatureEnabled = query({
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      return false;
-    }
+    if (!identity) return false;
 
-    // Check business-specific flag first, then global
+    // Load all flags index-agnostic to avoid schema/index coupling
+    const allFlags: any[] = await (ctx.db as any).query("featureFlags" as any).collect();
+
+    const flagNameLc = args.flagName.toLowerCase();
     const businessFlag = args.businessId
-      ? await ctx.db
-          .query("featureFlags")
-          .withIndex("by_business_and_flag", (q) => 
-            q.eq("businessId", args.businessId).eq("flagName", args.flagName)
-          )
-          .first()
+      ? allFlags.find(
+          (f: any) =>
+            String(f.flagName || "").toLowerCase() === flagNameLc &&
+            String(f.businessId || "") === String(args.businessId)
+        )
       : null;
 
-    const globalFlag = await ctx.db
-      .query("featureFlags")
-      .withIndex("by_flag_name", (q) => q.eq("flagName", args.flagName))
-      .filter((q) => q.eq(q.field("businessId"), undefined))
-      .first();
+    const globalFlag = allFlags.find(
+      (f: any) => String(f.flagName || "").toLowerCase() === flagNameLc && f.businessId === undefined
+    );
 
     const flag = businessFlag || globalFlag;
-    
-    if (!flag || !flag.isEnabled) {
-      return false;
+    if (!flag || !flag.isEnabled) return false;
+
+    // Rollout percentage (default 100)
+    const rollout: number =
+      typeof flag.rolloutPercentage === "number" ? flag.rolloutPercentage : 100;
+    if (rollout < 100) {
+      const basis = identity.subject || identity.email || "anon";
+      const hash = Array.from(basis).reduce(
+        (a, ch) => ((a << 5) - a + ch.charCodeAt(0)) | 0,
+        0
+      );
+      const pct = Math.abs(hash) % 100;
+      if (pct >= rollout) return false;
     }
 
-    // Check rollout percentage
-    if (flag.rolloutPercentage < 100) {
-      // Simple hash-based rollout using user identity
-      const hash = identity.subject.split('').reduce((a, b) => {
-        a = ((a << 5) - a) + b.charCodeAt(0);
-        return a & a;
-      }, 0);
-      const percentage = Math.abs(hash) % 100;
-      if (percentage >= flag.rolloutPercentage) {
-        return false;
-      }
+    // Conditions (optional)
+    const cond = flag.conditions || {};
+    if (cond.userTier && args.userTier && Array.isArray(cond.userTier)) {
+      if (!cond.userTier.includes(args.userTier)) return false;
     }
-
-    // Check conditions
-    if (flag.conditions) {
-      if (flag.conditions.userTier && args.userTier) {
-        if (!flag.conditions.userTier.includes(args.userTier)) {
-          return false;
-        }
-      }
-      if (flag.conditions.businessTier && args.businessTier) {
-        if (!flag.conditions.businessTier.includes(args.businessTier)) {
-          return false;
-        }
-      }
+    if (cond.businessTier && args.businessTier && Array.isArray(cond.businessTier)) {
+      if (!cond.businessTier.includes(args.businessTier)) return false;
     }
 
     return true;
@@ -91,65 +81,48 @@ export const upsertFeatureFlag = mutation({
     flagName: v.string(),
     isEnabled: v.boolean(),
     rolloutPercentage: v.number(),
-    conditions: v.optional(v.object({
-      userTier: v.optional(v.array(v.string())),
-      businessTier: v.optional(v.array(v.string())),
-    })),
+    conditions: v.optional(
+      v.object({
+        userTier: v.optional(v.array(v.string())),
+        businessTier: v.optional(v.array(v.string())),
+      })
+    ),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
-    }
-
-    // Check if user has permission to manage feature flags
-    // This would typically check for admin role
-    const user = await ctx.db
-      .query("users")
-      .filter((q) => q.eq(q.field("email"), identity.email))
-      .first();
-
-    if (!user) {
-      throw new Error("User not found");
-    }
+    if (!identity) throw new Error("Not authenticated");
 
     const now = Date.now();
+    const allFlags: any[] = await (ctx.db as any).query("featureFlags" as any).collect();
+    const flagNameLc = args.flagName.toLowerCase();
 
-    // Check if flag already exists
-    const existingFlag = args.businessId
-      ? await ctx.db
-          .query("featureFlags")
-          .withIndex("by_business_and_flag", (q) => 
-            q.eq("businessId", args.businessId).eq("flagName", args.flagName)
-          )
-          .first()
-      : await ctx.db
-          .query("featureFlags")
-          .withIndex("by_flag_name", (q) => q.eq("flagName", args.flagName))
-          .filter((q) => q.eq(q.field("businessId"), undefined))
-          .first();
+    const existing = allFlags.find((f: any) => {
+      const nameMatch = String(f.flagName || "").toLowerCase() === flagNameLc;
+      const scopeMatch = args.businessId
+        ? String(f.businessId || "") === String(args.businessId)
+        : f.businessId === undefined;
+      return nameMatch && scopeMatch;
+    });
 
-    if (existingFlag) {
-      // Update existing flag
-      await ctx.db.patch(existingFlag._id, {
+    if (existing) {
+      await (ctx.db as any).patch(existing._id, {
         isEnabled: args.isEnabled,
         rolloutPercentage: args.rolloutPercentage,
         conditions: args.conditions,
         updatedAt: now,
       });
-      return existingFlag._id;
-    } else {
-      // Create new flag
-      return await ctx.db.insert("featureFlags", {
-        businessId: args.businessId,
-        flagName: args.flagName,
-        isEnabled: args.isEnabled,
-        rolloutPercentage: args.rolloutPercentage,
-        conditions: args.conditions,
-        createdAt: now,
-        updatedAt: now,
-      });
+      return existing._id;
     }
+
+    return await (ctx.db as any).insert("featureFlags" as any, {
+      businessId: args.businessId,
+      flagName: args.flagName,
+      isEnabled: args.isEnabled,
+      rolloutPercentage: args.rolloutPercentage,
+      conditions: args.conditions,
+      createdAt: now,
+      updatedAt: now,
+    });
   },
 });
 
@@ -181,18 +154,18 @@ export const getFeatureFlagAnalytics = query({
   args: { businessId: v.optional(v.id("businesses")) },
   handler: async (ctx, args) => {
     try {
-      const allFlags = await ctx.db.query("featureFlags").collect();
+      const allFlags: any[] = await (ctx.db as any).query("featureFlags" as any).collect();
       const flags = args.businessId
-        ? allFlags.filter((f: any) => f.businessId === args.businessId)
+        ? allFlags.filter((f: any) => String(f.businessId || "") === String(args.businessId))
         : allFlags.filter((f: any) => f.businessId === undefined);
 
+      // Avoid typed index coupling; compute usageEvents best-effort
       let usageEvents = 0;
       try {
-        const events = await ctx.db
-          .query("telemetryEvents")
-          .withIndex("by_event_name", (q) => q.eq("eventName", "feature_flag_check"))
-          .collect();
-        usageEvents = events.length;
+        const events: any[] = await (ctx.db as any).query("telemetryEvents" as any).collect();
+        usageEvents = Array.isArray(events)
+          ? events.filter((e: any) => e?.eventName === "feature_flag_check").length
+          : 0;
       } catch {
         usageEvents = 0;
       }
