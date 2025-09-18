@@ -357,3 +357,149 @@ export const listTenantUsers = query({
     return users;
   },
 });
+
+// Billing & Usage: usage summary (guest-safe, admin-gated; defaults on errors)
+export const getUsageSummary = query({
+  args: { tenantId: v.optional(v.id("businesses")) },
+  handler: async (ctx, args) => {
+    const ok = await isPlatformAdmin(ctx);
+    if (!ok) return { workflows: 0, runs: 0, agents: 0, emailsSentLast7: 0 };
+
+    try {
+      const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+
+      // Use best-effort counts; fall back to zeros if collections or indexes differ.
+      let workflows = 0;
+      try {
+        const q = args.tenantId
+          ? (ctx.db as any).query("workflows" as any).withIndex?.("by_business", (q: any) => q.eq("businessId", args.tenantId))
+          : (ctx.db as any).query("workflows" as any);
+        const all = q?.collect ? await q.collect() : await (ctx.db as any).query("workflows" as any).collect();
+        workflows = Array.isArray(all) ? all.length : 0;
+      } catch {
+        workflows = 0;
+      }
+
+      let runs = 0;
+      try {
+        const q = args.tenantId
+          ? (ctx.db as any).query("workflowRuns" as any).withIndex?.("by_business", (q: any) => q.eq("businessId", args.tenantId))
+          : (ctx.db as any).query("workflowRuns" as any);
+        const all = q?.collect ? await q.collect() : [];
+        runs = Array.isArray(all) ? all.length : 0;
+      } catch {
+        runs = 0;
+      }
+
+      let agents = 0;
+      try {
+        const q = args.tenantId
+          ? (ctx.db as any).query("agentProfiles" as any).withIndex?.("by_business", (q: any) => q.eq("businessId", args.tenantId))
+          : (ctx.db as any).query("agentProfiles" as any);
+        const all = q?.collect ? await q.collect() : [];
+        agents = Array.isArray(all) ? all.length : 0;
+      } catch {
+        agents = 0;
+      }
+
+      let emailsSentLast7 = 0;
+      try {
+        const q = (ctx.db as any).query("emails" as any);
+        const all = await q.collect();
+        const filtered = Array.isArray(all)
+          ? all.filter((e: any) => {
+              const okTenant = args.tenantId ? String(e.businessId) === String(args.tenantId) : true;
+              const sent = e?.status === "sent" || e?.status === "sending";
+              const within = (e?.sentAt ?? e?._creationTime ?? 0) >= sevenDaysAgo;
+              return okTenant && sent && within;
+            })
+          : [];
+        emailsSentLast7 = filtered.length;
+      } catch {
+        emailsSentLast7 = 0;
+      }
+
+      return { workflows, runs, agents, emailsSentLast7 };
+    } catch {
+      return { workflows: 0, runs: 0, agents: 0, emailsSentLast7: 0 };
+    }
+  },
+});
+
+// Billing events list (guest-safe). Attempts to use by_tenant index if present.
+export const listBillingEvents = query({
+  args: { tenantId: v.optional(v.id("businesses")), limit: v.optional(v.number()) },
+  handler: async (ctx, args) => {
+    const ok = await isPlatformAdmin(ctx);
+    if (!ok) return [];
+    const lim = Math.max(1, Math.min(200, args.limit ?? 25));
+    try {
+      if (args.tenantId) {
+        const q = (ctx.db as any)
+          .query("billing_events" as any)
+          .withIndex?.("by_tenant", (q: any) => q.eq("tenantId", args.tenantId));
+        const rows = q?.collect ? await q.collect() : [];
+        // Return most recent first by _creationTime when available
+        return (rows as any[]).sort((a, b) => (b._creationTime ?? 0) - (a._creationTime ?? 0)).slice(0, lim);
+      }
+      const all = await (ctx.db as any).query("billing_events" as any).collect();
+      return (all as any[]).sort((a, b) => (b._creationTime ?? 0) - (a._creationTime ?? 0)).slice(0, lim);
+    } catch {
+      return [];
+    }
+  },
+});
+
+// Alerts & Incidents
+export const listAlerts = query({
+  args: { tenantId: v.optional(v.id("businesses")) },
+  handler: async (ctx, args) => {
+    const ok = await isPlatformAdmin(ctx);
+    if (!ok) return [];
+    try {
+      const rows = await (ctx.db as any).query("alerts" as any).collect();
+      const arr: any[] = Array.isArray(rows) ? rows : [];
+      if (!args.tenantId) {
+        return arr.sort((a, b) => (b._creationTime ?? 0) - (a._creationTime ?? 0));
+      }
+      return arr
+        .filter((a) => String(a.tenantId ?? "") === String(args.tenantId))
+        .sort((a, b) => (b._creationTime ?? 0) - (a._creationTime ?? 0));
+    } catch {
+      return [];
+    }
+  },
+});
+
+export const createAlert = mutation({
+  args: {
+    tenantId: v.optional(v.id("businesses")),
+    severity: v.union(v.literal("low"), v.literal("medium"), v.literal("high")),
+    title: v.string(),
+    description: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const ok = await isPlatformAdmin(ctx);
+    if (!ok) throw new Error("Admin access required");
+    const doc = {
+      tenantId: args.tenantId ?? null,
+      severity: args.severity,
+      title: args.title,
+      description: args.description ?? "",
+      status: "open",
+      createdAt: Date.now(),
+    };
+    const id = await (ctx.db as any).insert("alerts" as any, doc);
+    return id;
+  },
+});
+
+export const resolveAlert = mutation({
+  args: { alertId: v.string() },
+  handler: async (ctx, args) => {
+    const ok = await isPlatformAdmin(ctx);
+    if (!ok) throw new Error("Admin access required");
+    await (ctx.db as any).patch(args.alertId as any, { status: "resolved", resolvedAt: Date.now() });
+    return true;
+  },
+});

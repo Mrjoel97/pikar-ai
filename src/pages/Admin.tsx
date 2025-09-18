@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useQuery, useMutation } from "convex/react";
+import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -176,6 +176,31 @@ export default function AdminPage() {
   const createApiKey = useMutation(api.admin.createApiKey as any);
   const revokeApiKey = useMutation(api.admin.revokeApiKey as any);
 
+  // Usage & Billing queries (tenant-scoped)
+  const usage = useQuery(
+    api.admin.getUsageSummary as any,
+    hasAdminAccess && selectedTenantId ? { tenantId: selectedTenantId } : undefined
+  ) as { workflows: number; runs: number; agents: number; emailsSentLast7: number } | undefined;
+
+  const billingEvents = useQuery(
+    api.admin.listBillingEvents as any,
+    hasAdminAccess ? { tenantId: selectedTenantId || undefined, limit: 20 } : undefined
+  ) as Array<{ _id: string; type?: string; amount?: number; currency?: string; status?: string; _creationTime?: number; description?: string }> | undefined;
+
+  // Alerts & Incidents
+  const alerts = useQuery(
+    api.admin.listAlerts as any,
+    hasAdminAccess ? { tenantId: selectedTenantId || undefined } : undefined
+  ) as Array<{ _id: string; title: string; severity: string; status?: string; createdAt?: number; description?: string }> | undefined;
+
+  const createAlertMutation = useMutation(api.admin.createAlert as any);
+  const resolveAlertMutation = useMutation(api.admin.resolveAlert as any);
+
+  // Create alert form state
+  const [alertTitle, setAlertTitle] = useState("");
+  const [alertSeverity, setAlertSeverity] = useState<"low" | "medium" | "high">("low");
+  const [alertDesc, setAlertDesc] = useState("");
+
   const handleLogout = () => {
     localStorage.removeItem("adminSessionToken");
     setAdminToken(null);
@@ -329,6 +354,24 @@ export default function AdminPage() {
             className="text-left px-3 py-2 rounded-md hover:bg-white/10 transition"
           >
             Audit Explorer
+          </button>
+          <button
+            onClick={() => scrollToSection("section-billing")}
+            className="text-left px-3 py-2 rounded-md hover:bg-white/10 transition"
+          >
+            Billing & Usage
+          </button>
+          <button
+            onClick={() => scrollToSection("section-integrations")}
+            className="text-left px-3 py-2 rounded-md hover:bg-white/10 transition"
+          >
+            Integrations
+          </button>
+          <button
+            onClick={() => scrollToSection("section-alerts")}
+            className="text-left px-3 py-2 rounded-md hover:bg-white/10 transition"
+          >
+            Alerts
           </button>
 
           <div className="flex-1" />
@@ -966,6 +1009,297 @@ export default function AdminPage() {
                 {(!apiKeys || apiKeys.length === 0) && (
                   <div className="p-3 text-sm text-muted-foreground">
                     {selectedTenantId ? "No API keys for this tenant yet." : "Select a tenant to view keys."}
+                  </div>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Billing & Usage Section */}
+        <Card>
+          <CardHeader>
+            <CardTitle id="section-billing">Billing & Usage</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Select a tenant to view plan, status, recent billing events, and usage.
+            </p>
+
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+              <div className="p-3 rounded-md border">
+                <div className="text-xs text-muted-foreground">Tenant</div>
+                <div className="text-sm font-medium">
+                  {selectedTenantId
+                    ? (tenants || []).find((t) => t._id === selectedTenantId)?.name || selectedTenantId
+                    : "None"}
+                </div>
+              </div>
+              <div className="p-3 rounded-md border">
+                <div className="text-xs text-muted-foreground">Plan</div>
+                <div className="text-sm font-medium">
+                  {(tenants || []).find((t) => t._id === selectedTenantId)?.plan || "—"}
+                </div>
+              </div>
+              <div className="p-3 rounded-md border">
+                <div className="text-xs text-muted-foreground">Status</div>
+                <div className="text-sm font-medium">
+                  {(tenants || []).find((t) => t._id === selectedTenantId)?.status || "—"}
+                </div>
+              </div>
+              <div className="p-3 rounded-md border">
+                <div className="text-xs text-muted-foreground">Stripe IDs</div>
+                <div className="text-xs text-muted-foreground">
+                  Not available in summary
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div className="p-3 rounded-md border">
+                <div className="text-xs text-muted-foreground">Workflows</div>
+                <div className="text-xl font-semibold">{usage?.workflows ?? 0}</div>
+              </div>
+              <div className="p-3 rounded-md border">
+                <div className="text-xs text-muted-foreground">Runs</div>
+                <div className="text-xl font-semibold">{usage?.runs ?? 0}</div>
+              </div>
+              <div className="p-3 rounded-md border">
+                <div className="text-xs text-muted-foreground">Agents</div>
+                <div className="text-xl font-semibold">{usage?.agents ?? 0}</div>
+              </div>
+              <div className="p-3 rounded-md border">
+                <div className="text-xs text-muted-foreground">Emails (7d)</div>
+                <div className="text-xl font-semibold">{usage?.emailsSentLast7 ?? 0}</div>
+              </div>
+            </div>
+
+            <div className="rounded-md border overflow-hidden">
+              <div className="grid grid-cols-4 md:grid-cols-6 gap-2 p-3 bg-muted/40 text-xs font-medium">
+                <div>When</div>
+                <div className="hidden md:block">Type</div>
+                <div>Amount</div>
+                <div className="hidden md:block">Currency</div>
+                <div>Status</div>
+                <div className="text-right">Info</div>
+              </div>
+              <Separator />
+              <div className="divide-y">
+                {(billingEvents || []).map((ev) => (
+                  <div key={ev._id} className="grid grid-cols-4 md:grid-cols-6 gap-2 p-3 text-sm items-center">
+                    <div className="text-xs text-muted-foreground">
+                      {ev._creationTime ? new Date(ev._creationTime).toLocaleString() : "—"}
+                    </div>
+                    <div className="hidden md:block truncate">{ev.type || "—"}</div>
+                    <div className="truncate">{typeof ev.amount === "number" ? ev.amount : "—"}</div>
+                    <div className="hidden md:block">{ev.currency || "—"}</div>
+                    <div>{ev.status || "—"}</div>
+                    <div className="text-right">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => toast(JSON.stringify(ev, null, 2))}
+                      >
+                        View
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+                {(!billingEvents || billingEvents.length === 0) && (
+                  <div className="p-3 text-sm text-muted-foreground">
+                    {selectedTenantId ? "No recent billing events." : "Select a tenant to view billing events."}
+                  </div>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Integrations Hub */}
+        <Card>
+          <CardHeader>
+            <CardTitle id="section-integrations">Integrations</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Integration posture derives from System Health. Use quick actions to remediate.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <Badge variant={env?.hasRESEND ? "outline" : "destructive"}>
+                Resend: {env?.hasRESEND ? "Configured" : "Missing"}
+              </Badge>
+              <Badge variant={env?.hasSALES_INBOX || env?.hasPUBLIC_SALES_INBOX ? "outline" : "destructive"}>
+                Sales Inbox: {env?.hasSALES_INBOX || env?.hasPUBLIC_SALES_INBOX ? "OK" : "Missing"}
+              </Badge>
+              <Badge variant={env?.hasBASE_URL ? "outline" : "destructive"}>
+                Public Base URL: {env?.hasBASE_URL ? "OK" : "Missing"}
+              </Badge>
+              <Badge variant={env?.devSafeEmailsEnabled ? "secondary" : "outline"}>
+                Email Mode: {env?.devSafeEmailsEnabled ? "DEV SAFE" : "Live"}
+              </Badge>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  toast("Opening Settings...");
+                  window.location.href = "/settings";
+                }}
+              >
+                Open Settings
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  const base = (import.meta as any)?.env?.VITE_PUBLIC_BASE_URL as string | undefined;
+                  if (base) {
+                    toast.success(`Base URL: ${base}`);
+                    try { window.open(base, "_blank", "noopener,noreferrer"); } catch {}
+                  } else {
+                    toast.error("VITE_PUBLIC_BASE_URL not set in frontend env.");
+                  }
+                }}
+              >
+                Check Base URL
+              </Button>
+            </div>
+            <div className="text-xs text-muted-foreground">
+              For test email sending and deeper checks, use the Settings page’s inline validators.
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Alerts & Incident Console */}
+        <Card>
+          <CardHeader>
+            <CardTitle id="section-alerts">Alerts & Incidents</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Create and resolve operational alerts. Scope to a tenant when applicable.
+            </p>
+
+            <div className="grid md:grid-cols-4 gap-3">
+              <div className="space-y-1.5">
+                <div className="text-sm font-medium">Severity</div>
+                <select
+                  className="h-9 rounded-md border bg-background px-3 text-sm"
+                  value={alertSeverity}
+                  onChange={(e) => setAlertSeverity(e.target.value as any)}
+                >
+                  <option value="low">low</option>
+                  <option value="medium">medium</option>
+                  <option value="high">high</option>
+                </select>
+              </div>
+              <div className="space-y-1.5 md:col-span-2">
+                <div className="text-sm font-medium">Title</div>
+                <Input
+                  placeholder="Queue depth high on tenant ABC"
+                  value={alertTitle}
+                  onChange={(e) => setAlertTitle(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <div className="text-sm font-medium">Scope (Tenant)</div>
+                <select
+                  className="h-9 rounded-md border bg-background px-3 text-sm"
+                  value={selectedTenantId}
+                  onChange={(e) => setSelectedTenantId(e.target.value)}
+                >
+                  <option value="">Global</option>
+                  {(tenants || []).map((t) => (
+                    <option key={t._id} value={t._id}>
+                      {t.name || t._id}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="md:col-span-4">
+                <div className="text-sm font-medium">Description</div>
+                <textarea
+                  className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+                  placeholder="Optional context"
+                  rows={3}
+                  value={alertDesc}
+                  onChange={(e) => setAlertDesc(e.target.value)}
+                />
+              </div>
+              <div className="md:col-span-4 flex justify-end">
+                <Button
+                  size="sm"
+                  onClick={async () => {
+                    if (!alertTitle.trim()) {
+                      toast.error("Enter a title for the alert.");
+                      return;
+                    }
+                    try {
+                      await createAlertMutation({
+                        tenantId: selectedTenantId || undefined,
+                        severity: alertSeverity,
+                        title: alertTitle.trim(),
+                        description: alertDesc || undefined,
+                      } as any);
+                      setAlertTitle("");
+                      setAlertDesc("");
+                      toast.success("Alert created");
+                    } catch (e: any) {
+                      toast.error(e?.message || "Failed to create alert");
+                    }
+                  }}
+                >
+                  Create Alert
+                </Button>
+              </div>
+            </div>
+
+            <div className="rounded-md border overflow-hidden">
+              <div className="grid grid-cols-3 md:grid-cols-6 gap-2 p-3 bg-muted/40 text-xs font-medium">
+                <div>When</div>
+                <div className="hidden md:block">Severity</div>
+                <div>Title</div>
+                <div className="hidden md:block">Status</div>
+                <div className="hidden md:block">Tenant</div>
+                <div className="text-right">Action</div>
+              </div>
+              <Separator />
+              <div className="divide-y">
+                {(alerts || []).map((a) => (
+                  <div key={a._id} className="grid grid-cols-3 md:grid-cols-6 gap-2 p-3 text-sm items-center">
+                    <div className="text-xs text-muted-foreground">
+                      {a.createdAt ? new Date(a.createdAt).toLocaleString() : "—"}
+                    </div>
+                    <div className="hidden md:block">
+                      <Badge variant={a.severity === "high" ? "destructive" : "outline"}>{a.severity}</Badge>
+                    </div>
+                    <div className="truncate">{a.title}</div>
+                    <div className="hidden md:block">{a.status || "open"}</div>
+                    <div className="hidden md:block truncate">
+                      {selectedTenantId ? (tenants || []).find((t) => t._id === selectedTenantId)?.name || selectedTenantId : "—"}
+                    </div>
+                    <div className="text-right">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={async () => {
+                          try {
+                            await resolveAlertMutation({ alertId: a._id } as any);
+                            toast.success("Alert resolved");
+                          } catch (e: any) {
+                            toast.error(e?.message || "Failed to resolve alert");
+                          }
+                        }}
+                      >
+                        Resolve
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+                {(!alerts || alerts.length === 0) && (
+                  <div className="p-3 text-sm text-muted-foreground">
+                    {selectedTenantId ? "No alerts for this tenant." : "No alerts found."}
                   </div>
                 )}
               </div>
