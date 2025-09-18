@@ -105,8 +105,8 @@ export default function AdminPage() {
 
   // Alerts & Incidents input state
   const [alertSeverity, setAlertSeverity] = useState<"low" | "medium" | "high">("low");
-  const [alertTitle, setAlertTitle] = useState("");
-  const [alertDesc, setAlertDesc] = useState("");
+  const [alertTitle, setAlertTitle] = useState<string>("");
+  const [alertDesc, setAlertDesc] = useState<string>("");
 
   const filteredAudits = useMemo(() => {
     if (!recentAudits) return [];
