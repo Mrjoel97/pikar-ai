@@ -11,6 +11,7 @@ import { useMemo } from "react";
 import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription, DrawerTrigger } from "@/components/ui/drawer";
+import { Select } from "@/components/ui/select"; // Add: for mode dropdown in assistant
 
 export default function AdminPage() {
   const navigate = useNavigate();
@@ -101,6 +102,11 @@ export default function AdminPage() {
   const [actionFilter, setActionFilter] = useState("");
   const [entityFilter, setEntityFilter] = useState("");
   const [sinceDays, setSinceDays] = useState<number>(7);
+
+  // Alerts & Incidents input state
+  const [alertSeverity, setAlertSeverity] = useState<"low" | "medium" | "high">("low");
+  const [alertTitle, setAlertTitle] = useState("");
+  const [alertDesc, setAlertDesc] = useState("");
 
   const filteredAudits = useMemo(() => {
     if (!recentAudits) return [];
@@ -196,10 +202,21 @@ export default function AdminPage() {
   const createAlertMutation = useMutation(api.admin.createAlert as any);
   const resolveAlertMutation = useMutation(api.admin.resolveAlert as any);
 
-  // Create alert form state
-  const [alertTitle, setAlertTitle] = useState("");
-  const [alertSeverity, setAlertSeverity] = useState<"low" | "medium" | "high">("low");
-  const [alertDesc, setAlertDesc] = useState("");
+  // Add: assistant action
+  const sendAssistantMessage = useAction(api.adminAssistant.sendMessage as any);
+
+  // Assistant state
+  const [assistantMessages, setAssistantMessages] = useState<
+    Array<{ role: "user" | "assistant"; content: string; steps?: any[] }>
+  >([]);
+  const [assistantInput, setAssistantInput] = useState("");
+  const [assistantMode, setAssistantMode] = useState<"explain" | "confirm" | "auto">("explain");
+  const [assistantTools, setAssistantTools] = useState<{ health: boolean; flags: boolean; alerts: boolean }>({
+    health: true,
+    flags: true,
+    alerts: true,
+  });
+  const [assistantBusy, setAssistantBusy] = useState(false);
 
   const handleLogout = () => {
     localStorage.removeItem("adminSessionToken");
@@ -301,6 +318,19 @@ export default function AdminPage() {
       <aside className="hidden md:flex fixed left-0 top-0 bottom-0 w-64 bg-gradient-to-b from-emerald-900 to-emerald-800 text-emerald-50 z-30">
         <div className="flex flex-col h-full w-full p-4 gap-3">
           <div className="text-xs uppercase tracking-wider text-emerald-200/80 mb-2">Admin Menu</div>
+          {/* Add: Admin Assistant + System Agents links */}
+          <button
+            onClick={() => scrollToSection("section-admin-assistant")}
+            className="text-left px-3 py-2 rounded-md hover:bg-white/10 transition"
+          >
+            Admin Assistant
+          </button>
+          <button
+            onClick={() => scrollToSection("section-system-agents")}
+            className="text-left px-3 py-2 rounded-md hover:bg-white/10 transition"
+          >
+            System Agents
+          </button>
           <button
             onClick={() => scrollToSection("section-system-health")}
             className="text-left px-3 py-2 rounded-md hover:bg-white/10 transition"
@@ -1166,7 +1196,7 @@ export default function AdminPage() {
               </Button>
             </div>
             <div className="text-xs text-muted-foreground">
-              For test email sending and deeper checks, use the Settings page’s inline validators.
+              For test email sending and deeper checks, use the Settings page's inline validators.
             </div>
           </CardContent>
         </Card>
@@ -1377,6 +1407,173 @@ export default function AdminPage() {
                   <div className="p-3 text-sm text-muted-foreground">No audit events found for the current filters.</div>
                 )}
               </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Admin Assistant Section */}
+        <Card>
+          <CardHeader>
+            <CardTitle id="section-admin-assistant">Admin Assistant</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="text-sm font-medium">Mode</div>
+              <select
+                className="h-9 rounded-md border bg-background px-3 text-sm"
+                value={assistantMode}
+                onChange={(e) => setAssistantMode(e.target.value as any)}
+              >
+                <option value="explain">Explain only (read-only)</option>
+                <option value="confirm">Execute with confirmation</option>
+                <option value="auto">Auto-execute (use cautiously)</option>
+              </select>
+
+              <div className="ml-4 text-sm font-medium">Tools</div>
+              <label className="flex items-center gap-1 text-sm">
+                <input
+                  type="checkbox"
+                  checked={assistantTools.health}
+                  onChange={(e) => setAssistantTools((t) => ({ ...t, health: e.target.checked }))}
+                />
+                Health
+              </label>
+              <label className="flex items-center gap-1 text-sm">
+                <input
+                  type="checkbox"
+                  checked={assistantTools.flags}
+                  onChange={(e) => setAssistantTools((t) => ({ ...t, flags: e.target.checked }))}
+                />
+                Flags
+              </label>
+              <label className="flex items-center gap-1 text-sm">
+                <input
+                  type="checkbox"
+                  checked={assistantTools.alerts}
+                  onChange={(e) => setAssistantTools((t) => ({ ...t, alerts: e.target.checked }))}
+                />
+                Alerts
+              </label>
+            </div>
+
+            <div className="rounded-md border h-60 overflow-y-auto p-3 bg-muted/20">
+              {assistantMessages.length === 0 && (
+                <div className="text-sm text-muted-foreground">
+                  Ask me to check system health, list feature flags, or summarize open alerts.
+                </div>
+              )}
+              <div className="space-y-3">
+                {assistantMessages.map((m, idx) => (
+                  <div key={idx} className="text-sm">
+                    <div className={m.role === "user" ? "font-medium" : "text-emerald-700"}>
+                      {m.role === "user" ? "You" : "Assistant"}
+                    </div>
+                    <div className="whitespace-pre-wrap">{m.content}</div>
+                    {m.steps && m.steps.length > 0 && (
+                      <div className="mt-2 space-y-2">
+                        {m.steps.map((s: any, i: number) => (
+                          <div key={i} className="p-2 rounded border bg-white">
+                            <div className="text-xs uppercase text-muted-foreground">{s.tool}</div>
+                            <div className="text-sm font-medium">{s.title}</div>
+                            <pre className="text-xs overflow-auto max-h-40">{JSON.stringify(s.data, null, 2)}</pre>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex gap-2">
+              <Input
+                placeholder={'Ask the assistant... e.g., "Check health and list flags"'}
+                value={assistantInput}
+                onChange={(e) => setAssistantInput(e.target.value)}
+                onKeyDown={async (e) => {
+                  if (e.key === "Enter") {
+                    (e.target as any).blur();
+                    const msg = assistantInput.trim();
+                    if (!msg || assistantBusy) return;
+                    setAssistantMessages((m) => [...m, { role: "user", content: msg }]);
+                    setAssistantInput("");
+                    setAssistantBusy(true);
+                    try {
+                      const res = await sendAssistantMessage({
+                        message: msg,
+                        mode: assistantMode,
+                        toolsAllowed: Object.entries(assistantTools)
+                          .filter(([, v]) => v)
+                          .map(([k]) => k),
+                      } as any);
+                      setAssistantMessages((m) => [
+                        ...m,
+                        {
+                          role: "assistant",
+                          content: res?.notice || "Done.",
+                          steps: res?.steps || [],
+                        },
+                      ]);
+                    } catch (err: any) {
+                      toast.error(err?.message || "Assistant failed");
+                    } finally {
+                      setAssistantBusy(false);
+                    }
+                  }
+                }}
+              />
+              <Button
+                disabled={assistantBusy || !assistantInput.trim()}
+                onClick={async () => {
+                  const msg = assistantInput.trim();
+                  if (!msg) return;
+                  setAssistantMessages((m) => [...m, { role: "user", content: msg }]);
+                  setAssistantInput("");
+                  setAssistantBusy(true);
+                  try {
+                    const res = await sendAssistantMessage({
+                      message: msg,
+                      mode: assistantMode,
+                      toolsAllowed: Object.entries(assistantTools)
+                        .filter(([, v]) => v)
+                        .map(([k]) => k),
+                    } as any);
+                    setAssistantMessages((m) => [
+                      ...m,
+                      {
+                        role: "assistant",
+                        content: res?.notice || "Done.",
+                        steps: res?.steps || [],
+                      },
+                    ]);
+                  } catch (err: any) {
+                    toast.error(err?.message || "Assistant failed");
+                  } finally {
+                    setAssistantBusy(false);
+                  }
+                }}
+              >
+                {assistantBusy ? "Working..." : "Send"}
+              </Button>
+            </div>
+
+            <div className="text-xs text-muted-foreground">
+              MVP is read-only. Mutating actions (repairs, sends, flag changes) will be enabled with confirmation in next phase.
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* System Agents placeholder section (training studio to be built in next phase) */}
+        <Card>
+          <CardHeader>
+            <CardTitle id="section-system-agents">System Agents</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <div className="text-sm text-muted-foreground">
+              Registry and training studio for built-in agents will appear here (next phase).
+            </div>
+            <div className="rounded-md border p-3 text-sm">
+              Coming soon: list of built-ins, prompt editor, datasets, tool permissions, evals, test harness, and publish flow.
             </div>
           </CardContent>
         </Card>
