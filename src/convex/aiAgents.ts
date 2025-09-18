@@ -1,4 +1,4 @@
-import { mutation, query, internalMutation } from "./_generated/server";
+import { mutation, query, internalMutation, internalQuery } from "./_generated/server";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
@@ -290,5 +290,37 @@ export const forgetUploads = mutation({
     });
 
     return { updatedProfiles: count };
+  },
+});
+
+// Add lightweight internal query to fetch agent profile context for the current user+business
+export const getAgentProfileLite = internalQuery({
+  args: { businessId: v.id("businesses") },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return null;
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("email", (q) => q.eq("email", identity.email || ""))
+      .unique()
+      .catch(() => null);
+    if (!user) return null;
+
+    const rows = await ctx.db
+      .query("agentProfiles")
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .take(50);
+
+    const p = rows.find((r) => r.userId === user._id) || rows[0] || null;
+    if (!p) return null;
+
+    return {
+      businessSummary: p.businessSummary ?? "",
+      industry: (p as any).industry ?? "",
+      brandVoice: (p as any).brandVoice ?? "casual",
+      timezone: (p as any).timezone ?? "UTC",
+      lastUpdated: (p as any).lastUpdated ?? 0,
+    };
   },
 });

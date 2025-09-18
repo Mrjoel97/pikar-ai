@@ -20,6 +20,7 @@ import type * as adminAssistant from "../adminAssistant.js";
 import type * as adminAuth from "../adminAuth.js";
 import type * as adminAuthData from "../adminAuthData.js";
 import type * as agentProfile from "../agentProfile.js";
+import type * as agentRouter from "../agentRouter.js";
 import type * as aiAgents from "../aiAgents.js";
 import type * as approvals from "../approvals.js";
 import type * as audit from "../audit.js";
@@ -77,6 +78,7 @@ declare const fullApi: ApiFromModules<{
   adminAuth: typeof adminAuth;
   adminAuthData: typeof adminAuthData;
   agentProfile: typeof agentProfile;
+  agentRouter: typeof agentRouter;
   aiAgents: typeof aiAgents;
   approvals: typeof approvals;
   audit: typeof audit;

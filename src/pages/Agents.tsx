@@ -129,7 +129,11 @@ const AgentsPage: React.FC = () => {
   // Seed data on mount
   const seedAction = useAction(api.aiAgents.seedAgentFramework);
   const seedEnterprise = useAction(api.aiAgents.seedEnterpriseTemplates);
-  
+  const routeAction = useAction(api.agentRouter.route);
+  const [ask, setAsk] = useState("");
+  const [reply, setReply] = useState<string | null>(null);
+  const [asking, setAsking] = useState(false);
+
   useEffect(() => {
     const initSeed = async () => {
       try {
@@ -158,6 +162,25 @@ const AgentsPage: React.FC = () => {
       setSelectedTier(tierFromStorage);
     }
   }, []);
+
+  const handleAsk = async () => {
+    if (!ask.trim()) {
+      toast("Type a question for your agent.");
+      return;
+    }
+    try {
+      setAsking(true);
+      setReply(null);
+      const res = await routeAction({ message: ask.trim() } as any);
+      const summary = (res as any)?.summaryText || "No summary returned.";
+      setReply(summary);
+      toast("Agent responded.");
+    } catch (e: any) {
+      toast(`Agent failed: ${e?.message ?? "Unknown error"}`);
+    } finally {
+      setAsking(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50 p-4 md:p-8">
@@ -195,6 +218,38 @@ const AgentsPage: React.FC = () => {
             </Select>
           </div>
         </div>
+
+        {/* New: Ask My Agent (OpenAI-powered) */}
+        <Card className="border-emerald-200">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Bot className="w-5 h-5 text-emerald-600" />
+              Ask My Agent
+            </CardTitle>
+            <CardDescription>
+              Get quick, actionable recommendations summarized by your agent using your context.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex flex-col md:flex-row gap-3">
+              <Input
+                value={ask}
+                onChange={(e) => setAsk(e.target.value)}
+                placeholder="e.g., Draft a retention campaign idea for this week"
+                className="flex-1"
+                disabled={asking}
+              />
+              <Button onClick={handleAsk} disabled={asking} className="md:w-40">
+                {asking ? "Thinking…" : "Ask"}
+              </Button>
+            </div>
+            {reply && (
+              <div className="rounded-md border bg-white p-3 text-sm leading-6 whitespace-pre-wrap">
+                {reply}
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Main Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
