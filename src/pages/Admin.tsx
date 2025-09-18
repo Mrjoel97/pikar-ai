@@ -111,10 +111,38 @@ export default function AdminPage() {
     hasAdminAccess ? {} : undefined
   ) as Array<{ _id: string; name?: string; plan?: string; status?: string }> | undefined;
 
+  // Add: Tenant Users for selected tenant (guest-safe)
   const tenantUsers = useQuery(
     api.admin.listTenantUsers as any,
     selectedTenantId ? { businessId: selectedTenantId } : undefined
   ) as Array<{ _id: string; name?: string; email?: string; role?: string }> | undefined;
+
+  // Add: Usage & Billing queries (guest-safe; only fetched when a tenant is selected)
+  const usage = useQuery(
+    api.admin.getUsageSummary as any,
+    selectedTenantId ? { tenantId: selectedTenantId } : undefined
+  ) as
+    | {
+        workflows?: number;
+        runs?: number;
+        agents?: number;
+        emailsSentLast7?: number;
+      }
+    | undefined;
+
+  const billingEvents = useQuery(
+    api.admin.listBillingEvents as any,
+    selectedTenantId ? { tenantId: selectedTenantId } : undefined
+  ) as
+    | Array<{
+        _id: string;
+        type?: string;
+        amount?: number;
+        currency?: string;
+        status?: string;
+        _creationTime?: number;
+      }>
+    | undefined;
 
   // Add: API Keys panel state & operations
   const apiKeys = useQuery(
@@ -136,17 +164,6 @@ export default function AdminPage() {
 
   const createAlertMutation = useMutation(api.admin.createAlert as any);
   const resolveAlertMutation = useMutation(api.admin.resolveAlert as any);
-
-  // Add: Usage & Billing panels
-  const usage = useQuery(
-    api.admin.getUsageSummary as any,
-    selectedTenantId ? { tenantId: selectedTenantId } : undefined
-  ) as { workflows?: number; runs?: number; agents?: number; emailsSentLast7?: number } | undefined;
-
-  const billingEvents = useQuery(
-    api.admin.listBillingEvents as any,
-    selectedTenantId ? { tenantId: selectedTenantId } : undefined
-  ) as Array<{ _id: string; type: string; amount: number; currency: string; status: string; _creationTime?: number }> | undefined;
 
   // Add Admin Assistant transcript + dry-run state
   const [assistantTranscriptOpen, setAssistantTranscriptOpen] = useState(false);
@@ -271,7 +288,7 @@ export default function AdminPage() {
   };
 
   // Add: KPI snapshot computed from queries
-  const kpis = useMemo(() => {
+  const kpis = (() => {
     const flagsTotal = (flagAnalytics?.totalFlags ?? (flags?.length ?? 0)) as number;
     const flagsEnabled = (flagAnalytics?.enabledFlags ?? (flags ? flags.filter((f) => f.isEnabled).length : 0)) as number;
     return {
@@ -282,10 +299,10 @@ export default function AdminPage() {
       emailQueueDepth: (env?.emailQueueDepth ?? 0) as number,
       overdueApprovals: (env?.overdueApprovalsCount ?? 0) as number,
     };
-  }, [adminList, pending, flags, flagAnalytics, env]);
+  })();
 
   // Add: Audit filtering and CSV export helper
-  const filteredAudits = useMemo(() => {
+  const filteredAudits = (() => {
     const cutoff = Date.now() - (sinceDays || 0) * 24 * 60 * 60 * 1000;
     const list = (recentAudits || []) as any[];
     const af = (actionFilter || "").toLowerCase();
@@ -297,9 +314,9 @@ export default function AdminPage() {
       if (ef && !entity.includes(ef)) return false;
       return true;
     });
-  }, [recentAudits, actionFilter, entityFilter, sinceDays]);
+  })();
 
-  const exportAuditsCsv = useCallback(() => {
+  const exportAuditsCsv = () => {
     const header = ["createdAt", "businessId", "action", "entityType", "entityId", "userId"].join(",");
     const body = filteredAudits
       .map((a) =>
@@ -325,7 +342,7 @@ export default function AdminPage() {
     a.click();
     a.remove();
     URL.revokeObjectURL(url);
-  }, [filteredAudits]);
+  };
 
   return (
     <>
