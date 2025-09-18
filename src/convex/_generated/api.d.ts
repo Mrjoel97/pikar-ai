@@ -38,6 +38,8 @@ import type * as emailConfig from "../emailConfig.js";
 import type * as emails from "../emails.js";
 import type * as emailsActions from "../emailsActions.js";
 import type * as entitlements from "../entitlements.js";
+import type * as evals from "../evals.js";
+import type * as evalsInternal from "../evalsInternal.js";
 import type * as featureFlags from "../featureFlags.js";
 import type * as files from "../files.js";
 import type * as governance from "../governance.js";
@@ -98,6 +100,8 @@ declare const fullApi: ApiFromModules<{
   emails: typeof emails;
   emailsActions: typeof emailsActions;
   entitlements: typeof entitlements;
+  evals: typeof evals;
+  evalsInternal: typeof evalsInternal;
   featureFlags: typeof featureFlags;
   files: typeof files;
   governance: typeof governance;

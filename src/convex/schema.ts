@@ -4,6 +4,12 @@ import { authTables } from "@convex-dev/auth/server";
 
 const { users: _authUsers, ...authWithoutUsers } = authTables;
 
+const evalTestValidator = v.object({
+  tool: v.string(), // e.g., "health" | "flags" | "alerts"
+  input: v.optional(v.string()), // optional input string
+  expectedContains: v.optional(v.string()), // simple expectation check
+});
+
 export default defineSchema({
   users: defineTable({
     // Make legacy fields compatible and optional
@@ -1058,4 +1064,29 @@ export default defineSchema({
 
   // Append Convex Auth required tables inside the schema (excluding users to avoid conflicts)
   ...authWithoutUsers,
+
+  evalSets: defineTable({
+    name: v.string(),
+    description: v.optional(v.string()),
+    createdAt: v.number(),
+    createdBy: v.optional(v.id("users")),
+    tests: v.array(evalTestValidator),
+  }).index("by_name", ["name"]),
+
+  evalRuns: defineTable({
+    setId: v.id("evalSets"),
+    startedAt: v.number(),
+    finishedAt: v.optional(v.number()),
+    status: v.union(v.literal("running"), v.literal("completed"), v.literal("failed")),
+    passCount: v.number(),
+    failCount: v.number(),
+    results: v.array(
+      v.object({
+        testIndex: v.number(),
+        passed: v.boolean(),
+        actualPreview: v.string(),
+        error: v.optional(v.string()),
+      })
+    ),
+  }).index("by_set", ["setId"]),
 });

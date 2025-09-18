@@ -129,6 +129,29 @@ export const approveAndPublish = mutation({
       throw new Error("Proposal not found");
     }
 
+    // Regression gate: if any eval set exists, require last run to have passed all tests.
+    const sets = await ctx.db.query("evalSets").order("desc").take(100);
+    if (sets.length > 0) {
+      for (const s of sets) {
+        const last = await ctx.db
+          .query("evalRuns")
+          .withIndex("by_set", (q) => q.eq("setId", s._id))
+          .order("desc")
+          .take(1);
+        const run = last[0];
+        const passing =
+          !!run &&
+          run.status === "completed" &&
+          run.failCount === 0 &&
+          run.passCount === (s.tests?.length || 0);
+        if (!passing) {
+          throw new Error(
+            "Evaluation gate failed: Run and pass all evaluation sets before publishing."
+          );
+        }
+      }
+    }
+
     const pageId = await ctx.db.insert("docsPages", {
       title: proposal.title,
       slug: proposal.slug,
