@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useAction } from "convex/react";
+import { useAction, useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -30,6 +30,12 @@ export function AdminAssistantSection({ adminSessionValid, adminToken }: Props) 
   const [assistantInput, setAssistantInput] = useState<string>("");
   const [assistantBusy, setAssistantBusy] = useState<boolean>(false);
   const sendAssistantMessage = useAction(api.adminAssistant.sendMessage as any);
+
+  const proposals = useQuery(api.docs.listProposals as any);
+  const generateDocsSeed = useAction(api.docs.generateFromSeed as any);
+  const approveDocsProposal = useMutation(api.docs.approveAndPublish as any);
+  const generateDocsFromUrl = useAction(api.docs.generateFromUrl as any);
+  const [importUrl, setImportUrl] = useState<string>("");
 
   async function runAssistant(msg: string) {
     setAssistantMessages((m) => [...m, { role: "user", content: msg }]);
@@ -211,6 +217,97 @@ export function AdminAssistantSection({ adminSessionValid, adminToken }: Props) 
 
         <div className="text-xs text-muted-foreground">
           MVP is read-only. Mutating actions (repairs, sends, flag changes) are gated by role and mode.
+        </div>
+
+        <div className="mt-6 pt-6 border-t">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="font-semibold">Assistant Docs</div>
+            <div className="flex items-center gap-2">
+              <Input
+                placeholder="Import from URL (https://...)"
+                value={importUrl}
+                onChange={(e) => setImportUrl(e.target.value)}
+                className="w-80"
+              />
+              <Button
+                variant="secondary"
+                onClick={async () => {
+                  try {
+                    const url = importUrl.trim();
+                    if (!url) {
+                      toast.error("Enter a URL to import");
+                      return;
+                    }
+                    const res = await generateDocsFromUrl({ url } as any);
+                    toast.success("Imported proposal", {
+                      description: `Proposal ID: ${res?.proposalId || "created"}`,
+                    });
+                    setImportUrl("");
+                  } catch (e: any) {
+                    toast.error(e?.message || "Failed to import proposal");
+                  }
+                }}
+              >
+                Import
+              </Button>
+              <Button
+                variant="default"
+                onClick={async () => {
+                  try {
+                    const res = await generateDocsSeed({ source: "internal:seed" } as any);
+                    toast.success("Generated proposal", {
+                      description: `Proposal ID: ${res?.proposalId || "created"}`,
+                    });
+                  } catch (e: any) {
+                    toast.error(e?.message || "Failed to generate proposal");
+                  }
+                }}
+              >
+                Generate Seed Page
+              </Button>
+            </div>
+          </div>
+
+          <div className="mt-4 space-y-3">
+            {!proposals ? (
+              <div className="text-sm text-muted-foreground">Loading proposals…</div>
+            ) : proposals.length === 0 ? (
+              <div className="text-sm text-muted-foreground">No proposals yet. Click "Generate Seed Page".</div>
+            ) : (
+              proposals.map((p: any) => (
+                <div key={p._id} className="rounded-md border p-3 bg-background">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="font-medium">{p.title}</div>
+                      <div className="text-xs text-muted-foreground">/{p.slug} • {p.status}</div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={p.status === "approved"}
+                        onClick={async () => {
+                          try {
+                            await approveDocsProposal({ proposalId: p._id } as any);
+                            toast.success("Proposal approved & published");
+                          } catch (e: any) {
+                            toast.error(e?.message || "Failed to publish proposal");
+                          }
+                        }}
+                      >
+                        {p.status === "approved" ? "Published" : "Approve & Publish"}
+                      </Button>
+                    </div>
+                  </div>
+                  {p.diffPreview ? (
+                    <pre className="mt-2 text-xs overflow-auto max-h-40 bg-muted/40 p-2 rounded">
+                      {p.diffPreview}
+                    </pre>
+                  ) : null}
+                </div>
+              ))
+            )}
+          </div>
         </div>
       </CardContent>
     </Card>

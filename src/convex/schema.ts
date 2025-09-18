@@ -1032,6 +1032,30 @@ export default defineSchema({
     .index("by_tenant", ["tenantId"])
     .index("by_tenant_and_name", ["tenantId", "name"]),
 
+  // Add: Docs module tables for Phase 6 (docs population)
+  docsPages: defineTable({
+    title: v.string(),
+    slug: v.string(),
+    contentMarkdown: v.string(),
+    sections: v.optional(v.array(v.object({ heading: v.string(), body: v.string() }))),
+    createdBy: v.optional(v.id("users")),
+    createdAt: v.number(),
+    updatedAt: v.optional(v.number()),
+  }).index("by_slug", ["slug"]),
+
+  docsProposals: defineTable({
+    source: v.string(), // e.g., "seed:readme", "url:https://...", "manual"
+    title: v.string(),
+    slug: v.string(),
+    diffPreview: v.string(), // PR-style diff preview (text)
+    contentMarkdown: v.string(),
+    sections: v.optional(v.array(v.object({ heading: v.string(), body: v.string() }))),
+    status: v.union(v.literal("pending"), v.literal("approved"), v.literal("rejected")),
+    createdBy: v.optional(v.id("users")),
+    createdAt: v.number(),
+    decidedAt: v.optional(v.number()),
+  }).index("by_status", ["status"]),
+
   // Append Convex Auth required tables inside the schema (excluding users to avoid conflicts)
   ...authWithoutUsers,
 });
