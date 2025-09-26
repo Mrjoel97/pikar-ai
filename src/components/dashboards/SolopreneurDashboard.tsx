@@ -108,7 +108,7 @@ const searchArgsMemo = React.useMemo(() => {
     // Correctly skip when args are undefined
     const searchResults = useQuery(
       api.initiatives.searchBrainDumps,
-      searchArgsMemo
+      searchArgsMemoSearch
     );
 
     // Audio recording + upload + transcription
