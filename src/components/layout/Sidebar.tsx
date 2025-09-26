@@ -74,6 +74,22 @@ export function Sidebar({
           </button>
         </div>
 
+        {/* Learning Hub Shortcut */}
+        <a
+          href="/learning-hub"
+          onClick={(e) => {
+            e.preventDefault();
+            onNavigate("/learning-hub");
+          }}
+          className="flex items-center gap-2 px-3 py-2 rounded-md text-sm hover:bg-accent hover:text-accent-foreground"
+          data-testid="sidebar-learninghub-link"
+          aria-label="Open Learning Hub"
+          role="button"
+        >
+          <span className="i-lucide-graduation-cap w-4 h-4" />
+          <span>Learning Hub</span>
+        </a>
+
         {/* Settings Shortcut */}
         <a
           href="/settings"
