@@ -96,8 +96,8 @@ export function SolopreneurDashboard({
     // Add local loading state for restore
     /* Duplicate removed — reuse the already-declared `lastDeletedItem` and `setLastDeletedItem` */
 
-    // New: search across content/transcript/summary (single source of truth)
-    const [searchQuery, setSearchQuery] = React.useState("");
+/* Using existing searchQuery state declared earlier – duplicate removed */
+// New: search across content/transcript/summary (single source of truth)
 
     // Prepare args; pass undefined to skip the query cleanly
     const searchArgs = initiativeId && searchQuery.trim()
