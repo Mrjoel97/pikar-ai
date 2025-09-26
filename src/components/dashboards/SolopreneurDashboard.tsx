@@ -1,5 +1,5 @@
 // @ts-nocheck
-import React, { useState, useRef, useEffect } from "react";
+import React from "react";
 import { useMutation, useQuery, useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -11,11 +11,17 @@ import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
 import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { useAuth } from "@/hooks/use-auth";
 import CampaignComposer from "@/components/email/CampaignComposer";
 import { motion } from "framer-motion";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+/* removed unused Alert imports */
 
 interface SolopreneurDashboardProps {
   business: any;
@@ -25,12 +31,12 @@ interface SolopreneurDashboardProps {
   onUpgrade: () => void;
 }
 
-export function SolopreneurDashboard({ 
-  business, 
-  demoData, 
-  isGuest, 
-  tier, 
-  onUpgrade 
+export function SolopreneurDashboard({
+  business,
+  demoData,
+  isGuest,
+  tier,
+  onUpgrade,
 }: SolopreneurDashboardProps) {
   // Provide a relaxed-typing alias for the composer so extra props don't cause TS errors
   const CampaignComposerAny = CampaignComposer as any;
@@ -39,12 +45,16 @@ export function SolopreneurDashboard({
   // Add local BrainDumpSection component
   function BrainDumpSection({ businessId }: { businessId: string }) {
     // Get or create an initiative for the business (we'll read the first one)
-    const initiatives = useQuery(api.initiatives.getByBusiness as any, businessId ? { businessId } : "skip");
-    const initiativeId = initiatives && initiatives.length > 0 ? initiatives[0]._id : null;
+    const initiatives = useQuery(
+      api.initiatives.getByBusiness as any,
+      businessId ? { businessId } : "skip",
+    );
+    const initiativeId =
+      initiatives && initiatives.length > 0 ? initiatives[0]._id : null;
 
     const dumps = useQuery(
       api.initiatives.listBrainDumpsByInitiative as any,
-      initiativeId ? { initiativeId, limit: 10 } : "skip"
+      initiativeId ? { initiativeId, limit: 10 } : "skip",
     );
 
     const addDump = useMutation(api.initiatives.addBrainDump as any);
@@ -57,10 +67,12 @@ export function SolopreneurDashboard({
     const [text, setText] = React.useState("");
     const [saving, setSaving] = React.useState(false);
     // Add filter state for tag chips
-    const [activeTagFilter, setActiveTagFilter] = React.useState<"" | "content" | "offer" | "ops">("");
+    const [activeTagFilter, setActiveTagFilter] = React.useState<
+      "" | "content" | "offer" | "ops"
+    >("");
 
-      // Add: inline save handler for typed idea
-      const handleSaveIdeaInline = async () => {
+    // Add: inline save handler for typed idea
+    const handleSaveIdeaInline = async () => {
       if (!initiativeId) {
         toast("No initiative found. Run Phase 0 setup first.");
         return;
@@ -96,15 +108,15 @@ export function SolopreneurDashboard({
     // Add local loading state for restore
     /* Duplicate removed — reuse the already-declared `lastDeletedItem` and `setLastDeletedItem` */
 
-/* Using existing searchQuery state declared earlier – duplicate removed */
-// New: search across content/transcript/summary (single source of truth)
+    /* Using existing searchQuery state declared earlier – duplicate removed */
+    // New: search across content/transcript/summary (single source of truth)
 
-/* Using consolidated `searchArgsMemoSearch` defined later; removed earlier duplicate memo */
+    /* Using consolidated `searchArgsMemoSearch` defined later; removed earlier duplicate memo */
 
     // Correctly skip when args are undefined
     const searchResults = useQuery(
       api.initiatives.searchBrainDumps,
-      searchArgsMemoSearch
+      searchArgsMemoSearch,
     );
 
     // Audio recording + upload + transcription
@@ -113,14 +125,16 @@ export function SolopreneurDashboard({
     const [audioUrl, setAudioUrl] = React.useState<string>("");
     const [uploading, setUploading] = React.useState(false);
     const getUploadUrl = useAction(api.files.getUploadUrl as any);
-/* removed duplicate voice notes robustness state block */
+    /* removed duplicate voice notes robustness state block */
 
     // Request mic permission upfront to provide clearer UX and actionable errors.
     async function requestMicPermission() {
       try {
         // Some browsers implement navigator.permissions for microphone; gracefully fallback
         const p = (navigator as any).permissions?.query
-          ? await (navigator as any).permissions.query({ name: "microphone" as any })
+          ? await (navigator as any).permissions.query({
+              name: "microphone" as any,
+            })
           : null;
         if (p && p.state) {
           setMicPermission(p.state as "prompt" | "granted" | "denied");
@@ -140,7 +154,9 @@ export function SolopreneurDashboard({
       try {
         await requestMicPermission();
         // Try to get microphone; surface error if not available or denied
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const stream = await navigator.mediaDevices.getUserMedia({
+          audio: true,
+        });
         const mr = new MediaRecorder(stream);
         chunksRef.current = [];
         mr.ondataavailable = (e) => {
@@ -168,8 +184,8 @@ export function SolopreneurDashboard({
           err?.name === "NotAllowedError"
             ? "Microphone access was denied. Please enable mic permissions in your browser settings."
             : err?.name === "NotFoundError"
-            ? "No microphone was found on this device."
-            : "Could not start recording. Please try again.";
+              ? "No microphone was found on this device."
+              : "Could not start recording. Please try again.";
         setMicError(message);
         toast.error(message);
       }
@@ -216,11 +232,15 @@ export function SolopreneurDashboard({
         // 4) Persist as Brain Dump (voice note)
         const transcript: string = tr?.transcript ?? "";
         const summary: string | undefined = tr?.summary ?? undefined;
-        const tags: string[] | undefined = Array.isArray(tr?.detectedTags) ? tr.detectedTags : undefined;
+        const tags: string[] | undefined = Array.isArray(tr?.detectedTags)
+          ? tr.detectedTags
+          : undefined;
 
         // ... keep existing code (find businessId & initiativeId currently in scope)
         if (!businessId || !initiativeId) {
-          throw new Error("Missing business or initiative context to save voice note.");
+          throw new Error(
+            "Missing business or initiative context to save voice note.",
+          );
         }
         await addVoiceNoteMutation({
           businessId,
@@ -283,33 +303,37 @@ export function SolopreneurDashboard({
     };
 
     // Add local loading state for restore
-    const [lastDeletedItem, setLastDeletedItem] = React.useState<any | null>(null);
+    const [lastDeletedItem, setLastDeletedItem] = React.useState<any | null>(
+      null,
+    );
 
     // New: search across content/transcript/summary (single source of truth)
     const [searchQuery, setSearchQuery] = React.useState("");
 
-/* Prepare args; pass undefined to skip the query cleanly
+    /* Prepare args; pass undefined to skip the query cleanly
 Renamed to avoid duplicate identifier collisions elsewhere in the file */
-const searchArgsMemoSearch = React.useMemo(() => {
+    const searchArgsMemoSearch = React.useMemo(() => {
       if (!initiativeId) return undefined;
       const q = (searchQuery ?? "").trim();
       return q ? { initiativeId, q, limit: 20 } : undefined;
     }, [initiativeId, searchQuery]);
 
     // Correctly skip when args are undefined
-/* Using consolidated `searchResults` declared later; removed earlier duplicate declaration */
+    /* Using consolidated `searchResults` declared later; removed earlier duplicate declaration */
 
     // Audio recording + upload + transcription
-    const mediaRecorderRef = React.useRef<MediaRecorder | null>(null);
+    // const mediaRecorderRef = React.useRef<MediaRecorder | null>(null);
     const chunksRef = React.useRef<Blob[]>([]);
     const [audioUrl, setAudioUrl] = React.useState<string>("");
     const [uploading, setUploading] = React.useState(false);
     const getUploadUrl = useAction(api.files.getUploadUrl as any);
-/* removed duplicate voice notes robustness state block */
+    /* removed duplicate voice notes robustness state block */
 
     const startRecording = async () => {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const stream = await navigator.mediaDevices.getUserMedia({
+          audio: true,
+        });
         const mr = new MediaRecorder(stream);
         chunksRef.current = [];
         mr.ondataavailable = (e) => {
@@ -374,7 +398,10 @@ const searchArgsMemoSearch = React.useMemo(() => {
             audioFileId: fileId,
           } as any);
         } else {
-          await addDump({ initiativeId, content: tSummary || "Voice note" } as any);
+          await addDump({
+            initiativeId,
+            content: tSummary || "Voice note",
+          } as any);
         }
         setText("");
         toast.success("Voice note uploaded and saved.");
@@ -391,7 +418,9 @@ const searchArgsMemoSearch = React.useMemo(() => {
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h3 className="text-lg font-semibold">Brain Dump</h3>
-            <span className="text-xs text-muted-foreground">Capture rough ideas quickly</span>
+            <span className="text-xs text-muted-foreground">
+              Capture rough ideas quickly
+            </span>
           </div>
           <div className="flex items-center gap-2">
             <Input
@@ -410,7 +439,11 @@ const searchArgsMemoSearch = React.useMemo(() => {
           <Button
             size="sm"
             variant={isRecording ? "default" : "outline"}
-            className={isRecording ? "bg-emerald-600 text-white hover:bg-emerald-700" : ""}
+            className={
+              isRecording
+                ? "bg-emerald-600 text-white hover:bg-emerald-700"
+                : ""
+            }
             onClick={isRecording ? stopVoice : startVoice}
           >
             {isRecording ? "Stop Voice Recognition" : "Voice Recognition"}
@@ -419,26 +452,37 @@ const searchArgsMemoSearch = React.useMemo(() => {
           <Button
             size="sm"
             variant={mediaRecorderRef.current ? "default" : "outline"}
-            className={mediaRecorderRef.current ? "bg-emerald-600 text-white hover:bg-emerald-700" : ""}
+            className={
+              mediaRecorderRef.current
+                ? "bg-emerald-600 text-white hover:bg-emerald-700"
+                : ""
+            }
             onClick={mediaRecorderRef.current ? stopRecording : startRecording}
           >
             {mediaRecorderRef.current ? "Stop Recording" : "Record Audio"}
           </Button>
 
-          <Button size="sm" variant="outline" onClick={handleUploadAndTranscribe} disabled={uploading || !initiativeId}>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handleUploadAndTranscribe}
+            disabled={uploading || !initiativeId}
+          >
             {uploading ? "Uploading..." : "Upload & Transcribe"}
           </Button>
 
-          {audioUrl && (
-            <audio src={audioUrl} controls className="h-9" />
-          )}
+          {audioUrl && <audio src={audioUrl} controls className="h-9" />}
 
           {transcript && <Badge variant="outline">Transcript ready</Badge>}
           {detectedTags.length > 0 && (
             <div className="flex items-center gap-1">
               <span className="text-xs text-muted-foreground">Tags:</span>
               {detectedTags.map((t) => (
-                <Badge key={`detected_${t}`} variant="secondary" className="capitalize">
+                <Badge
+                  key={`detected_${t}`}
+                  variant="secondary"
+                  className="capitalize"
+                >
                   {t}
                 </Badge>
               ))}
@@ -446,7 +490,7 @@ const searchArgsMemoSearch = React.useMemo(() => {
           )}
         </div>
 
-{/* removed duplicate Voice Notes robustness UI block */}
+        {/* removed duplicate Voice Notes robustness UI block */}
 
         {transcript && (
           <div className="text-xs text-muted-foreground mb-2">
@@ -461,12 +505,18 @@ const searchArgsMemoSearch = React.useMemo(() => {
         <Textarea
           placeholder="Write freely here... (e.g., campaign idea, positioning, offer notes)"
           value={text}
-          onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setText(e.target.value)}
+          onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+            setText(e.target.value)
+          }
           className="min-h-24"
         />
         <div className="flex justify-end gap-2">
           {summary && (
-            <Button variant="outline" onClick={handleSaveIdea} disabled={saving || !initiativeId}>
+            <Button
+              variant="outline"
+              onClick={handleSaveIdea}
+              disabled={saving || !initiativeId}
+            >
               {saving ? "Saving..." : "Save Voice Idea"}
             </Button>
           )}
@@ -481,41 +531,61 @@ const searchArgsMemoSearch = React.useMemo(() => {
         <div className="text-sm font-medium">Recent ideas</div>
         <div className="flex items-center gap-2 mb-2">
           <span className="text-xs text-muted-foreground">Filter:</span>
-            {(["", "content", "offer", "ops"] as const).map((tag) => (
-              <Button
-                key={`tag_${tag || "all"}`}
-                size="sm"
-                variant={activeTagFilter === tag ? "default" : "outline"}
-                className={activeTagFilter === tag ? "bg-emerald-600 text-white hover:bg-emerald-700" : ""}
-                onClick={() => setActiveTagFilter(tag as any)}
-              >
-                {tag || "All"}
-              </Button>
-            ))}
+          {(["", "content", "offer", "ops"] as const).map((tag) => (
+            <Button
+              key={`tag_${tag || "all"}`}
+              size="sm"
+              variant={activeTagFilter === tag ? "default" : "outline"}
+              className={
+                activeTagFilter === tag
+                  ? "bg-emerald-600 text-white hover:bg-emerald-700"
+                  : ""
+              }
+              onClick={() => setActiveTagFilter(tag as any)}
+            >
+              {tag || "All"}
+            </Button>
+          ))}
         </div>
 
         {/* Results: if searching, show results; else show default list */}
         {searchQuery.trim() && Array.isArray(searchResults) ? (
           <div className="space-y-2">
             {searchResults.map((d: any) => (
-              <div key={String(d._id)} className="rounded-md border p-3 text-sm">
+              <div
+                key={String(d._id)}
+                className="rounded-md border p-3 text-sm"
+              >
                 <div className="text-muted-foreground text-xs mb-1">
                   {new Date(d.createdAt).toLocaleString()}
                 </div>
                 <div className="flex items-center gap-2 mb-1">
-                  {(Array.isArray(d.tags) && d.tags.length > 0 ? d.tags : tagIdea(String(d.content || ""))).map((t: string) => (
-                    <Badge key={`${String(d._id)}_${t}`} variant="outline" className="capitalize">
+                  {(Array.isArray(d.tags) && d.tags.length > 0
+                    ? d.tags
+                    : tagIdea(String(d.content || ""))
+                  ).map((t: string) => (
+                    <Badge
+                      key={`${String(d._id)}_${t}`}
+                      variant="outline"
+                      className="capitalize"
+                    >
                       {t}
                     </Badge>
                   ))}
                 </div>
                 <div className="whitespace-pre-wrap">{d.content}</div>
                 {d.transcript && (
-                  <div className="text-xs text-muted-foreground mt-1">Transcript: {d.transcript}</div>
+                  <div className="text-xs text-muted-foreground mt-1">
+                    Transcript: {d.transcript}
+                  </div>
                 )}
                 {/* Actions: create workflow, edit tags, soft delete */}
                 <div className="mt-2 flex flex-wrap gap-2">
-                  <Button size="sm" variant="secondary" onClick={() => handleCreateWorkflowFromIdea(d.content)}>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => handleCreateWorkflowFromIdea(d.content)}
+                  >
                     Create workflow
                   </Button>
                   <Button
@@ -523,7 +593,10 @@ const searchArgsMemoSearch = React.useMemo(() => {
                     variant="outline"
                     onClick={async () => {
                       const cur = Array.isArray(d.tags) ? d.tags.join(",") : "";
-                      const next = window.prompt("Edit tags (comma-separated):", cur);
+                      const next = window.prompt(
+                        "Edit tags (comma-separated):",
+                        cur,
+                      );
                       if (next === null) return;
                       const tags = next
                         .split(",")
@@ -546,7 +619,12 @@ const searchArgsMemoSearch = React.useMemo(() => {
                       onClick={async () => {
                         try {
                           await softDelete({ brainDumpId: d._id } as any);
-                          setLastDeletedItem({ id: d._id, content: d.content, tags: d.tags, createdAt: d.createdAt });
+                          setLastDeletedItem({
+                            id: d._id,
+                            content: d.content,
+                            tags: d.tags,
+                            createdAt: d.createdAt,
+                          });
                           toast("Moved to trash");
                         } catch (e: any) {
                           toast.error(e?.message ?? "Failed to delete");
@@ -575,7 +653,9 @@ const searchArgsMemoSearch = React.useMemo(() => {
               </div>
             ))}
             {searchResults.length === 0 && (
-              <div className="text-muted-foreground text-sm">No results for your search.</div>
+              <div className="text-muted-foreground text-sm">
+                No results for your search.
+              </div>
             )}
           </div>
         ) : (
@@ -585,42 +665,69 @@ const searchArgsMemoSearch = React.useMemo(() => {
                 .filter((d: any) => !d.deletedAt)
                 .filter((d: any) => {
                   if (!activeTagFilter) return true;
-                  const inferred = Array.isArray(d.tags) && d.tags.length > 0 ? d.tags : tagIdea(String(d.content || ""));
+                  const inferred =
+                    Array.isArray(d.tags) && d.tags.length > 0
+                      ? d.tags
+                      : tagIdea(String(d.content || ""));
                   return inferred.includes(activeTagFilter as any);
                 })
                 .map((d: any) => (
-                  <div key={String(d._id)} className="rounded-md border p-3 text-sm">
+                  <div
+                    key={String(d._id)}
+                    className="rounded-md border p-3 text-sm"
+                  >
                     <div className="text-muted-foreground text-xs mb-1">
                       {new Date(d.createdAt).toLocaleString()}
                     </div>
                     <div className="flex items-center gap-2 mb-1">
-                      {(Array.isArray(d.tags) && d.tags.length > 0 ? d.tags : tagIdea(String(d.content || ""))).map((t: string) => (
-                        <Badge key={`${String(d._id)}_${t}`} variant="outline" className="capitalize">
+                      {(Array.isArray(d.tags) && d.tags.length > 0
+                        ? d.tags
+                        : tagIdea(String(d.content || ""))
+                      ).map((t: string) => (
+                        <Badge
+                          key={`${String(d._id)}_${t}`}
+                          variant="outline"
+                          className="capitalize"
+                        >
                           {t}
                         </Badge>
                       ))}
                     </div>
                     <div className="whitespace-pre-wrap">{d.content}</div>
                     {d.transcript && (
-                      <div className="text-xs text-muted-foreground mt-1">Transcript: {d.transcript}</div>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        Transcript: {d.transcript}
+                      </div>
                     )}
                     <div className="mt-2 flex flex-wrap gap-2">
-                      <Button size="sm" variant="secondary" onClick={() => handleCreateWorkflowFromIdea(d.content)}>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => handleCreateWorkflowFromIdea(d.content)}
+                      >
                         Create workflow
                       </Button>
                       <Button
                         size="sm"
                         variant="outline"
                         onClick={async () => {
-                          const cur = Array.isArray(d.tags) ? d.tags.join(",") : "";
-                          const next = window.prompt("Edit tags (comma-separated):", cur);
+                          const cur = Array.isArray(d.tags)
+                            ? d.tags.join(",")
+                            : "";
+                          const next = window.prompt(
+                            "Edit tags (comma-separated):",
+                            cur,
+                          );
                           if (next === null) return;
                           const tags = next
                             .split(",")
                             .map((s) => s.trim())
                             .filter(Boolean);
                           try {
-                            await updateTags({ brainDumpId: d._id, tags } as any);
+                            await updateTags({
+                              brainDumpId: d._id,
+                              tags,
+                            } as any);
                             toast.success("Tags updated");
                           } catch (e: any) {
                             toast.error(e?.message ?? "Failed to update tags");
@@ -636,7 +743,12 @@ const searchArgsMemoSearch = React.useMemo(() => {
                         onClick={async () => {
                           try {
                             await softDelete({ brainDumpId: d._id } as any);
-                            setLastDeletedItem({ id: d._id, content: d.content, tags: d.tags, createdAt: d.createdAt });
+                            setLastDeletedItem({
+                              id: d._id,
+                              content: d.content,
+                              tags: d.tags,
+                              createdAt: d.createdAt,
+                            });
                             toast("Moved to trash");
                           } catch (e: any) {
                             toast.error(e?.message ?? "Failed to delete");
@@ -649,7 +761,9 @@ const searchArgsMemoSearch = React.useMemo(() => {
                   </div>
                 ))
             ) : (
-              <div className="text-muted-foreground text-sm">No entries yet.</div>
+              <div className="text-muted-foreground text-sm">
+                No entries yet.
+              </div>
             )}
             {lastDeletedItem && (
               <div className="mb-3 flex items-center justify-between rounded-md border p-2 bg-amber-50 text-amber-800">
@@ -660,7 +774,9 @@ const searchArgsMemoSearch = React.useMemo(() => {
                     variant="outline"
                     onClick={async () => {
                       try {
-                        await restoreDump({ brainDumpId: lastDeletedItem.id } as any);
+                        await restoreDump({
+                          brainDumpId: lastDeletedItem.id,
+                        } as any);
                         setLastDeletedItem(null);
                         toast.success("Restored");
                       } catch (e: any) {
@@ -670,7 +786,11 @@ const searchArgsMemoSearch = React.useMemo(() => {
                   >
                     Undo
                   </Button>
-                  <Button size="sm" variant="ghost" onClick={() => setLastDeletedItem(null)}>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setLastDeletedItem(null)}
+                  >
                     Dismiss
                   </Button>
                 </div>
@@ -691,7 +811,11 @@ const searchArgsMemoSearch = React.useMemo(() => {
                 const toTag = window.prompt(`Merge "${fromTag}" INTO tag:`);
                 if (!toTag) return;
                 try {
-                  await (useMutation(api.initiatives.mergeTagsForInitiative as any) as any)({
+                  await (
+                    useMutation(
+                      api.initiatives.mergeTagsForInitiative as any,
+                    ) as any
+                  )({
                     initiativeId,
                     fromTag,
                     toTag,
@@ -715,18 +839,27 @@ const searchArgsMemoSearch = React.useMemo(() => {
     const [streak, setStreak] = React.useState<number>(0);
     const [timeSavedTotal, setTimeSavedTotal] = React.useState<number>(0);
     // New: local wins history
-    const [history, setHistory] = React.useState<Array<{ at: string; type: string; minutes: number; meta?: Record<string, any> }>>([]);
+    const [history, setHistory] = React.useState<
+      Array<{
+        at: string;
+        type: string;
+        minutes: number;
+        meta?: Record<string, any>;
+      }>
+    >([]);
 
     React.useEffect(() => {
       const rawDates = localStorage.getItem("pikar.winDates");
       const dates: string[] = rawDates ? JSON.parse(rawDates) : [];
-      const today = new Date(); today.setHours(0,0,0,0);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
       let s = 0;
       for (;;) {
         const d = new Date(today);
         d.setDate(today.getDate() - s);
-        const key = d.toISOString().slice(0,10);
-        if (dates.includes(key)) s += 1; else break;
+        const key = d.toISOString().slice(0, 10);
+        if (dates.includes(key)) s += 1;
+        else break;
       }
       setStreak(s);
 
@@ -734,25 +867,43 @@ const searchArgsMemoSearch = React.useMemo(() => {
       setTimeSavedTotal(ts);
 
       const rawHist = localStorage.getItem("pikar.winHistory");
-      const hist: Array<{ at: string; type: string; minutes: number; meta?: Record<string, any> }> = rawHist ? JSON.parse(rawHist) : [];
+      const hist: Array<{
+        at: string;
+        type: string;
+        minutes: number;
+        meta?: Record<string, any>;
+      }> = rawHist ? JSON.parse(rawHist) : [];
       setHistory(hist);
     }, []);
 
-    const recordLocalWin = (minutes: number, type: string = "generic", meta?: Record<string, any>) => {
+    const recordLocalWin = (
+      minutes: number,
+      type: string = "generic",
+      meta?: Record<string, any>,
+    ) => {
       const nowIso = new Date().toISOString();
-      const todayKey = nowIso.slice(0,10);
+      const todayKey = nowIso.slice(0, 10);
       const rawDates = localStorage.getItem("pikar.winDates");
       const dates: string[] = rawDates ? JSON.parse(rawDates) : [];
       if (!dates.includes(todayKey)) dates.push(todayKey);
       localStorage.setItem("pikar.winDates", JSON.stringify(dates));
-      const ts = Number(localStorage.getItem("pikar.timeSavedTotal") || "0") + minutes;
+      const ts =
+        Number(localStorage.getItem("pikar.timeSavedTotal") || "0") + minutes;
       localStorage.setItem("pikar.timeSavedTotal", String(ts));
       setTimeSavedTotal(ts);
 
       const rawHist = localStorage.getItem("pikar.winHistory");
-      const hist: Array<{ at: string; type: string; minutes: number; meta?: Record<string, any> }> = rawHist ? JSON.parse(rawHist) : [];
+      const hist: Array<{
+        at: string;
+        type: string;
+        minutes: number;
+        meta?: Record<string, any>;
+      }> = rawHist ? JSON.parse(rawHist) : [];
       hist.unshift({ at: nowIso, type, minutes, meta });
-      localStorage.setItem("pikar.winHistory", JSON.stringify(hist.slice(0, 100)));
+      localStorage.setItem(
+        "pikar.winHistory",
+        JSON.stringify(hist.slice(0, 100)),
+      );
       setHistory(hist.slice(0, 100));
     };
 
@@ -778,27 +929,42 @@ const searchArgsMemoSearch = React.useMemo(() => {
       return [...list].sort((a, b) => (map[b.key] || 0) - (map[a.key] || 0));
     };
 
-    return { streak, timeSavedTotal, history, recordLocalWin, clearLocalWins, bumpTemplateUsage, orderTemplates };
+    return {
+      streak,
+      timeSavedTotal,
+      history,
+      recordLocalWin,
+      clearLocalWins,
+      bumpTemplateUsage,
+      orderTemplates,
+    };
   }
 
   // Use Convex KPI snapshot when authenticated; fallback to demo data for guests
-  const kpiDoc = !isGuest && business?._id
-    ? useQuery(api.kpis.getSnapshot, { businessId: business._id })
-    : undefined;
+  const kpiDoc =
+    !isGuest && business?._id
+      ? useQuery(api.kpis.getSnapshot, { businessId: business._id })
+      : undefined;
 
   // Use demo data when in guest mode
   const agents = isGuest ? demoData?.agents || [] : [];
   const workflows = isGuest ? demoData?.workflows || [] : [];
-  const kpis = isGuest ? (demoData?.kpis || {}) : (kpiDoc || {});
-  const tasks = isGuest ? (demoData?.tasks || []) : [];
-  const notifications = isGuest ? (demoData?.notifications || []) : [];
+  const kpis = isGuest ? demoData?.kpis || {} : kpiDoc || {};
+  const tasks = isGuest ? demoData?.tasks || [] : [];
+  const notifications = isGuest ? demoData?.notifications || [] : [];
   // removed duplicate kpis declaration; using kpiDoc fallback above
 
   // Add: Quick Analytics (Convex) with safe fallback for guests/no business
   const quickAnalytics =
     !isGuest && business?._id
-      ? (useQuery as any)(api.solopreneur.runQuickAnalytics, { businessId: business._id })
-      : { revenue90d: 0, churnAlert: false, topProducts: [] as Array<{ name: string }> };
+      ? (useQuery as any)(api.solopreneur.runQuickAnalytics, {
+          businessId: business._id,
+        })
+      : {
+          revenue90d: 0,
+          churnAlert: false,
+          topProducts: [] as Array<{ name: string }>,
+        };
 
   // Limit "Today's Focus" to max 3 tasks
   const focusTasks = Array.isArray(tasks) ? tasks.slice(0, 3) : [];
@@ -812,9 +978,18 @@ const searchArgsMemoSearch = React.useMemo(() => {
   // Derived KPI percents for simple snapshot bars
   const snapshot = {
     visitors: { value: kpis.visitors ?? 1250, delta: kpis.visitorsDelta ?? 5 },
-    subscribers: { value: kpis.subscribers ?? 320, delta: kpis.subscribersDelta ?? 3 },
-    engagement: { value: kpis.engagement ?? 62, delta: kpis.engagementDelta ?? 2 }, // %
-    revenue: { value: kpis.revenue ?? (kpis.totalRevenue ?? 12500), delta: kpis.revenueDelta ?? 4 }, // $
+    subscribers: {
+      value: kpis.subscribers ?? 320,
+      delta: kpis.subscribersDelta ?? 3,
+    },
+    engagement: {
+      value: kpis.engagement ?? 62,
+      delta: kpis.engagementDelta ?? 2,
+    }, // %
+    revenue: {
+      value: kpis.revenue ?? kpis.totalRevenue ?? 12500,
+      delta: kpis.revenueDelta ?? 4,
+    }, // $
     taskCompletion: { value: kpis.taskCompletion ?? 89, delta: 0 }, // %
     activeCustomers: { value: kpis.activeCustomers ?? 45, delta: 0 },
     conversionRate: { value: kpis.conversionRate ?? 3.2, delta: 0 }, // %
@@ -825,12 +1000,21 @@ const searchArgsMemoSearch = React.useMemo(() => {
   const seedTemplates = useMutation(api.solopreneur.seedOneClickTemplates);
 
   // Add: Top-level initiative + brain dump data for Today's Focus suggestions
-  const initiativesTop = !isGuest && business?._id
-    ? (useQuery as any)(api.initiatives.getByBusiness, { businessId: business._id })
-    : undefined;
-  const currentInitiative = Array.isArray(initiativesTop) && initiativesTop.length > 0 ? initiativesTop[0] : undefined;
+  const initiativesTop =
+    !isGuest && business?._id
+      ? (useQuery as any)(api.initiatives.getByBusiness, {
+          businessId: business._id,
+        })
+      : undefined;
+  const currentInitiative =
+    Array.isArray(initiativesTop) && initiativesTop.length > 0
+      ? initiativesTop[0]
+      : undefined;
   const brainDumps = currentInitiative?._id
-    ? (useQuery as any)(api.initiatives.listBrainDumpsByInitiative, { initiativeId: currentInitiative._id, limit: 10 })
+    ? (useQuery as any)(api.initiatives.listBrainDumpsByInitiative, {
+        initiativeId: currentInitiative._id,
+        limit: 10,
+      })
     : [];
 
   // Add: actions/mutations and local state for Support Triage + Privacy controls
@@ -854,7 +1038,12 @@ const searchArgsMemoSearch = React.useMemo(() => {
   const navigate = useNavigate();
 
   // Templates strip (client-side, mirrors the seeded presets)
-  const myTemplates: Array<{ key: string; name: string; description: string; tag: string }> = [
+  const myTemplates: Array<{
+    key: string;
+    name: string;
+    description: string;
+    tag: string;
+  }> = [
     {
       name: "Solopreneur — Launch Post",
       description: "Announce a new offering with a friendly, concise tone.",
@@ -887,9 +1076,16 @@ const searchArgsMemoSearch = React.useMemo(() => {
   };
 
   // Add: load Agent Profile v2 to wire tone/persona/cadence into composer
-  const agentProfile = useQuery(api.agentProfile.getMyAgentProfile, business ? { businessId: business._id } : "skip" as any);
+  const agentProfile = useQuery(
+    api.agentProfile.getMyAgentProfile,
+    business ? { businessId: business._id } : ("skip" as any),
+  );
   const upsertAgent = useMutation(api.agentProfile.upsertMyAgentProfile as any);
-  const saveAgentProfile = async (partial: { tone?: "concise" | "friendly" | "premium"; persona?: "maker" | "coach" | "executive"; cadence?: "light" | "standard" | "aggressive" }) => {
+  const saveAgentProfile = async (partial: {
+    tone?: "concise" | "friendly" | "premium";
+    persona?: "maker" | "coach" | "executive";
+    cadence?: "light" | "standard" | "aggressive";
+  }) => {
     if (!business?._id) {
       toast("Create a business first.");
       return;
@@ -972,7 +1168,9 @@ const searchArgsMemoSearch = React.useMemo(() => {
       const res = await suggest({ body: emailBody });
       const items = (res as any)?.suggestions ?? [];
       setTriageSuggestions(items);
-      toast.success(`Generated ${items.length} suggestion${items.length === 1 ? "" : "s"}.`);
+      toast.success(
+        `Generated ${items.length} suggestion${items.length === 1 ? "" : "s"}.`,
+      );
     } catch (e: any) {
       toast.error(e?.message ?? "Failed to generate suggestions.");
     } finally {
@@ -989,7 +1187,9 @@ const searchArgsMemoSearch = React.useMemo(() => {
     try {
       const res = await forgetUploads({});
       const count = (res as any)?.deleted ?? 0;
-      toast.success(`Cleared ${count} upload${count === 1 ? "" : "s"} and reset agent doc refs.`);
+      toast.success(
+        `Cleared ${count} upload${count === 1 ? "" : "s"} and reset agent doc refs.`,
+      );
     } catch (e: any) {
       toast.error(e?.message ?? "Failed to clear uploads.");
     }
@@ -1021,7 +1221,9 @@ const searchArgsMemoSearch = React.useMemo(() => {
         timeSavedMinutes: 20,
         details: { workflowId: String(id) },
       });
-      utils.recordLocalWin(20, "workflow_created_from_idea", { source: "brain_dump" });
+      utils.recordLocalWin(20, "workflow_created_from_idea", {
+        source: "brain_dump",
+      });
       toast("Workflow created from idea!");
       navigate("/workflows");
     } catch (e: any) {
@@ -1032,12 +1234,15 @@ const searchArgsMemoSearch = React.useMemo(() => {
   // Smart ordering for "My Templates" and local streak/time saved view
   const utils = useTemplateOrderingAndStreak();
   // If you already have myTemplates defined, wrap it:
-  const orderedTemplates = React.useMemo(() => utils.orderTemplates(myTemplates), [myTemplates]);
+  const orderedTemplates = React.useMemo(
+    () => utils.orderTemplates(myTemplates),
+    [myTemplates],
+  );
 
   // NEW: Template pinning persistence
   const pinnedList = useQuery(
     api.templatePins.listPinned as any,
-    isGuest || !isAuthed ? ("skip" as any) : {}
+    isGuest || !isAuthed ? ("skip" as any) : {},
   ) as any[] | undefined;
   const togglePin = useMutation(api.templatePins.togglePin as any);
   const pinnedSet = React.useMemo(() => {
@@ -1079,23 +1284,44 @@ const searchArgsMemoSearch = React.useMemo(() => {
 
   // Help Coach tips (dismissable)
   const coachTips: Array<{ id: string; text: string }> = [
-    { id: "tip_focus", text: "Pick one high‑impact task to ship today — momentum compounds." },
-    { id: "tip_templates", text: "Use templates to publish faster — tweak, don't start from scratch." },
-    { id: "tip_ideas", text: "Turn a Brain Dump idea into a workflow when it's actionable." },
+    {
+      id: "tip_focus",
+      text: "Pick one high‑impact task to ship today — momentum compounds.",
+    },
+    {
+      id: "tip_templates",
+      text: "Use templates to publish faster — tweak, don't start from scratch.",
+    },
+    {
+      id: "tip_ideas",
+      text: "Turn a Brain Dump idea into a workflow when it's actionable.",
+    },
   ];
-  const [dismissedTips, setDismissedTips] = useState<Record<string, boolean>>({});
-  const visibleTips = coachTips.filter(t => !dismissedTips[t.id]);
+  const [dismissedTips, setDismissedTips] = useState<Record<string, boolean>>(
+    {},
+  );
+  const visibleTips = coachTips.filter((t) => !dismissedTips[t.id]);
 
   // Add state for Schedule Assistant (Week 4)
   const [scheduleOpen, setScheduleOpen] = useState(false);
   // Add: per-channel filter for Schedule Assistant and bulk add
-  const [channelFilter, setChannelFilter] = useState<"All" | "Post" | "Email">("All");
+  const [channelFilter, setChannelFilter] = useState<"All" | "Post" | "Email">(
+    "All",
+  );
 
   // Compute suggested schedule slots (simple best-time defaults for this week)
-  const suggestedSlots: Array<{ label: string; when: string; channel: "Post" | "Email" }> = React.useMemo(() => {
+  const suggestedSlots: Array<{
+    label: string;
+    when: string;
+    channel: "Post" | "Email";
+  }> = React.useMemo(() => {
     const base = new Date();
     const toDateString = (d: Date) =>
-      d.toLocaleString(undefined, { weekday: "short", hour: "2-digit", minute: "2-digit" });
+      d.toLocaleString(undefined, {
+        weekday: "short",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
     const nextDow = (targetDow: number, hour: number) => {
       const d = new Date(base);
       const diff = (targetDow + 7 - d.getDay()) % 7 || 7; // always future
@@ -1104,23 +1330,59 @@ const searchArgsMemoSearch = React.useMemo(() => {
       return d;
     };
     const cadence = agentProfile?.cadence || "standard";
-    const list: Array<{ label: string; when: string; channel: "Post" | "Email" }> = [];
+    const list: Array<{
+      label: string;
+      when: string;
+      channel: "Post" | "Email";
+    }> = [];
 
     // Baseline: Tue/Thu Post mornings, Wed Email afternoon
-    list.push({ label: "Weekly Post", when: toDateString(nextDow(2, 10)), channel: "Post" });  // Tue 10:00
-    list.push({ label: "Newsletter", when: toDateString(nextDow(3, 14)), channel: "Email" });  // Wed 14:00
-    list.push({ label: "Follow-up Post", when: toDateString(nextDow(4, 10)), channel: "Post" }); // Thu 10:00
+    list.push({
+      label: "Weekly Post",
+      when: toDateString(nextDow(2, 10)),
+      channel: "Post",
+    }); // Tue 10:00
+    list.push({
+      label: "Newsletter",
+      when: toDateString(nextDow(3, 14)),
+      channel: "Email",
+    }); // Wed 14:00
+    list.push({
+      label: "Follow-up Post",
+      when: toDateString(nextDow(4, 10)),
+      channel: "Post",
+    }); // Thu 10:00
 
     if (cadence === "aggressive") {
       // Add more touchpoints for momentum
-      list.push({ label: "Momentum Post", when: toDateString(nextDow(1, 9)), channel: "Post" });   // Mon 09:00
-      list.push({ label: "Weekend Teaser", when: toDateString(nextDow(6, 11)), channel: "Post" }); // Sat 11:00
-      list.push({ label: "Promo Email", when: toDateString(nextDow(5, 15)), channel: "Email" });   // Fri 15:00
+      list.push({
+        label: "Momentum Post",
+        when: toDateString(nextDow(1, 9)),
+        channel: "Post",
+      }); // Mon 09:00
+      list.push({
+        label: "Weekend Teaser",
+        when: toDateString(nextDow(6, 11)),
+        channel: "Post",
+      }); // Sat 11:00
+      list.push({
+        label: "Promo Email",
+        when: toDateString(nextDow(5, 15)),
+        channel: "Email",
+      }); // Fri 15:00
     } else if (cadence === "light") {
       // Keep it minimal: just ensure one post and an email
       return [
-        { label: "Single Post", when: toDateString(nextDow(3, 10)), channel: "Post" }, // Wed 10:00
-        { label: "Light Newsletter", when: toDateString(nextDow(4, 14)), channel: "Email" }, // Thu 14:00
+        {
+          label: "Single Post",
+          when: toDateString(nextDow(3, 10)),
+          channel: "Post",
+        }, // Wed 10:00
+        {
+          label: "Light Newsletter",
+          when: toDateString(nextDow(4, 14)),
+          channel: "Email",
+        }, // Thu 14:00
       ];
     }
 
@@ -1149,16 +1411,24 @@ const searchArgsMemoSearch = React.useMemo(() => {
   };
 
   // Schedule slots persistence
-  const listSlots = !isGuest && business?._id
-    ? (useQuery as any)(api.schedule.listSlots, { businessId: business._id })
-    : [];
+  const listSlots =
+    !isGuest && business?._id
+      ? (useQuery as any)(api.schedule.listSlots, { businessId: business._id })
+      : [];
   const deleteSlot = useMutation(api.schedule.deleteSlot as any);
 
   // Handler to accept a suggested slot
-  const handleAddSlot = async (slot: { label: string; channel: "Post" | "Email"; when: string }) => {
+  const handleAddSlot = async (slot: {
+    label: string;
+    channel: "Post" | "Email";
+    when: string;
+  }) => {
     try {
       // Log a small win locally (+3m) and server-side if signed in
-      utils.recordLocalWin(3, "schedule_slot_added", { channel: slot.channel, when: slot.when });
+      utils.recordLocalWin(3, "schedule_slot_added", {
+        channel: slot.channel,
+        when: slot.when,
+      });
       if (business?._id) {
         // Persist to backend
         const whenDate = new Date();
@@ -1257,16 +1527,27 @@ const searchArgsMemoSearch = React.useMemo(() => {
   };
 
   // Enhance existing "Use Template" click:
-  const handleUseTemplateEnhanced = async (tpl: { key: string; name: string }) => {
+  const handleUseTemplateEnhanced = async (tpl: {
+    key: string;
+    name: string;
+  }) => {
     try {
       utils.bumpTemplateUsage(tpl.key);
-      utils.recordLocalWin(5, "template_used", { templateKey: tpl.key, tone: agentProfile?.tone, persona: agentProfile?.persona });
+      utils.recordLocalWin(5, "template_used", {
+        templateKey: tpl.key,
+        tone: agentProfile?.tone,
+        persona: agentProfile?.persona,
+      });
       if (business?._id) {
         await logWin({
           businessId: business._id,
           winType: "template_used",
           timeSavedMinutes: 5,
-          details: { templateKey: tpl.key, tone: agentProfile?.tone, persona: agentProfile?.persona },
+          details: {
+            templateKey: tpl.key,
+            tone: agentProfile?.tone,
+            persona: agentProfile?.persona,
+          },
         });
       }
     } catch {}
@@ -1307,10 +1588,11 @@ const searchArgsMemoSearch = React.useMemo(() => {
     const q = galleryQuery.toLowerCase().trim();
     const base = orderedTemplates;
     if (!q) return base;
-    return base.filter(t =>
-      t.name.toLowerCase().includes(q) ||
-      t.description.toLowerCase().includes(q) ||
-      t.tag.toLowerCase().includes(q)
+    return base.filter(
+      (t) =>
+        t.name.toLowerCase().includes(q) ||
+        t.description.toLowerCase().includes(q) ||
+        t.tag.toLowerCase().includes(q),
     );
   }, [galleryQuery, orderedTemplates]);
 
@@ -1318,15 +1600,26 @@ const searchArgsMemoSearch = React.useMemo(() => {
   const tagIdea = (text: string): Array<"content" | "offer" | "ops"> => {
     const t = text.toLowerCase();
     const out: Array<"content" | "offer" | "ops"> = [];
-    if (/(post|tweet|blog|write|publish|newsletter|content)/.test(t)) out.push("content");
-    if (/(discount|offer|promo|sale|bundle|pricing|cta)/.test(t)) out.push("offer");
-    if (/(ops|process|system|template|automation|schedule|cadence|tooling)/.test(t)) out.push("ops");
+    if (/(post|tweet|blog|write|publish|newsletter|content)/.test(t))
+      out.push("content");
+    if (/(discount|offer|promo|sale|bundle|pricing|cta)/.test(t))
+      out.push("offer");
+    if (
+      /(ops|process|system|template|automation|schedule|cadence|tooling)/.test(
+        t,
+      )
+    )
+      out.push("ops");
     return Array.from(new Set(out));
   };
 
   // Adapt short copy to tone + persona
   const adaptCopy = (base: string) => {
-    const { tone, persona } = agentProfile || { tone: "friendly", persona: "maker", cadence: "standard" };
+    const { tone, persona } = agentProfile || {
+      tone: "friendly",
+      persona: "maker",
+      cadence: "standard",
+    };
     let prefix = "";
     if (tone === "concise") prefix += "";
     if (tone === "friendly") prefix += "Hey there! ";
@@ -1343,24 +1636,37 @@ const searchArgsMemoSearch = React.useMemo(() => {
   // Content Capsule generator (1 weekly post + 1 email + 3 tweets)
   const genContentCapsule = () => {
     const rev = fmtNum(quickAnalytics?.revenue90d ?? 0);
-    const churn = quickAnalytics?.churnAlert ? "Churn risk spotted — re‑engage now." : "Healthy retention — keep cadence.";
-    const top = (quickAnalytics?.topProducts ?? [])[0]?.name || "your top offer";
+    const churn = quickAnalytics?.churnAlert
+      ? "Churn risk spotted — re‑engage now."
+      : "Healthy retention — keep cadence.";
+    const top =
+      (quickAnalytics?.topProducts ?? [])[0]?.name || "your top offer";
     const cadenceCopy =
-      agentProfile?.cadence === "light" ? "light weekly" : agentProfile?.cadence === "aggressive" ? "high‑tempo" : "steady weekly";
+      agentProfile?.cadence === "light"
+        ? "light weekly"
+        : agentProfile?.cadence === "aggressive"
+          ? "high‑tempo"
+          : "steady weekly";
 
     const weeklyPost = adaptCopy(
-      `Weekly update: momentum check, ${cadenceCopy} plan, and a quick spotlight on ${top}. ${churn}`
+      `Weekly update: momentum check, ${cadenceCopy} plan, and a quick spotlight on ${top}. ${churn}`,
     );
 
     const emailSubject = adaptCopy(`This week's quick win: ${top}`);
     const emailBody = adaptCopy(
       `Here's your ${cadenceCopy} nudge. Highlight: ${top}. Rolling 90‑day revenue at $${rev}. ` +
-        (quickAnalytics?.churnAlert ? "Let's re‑activate quiet subscribers with a friendly value note." : "Stay consistent and keep delivering value.")
+        (quickAnalytics?.churnAlert
+          ? "Let's re‑activate quiet subscribers with a friendly value note."
+          : "Stay consistent and keep delivering value."),
     );
 
     const tweets: string[] = [
-      adaptCopy(`Ship > perfect. This week: feature ${top} and keep your streak alive.`),
-      adaptCopy(`Consistency compounds. One quick post today = momentum for the week.`),
+      adaptCopy(
+        `Ship > perfect. This week: feature ${top} and keep your streak alive.`,
+      ),
+      adaptCopy(
+        `Consistency compounds. One quick post today = momentum for the week.`,
+      ),
       adaptCopy(`Tiny wins add up. Spotlight ${top} in under 90 words.`),
     ];
 
@@ -1369,7 +1675,12 @@ const searchArgsMemoSearch = React.useMemo(() => {
 
   // UI state: Content Capsule
   const [capsuleOpen, setCapsuleOpen] = React.useState(false);
-  const [capsule, setCapsule] = React.useState<{ weeklyPost: string; emailSubject: string; emailBody: string; tweets: string[] } | null>(null);
+  const [capsule, setCapsule] = React.useState<{
+    weeklyPost: string;
+    emailSubject: string;
+    emailBody: string;
+    tweets: string[];
+  } | null>(null);
   const handleOpenCapsule = () => {
     const c = genContentCapsule();
     setCapsule(c);
@@ -1378,11 +1689,13 @@ const searchArgsMemoSearch = React.useMemo(() => {
   const handleCopy = (txt: string, toastMsg = "Copied") => {
     navigator.clipboard.writeText(txt).then(
       () => toast.success(toastMsg),
-      () => toast.error("Copy failed")
+      () => toast.error("Copy failed"),
     );
   };
   const handleSaveCapsuleWins = async () => {
-    utils.recordLocalWin(12, "content_capsule_generated", { cadence: agentProfile?.cadence });
+    utils.recordLocalWin(12, "content_capsule_generated", {
+      cadence: agentProfile?.cadence,
+    });
     if (business?._id) {
       try {
         await logWin({
@@ -1400,7 +1713,9 @@ const searchArgsMemoSearch = React.useMemo(() => {
   const [isRecording, setIsRecording] = React.useState(false);
   const [transcript, setTranscript] = React.useState("");
   const [summary, setSummary] = React.useState("");
-  const [detectedTags, setDetectedTags] = React.useState<Array<"content" | "offer" | "ops">>([]);
+  const [detectedTags, setDetectedTags] = React.useState<
+    Array<"content" | "offer" | "ops">
+  >([]);
   const recognitionRef = React.useRef<any>(null);
 
   // Start voice capture via Web Speech API if available, else guide user
@@ -1429,7 +1744,8 @@ const searchArgsMemoSearch = React.useMemo(() => {
         setIsRecording(false);
         // Simple auto-summarize: take first sentence or 20 words
         const clean = transcript.trim();
-        const s = clean.split(/[.!?]/)[0] || clean.split(" ").slice(0, 20).join(" ");
+        const s =
+          clean.split(/[.!?]/)[0] || clean.split(" ").slice(0, 20).join(" ");
         setSummary(s);
         setDetectedTags(tagIdea(clean));
       };
@@ -1458,13 +1774,17 @@ const searchArgsMemoSearch = React.useMemo(() => {
   };
 
   // Business context for composer and SLA
-  const currentBusiness = useQuery(api.businesses.currentUserBusiness as any, isAuthed ? {} : "skip") as any;
+  const currentBusiness = useQuery(
+    api.businesses.currentUserBusiness as any,
+    isAuthed ? {} : "skip",
+  ) as any;
   const businessId = currentBusiness?._id;
 
   // SLA summary (skip if no business yet)
-  const sla = useQuery(api.approvals.getSlaSummary as any, businessId ? { businessId } : "skip") as
-    | { total: number; overdue: number; dueSoon: number }
-    | undefined;
+  const sla = useQuery(
+    api.approvals.getSlaSummary as any,
+    businessId ? { businessId } : "skip",
+  ) as { total: number; overdue: number; dueSoon: number } | undefined;
 
   // Seed demo data
   const seedForMe = useAction(api.seed.seedForCurrentUser);
@@ -1474,7 +1794,8 @@ const searchArgsMemoSearch = React.useMemo(() => {
 
   // Add: simple preflight checks for the composer
   const preflightWarnings: string[] = [];
-  if (!businessId) preflightWarnings.push("No business configured — finish onboarding.");
+  if (!businessId)
+    preflightWarnings.push("No business configured — finish onboarding.");
   const defaultReplyTo = `noreply@${typeof window !== "undefined" ? window.location.hostname : "example.com"}`;
 
   // Inject default schedule time into existing CampaignComposer usage, if present
@@ -1483,17 +1804,17 @@ const searchArgsMemoSearch = React.useMemo(() => {
     // Guarded usage: only query when businessId is available; otherwise, skip
     businessId
       ? { channel: "email", businessId, from: Date.now() }
-      : ("skip" as any)
+      : ("skip" as any),
   );
 
   const winsSummary = useQuery(
     api.audit.winsSummary,
-    businessId ? { businessId } : ("skip" as any)
+    businessId ? { businessId } : ("skip" as any),
   );
 
   const recentAudit = useQuery(
     api.audit.listForBusiness,
-    businessId ? { businessId, limit: 3 } : ("skip" as any)
+    businessId ? { businessId, limit: 3 } : ("skip" as any),
   );
 
   // Local fallback for wins when unauthenticated or no business
@@ -1501,7 +1822,10 @@ const searchArgsMemoSearch = React.useMemo(() => {
     try {
       const raw = localStorage.getItem("pikar_local_wins_v1");
       if (!raw) return { wins: 0, totalTimeSavedMinutes: 0 };
-      const arr = JSON.parse(raw) as Array<{ at: number; timeSavedMinutes?: number }>;
+      const arr = JSON.parse(raw) as Array<{
+        at: number;
+        timeSavedMinutes?: number;
+      }>;
       let wins = 0;
       let totalTimeSavedMinutes = 0;
       const since = Date.now() - 30 * 24 * 60 * 60 * 1000;
@@ -1528,7 +1852,9 @@ const searchArgsMemoSearch = React.useMemo(() => {
   // Optional: Add a small helper button for "Post" placeholder if you have a "Schedule Assistant" area
   function handlePostPlaceholder() {
     if (nextEmailSlot && nextEmailSlot.scheduledAt) {
-      toast(`Post placeholder queued for ${new Date(nextEmailSlot.scheduledAt).toLocaleString()}`);
+      toast(
+        `Post placeholder queued for ${new Date(nextEmailSlot.scheduledAt).toLocaleString()}`,
+      );
     } else {
       toast("No upcoming slot found; add one in Schedule Assistant");
     }
@@ -1538,7 +1864,9 @@ const searchArgsMemoSearch = React.useMemo(() => {
   // Fetch next Post slot similar to nextEmailSlot (guarded by businessId):
   const nextPostSlot = useQuery(
     api.schedule.nextSlotByChannel,
-    businessId ? { channel: "post", businessId, from: Date.now() } : ("skip" as any)
+    businessId
+      ? { channel: "post", businessId, from: Date.now() }
+      : ("skip" as any),
   );
 
   // Add: per-batch basic cap to avoid runaway adds; server can enforce stricter limits
@@ -1560,9 +1888,14 @@ const searchArgsMemoSearch = React.useMemo(() => {
       setAddingAll(true);
 
       // Determine remaining headroom if we have current slots
-      const currentCount = Array.isArray(scheduleSlots) ? scheduleSlots.length : 0;
+      const currentCount = Array.isArray(scheduleSlots)
+        ? scheduleSlots.length
+        : 0;
       const allowed = Math.max(0, BATCH_ADD_CAP - 0); // local cap for this batch
-      let toAdd = suggestedSlots.slice(0, Math.min(allowed || BATCH_ADD_CAP, suggestedSlots.length));
+      let toAdd = suggestedSlots.slice(
+        0,
+        Math.min(allowed || BATCH_ADD_CAP, suggestedSlots.length),
+      );
 
       // If there are tier caps elsewhere, this still limits batch size. Server entitlements can enforce strict limits.
 
@@ -1580,22 +1913,25 @@ const searchArgsMemoSearch = React.useMemo(() => {
 
       setLastBatchSlotIds(createdIds);
 
-      toast.success(`Added ${createdIds.length} schedule slot${createdIds.length === 1 ? "" : "s"}.`, {
-        action: {
-          label: "Undo",
-          onClick: async () => {
-            try {
-              for (const id of createdIds) {
-                await deleteSlot({ slotId: id as any });
+      toast.success(
+        `Added ${createdIds.length} schedule slot${createdIds.length === 1 ? "" : "s"}.`,
+        {
+          action: {
+            label: "Undo",
+            onClick: async () => {
+              try {
+                for (const id of createdIds) {
+                  await deleteSlot({ slotId: id as any });
+                }
+                toast("Undo complete.");
+                setLastBatchSlotIds([]);
+              } catch (e: any) {
+                toast.error(e?.message ?? "Failed to undo.");
               }
-              toast("Undo complete.");
-              setLastBatchSlotIds([]);
-            } catch (e: any) {
-              toast.error(e?.message ?? "Failed to undo.");
-            }
+            },
           },
         },
-      });
+      );
     } catch (err: any) {
       toast.error(err?.message ?? "Failed to add schedule slots.");
     } finally {
@@ -1604,10 +1940,19 @@ const searchArgsMemoSearch = React.useMemo(() => {
   };
 
   return (
-    <motion.div className="space-y-4" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }}>
+    <motion.div
+      className="space-y-4"
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.25 }}
+    >
       {/* Quick actions: Send Newsletter */}
       <div className="flex flex-wrap items-center gap-2">
-        <Button variant="default" onClick={handleOpenComposerPrefilled} disabled={!businessId}>
+        <Button
+          variant="default"
+          onClick={handleOpenComposerPrefilled}
+          disabled={!businessId}
+        >
           Send Newsletter
         </Button>
       </div>
@@ -1622,7 +1967,9 @@ const searchArgsMemoSearch = React.useMemo(() => {
             <div className="mb-3 rounded-md border border-amber-300 bg-amber-50 p-2 text-amber-800">
               <div className="text-sm font-medium">Compliance preflight</div>
               <ul className="list-disc pl-5 text-xs">
-                {preflightWarnings.map((w, i) => (<li key={i}>{w}</li>))}
+                {preflightWarnings.map((w, i) => (
+                  <li key={i}>{w}</li>
+                ))}
               </ul>
             </div>
           )}
@@ -1634,21 +1981,31 @@ const searchArgsMemoSearch = React.useMemo(() => {
               agentCadence={agentProfile?.cadence}
               onClose={() => setComposerOpen(false)}
               onCreated={() => toast.success("Newsletter scheduled")}
-              defaultScheduledAt={nextEmailSlot ? nextEmailSlot.scheduledAt : undefined}
+              defaultScheduledAt={
+                nextEmailSlot ? nextEmailSlot.scheduledAt : undefined
+              }
               // Provide a default reply-to suggestion; ignored if component doesn't support it
               defaultReplyTo={defaultReplyTo}
             />
           ) : (
-            <div className="text-sm text-muted-foreground">Finish onboarding to create a business first.</div>
+            <div className="text-sm text-muted-foreground">
+              Finish onboarding to create a business first.
+            </div>
           )}
         </DialogContent>
       </Dialog>
 
       {/* Header / Nudge */}
       <div className="rounded-md border p-3 bg-emerald-50 flex items-center gap-3">
-        <Badge variant="outline" className="border-emerald-300 text-emerald-700">Solopreneur</Badge>
+        <Badge
+          variant="outline"
+          className="border-emerald-300 text-emerald-700"
+        >
+          Solopreneur
+        </Badge>
         <div className="text-sm">
-          Supercharge your solo biz with focused tasks, quick actions, and clear KPIs.
+          Supercharge your solo biz with focused tasks, quick actions, and clear
+          KPIs.
         </div>
         <div className="ml-auto flex items-center gap-2">
           {/* New One-Click Setup button */}
@@ -1669,12 +2026,22 @@ const searchArgsMemoSearch = React.useMemo(() => {
       {/* Next Best Action bar */}
       <div className="rounded-md border p-3 bg-emerald-50/60 flex items-center gap-3">
         <span className="text-sm font-medium">Next best action:</span>
-        <Button size="sm" className="bg-emerald-600 text-white hover:bg-emerald-700" onClick={nextBest.onClick}>
+        <Button
+          size="sm"
+          className="bg-emerald-600 text-white hover:bg-emerald-700"
+          onClick={nextBest.onClick}
+        >
           {nextBest.label}
         </Button>
-        <span className="ml-auto text-xs text-muted-foreground">Reason: {nextBest.reason}</span>
+        <span className="ml-auto text-xs text-muted-foreground">
+          Reason: {nextBest.reason}
+        </span>
         {/* Week 4: Schedule Assistant entry */}
-        <Button size="sm" variant="outline" onClick={() => setScheduleOpen(true)}>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => setScheduleOpen(true)}
+        >
           Schedule Assistant
         </Button>
       </div>
@@ -1685,14 +2052,20 @@ const searchArgsMemoSearch = React.useMemo(() => {
         <Card>
           <CardContent className="p-4 grid grid-cols-1 md:grid-cols-3 gap-3">
             <div>
-              <div className="text-xs text-muted-foreground mb-1">Brand Tone</div>
+              <div className="text-xs text-muted-foreground mb-1">
+                Brand Tone
+              </div>
               <div className="flex gap-2 flex-wrap">
-                {(["concise","friendly","premium"] as const).map((t) => (
+                {(["concise", "friendly", "premium"] as const).map((t) => (
                   <Button
                     key={t}
                     size="sm"
                     variant={agentProfile?.tone === t ? "default" : "outline"}
-                    className={agentProfile?.tone === t ? "bg-emerald-600 text-white hover:bg-emerald-700" : ""}
+                    className={
+                      agentProfile?.tone === t
+                        ? "bg-emerald-600 text-white hover:bg-emerald-700"
+                        : ""
+                    }
                     onClick={() => saveAgentProfile({ tone: t })}
                   >
                     {t}
@@ -1701,14 +2074,22 @@ const searchArgsMemoSearch = React.useMemo(() => {
               </div>
             </div>
             <div>
-              <div className="text-xs text-muted-foreground mb-1">Audience Persona</div>
+              <div className="text-xs text-muted-foreground mb-1">
+                Audience Persona
+              </div>
               <div className="flex gap-2 flex-wrap">
-                {(["maker","coach","executive"] as const).map((p) => (
+                {(["maker", "coach", "executive"] as const).map((p) => (
                   <Button
                     key={p}
                     size="sm"
-                    variant={agentProfile?.persona === p ? "default" : "outline"}
-                    className={agentProfile?.persona === p ? "bg-emerald-600 text-white hover:bg-emerald-700" : ""}
+                    variant={
+                      agentProfile?.persona === p ? "default" : "outline"
+                    }
+                    className={
+                      agentProfile?.persona === p
+                        ? "bg-emerald-600 text-white hover:bg-emerald-700"
+                        : ""
+                    }
                     onClick={() => saveAgentProfile({ persona: p })}
                   >
                     {p}
@@ -1717,14 +2098,22 @@ const searchArgsMemoSearch = React.useMemo(() => {
               </div>
             </div>
             <div>
-              <div className="text-xs text-muted-foreground mb-1">Preferred Cadence</div>
+              <div className="text-xs text-muted-foreground mb-1">
+                Preferred Cadence
+              </div>
               <div className="flex gap-2 flex-wrap">
-                {(["light","standard","aggressive"] as const).map((c) => (
+                {(["light", "standard", "aggressive"] as const).map((c) => (
                   <Button
                     key={c}
                     size="sm"
-                    variant={agentProfile?.cadence === c ? "default" : "outline"}
-                    className={agentProfile?.cadence === c ? "bg-emerald-600 text-white hover:bg-emerald-700" : ""}
+                    variant={
+                      agentProfile?.cadence === c ? "default" : "outline"
+                    }
+                    className={
+                      agentProfile?.cadence === c
+                        ? "bg-emerald-600 text-white hover:bg-emerald-700"
+                        : ""
+                    }
                     onClick={() => saveAgentProfile({ cadence: c })}
                   >
                     {c}
@@ -1737,10 +2126,32 @@ const searchArgsMemoSearch = React.useMemo(() => {
 
         {/* Persistent Quick Bar */}
         <div className="mt-3 flex flex-wrap gap-2">
-          <Button size="sm" variant="outline" onClick={() => setGalleryOpen(true)}>New Idea</Button>
-          <Button size="sm" variant="outline" onClick={() => navigate("/workflows")}>Draft Email</Button>
-          <Button size="sm" variant="outline" onClick={() => handleQuickAction("Create Post")}>Create Post</Button>
-          <Button size="sm" className="bg-emerald-600 text-white hover:bg-emerald-700" onClick={handleOpenCapsule}>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setGalleryOpen(true)}
+          >
+            New Idea
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => navigate("/workflows")}
+          >
+            Draft Email
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => handleQuickAction("Create Post")}
+          >
+            Create Post
+          </Button>
+          <Button
+            size="sm"
+            className="bg-emerald-600 text-white hover:bg-emerald-700"
+            onClick={handleOpenCapsule}
+          >
             Content Capsule
           </Button>
         </div>
@@ -1754,36 +2165,80 @@ const searchArgsMemoSearch = React.useMemo(() => {
           </DialogHeader>
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground">
-              One weekly post, one email, and 3 tweet variants adapted to your tone/persona.
+              One weekly post, one email, and 3 tweet variants adapted to your
+              tone/persona.
             </p>
             {capsule && (
               <div className="space-y-3">
                 <Card>
                   <CardContent className="p-3 space-y-2">
-                    <div className="text-xs text-muted-foreground">Weekly Post</div>
-                    <div className="text-sm whitespace-pre-wrap">{capsule.weeklyPost}</div>
-                    <Button size="sm" variant="outline" onClick={() => handleCopy(capsule.weeklyPost, "Copied weekly post")}>Copy</Button>
+                    <div className="text-xs text-muted-foreground">
+                      Weekly Post
+                    </div>
+                    <div className="text-sm whitespace-pre-wrap">
+                      {capsule.weeklyPost}
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() =>
+                        handleCopy(capsule.weeklyPost, "Copied weekly post")
+                      }
+                    >
+                      Copy
+                    </Button>
                   </CardContent>
                 </Card>
                 <Card>
                   <CardContent className="p-3 space-y-2">
                     <div className="text-xs text-muted-foreground">Email</div>
-                    <div className="text-sm font-medium">Subject: {capsule.emailSubject}</div>
-                    <div className="text-sm whitespace-pre-wrap">{capsule.emailBody}</div>
+                    <div className="text-sm font-medium">
+                      Subject: {capsule.emailSubject}
+                    </div>
+                    <div className="text-sm whitespace-pre-wrap">
+                      {capsule.emailBody}
+                    </div>
                     <div className="flex gap-2">
-                      <Button size="sm" variant="outline" onClick={() => handleCopy(capsule.emailSubject, "Copied subject")}>Copy Subject</Button>
-                      <Button size="sm" variant="outline" onClick={() => handleCopy(capsule.emailBody, "Copied email body")}>Copy Body</Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() =>
+                          handleCopy(capsule.emailSubject, "Copied subject")
+                        }
+                      >
+                        Copy Subject
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() =>
+                          handleCopy(capsule.emailBody, "Copied email body")
+                        }
+                      >
+                        Copy Body
+                      </Button>
                     </div>
                   </CardContent>
                 </Card>
                 <Card>
                   <CardContent className="p-3 space-y-2">
-                    <div className="text-xs text-muted-foreground">Tweet Variants</div>
+                    <div className="text-xs text-muted-foreground">
+                      Tweet Variants
+                    </div>
                     <div className="space-y-2">
                       {capsule.tweets.map((t, i) => (
-                        <div key={i} className="flex items-start justify-between gap-2 border rounded p-2">
+                        <div
+                          key={i}
+                          className="flex items-start justify-between gap-2 border rounded p-2"
+                        >
                           <div className="text-sm whitespace-pre-wrap">{t}</div>
-                          <Button size="sm" variant="outline" onClick={() => handleCopy(t, "Copied tweet")}>Copy</Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleCopy(t, "Copied tweet")}
+                          >
+                            Copy
+                          </Button>
                         </div>
                       ))}
                     </div>
@@ -1793,7 +2248,9 @@ const searchArgsMemoSearch = React.useMemo(() => {
             )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={handleSaveCapsuleWins}>Save Win</Button>
+            <Button variant="outline" onClick={handleSaveCapsuleWins}>
+              Save Win
+            </Button>
             <Button onClick={() => setCapsuleOpen(false)}>Close</Button>
           </DialogFooter>
         </DialogContent>
@@ -1803,7 +2260,13 @@ const searchArgsMemoSearch = React.useMemo(() => {
       <section>
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-semibold">My Templates</h2>
-          <Button size="sm" variant="outline" onClick={() => setGalleryOpen(true)}>Open Gallery</Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setGalleryOpen(true)}
+          >
+            Open Gallery
+          </Button>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {orderedTemplatesWithPins.map((t) => (
@@ -1812,13 +2275,23 @@ const searchArgsMemoSearch = React.useMemo(() => {
                 <div className="flex items-center justify-between">
                   <h3 className="font-medium">{t.name}</h3>
                   <div className="flex items-center gap-2">
-                    <Badge variant="outline" className="capitalize">{t.tag}</Badge>
+                    <Badge variant="outline" className="capitalize">
+                      {t.tag}
+                    </Badge>
                     <Button
                       size="icon"
                       variant={pinnedSet.has(t.key) ? "default" : "outline"}
-                      className={pinnedSet.has(t.key) ? "bg-emerald-600 text-white hover:bg-emerald-700 h-8 w-8" : "h-8 w-8"}
-                      onClick={() => handlePinTemplate(t.key, !pinnedSet.has(t.key))}
-                      aria-label={pinnedSet.has(t.key) ? "Unpin template" : "Pin template"}
+                      className={
+                        pinnedSet.has(t.key)
+                          ? "bg-emerald-600 text-white hover:bg-emerald-700 h-8 w-8"
+                          : "h-8 w-8"
+                      }
+                      onClick={() =>
+                        handlePinTemplate(t.key, !pinnedSet.has(t.key))
+                      }
+                      aria-label={
+                        pinnedSet.has(t.key) ? "Unpin template" : "Pin template"
+                      }
                       title={pinnedSet.has(t.key) ? "Unpin" : "Pin"}
                     >
                       {pinnedSet.has(t.key) ? "★" : "☆"}
@@ -1827,7 +2300,11 @@ const searchArgsMemoSearch = React.useMemo(() => {
                 </div>
                 <p className="text-sm text-muted-foreground">{t.description}</p>
                 <div className="pt-1">
-                  <Button size="sm" onClick={() => handleUseTemplateEnhanced(t)} className="bg-emerald-600 text-white hover:bg-emerald-700">
+                  <Button
+                    size="sm"
+                    onClick={() => handleUseTemplateEnhanced(t)}
+                    className="bg-emerald-600 text-white hover:bg-emerald-700"
+                  >
                     Use
                   </Button>
                 </div>
@@ -1855,22 +2332,45 @@ const searchArgsMemoSearch = React.useMemo(() => {
                       <div className="flex items-center justify-between">
                         <h3 className="font-medium">{t.name}</h3>
                         <div className="flex items-center gap-2">
-                          <Badge variant="outline" className="capitalize">{t.tag}</Badge>
+                          <Badge variant="outline" className="capitalize">
+                            {t.tag}
+                          </Badge>
                           <Button
                             size="icon"
-                            variant={pinnedSet.has(t.key) ? "default" : "outline"}
-                            className={pinnedSet.has(t.key) ? "bg-emerald-600 text-white hover:bg-emerald-700 h-8 w-8" : "h-8 w-8"}
-                            onClick={() => handlePinTemplate(t.key, !pinnedSet.has(t.key))}
-                            aria-label={pinnedSet.has(t.key) ? "Unpin template" : "Pin template"}
+                            variant={
+                              pinnedSet.has(t.key) ? "default" : "outline"
+                            }
+                            className={
+                              pinnedSet.has(t.key)
+                                ? "bg-emerald-600 text-white hover:bg-emerald-700 h-8 w-8"
+                                : "h-8 w-8"
+                            }
+                            onClick={() =>
+                              handlePinTemplate(t.key, !pinnedSet.has(t.key))
+                            }
+                            aria-label={
+                              pinnedSet.has(t.key)
+                                ? "Unpin template"
+                                : "Pin template"
+                            }
                             title={pinnedSet.has(t.key) ? "Unpin" : "Pin"}
                           >
                             {pinnedSet.has(t.key) ? "★" : "☆"}
                           </Button>
                         </div>
                       </div>
-                      <p className="text-sm text-muted-foreground">{t.description}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {t.description}
+                      </p>
                       <div className="pt-1">
-                        <Button size="sm" className="bg-emerald-600 text-white hover:bg-emerald-700" onClick={() => { handleUseTemplateEnhanced(t); setGalleryOpen(false); }}>
+                        <Button
+                          size="sm"
+                          className="bg-emerald-600 text-white hover:bg-emerald-700"
+                          onClick={() => {
+                            handleUseTemplateEnhanced(t);
+                            setGalleryOpen(false);
+                          }}
+                        >
                           Use
                         </Button>
                       </div>
@@ -1878,12 +2378,16 @@ const searchArgsMemoSearch = React.useMemo(() => {
                   </Card>
                 ))}
                 {filteredTemplates.length === 0 && (
-                  <div className="text-sm text-muted-foreground p-2">No templates match your search.</div>
+                  <div className="text-sm text-muted-foreground p-2">
+                    No templates match your search.
+                  </div>
                 )}
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setGalleryOpen(false)}>Close</Button>
+              <Button variant="outline" onClick={() => setGalleryOpen(false)}>
+                Close
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -1894,17 +2398,26 @@ const searchArgsMemoSearch = React.useMemo(() => {
         <h2 className="text-xl font-semibold mb-4">Today&apos;s Focus</h2>
         <Card className="mt-4">
           <CardHeader className="flex items-center justify-between gap-2 sm:flex-row">
-            <CardTitle className="text-base sm:text-lg">Today's Focus</CardTitle>
+            <CardTitle className="text-base sm:text-lg">
+              Today's Focus
+            </CardTitle>
             <div className="flex items-center gap-2">
               <Badge variant="secondary">Streak: {utils.streak}d</Badge>
-              <Badge variant="outline">Time saved: {utils.timeSavedTotal}m</Badge>
+              <Badge variant="outline">
+                Time saved: {utils.timeSavedTotal}m
+              </Badge>
             </div>
           </CardHeader>
           <CardContent className="space-y-2">
             {todaysFocus.map((s, i) => (
-              <div key={i} className="flex items-center justify-between rounded-md border p-3">
+              <div
+                key={i}
+                className="flex items-center justify-between rounded-md border p-3"
+              >
                 <div className="text-sm">{s.title}</div>
-                <Button size="sm" onClick={s.action}>Do it</Button>
+                <Button size="sm" onClick={s.action}>
+                  Do it
+                </Button>
               </div>
             ))}
           </CardContent>
@@ -1916,12 +2429,19 @@ const searchArgsMemoSearch = React.useMemo(() => {
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between gap-2">
                     <div>
-                      <h3 className="font-medium">{String(t.title ?? "Task")}</h3>
+                      <h3 className="font-medium">
+                        {String(t.title ?? "Task")}
+                      </h3>
                       <p className="text-xs text-muted-foreground mt-1">
-                        Priority: {String(t.priority ?? "medium")}{t?.dueDate ? ` • Due: ${t.dueDate}` : ""}
+                        Priority: {String(t.priority ?? "medium")}
+                        {t?.dueDate ? ` • Due: ${t.dueDate}` : ""}
                       </p>
                     </div>
-                    <Button size="sm" variant="outline" onClick={() => alert("Nice! Task completed")}>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => alert("Nice! Task completed")}
+                    >
                       Done
                     </Button>
                   </div>
@@ -1932,7 +2452,8 @@ const searchArgsMemoSearch = React.useMemo(() => {
         ) : (
           <Card className="border-dashed">
             <CardContent className="p-6 text-sm text-muted-foreground">
-              No focus tasks yet. Add up to three high-impact tasks to stay on track.
+              No focus tasks yet. Add up to three high-impact tasks to stay on
+              track.
             </CardContent>
           </Card>
         )}
@@ -1944,7 +2465,11 @@ const searchArgsMemoSearch = React.useMemo(() => {
               value={quickIdea}
               onChange={(e) => setQuickIdea(e.target.value)}
             />
-            <Button size="sm" onClick={handleQuickAddIdea} disabled={savingQuickIdea}>
+            <Button
+              size="sm"
+              onClick={handleQuickAddIdea}
+              disabled={savingQuickIdea}
+            >
               {savingQuickIdea ? "Saving..." : "Add"}
             </Button>
           </div>
@@ -1962,15 +2487,24 @@ const searchArgsMemoSearch = React.useMemo(() => {
                 Draft and publish content to engage your audience.
               </p>
               <div className="flex gap-2">
-                <Button size="sm" onClick={() => handleQuickAction("Create Post")}>Start</Button>
+                <Button
+                  size="sm"
+                  onClick={() => handleQuickAction("Create Post")}
+                >
+                  Start
+                </Button>
                 <Button
                   size="sm"
                   variant="outline"
                   onClick={() => {
                     if (nextPostSlot && (nextPostSlot as any).scheduledAt) {
-                      toast(`Post scheduled placeholder for ${new Date((nextPostSlot as any).scheduledAt).toLocaleString()}`);
+                      toast(
+                        `Post scheduled placeholder for ${new Date((nextPostSlot as any).scheduledAt).toLocaleString()}`,
+                      );
                     } else {
-                      toast("No upcoming Post slot; add one in Schedule Assistant");
+                      toast(
+                        "No upcoming Post slot; add one in Schedule Assistant",
+                      );
                     }
                   }}
                   disabled={!businessId}
@@ -1994,7 +2528,12 @@ const searchArgsMemoSearch = React.useMemo(() => {
               <p className="text-sm text-muted-foreground mb-3">
                 Reach subscribers with your latest update in minutes.
               </p>
-              <Button size="sm" onClick={() => handleQuickAction("Send Newsletter")}>Compose</Button>
+              <Button
+                size="sm"
+                onClick={() => handleQuickAction("Send Newsletter")}
+              >
+                Compose
+              </Button>
             </CardContent>
           </Card>
           <Card>
@@ -2003,7 +2542,11 @@ const searchArgsMemoSearch = React.useMemo(() => {
               <p className="text-sm text-muted-foreground mb-3">
                 Check what&apos;s working and what to optimize next.
               </p>
-              <Button size="sm" variant="outline" onClick={() => handleQuickAction("View Analytics")}>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => handleQuickAction("View Analytics")}
+              >
                 Open
               </Button>
             </CardContent>
@@ -2017,16 +2560,23 @@ const searchArgsMemoSearch = React.useMemo(() => {
         <Card>
           <CardContent className="p-4 space-y-3">
             <p className="text-sm text-muted-foreground">
-              Paste an inbound email and get suggested replies. No external APIs, safe to try in guest mode.
+              Paste an inbound email and get suggested replies. No external
+              APIs, safe to try in guest mode.
             </p>
             <Textarea
               placeholder="Paste an email thread or message to triage..."
               value={emailBody}
-              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setEmailBody(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+                setEmailBody(e.target.value)
+              }
               className="min-h-28"
             />
             <div className="flex items-center gap-2">
-              <Button size="sm" onClick={handleSuggestReplies} disabled={triageLoading}>
+              <Button
+                size="sm"
+                onClick={handleSuggestReplies}
+                disabled={triageLoading}
+              >
                 {triageLoading ? "Generating..." : "Suggest Replies"}
               </Button>
               {!isGuest && (
@@ -2043,11 +2593,18 @@ const searchArgsMemoSearch = React.useMemo(() => {
                     <CardContent className="p-3 space-y-2">
                       <div className="flex items-center justify-between">
                         <span className="font-medium">{s.label}</span>
-                        <Badge variant={s.priority === "high" ? "destructive" : "outline"} className="capitalize">
+                        <Badge
+                          variant={
+                            s.priority === "high" ? "destructive" : "outline"
+                          }
+                          className="capitalize"
+                        >
                           {s.priority}
                         </Badge>
                       </div>
-                      <div className="text-sm whitespace-pre-wrap">{s.reply}</div>
+                      <div className="text-sm whitespace-pre-wrap">
+                        {s.reply}
+                      </div>
                       <div className="flex gap-2">
                         <Button
                           size="sm"
@@ -2055,7 +2612,7 @@ const searchArgsMemoSearch = React.useMemo(() => {
                           onClick={() => {
                             navigator.clipboard.writeText(s.reply).then(
                               () => toast("Copied reply"),
-                              () => toast.error("Copy failed")
+                              () => toast.error("Copy failed"),
                             );
                           }}
                         >
@@ -2079,7 +2636,12 @@ const searchArgsMemoSearch = React.useMemo(() => {
             <div className="text-sm text-muted-foreground">
               Clear uploaded files and reset your agent's document references.
             </div>
-            <Button size="sm" variant="outline" onClick={handleForgetUploads} disabled={isGuest}>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleForgetUploads}
+              disabled={isGuest}
+            >
               Forget uploads
             </Button>
           </CardContent>
@@ -2092,34 +2654,70 @@ const searchArgsMemoSearch = React.useMemo(() => {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <Card>
             <CardContent className="p-4">
-              <h3 className="text-sm font-medium text-muted-foreground">Revenue</h3>
-              <p className="text-2xl font-bold">${fmtNum(snapshot.revenue.value)}</p>
-              <p className="text-xs text-emerald-700 mt-1">+{fmtNum(snapshot.revenue.delta)}% WoW</p>
-              <Progress value={Math.min(100, (snapshot.revenue.value / 20000) * 100)} className="mt-2" />
+              <h3 className="text-sm font-medium text-muted-foreground">
+                Revenue
+              </h3>
+              <p className="text-2xl font-bold">
+                ${fmtNum(snapshot.revenue.value)}
+              </p>
+              <p className="text-xs text-emerald-700 mt-1">
+                +{fmtNum(snapshot.revenue.delta)}% WoW
+              </p>
+              <Progress
+                value={Math.min(100, (snapshot.revenue.value / 20000) * 100)}
+                className="mt-2"
+              />
             </CardContent>
           </Card>
           <Card>
             <CardContent className="p-4">
-              <h3 className="text-sm font-medium text-muted-foreground">Subscribers</h3>
-              <p className="text-2xl font-bold">{fmtNum(snapshot.subscribers.value)}</p>
-              <p className="text-xs text-emerald-700 mt-1">+{fmtNum(snapshot.subscribers.delta)}% WoW</p>
-              <Progress value={Math.min(100, (snapshot.subscribers.value / 1000) * 100)} className="mt-2" />
+              <h3 className="text-sm font-medium text-muted-foreground">
+                Subscribers
+              </h3>
+              <p className="text-2xl font-bold">
+                {fmtNum(snapshot.subscribers.value)}
+              </p>
+              <p className="text-xs text-emerald-700 mt-1">
+                +{fmtNum(snapshot.subscribers.delta)}% WoW
+              </p>
+              <Progress
+                value={Math.min(100, (snapshot.subscribers.value / 1000) * 100)}
+                className="mt-2"
+              />
             </CardContent>
           </Card>
           <Card>
             <CardContent className="p-4">
-              <h3 className="text-sm font-medium text-muted-foreground">Engagement</h3>
-              <p className="text-2xl font-bold">{fmtNum(snapshot.engagement.value)}%</p>
-              <p className="text-xs text-emerald-700 mt-1">+{fmtNum(snapshot.engagement.delta)}% WoW</p>
-              <Progress value={Math.min(100, snapshot.engagement.value)} className="mt-2" />
+              <h3 className="text-sm font-medium text-muted-foreground">
+                Engagement
+              </h3>
+              <p className="text-2xl font-bold">
+                {fmtNum(snapshot.engagement.value)}%
+              </p>
+              <p className="text-xs text-emerald-700 mt-1">
+                +{fmtNum(snapshot.engagement.delta)}% WoW
+              </p>
+              <Progress
+                value={Math.min(100, snapshot.engagement.value)}
+                className="mt-2"
+              />
             </CardContent>
           </Card>
           <Card>
             <CardContent className="p-4">
-              <h3 className="text-sm font-medium text-muted-foreground">Task Completion</h3>
-              <p className="text-2xl font-bold">{fmtNum(snapshot.taskCompletion.value)}%</p>
-              <p className="text-xs text-muted-foreground mt-1">Across current workflows</p>
-              <Progress value={Math.min(100, snapshot.taskCompletion.value)} className="mt-2" />
+              <h3 className="text-sm font-medium text-muted-foreground">
+                Task Completion
+              </h3>
+              <p className="text-2xl font-bold">
+                {fmtNum(snapshot.taskCompletion.value)}%
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Across current workflows
+              </p>
+              <Progress
+                value={Math.min(100, snapshot.taskCompletion.value)}
+                className="mt-2"
+              />
             </CardContent>
           </Card>
         </div>
@@ -2131,31 +2729,51 @@ const searchArgsMemoSearch = React.useMemo(() => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Card>
             <CardContent className="p-4">
-              <h3 className="text-sm font-medium text-muted-foreground">90‑Day Revenue</h3>
+              <h3 className="text-sm font-medium text-muted-foreground">
+                90‑Day Revenue
+              </h3>
               <p className="text-2xl font-bold">
                 ${fmtNum(quickAnalytics?.revenue90d ?? 0)}
               </p>
-              <p className="text-xs text-muted-foreground mt-1">Rolling window</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Rolling window
+              </p>
               <p className="text-xs mt-1">
                 <span className="text-muted-foreground">7d delta: </span>
-                <span className={snapshot.revenue.delta >= 0 ? "text-emerald-700" : "text-amber-700"}>
+                <span
+                  className={
+                    snapshot.revenue.delta >= 0
+                      ? "text-emerald-700"
+                      : "text-amber-700"
+                  }
+                >
                   {snapshot.revenue.delta >= 0 ? "+" : ""}
                   {fmtNum(snapshot.revenue.delta)}%
                 </span>
               </p>
               {/* Tip */}
-              <p className="text-xs text-emerald-700 mt-1">Tip: Track weekly revenue cadence — consistency beats spikes.</p>
+              <p className="text-xs text-emerald-700 mt-1">
+                Tip: Track weekly revenue cadence — consistency beats spikes.
+              </p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="p-4">
-              <h3 className="text-sm font-medium text-muted-foreground">Churn Alert</h3>
+              <h3 className="text-sm font-medium text-muted-foreground">
+                Churn Alert
+              </h3>
               <div className="flex items-center gap-2 mt-1">
-                <Badge variant={quickAnalytics?.churnAlert ? "destructive" : "outline"}>
+                <Badge
+                  variant={
+                    quickAnalytics?.churnAlert ? "destructive" : "outline"
+                  }
+                >
                   {quickAnalytics?.churnAlert ? "At Risk" : "Healthy"}
                 </Badge>
                 <p className="text-xs text-muted-foreground">
-                  {quickAnalytics?.churnAlert ? "Review retention plays" : "No immediate risk"}
+                  {quickAnalytics?.churnAlert
+                    ? "Review retention plays"
+                    : "No immediate risk"}
                 </p>
               </div>
               {/* Tip */}
@@ -2165,7 +2783,11 @@ const searchArgsMemoSearch = React.useMemo(() => {
                     size="sm"
                     variant="outline"
                     onClick={() => {
-                      utils.recordLocalWin(4, "nudge_send_to_top_50", { reason: quickAnalytics?.churnAlert ? "churn_risk" : "routine" });
+                      utils.recordLocalWin(4, "nudge_send_to_top_50", {
+                        reason: quickAnalytics?.churnAlert
+                          ? "churn_risk"
+                          : "routine",
+                      });
                       toast("Open Workflows to draft a targeted message.");
                       navigate("/workflows");
                     }}
@@ -2178,11 +2800,15 @@ const searchArgsMemoSearch = React.useMemo(() => {
           </Card>
           <Card>
             <CardContent className="p-4">
-              <h3 className="text-sm font-medium text-muted-foreground">Top Products by Margin</h3>
+              <h3 className="text-sm font-medium text-muted-foreground">
+                Top Products by Margin
+              </h3>
               <ul className="mt-2 space-y-1">
                 {(quickAnalytics?.topProducts ?? [])[0]?.name || "No data yet"}
               </ul>
-              <p className="text-xs text-muted-foreground mt-1">7d: Stable — consider highlighting top margin items.</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                7d: Stable — consider highlighting top margin items.
+              </p>
               <div className="pt-2">
                 <Button
                   size="sm"
@@ -2209,17 +2835,22 @@ const searchArgsMemoSearch = React.useMemo(() => {
           </DialogHeader>
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground">
-              Suggested slots based on best‑time defaults and simple cadence. Add with one click.
+              Suggested slots based on best‑time defaults and simple cadence.
+              Add with one click.
             </p>
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-2">
                 <span className="text-xs text-muted-foreground">Channel:</span>
-                {(["All","Post","Email"] as const).map((c) => (
+                {(["All", "Post", "Email"] as const).map((c) => (
                   <Button
                     key={c}
                     size="sm"
                     variant={channelFilter === c ? "default" : "outline"}
-                    className={channelFilter === c ? "bg-emerald-600 text-white hover:bg-emerald-700" : ""}
+                    className={
+                      channelFilter === c
+                        ? "bg-emerald-600 text-white hover:bg-emerald-700"
+                        : ""
+                    }
                     onClick={() => setChannelFilter(c)}
                   >
                     {c}
@@ -2229,19 +2860,32 @@ const searchArgsMemoSearch = React.useMemo(() => {
               <button
                 className="px-3 py-1.5 rounded bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60"
                 onClick={handleAddAllShownSlots}
-                disabled={addingAll || !suggestedSlots || suggestedSlots.length === 0}
+                disabled={
+                  addingAll || !suggestedSlots || suggestedSlots.length === 0
+                }
               >
                 {addingAll ? "Adding..." : "Add All Shown"}
               </button>
             </div>
             <div className="space-y-2">
               {filteredSuggested.map((s, idx) => (
-                <div key={`${s.label}-${idx}`} className="flex items-center justify-between rounded-md border p-2">
+                <div
+                  key={`${s.label}-${idx}`}
+                  className="flex items-center justify-between rounded-md border p-2"
+                >
                   <div>
-                    <div className="text-sm font-medium">{s.label} • {s.channel}</div>
-                    <div className="text-xs text-muted-foreground">{s.when}</div>
+                    <div className="text-sm font-medium">
+                      {s.label} • {s.channel}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {s.when}
+                    </div>
                   </div>
-                  <Button size="sm" onClick={() => handleAddSlot(s)} disabled={isGuest}>
+                  <Button
+                    size="sm"
+                    onClick={() => handleAddSlot(s)}
+                    disabled={isGuest}
+                  >
                     Add
                   </Button>
                 </div>
@@ -2249,32 +2893,52 @@ const searchArgsMemoSearch = React.useMemo(() => {
             </div>
             {!isGuest && (
               <div className="space-y-2">
-                <div className="text-xs text-muted-foreground mt-2">Your scheduled slots</div>
+                <div className="text-xs text-muted-foreground mt-2">
+                  Your scheduled slots
+                </div>
                 {Array.isArray(listSlots) && listSlots.length > 0 ? (
                   <div className="space-y-2 max-h-48 overflow-auto pr-1">
                     {listSlots.map((slot: any) => (
-                      <div key={String(slot._id)} className="flex items-center justify-between rounded-md border p-2">
+                      <div
+                        key={String(slot._id)}
+                        className="flex items-center justify-between rounded-md border p-2"
+                      >
                         <div>
-                          <div className="text-sm font-medium">{String(slot.label)} • {String(slot.channel)}</div>
-                          <div className="text-xs text-muted-foreground">{new Date(Number(slot.scheduledAt || 0)).toLocaleString()}</div>
+                          <div className="text-sm font-medium">
+                            {String(slot.label)} • {String(slot.channel)}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {new Date(
+                              Number(slot.scheduledAt || 0),
+                            ).toLocaleString()}
+                          </div>
                         </div>
-                        <Button size="sm" variant="outline" onClick={() => handleDeleteSlot(String(slot._id))}>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleDeleteSlot(String(slot._id))}
+                        >
                           Delete
                         </Button>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <div className="text-sm text-muted-foreground">No scheduled slots yet.</div>
+                  <div className="text-sm text-muted-foreground">
+                    No scheduled slots yet.
+                  </div>
                 )}
               </div>
             )}
             <div className="text-xs text-muted-foreground">
-              Tip: Keep a consistent weekly cadence — Tue/Thu mornings for posts, Wed afternoons for email.
+              Tip: Keep a consistent weekly cadence — Tue/Thu mornings for
+              posts, Wed afternoons for email.
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setScheduleOpen(false)}>Close</Button>
+            <Button variant="outline" onClick={() => setScheduleOpen(false)}>
+              Close
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -2282,7 +2946,9 @@ const searchArgsMemoSearch = React.useMemo(() => {
       {/* Content Capsule launcher */}
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-xl font-semibold">Content Capsule</h2>
-        <Button size="sm" onClick={handleOpenCapsule}>Generate</Button>
+        <Button size="sm" onClick={handleOpenCapsule}>
+          Generate
+        </Button>
       </div>
 
       {/* Recent Activity */}
@@ -2293,17 +2959,25 @@ const searchArgsMemoSearch = React.useMemo(() => {
             {notifications.slice(0, 6).map((n: any) => {
               const type = String(n.type ?? "info");
               const variant =
-                type === "success" ? "border-emerald-200" :
-                type === "warning" || type === "urgent" ? "border-amber-200" :
-                "border-gray-200";
+                type === "success"
+                  ? "border-emerald-200"
+                  : type === "warning" || type === "urgent"
+                    ? "border-amber-200"
+                    : "border-gray-200";
               return (
                 <Card key={String(n.id ?? n.message)} className={variant}>
                   <CardContent className="p-4">
                     <p className="text-sm">{String(n.message ?? "Update")}</p>
                     <div className="mt-3 flex items-center gap-2">
-                      <Badge variant="outline" className="text-xs capitalize">{type}</Badge>
+                      <Badge variant="outline" className="text-xs capitalize">
+                        {type}
+                      </Badge>
                       {!isGuest && (
-                        <Button size="sm" variant="outline" onClick={() => alert("Opening details...")}>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => alert("Opening details...")}
+                        >
                           View
                         </Button>
                       )}
@@ -2316,14 +2990,17 @@ const searchArgsMemoSearch = React.useMemo(() => {
         ) : (
           <Card className="border-dashed">
             <CardContent className="p-6 text-sm text-muted-foreground">
-              No recent activity yet. As you take actions, updates will appear here.
+              No recent activity yet. As you take actions, updates will appear
+              here.
             </CardContent>
           </Card>
         )}
       </section>
 
       {/* Brain Dump */}
-      {!isGuest && business ? <BrainDumpSection businessId={String(business._id)} /> : null}
+      {!isGuest && business ? (
+        <BrainDumpSection businessId={String(business._id)} />
+      ) : null}
 
       {/* Help Coach */}
       <section>
@@ -2337,7 +3014,9 @@ const searchArgsMemoSearch = React.useMemo(() => {
                   size="icon"
                   variant="outline"
                   className="h-6 w-6 text-xs"
-                  onClick={() => setDismissedTips((d) => ({ ...d, [t.id]: true }))}
+                  onClick={() =>
+                    setDismissedTips((d) => ({ ...d, [t.id]: true }))
+                  }
                   aria-label="Dismiss tip"
                 >
                   ×
@@ -2347,7 +3026,9 @@ const searchArgsMemoSearch = React.useMemo(() => {
           ))}
           {visibleTips.length === 0 && (
             <Card className="border-dashed">
-              <CardContent className="p-3 text-sm text-muted-foreground">All tips dismissed. They'll refresh later.</CardContent>
+              <CardContent className="p-3 text-sm text-muted-foreground">
+                All tips dismissed. They'll refresh later.
+              </CardContent>
             </Card>
           )}
         </div>
@@ -2360,7 +3041,9 @@ const searchArgsMemoSearch = React.useMemo(() => {
           <div className="flex items-center gap-2">
             <Badge variant="secondary">Streak: {utils.streak}d</Badge>
             <Badge variant="outline">Time saved: {utils.timeSavedTotal}m</Badge>
-            <Button size="sm" variant="outline" onClick={utils.clearLocalWins}>Clear</Button>
+            <Button size="sm" variant="outline" onClick={utils.clearLocalWins}>
+              Clear
+            </Button>
           </div>
         </div>
         <Card>
@@ -2368,17 +3051,27 @@ const searchArgsMemoSearch = React.useMemo(() => {
             {utils.history.length > 0 ? (
               <div className="space-y-2 max-h-56 overflow-auto pr-1">
                 {utils.history.slice(0, 20).map((w, idx) => (
-                  <div key={`${w.at}-${idx}`} className="flex items-center justify-between text-sm border rounded-md p-2">
+                  <div
+                    key={`${w.at}-${idx}`}
+                    className="flex items-center justify-between text-sm border rounded-md p-2"
+                  >
                     <div className="flex items-center gap-2">
-                      <Badge variant="outline" className="capitalize">{w.type.replace(/_/g, " ")}</Badge>
-                      <span className="text-muted-foreground">{new Date(w.at).toLocaleString()}</span>
+                      <Badge variant="outline" className="capitalize">
+                        {w.type.replace(/_/g, " ")}
+                      </Badge>
+                      <span className="text-muted-foreground">
+                        {new Date(w.at).toLocaleString()}
+                      </span>
                     </div>
                     <div className="font-medium">{w.minutes}m</div>
                   </div>
                 ))}
               </div>
             ) : (
-              <div className="text-sm text-muted-foreground">No wins recorded yet. Using a template or creating from an idea will log one.</div>
+              <div className="text-sm text-muted-foreground">
+                No wins recorded yet. Using a template or creating from an idea
+                will log one.
+              </div>
             )}
           </CardContent>
         </Card>
@@ -2389,7 +3082,11 @@ const searchArgsMemoSearch = React.useMemo(() => {
         <Card className="p-4">
           <div className="flex items-center justify-between">
             <h3 className="font-semibold">Wins (30 days)</h3>
-            <Button variant="outline" size="sm" onClick={() => navigate("/analytics")}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate("/analytics")}
+            >
               View Analytics
             </Button>
           </div>
@@ -2398,11 +3095,17 @@ const searchArgsMemoSearch = React.useMemo(() => {
               <div className="flex gap-6">
                 <div>
                   <div className="text-3xl font-bold">{winsSummary.wins}</div>
-                  <div className="text-sm text-muted-foreground">Total wins</div>
+                  <div className="text-sm text-muted-foreground">
+                    Total wins
+                  </div>
                 </div>
                 <div>
-                  <div className="text-3xl font-bold">{winsSummary.totalTimeSavedMinutes}</div>
-                  <div className="text-sm text-muted-foreground">Minutes saved</div>
+                  <div className="text-3xl font-bold">
+                    {winsSummary.totalTimeSavedMinutes}
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    Minutes saved
+                  </div>
                 </div>
               </div>
             ) : (
@@ -2412,11 +3115,17 @@ const searchArgsMemoSearch = React.useMemo(() => {
                   <div className="flex gap-6">
                     <div>
                       <div className="text-3xl font-bold">{local.wins}</div>
-                      <div className="text-sm text-muted-foreground">Total wins (local)</div>
+                      <div className="text-sm text-muted-foreground">
+                        Total wins (local)
+                      </div>
                     </div>
                     <div>
-                      <div className="text-3xl font-bold">{local.totalTimeSavedMinutes}</div>
-                      <div className="text-sm text-muted-foreground">Minutes saved (local)</div>
+                      <div className="text-3xl font-bold">
+                        {local.totalTimeSavedMinutes}
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        Minutes saved (local)
+                      </div>
                     </div>
                   </div>
                 );
@@ -2434,17 +3143,20 @@ const searchArgsMemoSearch = React.useMemo(() => {
             </Button>
           </div>
           <div className="mt-3 space-y-2">
-            {businessId && recentAudit
-              ? recentAudit.map((log: any) => (
-                  <div key={log._id} className="text-sm">
-                    <div className="font-medium">{log.action}</div>
-                    <div className="text-muted-foreground">
-                      {new Date(log.createdAt).toLocaleString()}
-                    </div>
+            {businessId && recentAudit ? (
+              recentAudit.map((log: any) => (
+                <div key={log._id} className="text-sm">
+                  <div className="font-medium">{log.action}</div>
+                  <div className="text-muted-foreground">
+                    {new Date(log.createdAt).toLocaleString()}
                   </div>
-                ))
-              : <div className="text-sm text-muted-foreground">Sign in to view recent audit events.</div>
-            }
+                </div>
+              ))
+            ) : (
+              <div className="text-sm text-muted-foreground">
+                Sign in to view recent audit events.
+              </div>
+            )}
           </div>
         </Card>
       </div>
@@ -2454,7 +3166,12 @@ const searchArgsMemoSearch = React.useMemo(() => {
           <Button
             onClick={async () => {
               try {
-                if (!window.confirm("Seed demo data for your account? This may create example records.")) return;
+                if (
+                  !window.confirm(
+                    "Seed demo data for your account? This may create example records.",
+                  )
+                )
+                  return;
                 const res = await seedForMe({});
                 toast.success("Demo data seeded");
                 if ((res as any)?.businessId) {
