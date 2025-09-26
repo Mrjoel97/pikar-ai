@@ -13,13 +13,9 @@ import React, { Suspense, lazy, useState } from "react";
 import { NotificationsCenter } from "@/components/NotificationsCenter";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { SolopreneurDashboard } from "@/components/dashboards/SolopreneurDashboard";
 
 // Add: lazy-loaded tier dashboards (code-splitting)
-const SolopreneurDashboard = lazy(() =>
-  import("@/components/dashboards/SolopreneurDashboard").then((m) => ({
-    default: m.SolopreneurDashboard,
-  })),
-);
 const StartupDashboard = lazy(() =>
   import("@/components/dashboards/StartupDashboard").then((m) => ({
     default: m.StartupDashboard,
