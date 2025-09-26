@@ -70,7 +70,7 @@ export default function Dashboard() {
   const businessId = !isGuestFromUrl ? business?._id : null;
   const upgradeNudges = useQuery(
     api.telemetry.getUpgradeNudges,
-    isGuestFromUrl || !businessId ? undefined : { businessId }
+    guestMode || !business?._id ? undefined : { businessId: business._id }
   );
 
   // Add seeding handler and mutation
