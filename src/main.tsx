@@ -25,6 +25,7 @@ import { toast } from "sonner";
 import SettingsPage from "@/pages/Settings.tsx";
 import AdminPage from "./pages/Admin";
 import AdminAuthPage from "./pages/AdminAuth";
+import LearningHubPage from "@/pages/LearningHub.tsx";
 
 class ErrorBoundary extends Component<
   { children: React.ReactNode },
@@ -150,6 +151,7 @@ createRoot(document.getElementById("root")!).render(
               <Route path="/settings" element={<SettingsPage />} />
               <Route path="/admin" element={<AdminPage />} />
               <Route path="/admin-auth" element={<AdminAuthPage />} />
+              <Route path="/learning-hub" element={<LearningHubPage />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </MemoryRouter>

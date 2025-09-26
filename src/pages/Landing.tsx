@@ -4,7 +4,6 @@ import { useAuth } from "@/hooks/use-auth";
 import { motion } from "framer-motion";
 import { 
   ArrowRight, 
-  Bot, 
   Brain, 
   BarChart3, 
   Zap, 
@@ -13,7 +12,6 @@ import {
   Target,
   Sparkles,
   CheckCircle,
-  BadgeCheck,
   Loader2,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -21,21 +19,6 @@ import { useNavigate } from "react-router";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Menu } from "lucide-react";
 import { useState } from "react";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  BookOpen,
-  GraduationCap,
-  HelpCircle,
-  MessageCircleQuestion,
-  Trophy,
-  Info,
-  Lightbulb,
-  Send,
-  Mail
-} from "lucide-react";
 import { toast } from "sonner";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
@@ -47,34 +30,18 @@ import TrustedLogosMarquee from "@/components/landing/TrustedLogosMarquee";
 import FeaturesSection from "@/components/landing/FeaturesSection";
 import KpiTrendsCard from "@/components/landing/KpiTrendsCard";
 import FreeTierPath from "@/components/landing/FreeTierPath";
-import ContextualTipsStrip from "@/components/landing/ContextualTipsStrip";
+import { Input } from "@/components/ui/input";
+import { Mail } from "lucide-react";
 
 export default function Landing() {
   const { isLoading, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [demoOpen, setDemoOpen] = useState(false);
-  const [aiGuideOpen, setAiGuideOpen] = useState(false);
-  const [learningOpen, setLearningOpen] = useState<null | { id: string; title: string; description: string }>(null);
-  const [gdprTipOpen, setGdprTipOpen] = useState(false);
-  const [onboardingProgress, setOnboardingProgress] = useState({
-    discovery: 3,
-    totalDiscovery: 5,
-    launchedCampaign: false,
-    automatedWorkflow: false,
-  });
-  const [aiChatInput, setAiChatInput] = useState("");
-  const [aiMessages, setAiMessages] = useState<Array<{ role: "user" | "assistant"; content: string }>>([
-    {
-      role: "assistant",
-      content:
-        "Hi! I'm your AI Guide. Ask me about Pikar features or best practices. For example: \"How do I improve email open rates?\"",
-    },
-  ]);
-  const [newsletterEmail, setNewsletterEmail] = useState("");
   const [upgradeOpen, setUpgradeOpen] = useState(false);
   const [selectedTier, setSelectedTier] = useState<"solopreneur" | "startup" | "sme" | "enterprise">("startup");
   const [newsletterSubmitting, setNewsletterSubmitting] = useState(false);
+  const [newsletterEmail, setNewsletterEmail] = useState("");
 
   const scrollTo = (id: string) => {
     const el = document.getElementById(id);
@@ -100,7 +67,7 @@ export default function Landing() {
 
   const features = [
     {
-      icon: Bot,
+      icon: Brain,
       title: "AI-Powered Agents",
       description: "Deploy specialized AI agents for content creation, sales intelligence, and customer support."
     },
@@ -188,48 +155,6 @@ export default function Landing() {
     { name: "Shopify", src: "https://cdn.simpleicons.org/shopify/95BF47" },
   ];
 
-  const contextualTips = [
-    {
-      phase: "Planning",
-      tip: "Use DTFL: Define the problem, target users, feasibility constraints, and measurable outcomes.",
-      icon: Lightbulb,
-    },
-    {
-      phase: "Scheduling",
-      tip: "Batch campaigns early in the week and avoid sending during low-engagement hours. A/B test time windows.",
-      icon: Info,
-    },
-    {
-      phase: "Compliance",
-      tip: "Ensure consent and purpose limitation. Pseudonymize where possible and log data processing activities.",
-      icon: Shield,
-    },
-  ];
-
-  const learningPaths = [
-    {
-      id: "email-101",
-      title: "Build your first email campaign",
-      description: "Set up your audience, craft messages, and schedule your first send with best practices.",
-    },
-    {
-      id: "automation-basics",
-      title: "Automate your first workflow",
-      description: "Connect agents, add approval steps, and monitor execution in real time.",
-    },
-    {
-      id: "insights-pro",
-      title: "Diagnose performance issues",
-      description: "Use analytics to detect bottlenecks and optimize for conversions and retention.",
-    },
-  ];
-
-  const sampleArticles = [
-    { id: "gdpr", title: "GDPR for Marketers", summary: "Consent, data minimization, and DSAR basics." },
-    { id: "snap", title: "SNAP Selling Guide", summary: "Make your solution Simple, iNvaluable, Aligned, and a Priority." },
-    { id: "dtfl", title: "Design Thinking for Lean (DTFL)", summary: "Define, Ideate, Prototype, Validate quickly." },
-  ];
-
   const growthPhases = [
     {
       title: "Phase 1 (Months 1-3)",
@@ -282,34 +207,6 @@ export default function Landing() {
     } else {
       navigate(`/auth?tier=${selectedTier}`);
     }
-  };
-
-  const handleStartPath = (lp: (typeof learningPaths)[number]) => {
-    setLearningOpen(lp);
-  };
-
-  const handleCompleteDiscoveryTask = () => {
-    setOnboardingProgress((p) => {
-      const next = Math.min(p.totalDiscovery, p.discovery + 1);
-      return { ...p, discovery: next };
-    });
-  };
-
-  const handleAiSend = () => {
-    const text = aiChatInput.trim();
-    if (!text) return;
-    setAiMessages((m) => [...m, { role: "user", content: text }]);
-    setAiChatInput("");
-    // Simple client-side suggestion (no backend)
-    const reply =
-      text.toLowerCase().includes("open rate")
-        ? "Try shorter subject lines (≤45 chars), add personalization, and send during your audience's peak times. A/B test two variants."
-        : text.toLowerCase().includes("workflow")
-        ? "Start with a 3-step flow: Ingest → Decision/Approval → Action. Add guardrails and observability before scaling."
-        : "Here's a tip: keep iterations small and measurable. Use templates to move faster, then adjust based on analytics.";
-    setTimeout(() => {
-      setAiMessages((m) => [...m, { role: "assistant", content: reply }]);
-    }, 300);
   };
 
   const sendSalesInquiry = useAction(api.emailsActions.sendSalesInquiry);
@@ -773,390 +670,6 @@ export default function Landing() {
           </motion.div>
         </div>
       </section>
-
-      <ContextualTipsStrip tips={contextualTips} />
-
-      {/* KnowledgeHub & Learning Paths */}
-      <section id="docs" className="py-14 sm:py-20 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto">
-          <motion.div
-            initial={{ y: 50, opacity: 0 }}
-            whileInView={{ y: 0, opacity: 1 }}
-            transition={{ duration: 0.8 }}
-            viewport={{ once: true }}
-            className="text-center mb-10"
-          >
-            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight mb-3">KnowledgeHub & Learning Paths</h2>
-            <p className="text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto">
-              Interactive guides and articles to help you master Pikar. Start a path or open contextual help.
-            </p>
-          </motion.div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {learningPaths.map((lp, index) => (
-              <motion.div
-                key={lp.id}
-                initial={{ y: 40, opacity: 0 }}
-                whileInView={{ y: 0, opacity: 1 }}
-                transition={{ duration: 0.5, delay: index * 0.05 }}
-                viewport={{ once: true }}
-              >
-                <Card className="neu-raised rounded-2xl border-0 h-full">
-                  <CardContent className="p-6">
-                    <div className="flex items-center gap-3 mb-4">
-                      <GraduationCap className="h-5 w-5 text-primary" />
-                      <h3 className="text-lg font-semibold">{lp.title}</h3>
-                    </div>
-                    <p className="text-sm text-muted-foreground mb-6">{lp.description}</p>
-                    <div className="flex gap-2">
-                      <Button className="neu-flat rounded-xl" onClick={() => handleStartPath(lp)}>
-                        Start Path
-                      </Button>
-                      <Button variant="outline" className="neu-flat rounded-xl" onClick={() => setGdprTipOpen(true)}>
-                        KnowledgeSelector
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Gamification / Onboarding Progress */}
-      <section className="py-12 px-4 sm:px-6 lg:px-8 bg-accent/5">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-3">
-              <Trophy className="h-6 w-6 text-primary" />
-              <h3 className="text-xl font-semibold">Onboarding Progress</h3>
-            </div>
-            <span className="text-sm text-muted-foreground">
-              Completed {onboardingProgress.discovery} of {onboardingProgress.totalDiscovery} guided tasks in Discovery
-            </span>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <Card className="neu-raised rounded-2xl border-0">
-              <CardContent className="p-6">
-                <p className="text-sm font-medium mb-2">Discovery Tasks</p>
-                <div className="w-full h-3 rounded-full bg-muted neu-inset mb-3">
-                  <div
-                    className="h-3 rounded-full bg-primary transition-all"
-                    style={{
-                      width: `${(onboardingProgress.discovery / onboardingProgress.totalDiscovery) * 100}%`,
-                    }}
-                  />
-                </div>
-                <Button size="sm" className="neu-flat rounded-xl" onClick={handleCompleteDiscoveryTask}>
-                  Mark Next Task Complete
-                </Button>
-              </CardContent>
-            </Card>
-
-            <Card className="neu-raised rounded-2xl border-0">
-              <CardContent className="p-6">
-                <p className="text-sm font-medium mb-2">First Campaign</p>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Launch your first campaign to earn the "Trailblazer" badge.
-                </p>
-                <Button
-                  size="sm"
-                  className="neu-flat rounded-xl"
-                  variant={onboardingProgress.launchedCampaign ? "outline" : "default"}
-                  onClick={() =>
-                    setOnboardingProgress((p) => ({ ...p, launchedCampaign: !p.launchedCampaign }))
-                  }
-                >
-                  {onboardingProgress.launchedCampaign ? "Undo Badge" : "Claim Badge"}
-                </Button>
-              </CardContent>
-            </Card>
-
-            <Card className="neu-raised rounded-2xl border-0">
-              <CardContent className="p-6">
-                <p className="text-sm font-medium mb-2">Workflow Automation</p>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Automate your first workflow to earn the "Operator" badge.
-                </p>
-                <Button
-                  size="sm"
-                  className="neu-flat rounded-xl"
-                  variant={onboardingProgress.automatedWorkflow ? "outline" : "default"}
-                  onClick={() =>
-                    setOnboardingProgress((p) => ({ ...p, automatedWorkflow: !p.automatedWorkflow }))
-                  }
-                >
-                  {onboardingProgress.automatedWorkflow ? "Undo Badge" : "Claim Badge"}
-                </Button>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </section>
-
-      {/* Floating AI Guide button */}
-      <button
-        aria-label="Open AI Guide"
-        className="fixed right-6 z-50 neu-raised rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 transition-colors p-4 bottom-[calc(1.5rem+env(safe-area-inset-bottom))]"
-        onClick={() => setAiGuideOpen(true)}
-      >
-        <MessageCircleQuestion className="h-6 w-6" />
-      </button>
-
-      {/* AI Guide Dialog */}
-      <Dialog open={aiGuideOpen} onOpenChange={setAiGuideOpen}>
-        <DialogContent className="max-w-2xl w-[92vw] neu-raised rounded-2xl border-0 p-0 overflow-hidden">
-          <DialogHeader className="px-6 pt-6 pb-2">
-            <DialogTitle className="flex items-center gap-2">
-              <Bot className="h-5 w-5 text-primary" />
-              AI Guide
-            </DialogTitle>
-            <DialogDescription>Ask questions about using Pikar. Get best-practice tips instantly.</DialogDescription>
-          </DialogHeader>
-          <div className="px-6 pb-6 flex flex-col gap-3">
-            <div className="h-64 neu-inset rounded-xl overflow-hidden">
-              <ScrollArea className="h-64 p-4">
-                <div className="space-y-3">
-                  {aiMessages.map((m, idx) => (
-                    <div key={idx} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
-                      <div
-                        className={`max-w-[80%] rounded-xl px-3 py-2 text-sm ${
-                          m.role === "user"
-                            ? "bg-primary text-primary-foreground"
-                            : "bg-muted text-foreground"
-                        }`}
-                      >
-                        {m.content}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </ScrollArea>
-            </div>
-            <div className="flex gap-2">
-              <Input
-                placeholder="Ask about features, tips, or troubleshooting…"
-                value={aiChatInput}
-                onChange={(e) => setAiChatInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") handleAiSend();
-                }}
-              />
-              <Button className="neu-flat rounded-xl" onClick={handleAiSend}>
-                <Send className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Learning Path Dialog */}
-      <Dialog open={!!learningOpen} onOpenChange={() => setLearningOpen(null)}>
-        <DialogContent className="max-w-2xl w-[92vw] neu-raised rounded-2xl border-0 p-0 overflow-hidden">
-          <DialogHeader className="px-6 pt-6 pb-3">
-            <DialogTitle className="flex items-center gap-2">
-              <BookOpen className="h-5 w-5 text-primary" />
-              {learningOpen?.title ?? "Learning Path"}
-            </DialogTitle>
-            <DialogDescription>{learningOpen?.description}</DialogDescription>
-          </DialogHeader>
-          <div className="px-6 pb-6 space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="neu-inset rounded-xl p-4">
-                <p className="text-sm font-medium mb-2">Step 1: Preparation</p>
-                <p className="text-sm text-muted-foreground">
-                  Define your audience and objective. Use DTFL to align goals with measurable outcomes.
-                </p>
-              </div>
-              <div className="neu-inset rounded-xl p-4">
-                <p className="text-sm font-medium mb-2">Step 2: Configure</p>
-                <p className="text-sm text-muted-foreground">
-                  Select agents, set triggers, and add approval steps if needed.
-                </p>
-              </div>
-              <div className="neu-inset rounded-xl p-4">
-                <p className="text-sm font-medium mb-2">Step 3: Validate</p>
-                <p className="text-sm text-muted-foreground">
-                  Run a dry-run and inspect outputs and guardrails. Iterate quickly.
-                </p>
-              </div>
-              <div className="neu-inset rounded-xl p-4">
-                <p className="text-sm font-medium mb-2">Step 4: Launch</p>
-                <p className="text-sm text-muted-foreground">
-                  Schedule or trigger events. Track analytics for continuous improvement.
-                </p>
-              </div>
-            </div>
-            <div className="space-y-2">
-              <p className="text-sm font-medium">Notes</p>
-              <Textarea placeholder="Capture insights or action items…" />
-            </div>
-            <div className="flex justify-end">
-              <Button className="neu-flat rounded-xl" onClick={() => setLearningOpen(null)}>
-                Close
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* KnowledgeSelector / GDPR Popup */}
-      <Dialog open={gdprTipOpen} onOpenChange={setGdprTipOpen}>
-        <DialogContent className="max-w-xl w-[92vw] neu-raised rounded-2xl border-0 p-0 overflow-hidden">
-          <DialogHeader className="px-6 pt-6 pb-2">
-            <DialogTitle className="flex items-center gap-2">
-              <HelpCircle className="h-5 w-5 text-primary" />
-              KnowledgeSelector
-            </DialogTitle>
-            <DialogDescription>
-              Pull relevant knowledge into your flow. Example: GDPR when uploading customer data.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="px-6 pb-6">
-            <div className="space-y-3">
-              {sampleArticles.map((a) => (
-                <div key={a.id} className="neu-inset rounded-xl p-4">
-                  <p className="text-sm font-semibold">{a.title}</p>
-                  <p className="text-sm text-muted-foreground">{a.summary}</p>
-                </div>
-              ))}
-            </div>
-            <div className="mt-4 flex justify-end">
-              <Button className="neu-flat rounded-xl" onClick={() => setGdprTipOpen(false)}>
-                Done
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Demo Modal */}
-      <Dialog open={demoOpen} onOpenChange={setDemoOpen}>
-        <DialogContent className="max-w-3xl w-[92vw] sm:w-[680px] neu-raised rounded-2xl border-0 p-0 overflow-hidden">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.96, y: 8 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
-            className="w-full"
-          >
-            <DialogHeader className="px-6 pt-6 pb-3">
-              <DialogTitle className="text-xl font-semibold tracking-tight">Pikar AI Demo</DialogTitle>
-              <DialogDescription className="text-muted-foreground">
-                A quick overview of how Pikar AI helps transform your business with AI-powered automation.
-              </DialogDescription>
-            </DialogHeader>
-
-            <div className="px-6 pb-6">
-              <div className="aspect-video neu-inset rounded-xl overflow-hidden">
-                <iframe
-                  className="h-full w-full"
-                  src="https://www.youtube.com/embed/dQw4w9WgXcQ"
-                  title="Pikar AI Demo"
-                  loading="lazy"
-                  frameBorder="0"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                  allowFullScreen
-                />
-              </div>
-            </div>
-          </motion.div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Upgrade Modal */}
-      <Dialog open={upgradeOpen} onOpenChange={setUpgradeOpen}>
-        <DialogContent className="max-w-xl w-[92vw] neu-raised rounded-2xl border-0 p-0 overflow-hidden">
-          <DialogHeader className="px-6 pt-6 pb-2">
-            <DialogTitle className="flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-primary" />
-              Upgrade Plan
-            </DialogTitle>
-            <DialogDescription>
-              Choose a plan to continue. You can change plans anytime.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="px-6 pb-6 space-y-4">
-            <div className="space-y-2">
-              <p className="text-sm font-medium">Select plan</p>
-              <Select
-                value={selectedTier}
-                onValueChange={(v: "solopreneur" | "startup" | "sme" | "enterprise") => setSelectedTier(v)}
-              >
-                <SelectTrigger className="neu-inset rounded-xl">
-                  <SelectValue placeholder="Choose a plan" />
-                </SelectTrigger>
-                <SelectContent className="rounded-xl">
-                  <SelectItem value="solopreneur">Solopreneur — $99/mo</SelectItem>
-                  <SelectItem value="startup">Startup — $297/mo</SelectItem>
-                  <SelectItem value="sme">SME — $597/mo</SelectItem>
-                  <SelectItem value="enterprise">Enterprise — Custom</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="neu-inset rounded-xl p-4 bg-card/60">
-              <p className="text-sm font-semibold mb-1 capitalize">{selectedTier} highlights</p>
-              <ul className="text-sm text-muted-foreground list-disc pl-5 space-y-1">
-                {selectedTier === "solopreneur" && (
-                  <>
-                    <li>3 Essential AI Agents (Content, Marketing, Productivity)</li>
-                    <li>Launch professional campaigns in minutes</li>
-                    <li>Get 15+ hours back per week</li>
-                  </>
-                )}
-                {selectedTier === "startup" && (
-                  <>
-                    <li>10 AI Agents + Team Collaboration</li>
-                    <li>3x your lead generation</li>
-                    <li>Make data-driven decisions daily</li>
-                  </>
-                )}
-                {selectedTier === "sme" && (
-                  <>
-                    <li>Unlimited AI Agents + Custom Configurations</li>
-                    <li>95%+ compliance automation</li>
-                    <li>Scale across multiple brands/locations</li>
-                  </>
-                )}
-                {selectedTier === "enterprise" && (
-                  <>
-                    <li>Unlimited Custom AI Agents</li>
-                    <li>White-label and API access included</li>
-                    <li>Global governance and controls</li>
-                  </>
-                )}
-              </ul>
-            </div>
-
-            <div className="flex justify-end gap-2">
-              <Button
-                variant="outline"
-                className="neu-flat rounded-xl"
-                onClick={() => setUpgradeOpen(false)}
-              >
-                Cancel
-              </Button>
-              <Button
-                className="neu-raised rounded-xl bg-primary hover:bg-primary/90"
-                onClick={proceedUpgrade}
-                disabled={isLoading}
-              >
-                {isLoading ? (
-                  <span className="inline-flex items-center">
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Processing...
-                  </span>
-                ) : (
-                  "Continue"
-                )}
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
 
       {/* Footer */}
       <footer className="pt-12 sm:pt-16 border-t border-border/50">
