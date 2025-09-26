@@ -194,8 +194,8 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
                     </CardDescription>
                   </CardHeader>
                   <form onSubmit={handleEmailSubmit}>
-                    <CardContent>
-                      <div className="relative flex items-center gap-2">
+                    <CardContent className="space-y-4">
+                      <div className="relative flex items-center gap-3">
                         <div className="relative flex-1">
                           <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                           <Input
@@ -236,7 +236,7 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
                         <p className="mt-2 text-sm text-red-500">{error}</p>
                       )}
                       {/* Add password field (visual only for now) */}
-                      <div className="relative mt-4">
+                      <div className="relative">
                         <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                         <Input
                           name="password"
@@ -252,7 +252,7 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
                           Password will be used in future updates; current sign-in uses email verification.
                         </p>
                       </div>
-                      <div className="mt-6">
+                      <div className="mt-4">
                         <div className="relative">
                           <div className="absolute inset-0 flex items-center">
                             <span className="w-full border-t border-emerald-300/30" />
@@ -287,7 +287,6 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
                           <UserX className="mr-2 h-4 w-4" />
                           Continue as Guest
                         </Button>
-
                         <div className="mt-4 text-center text-xs sm:text-sm">
                           {authMode === "signup" ? (
                             <span className="text-emerald-200">
