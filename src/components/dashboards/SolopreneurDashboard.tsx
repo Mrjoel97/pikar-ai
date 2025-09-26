@@ -94,7 +94,7 @@ export function SolopreneurDashboard({
     };
 
     // Add local loading state for restore
-    const [lastDeleted, setLastDeleted] = React.useState<any | null>(null);
+    const [lastDeletedItem, setLastDeletedItem] = React.useState<any | null>(null);
 
     // New: search across content/transcript/summary
     const [searchQ, setSearchQ] = React.useState("");
@@ -281,7 +281,7 @@ export function SolopreneurDashboard({
     };
 
     // Add local loading state for restore
-    const [lastDeleted, setLastDeleted] = React.useState<any | null>(null);
+    const [lastDeletedItem, setLastDeletedItem] = React.useState<any | null>(null);
 
     // New: search across content/transcript/summary
     const [searchQ, setSearchQ] = React.useState("");
@@ -539,6 +539,7 @@ export function SolopreneurDashboard({
                       onClick={async () => {
                         try {
                           await softDelete({ brainDumpId: d._id } as any);
+                          setLastDeletedItem({ id: d._id, content: d.content, tags: d.tags, createdAt: d.createdAt });
                           toast("Moved to trash");
                         } catch (e: any) {
                           toast.error(e?.message ?? "Failed to delete");
@@ -628,7 +629,7 @@ export function SolopreneurDashboard({
                         onClick={async () => {
                           try {
                             await softDelete({ brainDumpId: d._id } as any);
-                            setLastDeleted(d);
+                            setLastDeletedItem({ id: d._id, content: d.content, tags: d.tags, createdAt: d.createdAt });
                             toast("Moved to trash");
                           } catch (e: any) {
                             toast.error(e?.message ?? "Failed to delete");
@@ -643,7 +644,7 @@ export function SolopreneurDashboard({
             ) : (
               <div className="text-muted-foreground text-sm">No entries yet.</div>
             )}
-            {lastDeleted && (
+            {lastDeletedItem && (
               <div className="mb-3 flex items-center justify-between rounded-md border p-2 bg-amber-50 text-amber-800">
                 <span className="text-xs">Idea moved to trash.</span>
                 <div className="flex items-center gap-2">
@@ -652,8 +653,8 @@ export function SolopreneurDashboard({
                     variant="outline"
                     onClick={async () => {
                       try {
-                        await restoreDump({ brainDumpId: lastDeleted._id } as any);
-                        setLastDeleted(null);
+                        await restoreDump({ brainDumpId: lastDeletedItem.id } as any);
+                        setLastDeletedItem(null);
                         toast.success("Restored");
                       } catch (e: any) {
                         toast.error(e?.message ?? "Failed to restore");
@@ -662,7 +663,7 @@ export function SolopreneurDashboard({
                   >
                     Undo
                   </Button>
-                  <Button size="sm" variant="ghost" onClick={() => setLastDeleted(null)}>
+                  <Button size="sm" variant="ghost" onClick={() => setLastDeletedItem(null)}>
                     Dismiss
                   </Button>
                 </div>
