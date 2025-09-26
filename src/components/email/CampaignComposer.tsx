@@ -11,11 +11,12 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Upload, Users, Mail, Plus, FileText } from "lucide-react";
 import { toast } from "sonner";
-import { useMutation, useQuery, useAction } from "convex/react";
+import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { Switch } from "@/components/ui/switch";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { useNavigate } from "react-router";
 
 type AgentTone = "concise" | "friendly" | "premium";
 type AgentPersona = "maker" | "coach" | "executive";
@@ -71,6 +72,13 @@ export function CampaignComposer({ businessId, onClose, onCreated, defaultSchedu
   const createCampaign = useMutation(api.emails.createCampaign);
   const sendTestEmail = useAction(api.emailsActions.sendTestEmail);
   const bulkUploadCsv = useMutation(api.contacts.bulkUploadCsv);
+  const navigate = useNavigate();
+
+  // Fetch workspace email configuration summary (guest-safe; returns null if unauthenticated or unset)
+  const emailSummary = useQuery(api.emailConfig.getForBusinessSummary, {});
+  const missingFromEmail = !emailSummary?.fromEmail;
+  const missingReplyTo = !emailSummary?.replyTo; // require reply-to for compliance
+  const hasSenderIssues = missingFromEmail || missingReplyTo;
 
   const selectedList = contactLists?.find((list: any) => list._id === selectedListId);
   const recipientCount = selectedList ? "Loading..." : directRecipients.split(",").filter(Boolean).length;
@@ -221,6 +229,12 @@ export function CampaignComposer({ businessId, onClose, onCreated, defaultSchedu
   };
 
   const handleScheduleCampaign = async () => {
+    if (hasSenderIssues) {
+      toast.error("Configure From Email and Reply-To in Settings before scheduling.");
+      navigate("/settings");
+      return;
+    }
+
     if (!formData.subject || !formData.body) {
       toast.error("Please fill in subject and body");
       return;
@@ -288,6 +302,27 @@ export function CampaignComposer({ businessId, onClose, onCreated, defaultSchedu
             {agentCadence ? `Cadence: ${agentCadence}` : ""}
           </AlertDescription>
         </Alert>
+      )}
+
+      {hasSenderIssues && (
+        <div className="mb-4">
+          <Alert variant="destructive">
+            <AlertTitle>Sender configuration required</AlertTitle>
+            <AlertDescription>
+              Please configure your workspace sender before sending:
+              {missingFromEmail ? " From Email" : ""}{missingFromEmail && missingReplyTo ? " and" : ""}{missingReplyTo ? " Reply-To" : ""}.
+              <div className="mt-3">
+                <Button
+                  variant="secondary"
+                  className="bg-emerald-600 text-white hover:bg-emerald-700"
+                  onClick={() => navigate("/settings")}
+                >
+                  Fix sender in Settings
+                </Button>
+              </div>
+            </AlertDescription>
+          </Alert>
+        </div>
       )}
 
       {preflightWarnings.length > 0 && (
@@ -603,7 +638,10 @@ export function CampaignComposer({ businessId, onClose, onCreated, defaultSchedu
         <Button variant="outline" onClick={onClose}>
           Cancel
         </Button>
-        <Button onClick={handleScheduleCampaign}>
+        <Button 
+          onClick={handleScheduleCampaign}
+          disabled={hasSenderIssues || !formData.subject || !formData.body || (audienceType === "direct" && !directRecipients.trim()) || (audienceType === "list" && !selectedListId)}
+        >
           Schedule Campaign
         </Button>
       </div>
