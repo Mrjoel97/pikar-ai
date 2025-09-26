@@ -103,7 +103,9 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
 
       console.log("signed in");
 
-      const redirect = redirectAfterAuth || "/";
+      // Route signups directly to onboarding
+      const redirect =
+        authMode === "signup" ? "/onboarding" : (redirectAfterAuth || "/");
       toast.success("Signed in");
       navigate(redirect);
     } catch (error) {
