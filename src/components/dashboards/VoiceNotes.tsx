@@ -130,7 +130,19 @@ export function VoiceNotes({ onSave, disabled, className }: VoiceNotesProps) {
     } catch {
       // no-op fallback
     }
-  }, []);
+    // Call through to parent onSave if provided (persist transcript/summary/tags)
+    try {
+      if (onSave) {
+        await onSave({
+          transcript: payload.transcript ?? payload.content,
+          summary: payload.summary,
+          tags: payload.tags,
+        });
+      }
+    } catch {
+      // swallow to avoid crashing local UI if parent persistence fails
+    }
+  }, [onSave]);
 
   const handleFinalizeRecording = React.useCallback(async (audioBlob: Blob) => {
     try {
@@ -227,11 +239,11 @@ export function VoiceNotes({ onSave, disabled, className }: VoiceNotesProps) {
       )}
 
       {(isUploading || isTranscribing) && (
-        <div className="flex items-center gap-3 my-2">
-          <div className="text-sm text-slate-600">
-            {isUploading ? `Uploading... ${uploadProgress}%` : "Transcribing..."}
+        <div className="mt-3 space-y-2">
+          <Progress value={isUploading ? uploadProgress : 100} />
+          <div className="text-xs text-muted-foreground">
+            {isUploading ? `Uploading… ${uploadProgress}%` : "Transcribing…"}
           </div>
-          {/* ... keep existing code (optional spinner/progress component if present) */}
         </div>
       )}
 
