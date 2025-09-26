@@ -3,7 +3,7 @@ import { useQuery } from "convex/react";
 import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Sidebar } from "@/components/layout/Sidebar";
-import { useNavigate } from "react-router";
+import { useNavigate, useLocation } from "react-router";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -39,9 +39,13 @@ export default function Dashboard() {
 
   // Local lazy dashboard re-definitions removed; using module-scoped lazy components.
 
-  // Guest mode detection
-  const guestMode = isGuestMode();
-  const selectedTier = getSelectedTier();
+  // Guest mode detection (prefer router location, fallback to utils/localStorage)
+  const location = useLocation();
+  const searchParams = new URLSearchParams(location.search || "");
+  const guestParam = searchParams.get("guest");
+  const tierParam = searchParams.get("tier");
+  const guestMode = guestParam === "1" || isGuestMode();
+  const selectedTier = (tierParam as any) || getSelectedTier();
   const tierConfig = getTierConfig(selectedTier);
   
   // Data fetching - skip in guest mode
