@@ -3,7 +3,7 @@ import { InstrumentationProvider } from "@/instrumentation.tsx";
 import AuthPage from "@/pages/Auth.tsx";
 import { ConvexAuthProvider } from "@convex-dev/auth/react";
 import { ConvexReactClient } from "convex/react";
-import React, { StrictMode, useEffect, Component, useRef } from "react";
+import React, { StrictMode, useEffect, Component } from "react";
 import { createRoot } from "react-dom/client";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router";
 import "./index.css";
@@ -19,9 +19,6 @@ import WorkflowTemplatesPage from "@/pages/WorkflowTemplates.tsx";
 import BusinessPage from "@/pages/Business.tsx";
 import AnalyticsPage from "@/pages/Analytics.tsx";
 import PricingPage from "./pages/Pricing.tsx";
-import { useQuery } from "convex/react";
-import { api } from "@/convex/_generated/api";
-import { toast } from "sonner";
 import SettingsPage from "@/pages/Settings.tsx";
 import AdminPage from "./pages/Admin";
 import AdminAuthPage from "./pages/AdminAuth";
@@ -99,35 +96,6 @@ function RouteSyncer() {
   return null;
 }
 
-function EnvHealth() {
-  const env = useQuery(api.health.envStatus, {});
-  const warnedRef = useRef(false);
-
-  React.useEffect(() => {
-    if (warnedRef.current) return;
-    if (env === undefined) return;
-
-    const warnings: string[] = [];
-    if (!env.hasResend) warnings.push("RESEND_API_KEY");
-    if (!env.hasSalesInbox) warnings.push("SALES_INBOX");
-    if (!env.hasPublicBaseUrl) warnings.push("VITE_PUBLIC_BASE_URL");
-
-    if (warnings.length > 0) {
-      warnedRef.current = true;
-      toast.error(
-        `Missing configuration: ${warnings.join(
-          ", ",
-        )}. Open Integrations to configure secrets. Some features will be disabled until set.`,
-      );
-    } else if (env.devSafeEmails) {
-      warnedRef.current = true;
-      toast("DEV_SAFE_EMAILS is enabled. Outbound email delivery will be stubbed in development.");
-    }
-  }, [env]);
-
-  return null;
-}
-
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <ErrorBoundary>
@@ -135,7 +103,6 @@ createRoot(document.getElementById("root")!).render(
         <InstrumentationProvider>
           <MemoryRouter>
             <RouteSyncer />
-            {/* <EnvHealth /> */}
             <Routes>
               <Route path="/" element={<Landing />} />
               <Route path="/auth" element={<AuthPage redirectAfterAuth="/dashboard" />} />
