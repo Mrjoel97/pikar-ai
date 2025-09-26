@@ -99,10 +99,11 @@ export function SolopreneurDashboard({
 /* Using existing searchQuery state declared earlier – duplicate removed */
 // New: search across content/transcript/summary (single source of truth)
 
-    // Prepare args; pass undefined to skip the query cleanly
-    const searchArgs = initiativeId && searchQuery.trim()
-      ? { initiativeId, q: searchQuery.trim(), limit: 20 }
-      : undefined;
+const searchArgs = React.useMemo(() => {
+  if (!initiativeId) return undefined;
+  const q = (searchQuery ?? "").trim();
+  return q ? { initiativeId, q, limit: 20 } : undefined;
+}, [initiativeId, searchQuery]);
 
     // Correctly skip when args are undefined
     const searchResults = useQuery(
@@ -292,9 +293,11 @@ export function SolopreneurDashboard({
     const [searchQuery, setSearchQuery] = React.useState("");
 
     // Prepare args; pass undefined to skip the query cleanly
-    const searchArgs = initiativeId && searchQuery.trim()
-      ? { initiativeId, q: searchQuery.trim(), limit: 20 }
-      : undefined;
+const searchArgs = React.useMemo(() => {
+  if (!initiativeId) return undefined;
+  const q = (searchQuery ?? "").trim();
+  return q ? { initiativeId, q, limit: 20 } : undefined;
+}, [initiativeId, searchQuery]);
 
     // Correctly skip when args are undefined
     const searchResults = useQuery(
