@@ -15,7 +15,6 @@ import {
   CheckCircle,
   BadgeCheck,
   Loader2,
-  Badge as BadgeIcon
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useNavigate } from "react-router";
@@ -44,6 +43,11 @@ import { useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useMemo } from "react";
+import TrustedLogosMarquee from "@/components/landing/TrustedLogosMarquee";
+import FeaturesSection from "@/components/landing/FeaturesSection";
+import KpiTrendsCard from "@/components/landing/KpiTrendsCard";
+import FreeTierPath from "@/components/landing/FreeTierPath";
+import ContextualTipsStrip from "@/components/landing/ContextualTipsStrip";
 
 export default function Landing() {
   const { isLoading, isAuthenticated } = useAuth();
@@ -660,138 +664,11 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* Stats row added to match screenshots */}
-      <section className="px-4 sm:px-6 lg:px-8 pb-12 sm:pb-16">
-        <div className="max-w-6xl mx-auto">
-          <motion.div
-            initial={{ opacity: 0, y: 8 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            viewport={{ once: true }}
-            className="text-center mb-6 sm:mb-8"
-          >
-            <p className="text-xs sm:text-sm text-muted-foreground tracking-wide">
-              Trusted by teams at
-            </p>
-          </motion.div>
+      <TrustedLogosMarquee logos={trustedLogos} />
 
-          <div className="relative overflow-hidden">
-            <motion.div
-              className="flex items-center gap-6 sm:gap-8 whitespace-nowrap"
-              animate={{ x: ["0%", "-50%"] }}
-              transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-            >
-              {[...trustedLogos, ...trustedLogos].map((logo, i) => (
-                <div
-                  key={`${logo.name}-${i}`}
-                  className="neu-inset rounded-xl px-3 py-2 sm:px-4 sm:py-3 bg-card/60"
-                >
-                  <img
-                    src={logo.src}
-                    alt={`${logo.name} logo`}
-                    className="h-6 sm:h-7 mx-auto opacity-75 saturate-0"
-                  />
-                </div>
-              ))}
-            </motion.div>
-          </div>
-        </div>
-      </section>
+      <FeaturesSection features={features} />
 
-      {/* Features Section */}
-      <section id="features" className="py-14 sm:py-20 px-4 sm:px-6 lg:px-8 bg-accent/5">
-        <div className="max-w-7xl mx-auto">
-          <motion.div
-            initial={{ y: 50, opacity: 0 }}
-            whileInView={{ y: 0, opacity: 1 }}
-            transition={{ duration: 0.8 }}
-            viewport={{ once: true }}
-            className="text-center mb-12 sm:mb-16"
-          >
-            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight mb-3 sm:mb-4">
-              Powerful AI Capabilities
-            </h2>
-            <p className="text-base sm:text-xl text-muted-foreground max-w-2xl mx-auto px-2">
-              Experience the future of business automation with our comprehensive AI platform
-            </p>
-          </motion.div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {features.map((feature, index) => (
-              <motion.div
-                key={feature.title}
-                initial={{ y: 50, opacity: 0 }}
-                whileInView={{ y: 0, opacity: 1 }}
-                transition={{ duration: 0.6, delay: index * 0.1 }}
-                viewport={{ once: true }}
-              >
-                <Card className="neu-raised rounded-2xl border-0 h-full hover:shadow-lg transition-all duration-300">
-                  <CardContent className="p-6 sm:p-8">
-                    <div className="neu-inset rounded-xl p-3 w-fit mb-6">
-                      <feature.icon className="h-6 w-6 text-primary" />
-                    </div>
-                    <h3 className="text-xl font-semibold mb-3">{feature.title}</h3>
-                    <p className="text-muted-foreground leading-relaxed">{feature.description}</p>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* KPI Trends Preview */}
-      <section className="py-14 sm:py-20 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto">
-          <motion.div
-            initial={{ y: 50, opacity: 0 }}
-            whileInView={{ y: 0, opacity: 1 }}
-            transition={{ duration: 0.8 }}
-            viewport={{ once: true }}
-            className="text-center mb-12 sm:mb-16"
-          >
-            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight mb-3 sm:mb-4">
-              KPI Trends Preview
-            </h2>
-            <p className="text-base sm:text-xl text-muted-foreground max-w-2xl mx-auto px-2">
-              A glimpse of how your business trends evolve over time.
-            </p>
-          </motion.div>
-
-          <Card className="neu-raised rounded-2xl border-0">
-            <CardContent className="p-4 sm:p-6">
-              <ChartContainer
-                config={{
-                  revenue: { label: "Revenue", color: "oklch(62% 0.15 30)" },
-                  efficiency: { label: "Efficiency", color: "oklch(62% 0.15 150)" },
-                }}
-                className="rounded-xl bg-card/60"
-              >
-                <AreaChart data={trendData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="month" />
-                  <YAxis />
-                  <ChartTooltip content={<ChartTooltipContent />} />
-                  <Area
-                    type="monotone"
-                    dataKey="revenue"
-                    stroke="var(--color-revenue)"
-                    fill="var(--color-revenue)"
-                    fillOpacity={0.15}
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="efficiency"
-                    stroke="var(--color-efficiency)"
-                    fill="var(--color-efficiency)"
-                    fillOpacity={0.12}
-                  />
-                </AreaChart>
-              </ChartContainer>
-            </CardContent>
-          </Card>
-        </div>
-      </section>
+      <KpiTrendsCard data={trendData} />
 
       {/* Pricing Section */}
       <section id="pricing" className="py-14 sm:py-20 px-4 sm:px-6 lg:px-8">
@@ -857,49 +734,7 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* Free Tier Growth Pathway */}
-      <section className="py-10 sm:py-14 px-4 sm:px-6 lg:px-8 bg-accent/5">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-8 sm:mb-10">
-            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">
-              Free Tier: Enhanced Growth Pathway
-            </h2>
-            <p className="text-sm sm:text-base text-muted-foreground max-w-2xl mx-auto">
-              A clear roadmap from idea to traction—built for solopreneurs.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
-            {growthPhases.map((p, i) => (
-              <Card key={p.title} className="neu-raised rounded-2xl border-0">
-                <CardContent className="p-5">
-                  <div className="flex items-center gap-3 mb-2">
-                    <BadgeCheck className="h-5 w-5 text-primary" />
-                    <p className="text-sm font-semibold">
-                      {p.title}
-                    </p>
-                  </div>
-                  <p className="text-sm text-muted-foreground">{p.desc}</p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-
-          <div className="mt-6 sm:mt-8">
-            <Card className="neu-inset rounded-2xl border-0 bg-card/70">
-              <CardContent className="p-5 flex items-start sm:items-center gap-3 sm:gap-4">
-                <Target className="h-6 w-6 text-primary flex-shrink-0" />
-                <div>
-                  <p className="text-sm font-semibold">Upgrade Trigger</p>
-                  <p className="text-sm text-muted-foreground">
-                    {upgradeTrigger}
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </section>
+      <FreeTierPath growthPhases={growthPhases} upgradeTrigger={upgradeTrigger} />
 
       {/* CTA Section */}
       <section className="py-16 px-4 sm:px-6 lg:px-8 bg-gradient-to-r from-primary/10 via-accent/10 to-primary/10">
@@ -939,30 +774,7 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* Contextual Tips Strip */}
-      <section className="px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto">
-          <motion.div
-            initial={{ opacity: 0, y: 8 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.5 }}
-            className="grid grid-cols-1 md:grid-cols-3 gap-4"
-          >
-            {contextualTips.map((t, i) => (
-              <div key={t.phase} className="neu-inset rounded-xl p-4 bg-card/60">
-                <div className="flex items-start gap-3">
-                  <t.icon className="h-5 w-5 text-primary mt-0.5" />
-                  <div>
-                    <p className="text-sm font-semibold">{t.phase} Tip</p>
-                    <p className="text-sm text-muted-foreground">{t.tip}</p>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </motion.div>
-        </div>
-      </section>
+      <ContextualTipsStrip tips={contextualTips} />
 
       {/* KnowledgeHub & Learning Paths */}
       <section id="docs" className="py-14 sm:py-20 px-4 sm:px-6 lg:px-8">
@@ -1242,6 +1054,7 @@ export default function Landing() {
                   className="h-full w-full"
                   src="https://www.youtube.com/embed/dQw4w9WgXcQ"
                   title="Pikar AI Demo"
+                  loading="lazy"
                   frameBorder="0"
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                   allowFullScreen
