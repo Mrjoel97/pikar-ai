@@ -1,36 +1,37 @@
-import { api } from "@/convex/_generated/api";
-import { useAuthActions } from "@convex-dev/auth/react";
-import { useConvexAuth, useQuery } from "convex/react";
-import { isGuestMode } from "@/lib/guestUtils";
+import * as AuthReact from "@convex-dev/auth/react";
 
-import { useEffect, useState } from "react";
+// Expand the adapter shape so consumers can safely destructure fields app-wide.
+type UseAuthResult = {
+  isAuthenticated: boolean;
+  isLoading: boolean;
+  user: any | null;
+  signIn: (provider: string, formData?: FormData) => Promise<any>;
+  signOut: () => Promise<any>;
+  [key: string]: any; // allow passthrough of additional fields from the underlying hook
+};
 
-export function useAuth() {
-  const { isLoading: isAuthLoading, isAuthenticated } = useConvexAuth();
-  const user = useQuery(api.users.currentUser);
-  const authActions = useAuthActions();
-  const signIn = authActions?.signIn ?? (async () => {});
-  const signOut = authActions?.signOut ?? (async () => {});
+export function useAuth(): UseAuthResult {
+  const anyMod = AuthReact as any;
 
-  const [isLoading, setIsLoading] = useState(true);
+  // If the Convex auth hook exists, return it while ensuring required fields are present.
+  if (typeof anyMod.useAuth === "function") {
+    const res: any = anyMod.useAuth();
+    return {
+      ...res,
+      isAuthenticated: !!res?.isAuthenticated,
+      isLoading: !!res?.isLoading,
+      user: res?.user ?? null,
+      signIn: (res?.signIn ?? (async () => {})) as any,
+      signOut: (res?.signOut ?? (async () => {})) as any,
+    };
+  }
 
-  // Treat guest sessions as fully authenticated for feature access
-  const guest = isGuestMode();
-  const effectiveAuthenticated = isAuthenticated || guest;
-
-  // This effect updates the loading state once auth is loaded and user data is available
-  // It ensures we only show content when both authentication state and user data are ready
-  useEffect(() => {
-    if (!isAuthLoading && user !== undefined) {
-      setIsLoading(false);
-    }
-  }, [isAuthLoading, user]);
-
+  // Safe fallback for environments where the auth hook isn't available
   return {
-    isLoading,
-    isAuthenticated: effectiveAuthenticated,
-    user,
-    signIn,
-    signOut,
+    isAuthenticated: false,
+    isLoading: false,
+    user: null,
+    signIn: async () => {},
+    signOut: async () => {},
   };
 }

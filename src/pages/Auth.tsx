@@ -208,7 +208,7 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
     setIsLoading(true);
     setError(null);
     toast("Redirecting to Google…");
-    signIn("google").catch((err) => {
+    signIn("google").catch((err: unknown) => {
       console.error("Google sign-in error:", err);
       setError("Google sign-in failed. Please try again.");
       setIsLoading(false);
