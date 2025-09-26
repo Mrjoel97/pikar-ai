@@ -99,10 +99,10 @@ export function SolopreneurDashboard({
     // New: search across content/transcript/summary
     const [searchQ, setSearchQ] = React.useState("");
     const searchResults = useQuery(
-      api.initiatives.searchBrainDumps as any,
+      api.initiatives.searchBrainDumps,
       initiativeId && searchQ.trim()
         ? { initiativeId, q: searchQ.trim(), limit: 20 }
-        : ("skip" as any)
+        : undefined
     );
 
     // Audio recording + upload + transcription
@@ -285,11 +285,13 @@ export function SolopreneurDashboard({
 
     // New: search across content/transcript/summary
     const [searchQ, setSearchQ] = React.useState("");
+
+    // Replace "skip" sentinel with undefined to properly skip the query
     const searchResults = useQuery(
-      api.initiatives.searchBrainDumps as any,
+      api.initiatives.searchBrainDumps,
       initiativeId && searchQ.trim()
         ? { initiativeId, q: searchQ.trim(), limit: 20 }
-        : ("skip" as any)
+        : undefined
     );
 
     // Audio recording + upload + transcription
