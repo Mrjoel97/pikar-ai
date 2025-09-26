@@ -99,7 +99,7 @@ export function SolopreneurDashboard({
     // New: search across content/transcript/summary
     const [searchQ, setSearchQ] = React.useState("");
     const searchResults = useQuery(
-      api.initiatives.searchBrainDumps,
+      api.initiatives.searchBrainDumps as any,
       initiativeId && searchQ.trim()
         ? { initiativeId, q: searchQ.trim(), limit: 20 }
         : undefined
@@ -288,7 +288,7 @@ export function SolopreneurDashboard({
 
     // Replace "skip" sentinel with undefined to properly skip the query
     const searchResults = useQuery(
-      api.initiatives.searchBrainDumps,
+      api.initiatives.searchBrainDumps as any,
       initiativeId && searchQ.trim()
         ? { initiativeId, q: searchQ.trim(), limit: 20 }
         : undefined
