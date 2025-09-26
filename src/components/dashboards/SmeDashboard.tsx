@@ -115,7 +115,7 @@ export function SmeDashboard({
   // Add: telemetry-driven nudges banner
   const upgradeNudges = useQuery(
     api.telemetry.getUpgradeNudges,
-    isGuest || !business?._id ? "skip" : { businessId: business._id }
+    isGuest || !business?._id ? undefined : { businessId: business._id }
   );
 
   function BrainDumpSection({ businessId }: { businessId: string }) {

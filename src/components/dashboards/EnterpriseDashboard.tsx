@@ -125,7 +125,7 @@ export function EnterpriseDashboard({
   // Add: telemetry-driven nudges banner
   const upgradeNudges = useQuery(
     api.telemetry.getUpgradeNudges,
-    isGuest || !businessId ? "skip" : { businessId }
+    isGuest || !businessId ? undefined : { businessId }
   );
 
   const enforceGovernanceForBiz = useMutation(api.governance.enforceGovernanceForBusiness);
