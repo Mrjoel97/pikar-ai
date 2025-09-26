@@ -99,11 +99,7 @@ export function SolopreneurDashboard({
 /* Using existing searchQuery state declared earlier – duplicate removed */
 // New: search across content/transcript/summary (single source of truth)
 
-const searchArgsMemo = React.useMemo(() => {
-  if (!initiativeId) return undefined;
-  const q = (searchQuery ?? "").trim();
-  return q ? { initiativeId, q, limit: 20 } : undefined;
-}, [initiativeId, searchQuery]);
+/* Using consolidated `searchArgsMemoSearch` defined later; removed earlier duplicate memo */
 
     // Correctly skip when args are undefined
     const searchResults = useQuery(
@@ -301,10 +297,7 @@ const searchArgsMemoSearch = React.useMemo(() => {
     }, [initiativeId, searchQuery]);
 
     // Correctly skip when args are undefined
-    const searchResults = useQuery(
-      api.initiatives.searchBrainDumps,
-      searchArgsMemo
-    );
+/* Using consolidated `searchResults` declared later; removed earlier duplicate declaration */
 
     // Audio recording + upload + transcription
     const mediaRecorderRef = React.useRef<MediaRecorder | null>(null);
