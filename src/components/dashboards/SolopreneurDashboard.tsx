@@ -292,9 +292,9 @@ const searchArgsMemo = React.useMemo(() => {
     // New: search across content/transcript/summary (single source of truth)
     const [searchQuery, setSearchQuery] = React.useState("");
 
-    // Prepare args; pass undefined to skip the query cleanly
-    // Renamed to avoid duplicate identifier collisions elsewhere in the file
-    const searchArgsMemo = React.useMemo(() => {
+/* Prepare args; pass undefined to skip the query cleanly
+Renamed to avoid duplicate identifier collisions elsewhere in the file */
+const searchArgsMemoSearch = React.useMemo(() => {
       if (!initiativeId) return undefined;
       const q = (searchQuery ?? "").trim();
       return q ? { initiativeId, q, limit: 20 } : undefined;
