@@ -59,8 +59,8 @@ export function SolopreneurDashboard({
     // Add filter state for tag chips
     const [activeTagFilter, setActiveTagFilter] = React.useState<"" | "content" | "offer" | "ops">("");
 
-    // Add: inline save handler for typed idea
-    const handleSaveIdea = async () => {
+      // Add: inline save handler for typed idea
+      const handleSaveIdeaInline = async () => {
       if (!initiativeId) {
         toast("No initiative found. Run Phase 0 setup first.");
         return;
