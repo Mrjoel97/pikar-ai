@@ -46,7 +46,6 @@ import { useMemo } from "react";
 import TrustedLogosMarquee from "@/components/landing/TrustedLogosMarquee";
 import FeaturesSection from "@/components/landing/FeaturesSection";
 import KpiTrendsCard from "@/components/landing/KpiTrendsCard";
-import FreeTierPath from "@/components/landing/FreeTierPath";
 import ContextualTipsStrip from "@/components/landing/ContextualTipsStrip";
 
 export default function Landing() {
@@ -230,20 +229,6 @@ export default function Landing() {
     { id: "dtfl", title: "Design Thinking for Lean (DTFL)", summary: "Define, Ideate, Prototype, Validate quickly." },
   ];
 
-  const growthPhases = [
-    {
-      title: "Phase 1 (Months 1-3)",
-      desc: "Foundation building and business validation",
-    },
-    {
-      title: "Phase 2 (Months 4-6)",
-      desc: "Market validation and cash flow optimization",
-    },
-    {
-      title: "Phase 3 (Months 7-12)",
-      desc: "Growth preparation and scaling readiness",
-    },
-  ] as const;
   const upgradeTrigger =
     "$2,000+ MRR, 50+ customers, team expansion needs";
 
@@ -733,8 +718,6 @@ export default function Landing() {
           </div>
         </div>
       </section>
-
-      <FreeTierPath growthPhases={growthPhases} upgradeTrigger={upgradeTrigger} />
 
       {/* CTA Section */}
       <section className="py-16 px-4 sm:px-6 lg:px-8 bg-gradient-to-r from-primary/10 via-accent/10 to-primary/10">
