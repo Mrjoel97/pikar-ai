@@ -200,7 +200,7 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
                             name="email"
                             placeholder="name@example.com"
                             type="email"
-                            className="pl-9 neu-inset rounded-xl"
+                            className="pl-9 neu-inset rounded-xl bg-white text-slate-900 placeholder:text-slate-500"
                             disabled={isLoading}
                             required
                             value={email}
