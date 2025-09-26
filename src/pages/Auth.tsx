@@ -188,18 +188,17 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
     setIsLoading(true);
     setError(null);
     try {
-      await signIn("anonymous");
-      // Persist tier override for dashboard
+      // Do NOT call signIn("anonymous"); just navigate in guest mode
       try {
         localStorage.setItem("tierOverride", guestTier);
       } catch {}
       toast("Signed in as guest");
-      // Ensure dashboard treats this as guest mode
       const redirect = "/dashboard?guest=1&tier=" + encodeURIComponent(guestTier);
       navigate(redirect);
     } catch (error) {
       console.error("Guest login error:", error);
-      setError(`Failed to sign in as guest: ${error instanceof Error ? error.message : "Unknown error"}`);
+      setError(`Failed to continue as guest: ${error instanceof Error ? error.message : "Unknown error"}`);
+    } finally {
       setIsLoading(false);
     }
   };
