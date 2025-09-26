@@ -1942,6 +1942,12 @@ Renamed to avoid duplicate identifier collisions elsewhere in the file */
     }
   };
 
+  // Replace any existing upgradeNudges declaration with a guarded version
+  const upgradeNudges = useQuery(
+    api.telemetry.getUpgradeNudges,
+    isGuest || !business?._id ? undefined : { businessId: business._id }
+  );
+
   return (
     <motion.div
       className="space-y-4"

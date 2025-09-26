@@ -20,17 +20,28 @@ function resolveTier(tier?: string): keyof typeof CAP_MAP {
 }
 
 export const getUpgradeNudges = query({
-  args: { businessId: v.id("businesses") },
+  args: { businessId: v.optional(v.id("businesses")) },
   handler: async (ctx, args) => {
-    // Determine tier and caps locally to avoid circular type deps
-    const business = await ctx.db.get(args.businessId);
+    // Guests / missing business context: safe defaults
+    if (!args.businessId) {
+      return {
+        nudges: [],
+        showBanner: false,
+        snapshot: { workflowsCount: 0, runsCount: 0, agentsCount: 0 },
+      };
+    }
+
+    // Treat as non-null after guard
+    const businessId = args.businessId!;
+
+    const business = await ctx.db.get(businessId);
     const tier = resolveTier(business?.tier);
     const caps = CAP_MAP[tier];
 
     // Usage counts
     const workflowsCount = await ctx.db
       .query("workflows")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .withIndex("by_business", (q) => q.eq("businessId", businessId))
       .collect()
       .then((r) => r.length);
 
@@ -40,14 +51,14 @@ export const getUpgradeNudges = query({
 
     const runsToday = await ctx.db
       .query("workflowRuns")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .withIndex("by_business", (q) => q.eq("businessId", businessId))
       .filter((q) => q.gt(q.field("_creationTime"), todayMs))
       .collect()
       .then((r) => r.length);
 
     const agentsCount = await ctx.db
       .query("aiAgents")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .withIndex("by_business", (q) => q.eq("businessId", businessId))
       .collect()
       .then((r) => r.length);
 

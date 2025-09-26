@@ -66,9 +66,11 @@ export default function Dashboard() {
   const demoDataForTier = guestMode ? getDemoData(selectedTier) : null;
 
   // Add: usage-based upgrade nudges (skip in guest mode)
-  const nudges = useQuery(
+  const isGuestFromUrl = guestParam === "1";
+  const businessId = !isGuestFromUrl ? business?._id : null;
+  const upgradeNudges = useQuery(
     api.telemetry.getUpgradeNudges,
-    guestMode || !business?._id ? undefined : { businessId: business._id }
+    isGuestFromUrl || !businessId ? undefined : { businessId }
   );
 
   // Add seeding handler and mutation
@@ -397,13 +399,13 @@ export default function Dashboard() {
         )}
 
         {/* Add: Progressive disclosure upgrade nudges (auth only) */}
-        {!guestMode && nudges && nudges.showBanner && (
+        {!guestMode && upgradeNudges && upgradeNudges.showBanner && (
           <Card className="mb-6 border-amber-200 bg-amber-50">
             <CardHeader className="pb-2">
               <CardTitle className="text-amber-800">Heads up</CardTitle>
             </CardHeader>
             <CardContent className="flex flex-col gap-3">
-              {nudges.nudges.map((n: any) => (
+              {upgradeNudges.nudges.map((n: any) => (
                 <div key={n.id} className="flex items-start gap-2">
                   <Badge
                     variant="outline"
@@ -421,7 +423,7 @@ export default function Dashboard() {
                 </div>
               ))}
               <div className="text-xs text-slate-500">
-                Snapshot — Workflows: {nudges.snapshot.workflowsCount} • Runs: {nudges.snapshot.runsCount} • Agents: {nudges.snapshot.agentsCount}
+                Snapshot — Workflows: {upgradeNudges.snapshot.workflowsCount} • Runs: {upgradeNudges.snapshot.runsCount} • Agents: {upgradeNudges.snapshot.agentsCount}
               </div>
               <div>
                 {/* Route to dedicated pricing page */}
