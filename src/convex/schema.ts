@@ -57,6 +57,9 @@ export default defineSchema({
         status: v.optional(v.string()),
         stripeCustomerId: v.optional(v.string()),
         stripeSubscriptionId: v.optional(v.string()),
+        // Add trial tracking fields
+        trialStart: v.optional(v.number()),
+        trialEnd: v.optional(v.number()),
       })
     ),
   })
@@ -1061,6 +1064,25 @@ export default defineSchema({
     createdAt: v.number(),
     decidedAt: v.optional(v.number()),
   }).index("by_status", ["status"]),
+
+  // Add password auth tables
+  userCredentials: defineTable({
+    email: v.string(),
+    passwordHash: v.string(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    passwordResetToken: v.optional(v.string()),
+    passwordResetExpires: v.optional(v.number()),
+  }).index("by_email", ["email"]),
+
+  userLoginTokens: defineTable({
+    token: v.string(),
+    email: v.string(),
+    expiresAt: v.number(),
+    createdAt: v.number(),
+  })
+    .index("by_token", ["token"])
+    .index("by_email", ["email"]),
 
   // Append Convex Auth required tables inside the schema (excluding users to avoid conflicts)
   ...authWithoutUsers,

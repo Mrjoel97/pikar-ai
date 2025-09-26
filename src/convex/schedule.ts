@@ -27,6 +27,54 @@ export const addSlot = mutation({
   },
 });
 
+export const addSlotsBulk = mutation({
+  args: {
+    slots: v.array(v.object({
+      label: v.string(),
+      channel: v.union(v.literal("email"), v.literal("post"), v.literal("other")),
+      scheduledAt: v.number(),
+    })),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Not authenticated");
+
+    // Get business for entitlements check
+    const business = await ctx.db
+      .query("businesses")
+      .withIndex("by_owner", (q) => q.eq("ownerId", userId))
+      .unique();
+
+    // Check entitlements (basic limit for now)
+    const existingSlots = await ctx.db
+      .query("scheduleSlots")
+      .withIndex("by_user_and_time", (q) => q.eq("userId", userId))
+      .collect();
+
+    const maxSlots = 50; // Per-tier limit (can be enhanced with entitlements)
+    if (existingSlots.length + args.slots.length > maxSlots) {
+      throw new Error(`Cannot add ${args.slots.length} slots. Limit is ${maxSlots} total.`);
+    }
+
+    const now = Date.now();
+    const insertedIds = [];
+
+    for (const slot of args.slots) {
+      const id = await ctx.db.insert("scheduleSlots", {
+        userId,
+        businessId: business?._id,
+        label: slot.label,
+        channel: slot.channel,
+        scheduledAt: slot.scheduledAt,
+        createdAt: now,
+      });
+      insertedIds.push(id);
+    }
+
+    return { success: true, count: insertedIds.length, ids: insertedIds };
+  },
+});
+
 export const listSlots = query({
   args: {
     businessId: v.optional(v.id("businesses")),

@@ -37,6 +37,7 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
   const [otp, setOtp] = useState("");
   // Add password state
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [email, setEmail] = useState("");
@@ -54,8 +55,10 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
     isAuthenticated ? {} : undefined
   );
 
-  // Add: simple mode toggle for sign up vs login
+  // Add: auth method toggle and password auth state
+  const [authMethod, setAuthMethod] = useState<"email" | "password" | "google">("password");
   const [authMode, setAuthMode] = useState<"signup" | "login">("signup");
+  const [passwordAuthToken, setPasswordAuthToken] = useState<string | null>(null);
 
   useEffect(() => {
     if (authLoading) return;
@@ -90,6 +93,57 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
       );
       setIsLoading(false);
       toast.error("Failed to send verification code");
+    }
+  };
+
+  const handlePasswordSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      if (authMode === "signup") {
+        if (password !== confirmPassword) {
+          throw new Error("Passwords do not match");
+        }
+        if (password.length < 8) {
+          throw new Error("Password must be at least 8 characters long");
+        }
+
+        const result = await fetch("/api/convex", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            path: "passwordAuth:signUpPassword",
+            args: { email, password },
+          }),
+        }).then(r => r.json());
+
+        if (result.error) throw new Error(result.error);
+        
+        toast.success("Account created! Please verify your email to continue.");
+        navigate("/onboarding");
+      } else {
+        const result = await fetch("/api/convex", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            path: "passwordAuth:loginPassword",
+            args: { email, password },
+          }),
+        }).then(r => r.json());
+
+        if (result.error) throw new Error(result.error);
+        
+        setPasswordAuthToken(result.token);
+        toast.success("Signed in! Verify your email for full access.");
+        navigate("/dashboard");
+      }
+    } catch (error) {
+      console.error("Password auth error:", error);
+      setError(error instanceof Error ? error.message : "Authentication failed");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -172,9 +226,35 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">
             {authMode === "login"
-              ? "Sign in with your email and password or continue with Google."
-              : "Sign up with your email and password or continue with Google."}
+              ? "Sign in with your password, email verification, or Google."
+              : "Sign up with your password, email verification, or Google."}
           </p>
+        </div>
+
+        {/* Auth Method Tabs */}
+        <div className="flex rounded-lg bg-muted p-1">
+          <button
+            type="button"
+            onClick={() => setAuthMethod("password")}
+            className={`flex-1 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+              authMethod === "password"
+                ? "bg-background text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            Password
+          </button>
+          <button
+            type="button"
+            onClick={() => setAuthMethod("email")}
+            className={`flex-1 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+              authMethod === "email"
+                ? "bg-background text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            Email Code
+          </button>
         </div>
 
         {/* Auth Content */}
@@ -192,13 +272,17 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
                     </div>
                     <CardTitle className="text-xl text-emerald-50">Get Started</CardTitle>
                     <CardDescription className="text-emerald-200">
-                      Enter your email and we'll send you a 6‑digit code to sign in or create your account.
+                      {authMethod === "password" 
+                        ? `${authMode === "signup" ? "Create your account" : "Sign in"} with your password.`
+                        : "Enter your email and we'll send you a 6‑digit code to sign in or create your account."
+                      }
                     </CardDescription>
                   </CardHeader>
-                  <form onSubmit={handleEmailSubmit}>
-                    <CardContent className="space-y-4">
-                      <div className="relative flex items-center gap-3">
-                        <div className="relative flex-1">
+
+                  {authMethod === "password" ? (
+                    <form onSubmit={handlePasswordSubmit}>
+                      <CardContent className="space-y-4">
+                        <div className="relative">
                           <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                           <Input
                             name="email"
@@ -211,112 +295,236 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
                             onChange={(e) => setEmail(e.target.value)}
                             onBlur={() => setTouched(true)}
                             aria-invalid={touched && !isValidEmail}
-                            aria-describedby="email-error"
                           />
                         </div>
+                        
+                        <div className="relative">
+                          <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                          <Input
+                            name="password"
+                            placeholder={authMode === "login" ? "Enter your password" : "Create a password"}
+                            type="password"
+                            className="h-10 w-full pl-9 neu-inset rounded-xl bg-white text-slate-900 placeholder:text-slate-500"
+                            disabled={isLoading}
+                            required
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            autoComplete={authMode === "login" ? "current-password" : "new-password"}
+                          />
+                        </div>
+
+                        {authMode === "signup" && (
+                          <div className="relative">
+                            <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                            <Input
+                              name="confirmPassword"
+                              placeholder="Confirm your password"
+                              type="password"
+                              className="h-10 w-full pl-9 neu-inset rounded-xl bg-white text-slate-900 placeholder:text-slate-500"
+                              disabled={isLoading}
+                              required
+                              value={confirmPassword}
+                              onChange={(e) => setConfirmPassword(e.target.value)}
+                              autoComplete="new-password"
+                            />
+                          </div>
+                        )}
+
+                        {touched && !isValidEmail && (
+                          <p className="mt-2 text-xs text-red-500">
+                            Please enter a valid email address.
+                          </p>
+                        )}
+                        {error && (
+                          <p className="mt-2 text-sm text-red-500">{error}</p>
+                        )}
+
                         <Button
                           type="submit"
-                          variant="default"
-                          size="icon"
-                          disabled={isLoading || !isValidEmail}
-                          aria-label="Send verification code"
-                          className="neu-raised rounded-xl bg-white hover:bg-emerald-50 text-emerald-700 shadow border border-emerald-200"
+                          className="w-full neu-raised rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white"
+                          disabled={isLoading || !isValidEmail || !password}
                         >
                           {isLoading ? (
-                            <Loader2 className="h-4 w-4 animate-spin text-emerald-600" />
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              {authMode === "signup" ? "Creating account..." : "Signing in..."}
+                            </>
                           ) : (
-                            <ArrowRight className="h-5 w-5 text-emerald-600" />
+                            authMode === "signup" ? "Create Account" : "Sign In"
                           )}
                         </Button>
-                      </div>
-                      {touched && !isValidEmail && (
-                        <p id="email-error" className="mt-2 text-xs text-red-500">
-                          Please enter a valid email address.
-                        </p>
-                      )}
-                      {error && (
-                        <p className="mt-2 text-sm text-red-500">{error}</p>
-                      )}
-                      {/* Add password field (visual only for now) */}
-                      <div className="relative">
-                        <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                        <Input
-                          name="password"
-                          placeholder={authMode === "login" ? "Enter your password" : "Create a password"}
-                          type="password"
-                          className="h-10 w-full pl-9 neu-inset rounded-xl bg-white text-slate-900 placeholder:text-slate-500"
-                          disabled={isLoading}
-                          value={password}
-                          onChange={(e) => setPassword(e.target.value)}
-                          autoComplete={authMode === "login" ? "current-password" : "new-password"}
-                        />
-                        <p className="mt-2 text-xs text-muted-foreground">
-                          Password will be used in future updates; current sign-in uses email verification.
-                        </p>
-                      </div>
-                      <div className="mt-4">
-                        <div className="relative">
-                          <div className="absolute inset-0 flex items-center">
-                            <span className="w-full border-t border-emerald-300/30" />
+
+                        <div className="mt-4">
+                          <div className="relative">
+                            <div className="absolute inset-0 flex items-center">
+                              <span className="w-full border-t border-emerald-300/30" />
+                            </div>
+                            <div className="relative flex justify-center text-xs uppercase">
+                              <span className="bg-emerald-800 px-2 text-emerald-200">
+                                Or
+                              </span>
+                            </div>
                           </div>
-                          <div className="relative flex justify-center text-xs uppercase">
-                            <span className="bg-emerald-800 px-2 text-emerald-200">
-                              Or
-                            </span>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="w-full mt-4 neu-flat rounded-xl bg-emerald-700/30 border-emerald-300/70 text-emerald-50 hover:bg-emerald-700"
+                            onClick={handleGoogleLogin}
+                            disabled={isLoading}
+                          >
+                            <img
+                              src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
+                              alt="Google"
+                              className="h-4 w-4 mr-2"
+                            />
+                            Continue with Google
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="w-full mt-2 neu-flat rounded-xl bg-emerald-700/30 border-emerald-300/70 text-emerald-50 hover:bg-emerald-700"
+                            onClick={handleGuestLogin}
+                            disabled={isLoading}
+                          >
+                            <UserX className="mr-2 h-4 w-4" />
+                            Continue as Guest
+                          </Button>
+                          <div className="mt-4 text-center text-xs sm:text-sm">
+                            {authMode === "signup" ? (
+                              <span className="text-emerald-200">
+                                Already have an account?{" "}
+                                <button
+                                  type="button"
+                                  onClick={() => setAuthMode("login")}
+                                  className="text-emerald-200 underline underline-offset-4 hover:text-emerald-50"
+                                >
+                                  Log in
+                                </button>
+                              </span>
+                            ) : (
+                              <span className="text-emerald-200">
+                                New here?{" "}
+                                <button
+                                  type="button"
+                                  onClick={() => setAuthMode("signup")}
+                                  className="text-emerald-200 underline underline-offset-4 hover:text-emerald-50"
+                                >
+                                  Create an account
+                                </button>
+                              </span>
+                            )}
                           </div>
                         </div>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          className="w-full mt-4 neu-flat rounded-xl bg-emerald-700/30 border-emerald-300/70 text-emerald-50 hover:bg-emerald-700"
-                          onClick={handleGoogleLogin}
-                          disabled={isLoading}
-                        >
-                          <img
-                            src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
-                            alt="Google"
-                            className="h-4 w-4 mr-2"
-                          />
-                          Continue with Google
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          className="w-full mt-2 neu-flat rounded-xl bg-emerald-700/30 border-emerald-300/70 text-emerald-50 hover:bg-emerald-700"
-                          onClick={handleGuestLogin}
-                          disabled={isLoading}
-                        >
-                          <UserX className="mr-2 h-4 w-4" />
-                          Continue as Guest
-                        </Button>
-                        <div className="mt-4 text-center text-xs sm:text-sm">
-                          {authMode === "signup" ? (
-                            <span className="text-emerald-200">
-                              Already have an account?{" "}
-                              <button
-                                type="button"
-                                onClick={() => setAuthMode("login")}
-                                className="text-emerald-200 underline underline-offset-4 hover:text-emerald-50"
-                              >
-                                Log in
-                              </button>
-                            </span>
-                          ) : (
-                            <span className="text-emerald-200">
-                              New here?{" "}
-                              <button
-                                type="button"
-                                onClick={() => setAuthMode("signup")}
-                                className="text-emerald-200 underline underline-offset-4 hover:text-emerald-50"
-                              >
-                                Create an account
-                              </button>
-                            </span>
-                          )}
+                      </CardContent>
+                    </form>
+                  ) : (
+                    <form onSubmit={handleEmailSubmit}>
+                      <CardContent className="space-y-4">
+                        <div className="relative flex items-center gap-3">
+                          <div className="relative flex-1">
+                            <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                            <Input
+                              name="email"
+                              placeholder="name@example.com"
+                              type="email"
+                              className="pl-9 neu-inset rounded-xl bg-white text-slate-900 placeholder:text-slate-500"
+                              disabled={isLoading}
+                              required
+                              value={email}
+                              onChange={(e) => setEmail(e.target.value)}
+                              onBlur={() => setTouched(true)}
+                              aria-invalid={touched && !isValidEmail}
+                              aria-describedby="email-error"
+                            />
+                          </div>
+                          <Button
+                            type="submit"
+                            variant="default"
+                            size="icon"
+                            disabled={isLoading || !isValidEmail}
+                            aria-label="Send verification code"
+                            className="neu-raised rounded-xl bg-white hover:bg-emerald-50 text-emerald-700 shadow border border-emerald-200"
+                          >
+                            {isLoading ? (
+                              <Loader2 className="h-4 w-4 animate-spin text-emerald-600" />
+                            ) : (
+                              <ArrowRight className="h-5 w-5 text-emerald-600" />
+                            )}
+                          </Button>
                         </div>
-                      </div>
-                    </CardContent>
-                  </form>
+                        {touched && !isValidEmail && (
+                          <p id="email-error" className="mt-2 text-xs text-red-500">
+                            Please enter a valid email address.
+                          </p>
+                        )}
+                        {error && (
+                          <p className="mt-2 text-sm text-red-500">{error}</p>
+                        )}
+                        
+                        <div className="mt-4">
+                          <div className="relative">
+                            <div className="absolute inset-0 flex items-center">
+                              <span className="w-full border-t border-emerald-300/30" />
+                            </div>
+                            <div className="relative flex justify-center text-xs uppercase">
+                              <span className="bg-emerald-800 px-2 text-emerald-200">
+                                Or
+                              </span>
+                            </div>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="w-full mt-4 neu-flat rounded-xl bg-emerald-700/30 border-emerald-300/70 text-emerald-50 hover:bg-emerald-700"
+                            onClick={handleGoogleLogin}
+                            disabled={isLoading}
+                          >
+                            <img
+                              src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
+                              alt="Google"
+                              className="h-4 w-4 mr-2"
+                            />
+                            Continue with Google
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="w-full mt-2 neu-flat rounded-xl bg-emerald-700/30 border-emerald-300/70 text-emerald-50 hover:bg-emerald-700"
+                            onClick={handleGuestLogin}
+                            disabled={isLoading}
+                          >
+                            <UserX className="mr-2 h-4 w-4" />
+                            Continue as Guest
+                          </Button>
+                          <div className="mt-4 text-center text-xs sm:text-sm">
+                            {authMode === "signup" ? (
+                              <span className="text-emerald-200">
+                                Already have an account?{" "}
+                                <button
+                                  type="button"
+                                  onClick={() => setAuthMode("login")}
+                                  className="text-emerald-200 underline underline-offset-4 hover:text-emerald-50"
+                                >
+                                  Log in
+                                </button>
+                              </span>
+                            ) : (
+                              <span className="text-emerald-200">
+                                New here?{" "}
+                                <button
+                                  type="button"
+                                  onClick={() => setAuthMode("signup")}
+                                  className="text-emerald-200 underline underline-offset-4 hover:text-emerald-50"
+                                >
+                                  Create an account
+                                </button>
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </CardContent>
+                    </form>
+                  )}
                 </>
               ) : (
                 <>

@@ -32,74 +32,68 @@ async function getOwnedBusiness(ctx: any, ownerId: any) {
 
 export const getOnboardingStatus = query({
   args: {},
-  handler: async (ctx): Promise<OnboardingStatus> => {
+  handler: async (ctx) => {
     const user = await getCurrentUser(ctx);
-    if (!user) {
-      // Guest/unauthenticated: no onboarding prompt here
-      return { needsOnboarding: false };
+    if (!user?._id) {
+      return { needsOnboarding: false, step: null, trialInfo: null };
     }
 
-    const business = user._id ? await getOwnedBusiness(ctx, user._id) : null;
+    // Check completion status
+    const hasName = !!user.name;
+    const hasTier = !!user.businessTier;
 
-    // Determine missing steps
-    const missingAccount = !user.name || user.name.trim().length === 0;
+    const business = await ctx.db
+      .query("businesses")
+      .withIndex("by_owner", (q) => q.eq("ownerId", user._id))
+      .unique();
 
-    const missingBusinessBasics =
-      !business ||
-      !business.name ||
-      !business.industry ||
-      (business.teamMembers && !Array.isArray(business.teamMembers));
+    const hasBusinessDetails = business && business.name && business.industry;
 
-    const tier = (user as any).businessTier ?? (business as any)?.tier ?? null;
-    const missingTier = !tier;
+    // Determine current step
+    let currentStep: "account" | "business" | "tier" | "payment" | "confirm" | null = null;
+    let needsOnboarding = false;
 
-    // Payment: Phase 1 stub (we don’t enforce it yet)
-    const needsPayment = false;
-
-    if (missingAccount) {
-      return {
-        needsOnboarding: true,
-        nextStep: "account",
-        hasBusiness: !!business,
-        tier: tier ?? null,
-        planStatus: null,
-      };
+    if (!hasName) {
+      needsOnboarding = true;
+      currentStep = "account";
+    } else if (!hasBusinessDetails) {
+      needsOnboarding = true;
+      currentStep = "business";
+    } else if (!hasTier) {
+      needsOnboarding = true;
+      currentStep = "tier";
+    } else if (user.businessTier !== "enterprise" && business?.settings?.plan !== "paid") {
+      // Check if payment step needed (non-enterprise without paid plan)
+      needsOnboarding = true;
+      currentStep = "payment";
     }
-    if (missingBusinessBasics) {
-      return {
-        needsOnboarding: true,
-        nextStep: "business",
-        hasBusiness: !!business,
-        tier: tier ?? null,
-        planStatus: null,
-      };
-    }
-    if (missingTier) {
-      return {
-        needsOnboarding: true,
-        nextStep: "tier",
-        hasBusiness: !!business,
-        tier: null,
-        planStatus: null,
-      };
-    }
-    if (needsPayment) {
-      return {
-        needsOnboarding: true,
-        nextStep: "payment",
-        hasBusiness: !!business,
-        tier: tier ?? null,
-        planStatus: null,
+
+    // Trial info
+    let trialInfo = null as null | { active: boolean; daysLeft: number; trialEnd: number };
+    if (business?.settings?.trialStart && business?.settings?.trialEnd) {
+      const now = Date.now();
+      const daysLeft = Math.max(
+        0,
+        Math.ceil((business.settings.trialEnd - now) / (24 * 60 * 60 * 1000)),
+      );
+      trialInfo = {
+        active: now < business.settings.trialEnd,
+        daysLeft,
+        trialEnd: business.settings.trialEnd,
       };
     }
 
-    // All set; can confirm/finalize (idempotent) or proceed
     return {
-      needsOnboarding: false,
-      nextStep: "confirm",
+      needsOnboarding,
+      step: currentStep,
+      nextStep: currentStep, // add for compatibility with callers expecting nextStep
+      // Add extra fields for callers that expect metadata
       hasBusiness: !!business,
-      tier: tier ?? null,
-      planStatus: null,
+      tier: (user?.businessTier as string | null) ?? ((business?.tier as string) ?? null),
+      planStatus: (business?.settings?.status as string) ?? null,
+      trialInfo,
+      user,
+      business,
     };
   },
 });
@@ -142,11 +136,11 @@ export const upsertBusinessBasics = mutation({
       return existing._id;
     }
 
+    // Remove invalid `description: undefined` to avoid runtime validation errors
     const businessId = await ctx.db.insert("businesses", {
       ...base,
       ownerId: user._id,
       teamMembers: [],
-      description: undefined,
       businessModel: "saas",
     } as any);
     return businessId;
@@ -165,14 +159,94 @@ export const selectTier = mutation({
   handler: async (ctx, args) => {
     const user = await getCurrentUser(ctx);
     if (!user?._id) throw new Error("Not authenticated");
-    // Update user’s tier
+
+    // Update user tier
     await ctx.db.patch(user._id, { businessTier: args.tier } as any);
-    // If business exists, reflect the tier for UX
-    const biz = await getOwnedBusiness(ctx, user._id);
-    if (biz?._id) {
-      await ctx.db.patch(biz._id, { tier: args.tier } as any);
+
+    // Find or create business
+    const existing = await ctx.db
+      .query("businesses")
+      .withIndex("by_owner", (q) => q.eq("ownerId", user._id))
+      .unique();
+
+    const now = Date.now();
+    const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
+
+    if (existing) {
+      const currentSettings = (existing.settings || {}) as any;
+
+      // Ensure required settings fields exist when patching
+      const baseSettings = {
+        aiAgentsEnabled: currentSettings.aiAgentsEnabled || [],
+        complianceLevel: currentSettings.complianceLevel || "basic",
+        dataIntegrations: currentSettings.dataIntegrations || [],
+        status: currentSettings.status,
+        plan: currentSettings.plan,
+        stripeCustomerId: currentSettings.stripeCustomerId,
+        stripeSubscriptionId: currentSettings.stripeSubscriptionId,
+        trialStart: currentSettings.trialStart,
+        trialEnd: currentSettings.trialEnd,
+      };
+
+      // Set trial for non-Enterprise tiers if not already set
+      const trialSettings =
+        args.tier !== "enterprise" && !baseSettings.trialStart
+          ? {
+              trialStart: now,
+              trialEnd: now + sevenDaysMs,
+              // Explicit plan/status for trial
+              plan: args.tier,
+              status: "trial",
+            }
+          : {
+              // For Enterprise or if trial already set, ensure plan aligns
+              plan: args.tier,
+              // Preserve status if present; if missing and not enterprise, default to "trial"
+              status:
+                baseSettings.status ??
+                (args.tier !== "enterprise" ? "trial" : undefined),
+            };
+
+      await ctx.db.patch(existing._id, {
+        tier: args.tier,
+        settings: {
+          ...baseSettings,
+          ...trialSettings,
+        },
+      } as any);
+
+      return { success: true as const, businessId: existing._id };
+    } else {
+      // Create new business
+      const isEnterprise = args.tier === "enterprise";
+      const trialSettings = !isEnterprise
+        ? {
+            trialStart: now,
+            trialEnd: now + sevenDaysMs,
+            plan: args.tier,
+            status: "trial",
+          }
+        : {
+            // Enterprise: no trial; set plan to enterprise and leave status undefined
+            plan: args.tier,
+          };
+
+      const newBusinessId = await ctx.db.insert("businesses", {
+        name: (user.name as string) || "My Business",
+        industry: "general",
+        ownerId: user._id,
+        teamMembers: [user._id],
+        tier: args.tier,
+        settings: {
+          aiAgentsEnabled: [],
+          complianceLevel: "basic",
+          dataIntegrations: [],
+          ...trialSettings,
+        },
+      } as any);
+
+      return { success: true as const, businessId: newBusinessId };
     }
-    return { ok: true as const };
   },
 });
 
