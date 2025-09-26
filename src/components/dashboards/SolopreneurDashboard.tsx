@@ -1,5 +1,5 @@
 // @ts-nocheck
-import React from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { useMutation, useQuery, useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
