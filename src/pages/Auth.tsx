@@ -58,7 +58,6 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
   // Add: auth method toggle and password auth state
   const [authMethod, setAuthMethod] = useState<"email" | "password" | "google">("password");
   const [authMode, setAuthMode] = useState<"signup" | "login">("signup");
-  const [passwordAuthToken, setPasswordAuthToken] = useState<string | null>(null);
 
   useEffect(() => {
     if (authLoading) return;
@@ -135,7 +134,6 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
 
         if (result.error) throw new Error(result.error);
         
-        setPasswordAuthToken(result.token);
         toast.success("Signed in! Verify your email for full access.");
         navigate("/dashboard");
       }
