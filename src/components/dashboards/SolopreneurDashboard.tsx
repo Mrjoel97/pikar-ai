@@ -323,10 +323,10 @@ Renamed to avoid duplicate identifier collisions elsewhere in the file */
 
     // Audio recording + upload + transcription
     // const mediaRecorderRef = React.useRef<MediaRecorder | null>(null);
-    const chunksRef = React.useRef<Blob[]>([]);
-    const [audioUrl, setAudioUrl] = React.useState<string>("");
-    const [uploading, setUploading] = React.useState(false);
-    const getUploadUrl = useAction(api.files.getUploadUrl as any);
+    // const chunksRef = React.useRef<Blob[]>([]);
+    // const [audioUrl, setAudioUrl] = React.useState<string>("");
+    // const [uploading, setUploading] = React.useState(false);
+    // const getUploadUrl = useAction(api.files.getUploadUrl as any);
     /* removed duplicate voice notes robustness state block */
 
     const startRecording = async () => {
