@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/input-otp";
 
 import { useAuth } from "@/hooks/use-auth";
-import { ArrowRight, Loader2, Mail, UserX, Brain } from "lucide-react";
+import { ArrowRight, Loader2, Mail, UserX, Brain, Lock } from "lucide-react";
 import { Suspense, useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -35,6 +35,8 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
   const navigate = useNavigate();
   const [step, setStep] = useState<"signIn" | { email: string }>("signIn");
   const [otp, setOtp] = useState("");
+  // Add password state
+  const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [email, setEmail] = useState("");
@@ -168,8 +170,8 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">
             {authMode === "login"
-              ? "Use your email to get a one-time code or continue with Google."
-              : "Sign up with your email (one-time code) or continue with Google."}
+              ? "Sign in with your email and password or continue with Google."
+              : "Sign up with your email and password or continue with Google."}
           </p>
         </div>
 
@@ -233,6 +235,23 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
                       {error && (
                         <p className="mt-2 text-sm text-red-500">{error}</p>
                       )}
+                      {/* Add password field (visual only for now) */}
+                      <div className="relative mt-4">
+                        <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          name="password"
+                          placeholder={authMode === "login" ? "Enter your password" : "Create a password"}
+                          type="password"
+                          className="pl-9 neu-inset rounded-xl bg-white text-slate-900 placeholder:text-slate-500"
+                          disabled={isLoading}
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                          autoComplete={authMode === "login" ? "current-password" : "new-password"}
+                        />
+                        <p className="mt-2 text-xs text-muted-foreground">
+                          Password will be used in future updates; current sign-in uses email verification.
+                        </p>
+                      </div>
                       <div className="mt-6">
                         <div className="relative">
                           <div className="absolute inset-0 flex items-center">
