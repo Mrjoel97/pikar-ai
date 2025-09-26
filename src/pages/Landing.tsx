@@ -23,11 +23,13 @@ import { toast } from "sonner";
 import TrustedLogosMarquee from "@/components/landing/TrustedLogosMarquee";
 import FeaturesSection from "@/components/landing/FeaturesSection";
 import KpiTrendsCard from "@/components/landing/KpiTrendsCard";
+import ContextualTipsStrip from "@/components/landing/ContextualTipsStrip";
 import { Input } from "@/components/ui/input";
 import { Mail } from "lucide-react";
 import { useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useMemo } from "react";
+import React from "react";
 
 // Add static KPI trend data used by KpiTrendsCard
 const trendData: Array<{ month: string; revenue: number; leads: number; efficiency: number }> = [
@@ -38,6 +40,12 @@ const trendData: Array<{ month: string; revenue: number; leads: number; efficien
   { month: "May", revenue: 17500, leads: 340, efficiency: 87 },
   { month: "Jun", revenue: 19000, leads: 360, efficiency: 89 },
 ];
+
+// Memoize presentational sections to prevent unnecessary re-renders
+const MemoTrustedLogosMarquee = React.memo(TrustedLogosMarquee);
+const MemoFeaturesSection = React.memo(FeaturesSection);
+const MemoKpiTrendsCard = React.memo(KpiTrendsCard);
+const MemoContextualTipsStrip = React.memo(ContextualTipsStrip);
 
 export default function Landing() {
   const { isLoading, isAuthenticated } = useAuth();
@@ -535,11 +543,11 @@ export default function Landing() {
         </div>
       </section>
 
-      <TrustedLogosMarquee logos={trustedLogos} />
+      <MemoTrustedLogosMarquee logos={trustedLogos} />
 
-      <FeaturesSection features={features} />
+      <MemoFeaturesSection features={features} />
 
-      <KpiTrendsCard data={trendData} />
+      <MemoKpiTrendsCard data={trendData} />
 
       {/* Pricing Section */}
       <section id="pricing" className="py-14 sm:py-20 px-4 sm:px-6 lg:px-8">
