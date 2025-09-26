@@ -1309,6 +1309,9 @@ Renamed to avoid duplicate identifier collisions elsewhere in the file */
     "All",
   );
 
+  // Add missing state used by Schedule Assistant bulk-add flow
+  const [addingAll, setAddingAll] = useState(false);
+
   // Compute suggested schedule slots (simple best-time defaults for this week)
   const suggestedSlots: Array<{
     label: string;
