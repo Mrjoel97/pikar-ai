@@ -99,7 +99,7 @@ export function SolopreneurDashboard({
 /* Using existing searchQuery state declared earlier – duplicate removed */
 // New: search across content/transcript/summary (single source of truth)
 
-const searchArgs = React.useMemo(() => {
+const searchArgsMemo = React.useMemo(() => {
   if (!initiativeId) return undefined;
   const q = (searchQuery ?? "").trim();
   return q ? { initiativeId, q, limit: 20 } : undefined;
@@ -107,8 +107,8 @@ const searchArgs = React.useMemo(() => {
 
     // Correctly skip when args are undefined
     const searchResults = useQuery(
-      api.initiatives.searchBrainDumps as any,
-      searchArgs
+      api.initiatives.searchBrainDumps,
+      searchArgsMemo
     );
 
     // Audio recording + upload + transcription
@@ -293,16 +293,17 @@ const searchArgs = React.useMemo(() => {
     const [searchQuery, setSearchQuery] = React.useState("");
 
     // Prepare args; pass undefined to skip the query cleanly
-const searchArgs = React.useMemo(() => {
-  if (!initiativeId) return undefined;
-  const q = (searchQuery ?? "").trim();
-  return q ? { initiativeId, q, limit: 20 } : undefined;
-}, [initiativeId, searchQuery]);
+    // Renamed to avoid duplicate identifier collisions elsewhere in the file
+    const searchArgsMemo = React.useMemo(() => {
+      if (!initiativeId) return undefined;
+      const q = (searchQuery ?? "").trim();
+      return q ? { initiativeId, q, limit: 20 } : undefined;
+    }, [initiativeId, searchQuery]);
 
     // Correctly skip when args are undefined
     const searchResults = useQuery(
-      api.initiatives.searchBrainDumps as any,
-      searchArgs
+      api.initiatives.searchBrainDumps,
+      searchArgsMemo
     );
 
     // Audio recording + upload + transcription
