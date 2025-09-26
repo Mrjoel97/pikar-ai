@@ -464,6 +464,29 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
+        {/* Audit & Analytics CTA - add View all link */}
+        <div className="flex items-center justify-between">
+          <div className="text-sm text-muted-foreground">
+            Recent audit events
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              try {
+                // Prefer client-side navigation
+                (window as any).appNavigate
+                  ? (window as any).appNavigate("/analytics")
+                  : (window.location.href = "/analytics");
+              } catch {
+                window.location.href = "/analytics";
+              }
+            }}
+          >
+            View all
+          </Button>
+        </div>
+
         {/* Render a fixed action button for authenticated, non-guest users */}
         {isAuthenticated && !guestMode && (
           <div className="fixed bottom-6 right-6 z-40">

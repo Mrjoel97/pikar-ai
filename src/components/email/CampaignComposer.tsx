@@ -83,7 +83,7 @@ export function CampaignComposer({ businessId, onClose, onCreated, defaultSchedu
   const selectedList = contactLists?.find((list: any) => list._id === selectedListId);
   const recipientCount = selectedList ? "Loading..." : directRecipients.split(",").filter(Boolean).length;
 
-  // Add: Compliance preflight heuristics (UI-only)
+  // Add: expanded compliance checks including consent/unsub language with docs link
   const preflightWarnings = React.useMemo(() => {
     const warnings: string[] = [];
     const lowerBody = (formData.body || "").toLowerCase();
@@ -96,6 +96,15 @@ export function CampaignComposer({ businessId, onClose, onCreated, defaultSchedu
     }
     if (!lowerBody.includes("unsubscribe")) {
       warnings.push("Missing unsubscribe language. Include a clear unsubscribe option to minimize complaints.");
+    }
+    // New: consent/preference reminder (heuristic UI check)
+    if (
+      !lowerBody.includes("consent") &&
+      !lowerBody.includes("opted in") &&
+      !lowerBody.includes("opt-in") &&
+      !lowerBody.includes("preferences")
+    ) {
+      warnings.push("Missing consent/preference reminder. Consider referencing how the recipient subscribed or can manage preferences.");
     }
     if (audienceType === "direct" && directRecipients.split(",").filter(Boolean).length === 0) {
       warnings.push("No direct recipients provided. Add at least one recipient or switch to a Contact List.");
@@ -334,6 +343,23 @@ export function CampaignComposer({ businessId, onClose, onCreated, defaultSchedu
                 <li key={i}>{w}</li>
               ))}
             </ul>
+            {/* New: link to docs/learning for guidance */}
+            <div className="mt-3">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  // Prefer client-side navigation if available
+                  try {
+                    navigate("/learning-hub");
+                  } catch {
+                    window.location.href = "/learning-hub";
+                  }
+                }}
+              >
+                Learn about email consent & unsubscribe best practices
+              </Button>
+            </div>
           </AlertDescription>
         </Alert>
       )}
