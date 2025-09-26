@@ -34,6 +34,13 @@ export function VoiceNotes({ onSave, disabled, className }: VoiceNotesProps) {
   const [summary, setSummary] = React.useState("");
   const [audioUrl, setAudioUrl] = React.useState<string>("");
 
+  const [recordingError, setRecordingError] = React.useState<string | null>(null);
+  const [uploadProgress, setUploadProgress] = React.useState<number>(0);
+  const [isUploading, setIsUploading] = React.useState(false);
+  const [isTranscribing, setIsTranscribing] = React.useState(false);
+  const [lastError, setLastError] = React.useState<string | null>(null);
+  const [lastAudioBlob, setLastAudioBlob] = React.useState<Blob | null>(null);
+
   React.useEffect(() => {
     return () => {
       if (audioUrl) URL.revokeObjectURL(audioUrl);
@@ -41,9 +48,12 @@ export function VoiceNotes({ onSave, disabled, className }: VoiceNotesProps) {
     };
   }, [audioUrl, timerId]);
 
-  async function startRecording() {
-    setMicError(null);
+  const MAX_AUDIO_BYTES = 10 * 1024 * 1024; // 10MB cap
+
+  async function startRecordingSafe() {
     try {
+      setRecordingError(null);
+      setLastError(null);
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const mr = new MediaRecorder(stream);
       chunksRef.current = [];
@@ -61,9 +71,10 @@ export function VoiceNotes({ onSave, disabled, className }: VoiceNotesProps) {
       setRecordingMs(0);
       const id = window.setInterval(() => setRecordingMs((ms) => ms + 1000), 1000) as unknown as number;
       setTimerId(id);
-    } catch (e: any) {
-      setMicError(e?.message ?? "Microphone access denied");
-      toast.error("Microphone error. Please allow mic access.");
+    } catch (err: any) {
+      const msg = err?.message || "Microphone permission denied or unavailable.";
+      setRecordingError(msg);
+      toast.error(msg);
     }
   }
 
@@ -79,44 +90,106 @@ export function VoiceNotes({ onSave, disabled, className }: VoiceNotesProps) {
     }
   }
 
-  async function uploadAndTranscribe() {
-    const blob = new Blob(chunksRef.current, { type: "audio/webm" });
-    if (!blob || blob.size === 0) {
-      toast.error("No audio captured.");
-      return;
-    }
-    setUploading(true);
-    setProgress(10);
-    try {
-      const uploadUrl: string = await generateUploadUrl({});
-      setProgress(30);
-      const putRes = await fetch(uploadUrl, { method: "POST", body: blob });
-      if (!putRes.ok) throw new Error("Upload failed");
-      setProgress(55);
-      const { storageId } = (await putRes.json()) as { storageId: string };
-      setProgress(70);
-      const tr = (await transcribeAudio({ fileId: storageId })) as any;
-      setProgress(90);
-      const trText = tr?.transcript ?? "";
-      const trSummary = tr?.summary ?? "";
-      const trTags: string[] = Array.isArray(tr?.tags) ? tr.tags : [];
-      setTranscript(trText);
-      setSummary(trSummary);
-      setTags(trTags.join(", "));
-      setProgress(100);
-      if (onSave && trText) {
-        await onSave({ transcript: trText, summary: trSummary, tags: trTags, storageId });
-        toast.success("Voice note saved");
-      } else {
-        toast.success("Transcription complete");
-      }
-    } catch (e: any) {
-      toast.error(e?.message ?? "Transcription failed");
-    } finally {
-      setTimeout(() => setProgress(0), 600);
-      setUploading(false);
-    }
+  async function uploadWithProgress(url: string, blob: Blob, contentType: string): Promise<void> {
+    setIsUploading(true);
+    setUploadProgress(0);
+    await new Promise<void>((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open("PUT", url, true);
+      xhr.setRequestHeader("Content-Type", contentType);
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable) {
+          const pct = Math.round((e.loaded / e.total) * 100);
+          setUploadProgress(pct);
+        }
+      };
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          setUploadProgress(100);
+          resolve();
+        } else {
+          reject(new Error(`Upload failed with ${xhr.status}: ${xhr.statusText}`));
+        }
+      };
+      xhr.onerror = () => reject(new Error("Network error during upload"));
+      xhr.send(blob);
+    });
+    setIsUploading(false);
   }
+
+  const handleSave = React.useCallback(async (payload: {
+    content: string;
+    title?: string;
+    summary?: string;
+    tags?: string[];
+    voice?: boolean;
+    transcript?: string;
+  }) => {
+    try {
+      window.dispatchEvent(new CustomEvent("voice_note_transcribed", { detail: payload }));
+    } catch {
+      // no-op fallback
+    }
+  }, []);
+
+  const handleFinalizeRecording = React.useCallback(async (audioBlob: Blob) => {
+    try {
+      setLastError(null);
+      setLastAudioBlob(audioBlob);
+
+      if (audioBlob.size > MAX_AUDIO_BYTES) {
+        toast.error("Recording is too large. Please keep under 10MB.");
+        return;
+      }
+
+      // Get upload URL
+      const { uploadUrl, storageId } = await generateUploadUrl();
+
+      // Upload with progress
+      await uploadWithProgress(uploadUrl, audioBlob, audioBlob.type || "audio/webm");
+      toast("Upload complete. Transcribing...");
+
+      // Transcribe
+      setIsTranscribing(true);
+      const result = await transcribeAudio({ fileId: storageId });
+      setIsTranscribing(false);
+
+      if (!result?.transcript) {
+        toast.error("Transcription returned no text. Please try again.");
+        return;
+      }
+
+      toast.success("Transcription complete!");
+      await handleSave({
+        content: result.transcript,
+        title: result.title ?? "Voice Note",
+        summary: result.summary,
+        tags: result.detectedTags ?? [],
+        voice: true,
+        transcript: result.transcript,
+        // audio not persisted; only transcript/summary/tags, per spec
+      });
+    } catch (err: any) {
+      const msg = err?.message || "Failed to process voice note.";
+      setLastError(msg);
+      setIsTranscribing(false);
+      setIsUploading(false);
+      toast.error(msg);
+    }
+  }, [generateUploadUrl, transcribeAudio, handleSave]);
+
+  const uploadAndTranscribe = React.useCallback(() => {
+    try {
+      if (!lastAudioBlob) {
+        // optionally surface a toast if available in this file
+        // toast.error("No prior recording found.");
+        return;
+      }
+      void handleFinalizeRecording(lastAudioBlob);
+    } catch {
+      // no-op
+    }
+  }, [lastAudioBlob, handleFinalizeRecording]);
 
   const mm = Math.floor(recordingMs / 60000)
     .toString()
@@ -131,7 +204,7 @@ export function VoiceNotes({ onSave, disabled, className }: VoiceNotesProps) {
         <Button
           size="sm"
           variant={isRecording ? "destructive" : "default"}
-          onClick={isRecording ? stopRecording : startRecording}
+          onClick={isRecording ? stopRecording : startRecordingSafe}
           disabled={disabled || uploading}
         >
           {isRecording ? "Stop" : "Record"}
@@ -148,6 +221,45 @@ export function VoiceNotes({ onSave, disabled, className }: VoiceNotesProps) {
       </div>
 
       {micError && <div className="mt-2 text-xs text-red-600">{micError}</div>}
+
+      {recordingError && (
+        <div className="text-sm text-red-600 mb-2">{recordingError}</div>
+      )}
+
+      {(isUploading || isTranscribing) && (
+        <div className="flex items-center gap-3 my-2">
+          <div className="text-sm text-slate-600">
+            {isUploading ? `Uploading... ${uploadProgress}%` : "Transcribing..."}
+          </div>
+          {/* ... keep existing code (optional spinner/progress component if present) */}
+        </div>
+      )}
+
+      {lastError && (
+        <div className="flex flex-col gap-2 my-2">
+          <div className="text-sm text-red-600">{lastError}</div>
+          <div className="flex gap-2">
+            <button
+              className="text-sm px-3 py-1 rounded bg-emerald-600 text-white hover:bg-emerald-700"
+              onClick={() => {
+                if (!lastAudioBlob) {
+                  toast.error("No prior recording found to retry.");
+                  return;
+                }
+                void handleFinalizeRecording(lastAudioBlob);
+              }}
+            >
+              Retry transcription
+            </button>
+            <button
+              className="text-sm px-3 py-1 rounded border"
+              onClick={() => setLastError(null)}
+            >
+              Dismiss
+            </button>
+          </div>
+        </div>
+      )}
 
       {(uploading || progress > 0) && (
         <div className="mt-3 space-y-2">

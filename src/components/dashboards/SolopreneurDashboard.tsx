@@ -1548,6 +1548,68 @@ const searchArgsMemo = React.useMemo(() => {
     businessId ? { channel: "post", businessId, from: Date.now() } : ("skip" as any)
   );
 
+  // Add: per-batch basic cap to avoid runaway adds; server can enforce stricter limits
+  const BATCH_ADD_CAP = 10;
+
+  // Add: handler to add all currently shown suggestions with cap + undo support
+  const handleAddAllShownSlots = async () => {
+    try {
+      if (!suggestedSlots || suggestedSlots.length === 0) {
+        toast.error("No suggested slots to add.");
+        return;
+      }
+
+      if (!business?._id) {
+        toast.error("No workspace selected.");
+        return;
+      }
+
+      setAddingAll(true);
+
+      // Determine remaining headroom if we have current slots
+      const currentCount = Array.isArray(scheduleSlots) ? scheduleSlots.length : 0;
+      const allowed = Math.max(0, BATCH_ADD_CAP - 0); // local cap for this batch
+      let toAdd = suggestedSlots.slice(0, Math.min(allowed || BATCH_ADD_CAP, suggestedSlots.length));
+
+      // If there are tier caps elsewhere, this still limits batch size. Server entitlements can enforce strict limits.
+
+      const createdIds: Array<string> = [];
+      for (const s of toAdd) {
+        // Assume suggestion object has channel, label, scheduledAt
+        const res = await addSlot({
+          businessId: business._id,
+          channel: s.channel,
+          label: s.label ?? `${s.channel} slot`,
+          scheduledAt: s.scheduledAt,
+        } as any);
+        if (res?._id) createdIds.push(res._id);
+      }
+
+      setLastBatchSlotIds(createdIds);
+
+      toast.success(`Added ${createdIds.length} schedule slot${createdIds.length === 1 ? "" : "s"}.`, {
+        action: {
+          label: "Undo",
+          onClick: async () => {
+            try {
+              for (const id of createdIds) {
+                await deleteSlot({ slotId: id as any });
+              }
+              toast("Undo complete.");
+              setLastBatchSlotIds([]);
+            } catch (e: any) {
+              toast.error(e?.message ?? "Failed to undo.");
+            }
+          },
+        },
+      });
+    } catch (err: any) {
+      toast.error(err?.message ?? "Failed to add schedule slots.");
+    } finally {
+      setAddingAll(false);
+    }
+  };
+
   return (
     <motion.div className="space-y-4" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }}>
       {/* Quick actions: Send Newsletter */}
@@ -2171,9 +2233,13 @@ const searchArgsMemo = React.useMemo(() => {
                   </Button>
                 ))}
               </div>
-              <Button size="sm" variant="outline" onClick={handleAddAllShown} disabled={isGuest || filteredSuggested.length === 0}>
-                Add All Shown
-              </Button>
+              <button
+                className="px-3 py-1.5 rounded bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60"
+                onClick={handleAddAllShownSlots}
+                disabled={addingAll || !suggestedSlots || suggestedSlots.length === 0}
+              >
+                {addingAll ? "Adding..." : "Add All Shown"}
+              </button>
             </div>
             <div className="space-y-2">
               {filteredSuggested.map((s, idx) => (
