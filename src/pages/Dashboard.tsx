@@ -91,6 +91,29 @@ export default function Dashboard() {
     } catch {}
   };
 
+  // ADD: Trial info computation (non-guest, authenticated)
+  const nowMs = Date.now();
+  const bizSettings = (business as any)?.settings ?? {};
+  const trialStart: number | undefined = typeof bizSettings.trialStart === "number" ? bizSettings.trialStart : undefined;
+  const trialEnd: number | undefined = typeof bizSettings.trialEnd === "number" ? bizSettings.trialEnd : undefined;
+  const isTrialStatus = bizSettings.status === "trial";
+  const trialActive =
+    !guestMode &&
+    isTrialStatus &&
+    typeof trialEnd === "number" &&
+    nowMs < trialEnd;
+
+  const trialDaysLeft =
+    typeof trialEnd === "number"
+      ? Math.max(0, Math.ceil((trialEnd - nowMs) / (24 * 60 * 60 * 1000)))
+      : undefined;
+
+  const trialExpired =
+    !guestMode &&
+    isTrialStatus &&
+    typeof trialEnd === "number" &&
+    nowMs >= trialEnd;
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -239,6 +262,39 @@ export default function Dashboard() {
               Sign In to Get Started
             </Button>
           </div>
+        )}
+
+        {/* ADD: Trial banner (auth only, non-guest) */}
+        {!guestMode && isTrialStatus && trialActive && (
+          <Card className="mb-6 border-emerald-200 bg-emerald-50">
+            <CardContent className="p-4 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Badge variant="outline" className="border-emerald-300 text-emerald-800">Free Trial</Badge>
+                <span className="text-sm text-emerald-900">
+                  {typeof trialDaysLeft === "number" ? `${trialDaysLeft} day${trialDaysLeft === 1 ? "" : "s"} left` : "Active trial"} on {effectiveConfig.label}.
+                </span>
+              </div>
+              <Button size="sm" onClick={() => navigate("/pricing")}>
+                Manage Plan
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
+        {!guestMode && isTrialStatus && trialExpired && (
+          <Card className="mb-6 border-amber-300 bg-amber-50">
+            <CardContent className="p-4 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Badge variant="outline" className="border-amber-400 text-amber-800">Trial Ended</Badge>
+                <span className="text-sm text-amber-900">
+                  Your free trial has ended. Activate a plan to keep access to advanced features.
+                </span>
+              </div>
+              <Button size="sm" onClick={() => navigate("/pricing")}>
+                Activate Plan
+              </Button>
+            </CardContent>
+          </Card>
         )}
 
         {/* Solopreneur Initiative Journey rail */}
