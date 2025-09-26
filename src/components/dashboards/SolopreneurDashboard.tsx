@@ -96,13 +96,18 @@ export function SolopreneurDashboard({
     // Add local loading state for restore
     /* Duplicate removed — reuse the already-declared `lastDeletedItem` and `setLastDeletedItem` */
 
-    // New: search across content/transcript/summary
-    const [searchQ, setSearchQ] = React.useState("");
+    // New: search across content/transcript/summary (single source of truth)
+    const [searchQuery, setSearchQuery] = React.useState("");
+
+    // Prepare args; pass undefined to skip the query cleanly
+    const searchArgs = initiativeId && searchQuery.trim()
+      ? { initiativeId, q: searchQuery.trim(), limit: 20 }
+      : undefined;
+
+    // Correctly skip when args are undefined
     const searchResults = useQuery(
       api.initiatives.searchBrainDumps as any,
-      initiativeId && searchQ.trim()
-        ? { initiativeId, q: searchQ.trim(), limit: 20 }
-        : undefined
+      searchArgs
     );
 
     // Audio recording + upload + transcription
@@ -283,15 +288,18 @@ export function SolopreneurDashboard({
     // Add local loading state for restore
     const [lastDeletedItem, setLastDeletedItem] = React.useState<any | null>(null);
 
-    // New: search across content/transcript/summary
-    const [searchQ, setSearchQ] = React.useState("");
+    // New: search across content/transcript/summary (single source of truth)
+    const [searchQuery, setSearchQuery] = React.useState("");
 
-    // Replace "skip" sentinel with undefined to properly skip the query
+    // Prepare args; pass undefined to skip the query cleanly
+    const searchArgs = initiativeId && searchQuery.trim()
+      ? { initiativeId, q: searchQuery.trim(), limit: 20 }
+      : undefined;
+
+    // Correctly skip when args are undefined
     const searchResults = useQuery(
       api.initiatives.searchBrainDumps as any,
-      initiativeId && searchQ.trim()
-        ? { initiativeId, q: searchQ.trim(), limit: 20 }
-        : undefined
+      searchArgs
     );
 
     // Audio recording + upload + transcription
@@ -391,8 +399,8 @@ export function SolopreneurDashboard({
           <div className="flex items-center gap-2">
             <Input
               placeholder="Search ideas (content, transcript, summary)"
-              value={searchQ}
-              onChange={(e) => setSearchQ(e.target.value)}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
               className="h-8 w-56"
             />
           </div>
@@ -490,7 +498,7 @@ export function SolopreneurDashboard({
         </div>
 
         {/* Results: if searching, show results; else show default list */}
-        {searchQ.trim() && Array.isArray(searchResults) ? (
+        {searchQuery.trim() && Array.isArray(searchResults) ? (
           <div className="space-y-2">
             {searchResults.map((d: any) => (
               <div key={String(d._id)} className="rounded-md border p-3 text-sm">
