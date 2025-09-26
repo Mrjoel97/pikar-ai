@@ -242,7 +242,7 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
                           name="password"
                           placeholder={authMode === "login" ? "Enter your password" : "Create a password"}
                           type="password"
-                          className="pl-9 neu-inset rounded-xl bg-white text-slate-900 placeholder:text-slate-500"
+                          className="h-10 w-full pl-9 neu-inset rounded-xl bg-white text-slate-900 placeholder:text-slate-500"
                           disabled={isLoading}
                           value={password}
                           onChange={(e) => setPassword(e.target.value)}
