@@ -5,7 +5,7 @@ import { ConvexAuthProvider } from "@convex-dev/auth/react";
 import { ConvexReactClient } from "convex/react";
 import React, { StrictMode, useEffect, Component } from "react";
 import { createRoot } from "react-dom/client";
-import { MemoryRouter, Route, Routes, useLocation } from "react-router";
+import { MemoryRouter, Route, Routes, useLocation, Navigate } from "react-router";
 import "./index.css";
 import Landing from "./pages/Landing.tsx";
 import NotFound from "./pages/NotFound.tsx";
@@ -119,6 +119,10 @@ createRoot(document.getElementById("root")!).render(
               <Route path="/admin" element={<AdminPage />} />
               <Route path="/admin-auth" element={<AdminAuthPage />} />
               <Route path="/learning-hub" element={<LearningHubPage />} />
+              <Route
+                path="/src/components/dashboards/SolopreneurDashboard.tsx"
+                element={<Navigate to="/dashboard" replace />}
+              />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </MemoryRouter>
