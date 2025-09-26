@@ -5,7 +5,7 @@ import { v } from "convex/values";
 import { api, internal } from "./_generated/api";
 
 type AssistantMode = "explain" | "confirm" | "auto";
-type ToolKey = "health" | "flags" | "alerts";
+type ToolKey = "health" | "flags" | "alerts" | "agents";
 type AssistantStep = { tool: ToolKey; title: string; data: any };
 type SendMessageResult = { notice: string; steps: AssistantStep[]; summaryText?: string };
 
@@ -29,21 +29,38 @@ function isRateLimited(key: string): { limited: boolean; remaining: number } {
   return { limited: arr.length >= RATE_MAX_CALLS, remaining: Math.max(0, RATE_MAX_CALLS - arr.length) };
 }
 
-function canUseToolAction(role: "superadmin" | "senior" | "admin", tool: ToolKey, action: "read" | "toggle" | "create" | "resolve"): boolean {
+function canUseToolAction(
+  role: "superadmin" | "senior" | "admin",
+  tool: ToolKey,
+  action:
+    | "read"
+    | "toggle"
+    | "create"
+    | "resolve"
+    | "disable"
+    | "retrain"
+    | "attach"
+    | "sweep"
+): boolean {
   // Granular permissions per role and tool/action
-  // - superadmin: full
-  // - senior: full for health read; flags toggle allowed; alerts create/resolve allowed
-  // - admin: read-only for all tools by default; may use confirm/auto to request actions but blocked here
+  // - superadmin: full access
   if (role === "superadmin") return true;
 
+  // - senior: read-only for everything; plus:
+  //   flags: toggle
+  //   alerts: create/resolve
+  //   agents: disable/retrain/attach
+  //   health: sweep
   if (role === "senior") {
     if (action === "read") return true;
     if (tool === "flags" && action === "toggle") return true;
     if (tool === "alerts" && (action === "create" || action === "resolve")) return true;
+    if (tool === "agents" && (action === "disable" || action === "retrain" || action === "attach")) return true;
+    if (tool === "health" && action === "sweep") return true;
     return false;
   }
 
-  // role === "admin"
+  // role === "admin": read-only
   return action === "read";
 }
 
@@ -51,7 +68,14 @@ export const sendMessage = action({
   args: {
     message: v.string(),
     mode: v.union(v.literal("explain"), v.literal("confirm"), v.literal("auto")),
-    toolsAllowed: v.array(v.union(v.literal("health"), v.literal("flags"), v.literal("alerts"))),
+    toolsAllowed: v.array(
+      v.union(
+        v.literal("health"),
+        v.literal("flags"),
+        v.literal("alerts"),
+        v.literal("agents")
+      )
+    ),
     adminToken: v.optional(v.string()),
     // Add: dry-run simulation to preview actions without execution
     dryRun: v.optional(v.boolean()),
@@ -137,6 +161,26 @@ export const sendMessage = action({
             notes: "This is a lightweight readiness probe from the assistant.",
           },
         });
+      }
+
+      // Add: Health SLA sweep trigger with RBAC and dry-run support
+      if (args.toolsAllowed.includes("health")) {
+        const wantsSweep = /\b(sla\s+sweep|sweep\s+sla|run\s+sla)\b/i.test(q);
+        if (wantsSweep) {
+          const permitted = canUseToolAction(role as any, "health", "sweep");
+          if (!permitted) {
+            steps.push({ tool: "health", title: "SLA sweep blocked by permissions", data: { role } });
+          } else if (args.dryRun === true) {
+            steps.push({ tool: "health", title: "Dry Run: would trigger SLA sweep", data: {} });
+          } else {
+            try {
+              const res = await ctx.runMutation(internal.approvals.sweepOverdueApprovals as any, {} as any);
+              steps.push({ tool: "health", title: "Triggered SLA sweep", data: { ok: true, result: res ?? null } });
+            } catch (e: any) {
+              steps.push({ tool: "health", title: "SLA sweep failed", data: { error: e?.message || String(e) } });
+            }
+          }
+        }
       }
     }
 
@@ -271,6 +315,151 @@ export const sendMessage = action({
             } catch (e: any) {
               steps.push({ tool: "alerts", title: "Resolve alert failed", data: { error: e?.message || String(e) } });
             }
+          }
+        }
+      }
+    }
+
+    // New: Agents tool (admin visibility and overrides)
+    if (args.toolsAllowed.includes("agents")) {
+      // optional tenant scope: "for tenant <id>"
+      const tenantScopeMatch = q.match(/for\s+tenant\s+([a-z0-9]{10,})/i);
+      const scopedTenantId = tenantScopeMatch ? tenantScopeMatch[1] : undefined;
+
+      // List summary and agents
+      try {
+        const summary = await ctx.runQuery(api.aiAgents.adminAgentSummary as any, {
+          tenantId: scopedTenantId,
+        } as any);
+        steps.push({ tool: "agents", title: "Agent Summary", data: summary });
+      } catch (e: any) {
+        steps.push({ tool: "agents", title: "Failed to load agent summary", data: { error: e?.message || String(e) } });
+      }
+      let agents: any[] = [];
+      try {
+        agents = (await ctx.runQuery(api.aiAgents.adminListAgents as any, {
+          tenantId: scopedTenantId,
+          limit: 50,
+        } as any)) as any[];
+        steps.push({ tool: "agents", title: "Agents", data: { count: agents.length, agents } });
+      } catch (e: any) {
+        steps.push({ tool: "agents", title: "Failed to list agents", data: { error: e?.message || String(e) } });
+      }
+
+      // Actions if not explain-only
+      if (args.mode !== "explain") {
+        // disable agent
+        const disableMatch = q.match(/disable\s+agent\s+([a-z0-9]{10,})/i);
+        if (disableMatch?.[1]) {
+          const profileId = disableMatch[1];
+          const permitted = canUseToolAction(role as any, "agents", "disable");
+          if (!permitted) {
+            steps.push({ tool: "agents", title: "Disable agent blocked by permissions", data: { profileId, role } });
+          } else if (args.dryRun === true) {
+            steps.push({ tool: "agents", title: `Dry Run: would disable agent ${profileId}`, data: {} });
+          } else {
+            try {
+              const res = await ctx.runMutation(api.aiAgents.adminMarkAgentDisabled as any, {
+                profileId,
+                reason: "disabled via admin assistant",
+              } as any);
+              steps.push({ tool: "agents", title: `Disabled agent ${profileId}`, data: res });
+            } catch (e: any) {
+              steps.push({ tool: "agents", title: "Disable agent failed", data: { error: e?.message || String(e) } });
+            }
+          }
+        }
+
+        // retrain agent: "retrain agent <id>: <text>"
+        const retrainMatch = q.match(/retrain\s+agent\s+([a-z0-9]{10,})\s*:\s*(.+)$/i);
+        if (retrainMatch?.[1] && retrainMatch?.[2]) {
+          const profileId = retrainMatch[1];
+          const trainingNotes = retrainMatch[2].trim();
+          const permitted = canUseToolAction(role as any, "agents", "retrain");
+          if (!permitted) {
+            steps.push({ tool: "agents", title: "Retrain blocked by permissions", data: { profileId, role } });
+          } else if (args.dryRun === true) {
+            steps.push({ tool: "agents", title: `Dry Run: would retrain agent ${profileId}`, data: { trainingNotes } });
+          } else {
+            try {
+              const res = await ctx.runMutation(api.aiAgents.adminUpdateAgentProfile as any, {
+                profileId,
+                trainingNotes,
+              } as any);
+              steps.push({ tool: "agents", title: `Updated training notes for ${profileId}`, data: res });
+            } catch (e: any) {
+              steps.push({ tool: "agents", title: "Retrain agent failed", data: { error: e?.message || String(e) } });
+            }
+          }
+        }
+
+        // attach global guidance (optionally tenant-scoped): "attach guidance: <text> [for tenant <id>]"
+        const attachMatch = q.match(/attach\s+guidance\s*:\s*(.+)$/i);
+        if (attachMatch?.[1]) {
+          const guidance = attachMatch[1].trim();
+          const permitted = canUseToolAction(role as any, "agents", "attach");
+          if (!permitted) {
+            steps.push({ tool: "agents", title: "Attach guidance blocked by permissions", data: { role } });
+          } else if (args.dryRun === true) {
+            steps.push({
+              tool: "agents",
+              title: "Dry Run: would attach global guidance",
+              data: { tenantId: scopedTenantId ?? null, preview: guidance.slice(0, 160) },
+            });
+          } else {
+            try {
+              const targetAgents: any[] =
+                agents && agents.length > 0
+                  ? agents
+                  : ((await ctx.runQuery(api.aiAgents.adminListAgents as any, {
+                      tenantId: scopedTenantId,
+                      limit: 50,
+                    } as any)) as any[]);
+              const max = Math.min(10, targetAgents.length); // cap to avoid long-running action
+              const updated: string[] = [];
+              for (let i = 0; i < max; i++) {
+                const a = targetAgents[i];
+                try {
+                  await ctx.runMutation(api.aiAgents.adminUpdateAgentProfile as any, {
+                    profileId: a._id,
+                    trainingNotes: `${(a.trainingNotes || "").toString()}\n[GLOBAL-GUIDANCE] ${guidance}`,
+                  } as any);
+                  updated.push(String(a._id));
+                } catch {}
+              }
+              steps.push({
+                tool: "agents",
+                title: "Attached global guidance",
+                data: { tenantId: scopedTenantId ?? null, updatedCount: updated.length, updated },
+              });
+            } catch (e: any) {
+              steps.push({ tool: "agents", title: "Attach guidance failed", data: { error: e?.message || String(e) } });
+            }
+          }
+        }
+
+        // view agent details: "view agent <id>"
+        const viewMatch = q.match(/view\s+agent\s+([a-z0-9]{10,})/i);
+        if (viewMatch?.[1]) {
+          const profileId = viewMatch[1];
+          const found = agents.find((a) => String(a._id) === profileId);
+          if (found) {
+            steps.push({
+              tool: "agents",
+              title: `Agent Details: ${profileId}`,
+              data: {
+                _id: found._id,
+                businessId: found.businessId,
+                userId: found.userId,
+                brandVoice: found.brandVoice,
+                timezone: found.timezone,
+                lastUpdated: found.lastUpdated,
+                trainingNotesPreview:
+                  typeof found.trainingNotes === "string" ? found.trainingNotes.slice(0, 500) : undefined,
+              },
+            });
+          } else {
+            steps.push({ tool: "agents", title: `Agent not found: ${profileId}`, data: {} });
           }
         }
       }

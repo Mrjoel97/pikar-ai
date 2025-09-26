@@ -22,10 +22,11 @@ export function AdminAssistantSection({ adminSessionValid, adminToken }: Props) 
   const [assistantDryRun, setAssistantDryRun] = useState<boolean>(false);
 
   const [assistantMode, setAssistantMode] = useState<"explain" | "confirm" | "auto">("explain");
-  const [assistantTools, setAssistantTools] = useState<{ health: boolean; flags: boolean; alerts: boolean }>({
+  const [assistantTools, setAssistantTools] = useState<{ health: boolean; flags: boolean; alerts: boolean; agents: boolean }>({
     health: true,
     flags: true,
     alerts: true,
+    agents: true,
   });
   const [assistantMessages, setAssistantMessages] = useState<Array<{ role: "user" | "assistant"; content: string; steps?: any[] }>>([]);
   const [assistantInput, setAssistantInput] = useState<string>("");
@@ -62,10 +63,11 @@ export function AdminAssistantSection({ adminSessionValid, adminToken }: Props) 
 
   // Sandbox state
   const [sandboxMsg, setSandboxMsg] = useState<string>("Check health and list flags");
-  const [sandboxTools, setSandboxTools] = useState<{ health: boolean; flags: boolean; alerts: boolean }>({
+  const [sandboxTools, setSandboxTools] = useState<{ health: boolean; flags: boolean; alerts: boolean; agents: boolean }>({
     health: true,
     flags: true,
     alerts: false,
+    agents: true,
   });
   const [sandboxSteps, setSandboxSteps] = useState<any[]>([]);
   const [sandboxOutput, setSandboxOutput] = useState<string>("");
@@ -222,6 +224,14 @@ export function AdminAssistantSection({ adminSessionValid, adminToken }: Props) 
                   onChange={(e) => setAssistantTools((t) => ({ ...t, alerts: e.target.checked }))}
                 />
                 Alerts
+              </label>
+              <label className="flex items-center gap-1 text-sm">
+                <input
+                  type="checkbox"
+                  checked={assistantTools.agents}
+                  onChange={(e) => setAssistantTools((t) => ({ ...t, agents: e.target.checked }))}
+                />
+                Agents
               </label>
             </div>
 
@@ -437,6 +447,14 @@ export function AdminAssistantSection({ adminSessionValid, adminToken }: Props) 
                     />
                     Alerts
                   </label>
+                  <label className="flex items-center gap-1">
+                    <input
+                      type="checkbox"
+                      checked={sandboxTools.agents}
+                      onChange={(e) => setSandboxTools((t) => ({ ...t, agents: e.target.checked }))}
+                    />
+                    Agents
+                  </label>
                 </div>
               </div>
               <div className="mt-2 flex items-center gap-2">
@@ -584,6 +602,14 @@ export function AdminAssistantSection({ adminSessionValid, adminToken }: Props) 
                       onChange={(e) => setSandboxTools((t) => ({ ...t, alerts: e.target.checked }))}
                     />
                     Alerts
+                  </label>
+                  <label className="flex items-center gap-1">
+                    <input
+                      type="checkbox"
+                      checked={sandboxTools.agents}
+                      onChange={(e) => setSandboxTools((t) => ({ ...t, agents: e.target.checked }))}
+                    />
+                    Agents
                   </label>
                 </div>
               </div>

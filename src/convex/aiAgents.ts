@@ -2,6 +2,7 @@ import { mutation, query, internalMutation, internalQuery } from "./_generated/s
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
+import { api } from "./_generated/api";
 
 // Solopreneur S1: Initialize private agent profile with randomized high-traction industry
 export const initSolopreneurAgent = mutation({
@@ -322,5 +323,180 @@ export const getAgentProfileLite = internalQuery({
       timezone: (p as any).timezone ?? "UTC",
       lastUpdated: (p as any).lastUpdated ?? 0,
     };
+  },
+});
+
+// Admin-gated: summarize agents counts (global or by tenant)
+export const adminAgentSummary = query({
+  args: { tenantId: v.optional(v.id("businesses")) },
+  handler: async (ctx, args) => {
+    const isAdmin = await ctx.runQuery((api as any).admin.getIsAdmin, {});
+    if (!isAdmin) return { total: 0, byTenant: [] as Array<{ businessId: Id<"businesses">; count: number }> };
+
+    const byTenantMap = new Map<string, number>();
+    let total = 0;
+
+    if (args.tenantId) {
+      const rows = await ctx.db
+        .query("agentProfiles")
+        .withIndex("by_business", (q) => q.eq("businessId", args.tenantId!))
+        .take(1000);
+      total = rows.length;
+      // Fix: ensure map key is a string
+      byTenantMap.set(String(args.tenantId), rows.length);
+    } else {
+      // iterate all agentProfiles in chunks (Convex scans; keep bounded)
+      // fetch by known businesses via index with no eq is not supported; fallback to take batches
+      const batch = await ctx.db.query("agentProfiles").take(1000);
+      total = batch.length;
+      for (const r of batch) {
+        const key = String(r.businessId);
+        byTenantMap.set(key, (byTenantMap.get(key) ?? 0) + 1);
+      }
+    }
+
+    const byTenant: Array<{ businessId: Id<"businesses">; count: number }> = Array.from(
+      byTenantMap.entries(),
+    ).map(([k, count]) => ({ businessId: k as unknown as Id<"businesses">, count }));
+
+    return { total, byTenant };
+  },
+});
+
+// Admin-gated: list agent profiles (optionally by tenant), minimal fields
+export const adminListAgents = query({
+  args: {
+    tenantId: v.optional(v.id("businesses")),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const isAdmin = await ctx.runQuery((api as any).admin.getIsAdmin, {});
+    if (!isAdmin) return [] as Array<{
+      _id: Id<"agentProfiles">;
+      businessId: Id<"businesses">;
+      userId: Id<"users">;
+      brandVoice?: string;
+      timezone?: string;
+      lastUpdated?: number;
+      trainingNotes?: string;
+    }>;
+
+    const limit = Math.max(1, Math.min(args.limit ?? 200, 1000));
+    let rows:
+      | Array<{
+          _id: Id<"agentProfiles">;
+          businessId: Id<"businesses">;
+          userId: Id<"users">;
+          brandVoice?: string;
+          timezone?: string;
+          lastUpdated?: number;
+          trainingNotes?: string;
+        }>
+      | undefined;
+
+    if (args.tenantId) {
+      rows = await ctx.db
+        .query("agentProfiles")
+        .withIndex("by_business", (q) => q.eq("businessId", args.tenantId!))
+        .order("desc")
+        .take(limit);
+    } else {
+      rows = await ctx.db.query("agentProfiles").order("desc").take(limit);
+    }
+
+    return rows.map((r) => ({
+      _id: r._id,
+      businessId: r.businessId,
+      userId: r.userId,
+      brandVoice: (r as any).brandVoice,
+      timezone: (r as any).timezone,
+      lastUpdated: (r as any).lastUpdated,
+      trainingNotes: (r as any).trainingNotes,
+    }));
+  },
+});
+
+// Admin-gated: update agent profile trainingNotes / brandVoice (retrain prompt)
+export const adminUpdateAgentProfile = mutation({
+  args: {
+    profileId: v.id("agentProfiles"),
+    trainingNotes: v.optional(v.string()),
+    brandVoice: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const isAdmin = await ctx.runQuery(api.admin.getIsAdmin, {});
+    if (isAdmin !== true) {
+      throw new Error("Forbidden: admin privileges required");
+    }
+
+    const doc = await ctx.db.get(args.profileId);
+    if (!doc) throw new Error("Profile not found");
+
+    const patch: Record<string, unknown> = {};
+    if (typeof args.trainingNotes === "string") patch.trainingNotes = args.trainingNotes;
+    if (typeof args.brandVoice === "string") patch.brandVoice = args.brandVoice;
+    if (Object.keys(patch).length === 0) return { updated: false };
+
+    patch.lastUpdated = Date.now();
+    await ctx.db.patch(args.profileId, patch);
+
+    try {
+      await ctx.runMutation(api.audit.write as any, {
+        action: "admin_update_agent_profile",
+        entityType: "agent_profile",
+        entityId: args.profileId,
+        details: {
+          // minimal snapshot
+          fieldsUpdated: Object.keys({ brandVoice: args.brandVoice, trainingNotes: args.trainingNotes }).filter(
+            (k) => (args as any)[k] !== undefined
+          ),
+          correlationId: `agent-admin-${args.profileId}-${Date.now()}`,
+        },
+      });
+    } catch {
+      // swallow audit errors to avoid blocking admin action
+    }
+
+    return { updated: true };
+  },
+});
+
+// Admin-gated: mark agent as disabled (sentinel note append)
+export const adminMarkAgentDisabled = mutation({
+  args: {
+    profileId: v.id("agentProfiles"),
+    reason: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const isAdmin = await ctx.runQuery(api.admin.getIsAdmin, {});
+    if (isAdmin !== true) {
+      throw new Error("Forbidden: admin privileges required");
+    }
+
+    const profile = await ctx.db.get(args.profileId);
+    if (!profile) throw new Error("Agent profile not found");
+    const tn = (profile as any).trainingNotes || "";
+    const alreadyDisabled = typeof tn === "string" && tn.includes("[DISABLED]");
+
+    if (!alreadyDisabled) {
+      await ctx.db.patch(args.profileId, { trainingNotes: `${tn}\n[DISABLED]${args.reason ? ` Reason: ${args.reason}` : ""}`, lastUpdated: Date.now() });
+    }
+
+    try {
+      await ctx.runMutation(api.audit.write as any, {
+        action: "admin_disable_agent",
+        entityType: "agent_profile",
+        entityId: args.profileId,
+        details: {
+          reason: args.reason || "",
+          alreadyDisabled,
+          correlationId: `agent-admin-disable-${args.profileId}-${Date.now()}`,
+        },
+      });
+    } catch {
+      // swallow audit errors to avoid blocking admin action
+    }
+
+    return { disabled: true };
   },
 });
