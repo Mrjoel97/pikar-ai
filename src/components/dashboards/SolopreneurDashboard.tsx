@@ -94,7 +94,7 @@ export function SolopreneurDashboard({
     };
 
     // Add local loading state for restore
-    const [lastDeletedItem, setLastDeletedItem] = React.useState<any | null>(null);
+    /* Duplicate removed — reuse the already-declared `lastDeletedItem` and `setLastDeletedItem` */
 
     // New: search across content/transcript/summary
     const [searchQ, setSearchQ] = React.useState("");
