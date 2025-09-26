@@ -36,7 +36,7 @@ export function StartupDashboard({
 
   const upgradeNudges = useQuery(
     api.telemetry.getUpgradeNudges,
-    isGuest || !business?._id ? "skip" : { businessId: business._id }
+    isGuest || !business?._id ? undefined : { businessId: business._id }
   );
 
   const UpgradeCTA = ({ feature }: { feature: string }) => (
@@ -81,16 +81,16 @@ export function StartupDashboard({
 
   const envStatus = useQuery(
     api.health.envStatus,
-    isGuest || !business?._id ? "skip" : { businessId: business._id }
+    isGuest || !business?._id ? undefined : { businessId: business._id }
   );
 
   const recentActivity = useQuery(
     api.activityFeed.getRecent,
-    isGuest || !business?._id ? "skip" : { businessId: business._id, limit: 10 }
+    isGuest || !business?._id ? undefined : { businessId: business._id, limit: 10 }
   );
 const pendingApprovals = useQuery(
   api.approvals.getApprovalQueue,
-  isGuest || !business?._id ? "skip" : { businessId: business._id, status: "pending" as const }
+  isGuest || !business?._id ? undefined : { businessId: business._id, status: "pending" as const }
 );
 
   // Fallback counters
@@ -101,7 +101,7 @@ const pendingApprovals = useQuery(
   // A/B summary using campaigns as proxy
   const campaigns = useQuery(
     api.emails.listCampaignsByBusiness,
-    isGuest || !business?._id ? "skip" : { businessId: business._id }
+    isGuest || !business?._id ? undefined : { businessId: business._id }
   );
   const testsRunning = (campaigns && campaigns !== "skip") ? Math.min(campaigns.length, 3) : (isGuest ? 2 : 0);
   const lastUplift = isGuest ? 8.4 : (testsRunning > 0 ? 5.1 : 0);
@@ -130,14 +130,14 @@ const pendingApprovals = useQuery(
   function BrainDumpSection({ businessId }: { businessId: string }) {
     const initiatives = useQuery(
       api.initiatives.getByBusiness as any,
-      businessId ? { businessId } : "skip"
+      businessId ? { businessId } : undefined
     );
     const initiativeId =
       initiatives && initiatives.length > 0 ? initiatives[0]._id : null;
 
     const dumps = useQuery(
       api.initiatives.listBrainDumpsByInitiative as any,
-      initiativeId ? { initiativeId, limit: 10 } : "skip"
+      initiativeId ? { initiativeId, limit: 10 } : undefined
     );
     const addDump = useMutation(api.initiatives.addBrainDump as any);
 
