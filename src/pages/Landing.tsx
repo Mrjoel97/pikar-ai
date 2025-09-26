@@ -20,18 +20,24 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Menu } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
-import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
-import { useAction } from "convex/react";
-import { api } from "@/convex/_generated/api";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useMemo } from "react";
 import TrustedLogosMarquee from "@/components/landing/TrustedLogosMarquee";
 import FeaturesSection from "@/components/landing/FeaturesSection";
 import KpiTrendsCard from "@/components/landing/KpiTrendsCard";
-import FreeTierPath from "@/components/landing/FreeTierPath";
 import { Input } from "@/components/ui/input";
 import { Mail } from "lucide-react";
+import { useAction } from "convex/react";
+import { api } from "@/convex/_generated/api";
+import { useMemo } from "react";
+
+// Add static KPI trend data used by KpiTrendsCard
+const trendData: Array<{ month: string; revenue: number; leads: number; efficiency: number }> = [
+  { month: "Jan", revenue: 12000, leads: 240, efficiency: 80 },
+  { month: "Feb", revenue: 13500, leads: 260, efficiency: 82 },
+  { month: "Mar", revenue: 15000, leads: 300, efficiency: 84 },
+  { month: "Apr", revenue: 16200, leads: 320, efficiency: 86 },
+  { month: "May", revenue: 17500, leads: 340, efficiency: 87 },
+  { month: "Jun", revenue: 19000, leads: 360, efficiency: 89 },
+];
 
 export default function Landing() {
   const { isLoading, isAuthenticated } = useAuth();
@@ -153,38 +159,6 @@ export default function Landing() {
     { name: "HubSpot", src: "https://cdn.simpleicons.org/hubspot/FF7A59" },
     { name: "Salesforce", src: "https://cdn.simpleicons.org/salesforce/00A1E0" },
     { name: "Shopify", src: "https://cdn.simpleicons.org/shopify/95BF47" },
-  ];
-
-  const growthPhases = [
-    {
-      title: "Phase 1 (Months 1-3)",
-      desc: "Foundation building and business validation",
-    },
-    {
-      title: "Phase 2 (Months 4-6)",
-      desc: "Market validation and cash flow optimization",
-    },
-    {
-      title: "Phase 3 (Months 7-12)",
-      desc: "Growth preparation and scaling readiness",
-    },
-  ] as const;
-  const upgradeTrigger =
-    "$2,000+ MRR, 50+ customers, team expansion needs";
-
-  const sampleNotifications = [
-    { id: "n1", title: "Workflow completed", desc: "Lead onboarding flow ran successfully", type: "success", time: "2m" },
-    { id: "n2", title: "Approval requested", desc: "Budget increase requires approval", type: "warning", time: "1h" },
-    { id: "n3", title: "Incident resolved", desc: "Email deliverability stabilized", type: "info", time: "3h" },
-  ] as const;
-
-  const trendData = [
-    { month: "Jan", revenue: 12000, leads: 80, efficiency: 62 },
-    { month: "Feb", revenue: 14500, leads: 92, efficiency: 64 },
-    { month: "Mar", revenue: 16000, leads: 105, efficiency: 66 },
-    { month: "Apr", revenue: 17500, leads: 111, efficiency: 68 },
-    { month: "May", revenue: 19300, leads: 128, efficiency: 70 },
-    { month: "Jun", revenue: 20800, leads: 140, efficiency: 72 },
   ];
 
   const normalizeTier = (name: string): "solopreneur" | "startup" | "sme" | "enterprise" => {
@@ -630,8 +604,6 @@ export default function Landing() {
           </div>
         </div>
       </section>
-
-      <FreeTierPath growthPhases={growthPhases} upgradeTrigger={upgradeTrigger} />
 
       {/* CTA Section */}
       <section className="py-16 px-4 sm:px-6 lg:px-8 bg-gradient-to-r from-primary/10 via-accent/10 to-primary/10">
