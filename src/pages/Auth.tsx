@@ -168,8 +168,8 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">
             {authMode === "login"
-              ? "Use your email (OTP) or continue with Google."
-              : "Sign up with email (OTP) or continue with Google."}
+              ? "Use your email to get a one-time code or continue with Google."
+              : "Sign up with your email (one-time code) or continue with Google."}
           </p>
         </div>
 
@@ -188,7 +188,7 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
                     </div>
                     <CardTitle className="text-xl text-emerald-50">Get Started</CardTitle>
                     <CardDescription className="text-emerald-200">
-                      Enter your email to log in or sign up
+                      Enter your email and we'll send you a 6‑digit code to sign in or create your account.
                     </CardDescription>
                   </CardHeader>
                   <form onSubmit={handleEmailSubmit}>
