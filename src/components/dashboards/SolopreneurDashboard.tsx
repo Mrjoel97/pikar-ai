@@ -60,7 +60,7 @@ export function SolopreneurDashboard({
     const [activeTagFilter, setActiveTagFilter] = React.useState<"" | "content" | "offer" | "ops">("");
 
     // Add: inline save handler for typed idea
-    const handleSave = async () => {
+    const handleSaveIdea = async () => {
       if (!initiativeId) {
         toast("No initiative found. Run Phase 0 setup first.");
         return;
@@ -247,7 +247,7 @@ export function SolopreneurDashboard({
     }
 
     // Add: inline save handler for typed idea
-    const handleSave = async () => {
+    const handleSaveIdea = async () => {
       if (!initiativeId) {
         toast("No initiative found. Run Phase 0 setup first.");
         return;
@@ -459,11 +459,11 @@ export function SolopreneurDashboard({
         />
         <div className="flex justify-end gap-2">
           {summary && (
-            <Button variant="outline" onClick={handleSave} disabled={saving || !initiativeId}>
+            <Button variant="outline" onClick={handleSaveIdea} disabled={saving || !initiativeId}>
               {saving ? "Saving..." : "Save Voice Idea"}
             </Button>
           )}
-          <Button onClick={handleSave} disabled={saving || !initiativeId}>
+          <Button onClick={handleSaveIdea} disabled={saving || !initiativeId}>
             {saving ? "Saving..." : "Save Idea"}
           </Button>
         </div>
