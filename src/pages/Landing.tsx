@@ -28,6 +28,7 @@ import { Input } from "@/components/ui/input";
 import { Mail } from "lucide-react";
 import { useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
+import { useQuery } from "convex/react";
 import { useMemo } from "react";
 import React from "react";
 
@@ -247,6 +248,8 @@ export default function Landing() {
     // Show all industries randomized
     return shuffled;
   }, []);
+
+  const upgradeNudges = useQuery(api.telemetry.getUpgradeNudges, undefined);
 
   return (
     <motion.div
