@@ -1111,4 +1111,25 @@ export default defineSchema({
       })
     ),
   }).index("by_set", ["setId"]),
+
+  agentCatalog: defineTable({
+    agent_key: v.string(),
+    display_name: v.string(),
+    short_desc: v.string(),
+    long_desc: v.string(),
+    capabilities: v.array(v.string()),
+    default_model: v.string(),
+    model_routing: v.string(), // JSON string
+    prompt_template_version: v.string(),
+    prompt_templates: v.string(), // JSON string or large text
+    input_schema: v.string(), // JSON string
+    output_schema: v.string(), // JSON string
+    tier_restrictions: v.array(v.string()),
+    confidence_hint: v.number(),
+    active: v.boolean(),
+    createdAt: v.number(),
+    updatedAt: v.optional(v.number()),
+  })
+    .index("by_agent_key", ["agent_key"])
+    .index("by_active", ["active"]),
 });

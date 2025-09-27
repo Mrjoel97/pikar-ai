@@ -829,3 +829,346 @@ export const seedDemoData = mutation({
     };
   },
 });
+
+export const seedAgentCatalog = action({
+  args: {},
+  handler: async (ctx) => {
+    const now = Date.now();
+    type Row = {
+      agent_key: string;
+      display_name: string;
+      short_desc: string;
+      long_desc: string;
+      capabilities: string[];
+      default_model: string;
+      model_routing: string;
+      prompt_template_version: string;
+      prompt_templates: string;
+      input_schema: string;
+      output_schema: string;
+      tier_restrictions: string[];
+      confidence_hint: number;
+      active: boolean;
+    };
+
+    const rows: Array<Row> = [
+      {
+        agent_key: "strategic_planning",
+        display_name: "Strategic Planning Agent",
+        short_desc: "Market analysis, scenario planning, roadmaps and risk mitigation.",
+        long_desc:
+          "Performs market scans, SWOT, scenario modelling and creates prioritized roadmaps with confidence scoring and ownerable tasks.",
+        capabilities: ["market_scan", "swot", "scenario_modeling", "roadmap", "risk_assessment"],
+        default_model: "gpt-4",
+        model_routing: "{\"analysis\":\"gpt-4\",\"dialog\":\"gpt-3.5-turbo\"}",
+        prompt_template_version: "v1.0",
+        prompt_templates: `{
+          "v1.0": {
+            "template_id":"sp_v1.0",
+            "title":"Strategic Planning - Market Scan v1.0",
+            "description":"Produces SWOT + market-entry roadmap given inputs",
+            "prompt_text":"You are a senior strategy consultant. Given company_profile: {{company_profile}} and market_context: {{market_context}}, produce: {\\"summary\\":\\"50-120 words\\",\\"opportunities\\":[{\\"name\\":\\"\\",\\"impact_estimate\\\":0}],\\"swot\\":{\\"strengths\\\":[],\\"weaknesses\\\":[],\\"opportunities\\\":[],\\"threats\\\":[]},\\"roadmap\\\":[{\\"quarter\\\":\\"Q1\\",\\"action\\\":\\"\\",\\"owner\\\":\\"\\",\\"kpi\\\":\\"\\\"}] , \\"confidence\\\":0.0}. Use conservative numeric estimates where relevant. Return JSON only.",
+            "model":"gpt-4",
+            "temperature":0.2,
+            "max_tokens":1200,
+            "variables_schema":{"type":"object","properties":{"company_profile":{"type":"string"},"market_context":{"type":"string"}}}
+          }
+        }`,
+        input_schema: "{\"type\":\"object\",\"properties\":{\"company_profile\":{\"type\":\"string\"},\"market_context\":{\"type\":\"string\"}}}",
+        output_schema: "{\"type\":\"object\",\"required\":[\"summary\",\"opportunities\",\"swot\",\"roadmap\",\"confidence\"]}",
+        tier_restrictions: [],
+        confidence_hint: 0.80,
+        active: true
+      },
+      {
+        agent_key: "customer_support",
+        display_name: "Customer Support Agent",
+        short_desc: "Ticket triage, automated replies, KB search and escalation routing.",
+        long_desc:
+          "Classifies incoming tickets, retrieves KB matches via embeddings, drafts recommended replies, and selects escalation path when needed.",
+        capabilities: ["ticket_classification","automated_reply","kb_lookup","escalation","multilingual"],
+        default_model: "gpt-3.5-turbo",
+        model_routing: "{\"conversational\":\"gpt-3.5-turbo\",\"summarization\":\"gpt-4\"}",
+        prompt_template_version: "v1.0",
+        prompt_templates: `{
+          "v1.0": {
+            "template_id":"cs_v1.0",
+            "title":"Support triage + suggested reply",
+            "description":"Classify ticket, find KB links, draft reply, and set urgency",
+            "prompt_text":"You are a helpful support agent. Input: ticket_text: {{ticket_text}}, customer_metadata: {{customer_metadata}}, kb_documents: {{kb_documents}}. Output JSON: {\\"classification\\":\\"billing|technical|account|feature-request|other\\",\\"urgency\\":\\"low|medium|high\\",\\"kb_matches\\\":[{\\"id\\\":\\"...\\",\\"relevance\\\":0.0}],\\"reply_text\\\":\\"...\\",\\"confidence\\\":0.0}. Ensure reply uses company voice: friendly, concise, < 150 words.",
+            "model":"gpt-3.5-turbo",
+            "temperature":0.3,
+            "max_tokens":600,
+            "variables_schema":{"type":"object","properties":{"ticket_text":{"type":"string"},"customer_metadata":{"type":"object"},"kb_documents":{"type":"array"}}}
+          }
+        }`,
+        input_schema: "{\"type\":\"object\",\"properties\":{\"ticket_text\":{\"type\":\"string\"}}}",
+        output_schema: "{\"type\":\"object\",\"required\":[\"classification\",\"urgency\",\"reply_text\",\"confidence\"]}",
+        tier_restrictions: [],
+        confidence_hint: 0.70,
+        active: true
+      },
+      {
+        agent_key: "sales_intelligence",
+        display_name: "Sales Intelligence Agent",
+        short_desc: "Lead scoring, account profiling, playbooks and deal risk scoring.",
+        long_desc:
+          "Scores leads and accounts using integrated activity data and firmographics; recommends plays and assets for reps; surfaces risks.",
+        capabilities: ["lead_scoring","account_intel","playbook_recommendation","deal_risk"],
+        default_model: "gpt-4",
+        model_routing: "{\"analysis\":\"gpt-4\",\"conversation\":\"gpt-3.5-turbo\"}",
+        prompt_template_version: "v1.0",
+        prompt_templates: `{
+          "v1.0": {
+            "template_id":"si_v1.0",
+            "title":"Sales Intelligence - Lead Scoring v1.0",
+            "description":"Score leads and propose playbooks",
+            "prompt_text":"You are a sales analyst. Given lead_profile: {{lead_profile}} and account_history: {{account_history}}, produce {\\"lead_score\\":0.0,\\"risk_reasons\\\":[],\\"recommended_playbook\\\":[{\\"step\\\":\\"\\",\\"owner\\\":\\"\\",\\"cta\\\":\\"\\",\\"timing\\\":\\"\\\"}],\\"recommended_assets\\\":[],\\"confidence\\\":0.0}. Return JSON only.",
+            "model":"gpt-4",
+            "temperature":0.25,
+            "max_tokens":800,
+            "variables_schema":{"type":"object","properties":{"lead_profile":{"type":"object"},"account_history":{"type":"object"}}}
+          }
+        }`,
+        input_schema: "{\"type\":\"object\"}",
+        output_schema: "{\"type\":\"object\",\"required\":[\"lead_score\",\"recommended_playbook\",\"confidence\"]}",
+        tier_restrictions: [],
+        confidence_hint: 0.65,
+        active: true
+      },
+      {
+        agent_key: "content_creation",
+        display_name: "Content Creation Agent",
+        short_desc: "Generates multi-format content, enforces brand voice and SEO optimizations.",
+        long_desc:
+          "Creates blog posts, social posts, email copy and collateral; outputs structured content metadata and publishing plan.",
+        capabilities: ["blog_generation","social_posts","seo","brand_voice","a_b_variants"],
+        default_model: "gpt-4",
+        model_routing: "{\"creative\":\"gpt-4\",\"shortform\":\"gpt-3.5-turbo\"}",
+        prompt_template_version: "v1.0",
+        prompt_templates: `{
+          "v1.0": {
+            "template_id":"cc_v1.0",
+            "title":"Content Creation - Brief to Draft v1.0",
+            "description":"Create content from brief and brand voice",
+            "prompt_text":"You are a content studio assistant. Given brief: {{brief}} and brand_voice: {{brand_voice}}, produce {\\"title\\\":\\"\\",\\"meta_description\\\":\\"\\",\\"headings\\\":[],\\"body\\\":\\"\\",\\"seo_keywords\\\":[],\\"publish_plan\\\":[{\\"channel\\\":\\"\\",\\"cadence\\\":\\"\\\"}],\\"confidence\\\":0.0}. Return JSON only. Body should be markdown, 300-1200 words depending on requested length in brief.",
+            "model":"gpt-4",
+            "temperature":0.6,
+            "max_tokens":1200,
+            "variables_schema":{"type":"object","properties":{"brief":{"type":"string"},"brand_voice":{"type":"string"}}}
+          }
+        }`,
+        input_schema: "{\"type\":\"object\",\"properties\":{\"brief\":{\"type\":\"string\"},\"brand_voice\":{\"type\":\"string\"}}}",
+        output_schema: "{\"type\":\"object\",\"required\":[\"title\",\"body\",\"seo_keywords\"]}",
+        tier_restrictions: [],
+        confidence_hint: 0.65,
+        active: true
+      },
+      {
+        agent_key: "data_analysis",
+        display_name: "Data Analysis Agent",
+        short_desc: "Data summarization, forecasting, anomaly detection and natural-language reports.",
+        long_desc:
+          "Ingests dataset summaries or aggregates, runs explainable analysis, produces structured forecasts, anomalies list, and chart descriptors for visualization.",
+        capabilities: ["forecasting","anomaly_detection","etl_help","nl_reports","chart_summaries"],
+        default_model: "gpt-4",
+        model_routing: "{\"analysis\":\"gpt-4\",\"explain\":\"gpt-4\",\"dialog\":\"gpt-3.5-turbo\"}",
+        prompt_template_version: "v1.0",
+        prompt_templates: `{
+          "v1.0": {
+            "template_id":"da_v1.0",
+            "title":"Data Analysis - Forecast & Anomaly v1.0",
+            "description":"Analyze dataset summary and answer queries with forecasts & anomalies",
+            "prompt_text":"You are a data analyst. Input: dataset_summary: {{dataset_summary}} and query: {{analysis_query}}. Provide {\\"analysis_steps\\\":[\\"...\\"],\\"results\\":{\\"tables\\\":[],\\"charts\\":[]},\\"anomalies\\\":[],\\"forecast_12m\\\":0.0,\\"confidence\\\":0.0}. Return JSON only. Include clear units and assumptions.",
+            "model":"gpt-4",
+            "temperature":0.0,
+            "max_tokens":1500,
+            "variables_schema":{"type":"object","properties":{"dataset_summary":{"type":"object"},"analysis_query":{"type":"string"}}}
+          }
+        }`,
+        input_schema: "{\"type\":\"object\"}",
+        output_schema: "{\"type\":\"object\",\"required\":[\"analysis_steps\",\"forecast_12m\",\"confidence\"]}",
+        tier_restrictions: [],
+        confidence_hint: 0.75,
+        active: true
+      },
+      {
+        agent_key: "marketing_automation",
+        display_name: "Marketing Automation Agent",
+        short_desc: "Designs campaign flows, personalization and budget allocation suggestions.",
+        long_desc:
+          "Creates multi-touch campaign flows with triggers, KPIs and personalization slots. Integrates with CampaignComposer to seed campaigns.",
+        capabilities: ["campaign_design","attribution","personalization","budgeting"],
+        default_model: "gpt-4",
+        model_routing: "{\"planning\":\"gpt-4\",\"copy\":\"gpt-3.5-turbo\"}",
+        prompt_template_version: "v1.0",
+        prompt_templates: `{
+          "v1.0": {
+            "template_id":"ma_v1.0",
+            "title":"Marketing Automation - Campaign Planner v1.0",
+            "description":"Plan campaign flows and KPIs",
+            "prompt_text":"You are a marketing automation planner. Input: campaign_objectives: {{objectives}}, audience_profile: {{audience}}. Output {\\"campaign_flow\\\":[{\\"trigger\\\":\\"\\",\\"action\\\":\\"\\",\\"timing\\\":\\"\\\"}],\\"budget_estimate\\\":0.0,\\"KPIs\\\":[\\"\\"] ,\\"personalization_slots\\\":[],\\"confidence\\\":0.0}. Return JSON only.",
+            "model":"gpt-4",
+            "temperature":0.35,
+            "max_tokens":900,
+            "variables_schema":{"type":"object","properties":{"objectives":{"type":"object"},"audience":{"type":"object"}}}
+          }
+        }`,
+        input_schema: "{\"type\":\"object\"}",
+        output_schema: "{\"type\":\"object\",\"required\":[\"campaign_flow\",\"budget_estimate\",\"KPIs\"]}",
+        tier_restrictions: [],
+        confidence_hint: 0.65,
+        active: true
+      },
+      {
+        agent_key: "financial_analysis",
+        display_name: "Financial Analysis Agent",
+        short_desc: "Revenue/cashflow forecasting, scenario analysis and pricing insights.",
+        long_desc:
+          "Produces P&L and cash-flow forecasts, sensitivity/scenario matrices, and identifies key financial risks for projects and product lines.",
+        capabilities: ["pnl_forecast","cash_flow","scenario_modeling","pricing"],
+        default_model: "gpt-4",
+        model_routing: "{\"modeling\":\"gpt-4\",\"explain\":\"gpt-4\"}",
+        prompt_template_version: "v1.0",
+        prompt_templates: `{
+          "v1.0": {
+            "template_id":"fa_v1.0",
+            "title":"Financial Analysis - 12m P&L & Scenarios v1.0",
+            "description":"Generate income statement, cash flow and scenario analysis",
+            "prompt_text":"You are a financial analyst. Input: forecast_inputs: {{inputs}}. Output {\\"income_statement_12m\\\":[],\\"cash_flow_12m\\\":[],\\"scenario_analysis\\":{\\"best\\":{},\\"base\\":{},\\"worst\\":{}},\\"risk_factors\\\":[],\\"confidence\\\":0.0}. Return JSON only with numeric fields.",
+            "model":"gpt-4",
+            "temperature":0.0,
+            "max_tokens":1300,
+            "variables_schema":{"type":"object","properties":{"inputs":{"type":"object"}}}
+          }
+        }`,
+        input_schema: "{\"type\":\"object\"}",
+        output_schema: "{\"type\":\"object\",\"required\":[\"income_statement_12m\",\"cash_flow_12m\",\"scenario_analysis\",\"confidence\"]}",
+        tier_restrictions: ["startup","sme","enterprise"],
+        confidence_hint: 0.75,
+        active: true
+      },
+      {
+        agent_key: "operations_optimization",
+        display_name: "Operations Optimization Agent",
+        short_desc: "Process mining, bottleneck analysis and throughput improvements.",
+        long_desc:
+          "Analyzes process maps and production metrics, prioritizes optimization actions, and returns monitoring KPIs and rollout plans.",
+        capabilities: ["process_mining","bottleneck_analysis","throughput","automation_suggestions"],
+        default_model: "gpt-4",
+        model_routing: "{\"analysis\":\"gpt-4\",\"explain\":\"gpt-3.5-turbo\"}",
+        prompt_template_version: "v1.0",
+        prompt_templates: `{
+          "v1.0": {
+            "template_id":"oo_v1.0",
+            "title":"Operations Optimization - Bottleneck Finder v1.0",
+            "description":"Identify bottlenecks and recommend optimizations",
+            "prompt_text":"You are an operations engineer. Input: process_map: {{process_map}}, metrics: {{metrics}}. Output {\\"bottlenecks\\\":[],\\"optimization_actions\\\":[{\\"action\\\":\\"\\",\\"impact_est\\\":0.0,\\"effort_est\\\":\\"low|medium|high\\"}],\\"monitoring_kpis\\\":[],\\"rollout_plan\\\":[],\\"confidence\\\":0.0}. Return JSON only.",
+            "model":"gpt-4",
+            "temperature":0.2,
+            "max_tokens":1000,
+            "variables_schema":{"type":"object","properties":{"process_map":{"type":"object"},"metrics":{"type":"object"}}}
+          }
+        }`,
+        input_schema: "{\"type\":\"object\"}",
+        output_schema: "{\"type\":\"object\",\"required\":[\"bottlenecks\",\"optimization_actions\",\"confidence\"]}",
+        tier_restrictions: ["enterprise","sme"],
+        confidence_hint: 0.70,
+        active: true
+      },
+      {
+        agent_key: "compliance_risk",
+        display_name: "Compliance & Risk Agent",
+        short_desc: "Regulatory monitoring, policy validation and remediation steps with citations.",
+        long_desc:
+          "Evaluates planned activities against jurisdictional regulations, lists issues, and provides remediation steps with referenced source links when available.",
+        capabilities: ["regulatory_check","policy_validation","risk_scoring","audit_trail"],
+        default_model: "gpt-4",
+        model_routing: "{\"validation\":\"gpt-4\",\"citation_helper\":\"gpt-4\"}",
+        prompt_template_version: "v1.0",
+        prompt_templates: `{
+          "v1.0": {
+            "template_id":"cr_v1.0",
+            "title":"Compliance Check - Jurisdictional Validation v1.0",
+            "description":"Validate activity against regulatory constraints and return remediation",
+            "prompt_text":"You are a compliance analyst. Input: jurisdiction: {{jurisdiction}}, activity: {{activity}}. Output {\\"compliance_pass\\":true|false,\\"issues\\\":[],\\"remediation_steps\\\":[],\\"reference_links\\\":[],\\"confidence\\\":0.0}. Where possible include citations as reference_links. Return JSON only.",
+            "model":"gpt-4",
+            "temperature":0.0,
+            "max_tokens":1000,
+            "variables_schema":{"type":"object","properties":{"jurisdiction":{"type":"string"},"activity":{"type":"string"}}}
+          }
+        }`,
+        input_schema: "{\"type\":\"object\"}",
+        output_schema: "{\"type\":\"object\",\"required\":[\"compliance_pass\",\"issues\",\"confidence\"]}",
+        tier_restrictions: ["enterprise"],
+        confidence_hint: 0.85,
+        active: true
+      },
+      {
+        agent_key: "hr_recruitment",
+        display_name: "HR & Recruitment Agent",
+        short_desc: "Candidate screening, fit scoring, interview questions and retention risk prediction.",
+        long_desc:
+          "Scores resumes against role specs, suggests interview questions, identifies skills gaps and recommends hiring stage decisions.",
+        capabilities: ["resume_screening","fit_scoring","interview_questions","retention_risk"],
+        default_model: "gpt-3.5-turbo",
+        model_routing: "{\"screening\":\"gpt-3.5-turbo\",\"analysis\":\"gpt-4\"}",
+        prompt_template_version: "v1.0",
+        prompt_templates: `{
+          "v1.0": {
+            "template_id":"hr_v1.0",
+            "title":"HR Screening - Resume Fit v1.0",
+            "description":"Screen resume for role fit and suggest questions",
+            "prompt_text":"You are an HR screener. Input: resume_text: {{resume_text}}, role_spec: {{role_spec}}. Output {\\"fit_score\\":0.0,\\"strengths\\\":[],\\"gaps\\\":[],\\"suggested_interview_questions\\\":[],\\"recommended_stage\\":\\"phone_screen|onsite|reject\\",\\"confidence\\\":0.0}. Return JSON only.",
+            "model":"gpt-3.5-turbo",
+            "temperature":0.3,
+            "max_tokens":700,
+            "variables_schema":{"type":"object","properties":{"resume_text":{"type":"string"},"role_spec":{"type":"string"}}}
+          }
+        }`,
+        input_schema: "{\"type\":\"object\"}",
+        output_schema: "{\"type\":\"object\",\"required\":[\"fit_score\",\"recommended_stage\",\"confidence\"]}",
+        tier_restrictions: [],
+        confidence_hint: 0.65,
+        active: true
+      },
+    ];
+
+    let upserts = 0;
+    for (const r of rows) {
+      const existing = await ctx.db
+        .query("agentCatalog")
+        .withIndex("by_agent_key", (q) => q.eq("agent_key", r.agent_key))
+        .unique()
+        .catch(() => null);
+
+      if (existing) {
+        await ctx.db.patch(existing._id, {
+          display_name: r.display_name,
+          short_desc: r.short_desc,
+          long_desc: r.long_desc,
+          capabilities: r.capabilities,
+          default_model: r.default_model,
+          model_routing: r.model_routing,
+          prompt_template_version: r.prompt_template_version,
+          prompt_templates: r.prompt_templates,
+          input_schema: r.input_schema,
+          output_schema: r.output_schema,
+          tier_restrictions: r.tier_restrictions,
+          confidence_hint: r.confidence_hint,
+          active: r.active,
+          updatedAt: now,
+        });
+      } else {
+        await ctx.db.insert("agentCatalog", {
+          ...r,
+          createdAt: now,
+          updatedAt: now,
+        });
+      }
+      upserts += 1;
+    }
+
+    return { message: "Agent catalog seeded", count: upserts, ts: now };
+  },
+});
