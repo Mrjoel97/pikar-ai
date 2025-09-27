@@ -1948,6 +1948,13 @@ Renamed to avoid duplicate identifier collisions elsewhere in the file */
     isGuest || !business?._id ? undefined : { businessId: business._id }
   );
 
+  // Add near other hooks/state inside component:
+  const solTier = "solopreneur";
+  const solFlags = useQuery(api.featureFlags.getFeatureFlags, {});
+  const solAgents = useQuery(api.aiAgents.listRecommendedByTier, { tier: solTier, limit: 3 });
+  const solAgentsEnabled = !!solFlags?.find(f => f.flagName === "solopreneur_quick_actions")?.isEnabled;
+  const nav = useNavigate();
+
   return (
     <motion.div
       className="space-y-4"
@@ -2054,6 +2061,58 @@ Renamed to avoid duplicate identifier collisions elsewhere in the file */
           Schedule Assistant
         </Button>
       </div>
+
+      {/* Recommended Agents — Quick Actions (flag gated) */}
+      {solAgentsEnabled && Array.isArray(solAgents) && solAgents.length > 0 && (
+        <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {solAgents.map(a => (
+            <Button
+              key={a.agent_key}
+              variant="secondary"
+              className="justify-start"
+              onClick={() => nav(`/agents?agent=${encodeURIComponent(a.agent_key)}`)}
+              title={a.short_desc}
+            >
+              {a.display_name}
+            </Button>
+          ))}
+        </div>
+      )}
+
+      {/* Template Gallery defaults — small chip strip */}
+      {Array.isArray(solAgents) && solAgents.length > 0 && (
+        <div className="mt-3 flex flex-wrap gap-2">
+          {solAgents.map(a => (
+            <Button
+              key={`tg-${a.agent_key}`}
+              size="sm"
+              variant="outline"
+              onClick={() => nav(`/agents?agent=${encodeURIComponent(a.agent_key)}`)}
+            >
+              Use with {a.display_name}
+            </Button>
+          ))}
+        </div>
+      )}
+
+      {/* Agent Insights — concise card */}
+      {Array.isArray(solAgents) && solAgents[0] && (
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle>My Agent Insights</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="text-sm text-muted-foreground">
+              {solAgents[0].short_desc}
+            </div>
+            <div>
+              <Button onClick={() => nav(`/agents?agent=${encodeURIComponent(solAgents[0].agent_key)}`)}>
+                Open {solAgents[0].display_name}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Agent Profile v2 (local) */}
       <section>

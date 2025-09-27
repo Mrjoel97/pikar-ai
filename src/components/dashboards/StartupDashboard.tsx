@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import CampaignComposer from "@/components/email/CampaignComposer";
 import { Suspense } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useNavigate } from "react-router";
 
 interface StartupDashboardProps {
   business: any;
@@ -113,6 +114,12 @@ const pendingApprovals = useQuery(
   const tierRank: Record<string, number> = { solopreneur: 1, startup: 2, sme: 3, enterprise: 4 };
   const hasTier = (required: keyof typeof tierRank) =>
     (tierRank[tier as keyof typeof tierRank] ?? 1) >= tierRank[required];
+
+  const startupTier = "startup";
+  const startupFlags = useQuery(api.featureFlags.getFeatureFlags, {});
+  const startupAgents = useQuery(api.aiAgents.listRecommendedByTier, { tier: startupTier, limit: 3 });
+  const startupAgentsEnabled = !!startupFlags?.find((f: any) => f.flagName === "startup_growth_panels")?.isEnabled;
+  const nav = useNavigate();
 
   const LockedRibbon = ({ label = "Feature requires upgrade" }: { label?: string }) => (
     <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -722,6 +729,55 @@ const pendingApprovals = useQuery(
       {!isGuest && business?._id ? (
         <BrainDumpSection businessId={String(business._id)} />
       ) : null}
+
+      {startupAgentsEnabled && Array.isArray(startupAgents) && startupAgents.length > 0 && (
+        <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {startupAgents.map(a => (
+            <Button
+              key={a.agent_key}
+              variant="secondary"
+              className="justify-start"
+              onClick={() => nav(`/agents?agent=${encodeURIComponent(a.agent_key)}`)}
+              title={a.short_desc}
+            >
+              {a.display_name}
+            </Button>
+          ))}
+        </div>
+      )}
+
+      {Array.isArray(startupAgents) && startupAgents.length > 0 && (
+        <div className="mt-3 flex flex-wrap gap-2">
+          {startupAgents.map(a => (
+            <Button
+              key={`tg-${a.agent_key}`}
+              size="sm"
+              variant="outline"
+              onClick={() => nav(`/agents?agent=${encodeURIComponent(a.agent_key)}`)}
+            >
+              Use with {a.display_name}
+            </Button>
+          ))}
+        </div>
+      )}
+
+      {Array.isArray(startupAgents) && startupAgents[0] && (
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle>Agent Insights</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="text-sm text-muted-foreground">
+              {startupAgents[0].short_desc}
+            </div>
+            <div>
+              <Button onClick={() => nav(`/agents?agent=${encodeURIComponent(startupAgents[0].agent_key)}`)}>
+                Open {startupAgents[0].display_name}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -10,6 +10,7 @@ import { useMutation, useQuery as useConvexQuery } from "convex/react";
 import { toast } from "sonner";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
+import { useNavigate } from "react-router";
 
 interface EnterpriseDashboardProps {
   business: any;
@@ -261,6 +262,12 @@ export function EnterpriseDashboard({
       </section>
     );
   }
+
+  const entTier = "enterprise";
+  const entFlags = useQuery(api.featureFlags.getFeatureFlags, {});
+  const entAgents = useQuery(api.aiAgents.listRecommendedByTier, { tier: entTier, limit: 3 });
+  const entAgentsEnabled = !!entFlags?.find((f: any) => f.flagName === "enterprise_governance")?.isEnabled;
+  const nav = useNavigate();
 
   return (
     <div className="space-y-6">
@@ -805,6 +812,55 @@ export function EnterpriseDashboard({
       {!isGuest && business?._id ? (
         <BrainDumpSection businessId={String(business._id)} />
       ) : null}
+
+      {entAgentsEnabled && Array.isArray(entAgents) && entAgents.length > 0 && (
+        <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {entAgents.map(a => (
+            <Button
+              key={a.agent_key}
+              variant="secondary"
+              className="justify-start"
+              onClick={() => nav(`/agents?agent=${encodeURIComponent(a.agent_key)}`)}
+              title={a.short_desc}
+            >
+              {a.display_name}
+            </Button>
+          ))}
+        </div>
+      )}
+
+      {Array.isArray(entAgents) && entAgents.length > 0 && (
+        <div className="mt-3 flex flex-wrap gap-2">
+          {entAgents.map(a => (
+            <Button
+              key={`tg-${a.agent_key}`}
+              size="sm"
+              variant="outline"
+              onClick={() => nav(`/agents?agent=${encodeURIComponent(a.agent_key)}`)}
+            >
+              Use with {a.display_name}
+            </Button>
+          ))}
+        </div>
+      )}
+
+      {Array.isArray(entAgents) && entAgents[0] && (
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle>Executive Agent Insights</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="text-sm text-muted-foreground">
+              {entAgents[0].short_desc}
+            </div>
+            <div>
+              <Button onClick={() => nav(`/agents?agent=${encodeURIComponent(entAgents[0].agent_key)}`)}>
+                Open {entAgents[0].display_name}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

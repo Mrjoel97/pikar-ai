@@ -167,6 +167,41 @@ export const summarizeUploads = query({
   },
 });
 
+// Add: listRecommendedByTier public query
+export const listRecommendedByTier = query({
+  args: {
+    tier: v.string(),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const limit = args.limit ?? 4;
+    const results: Array<{
+      agent_key: string;
+      display_name: string;
+      short_desc: string;
+    }> = [];
+
+    // Query by "active" index then take first N matching tier (or global) agents
+    const iter = ctx.db
+      .query("agentCatalog")
+      .withIndex("by_active", (q) => q.eq("active", true))
+      .order("desc");
+
+    for await (const row of iter) {
+      const tiers = (row.tier_restrictions ?? []) as string[];
+      if (tiers.length > 0 && !tiers.includes(args.tier)) continue;
+      results.push({
+        agent_key: row.agent_key,
+        display_name: row.display_name,
+        short_desc: row.short_desc,
+      });
+      if (results.length >= limit) break;
+    }
+
+    return results;
+  },
+});
+
 // Compute quick micro-analytics (90d revenue, top products by margin, churn alert)
 export const runQuickAnalytics = query({
   args: {

@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import * as React from "react";
+import { useNavigate } from "react-router";
 
 interface SmeDashboardProps {
   business: any;
@@ -117,6 +118,12 @@ export function SmeDashboard({
     api.telemetry.getUpgradeNudges,
     isGuest || !business?._id ? undefined : { businessId: business._id }
   );
+
+  const smeTier = "sme";
+  const smeFlags = useQuery(api.featureFlags.getFeatureFlags, {});
+  const smeAgents = useQuery(api.aiAgents.listRecommendedByTier, { tier: smeTier, limit: 3 });
+  const smeAgentsEnabled = !!smeFlags?.find((f: any) => f.flagName === "sme_insights")?.isEnabled;
+  const nav = useNavigate();
 
   function BrainDumpSection({ businessId }: { businessId: string }) {
     const initiatives = useQuery(
@@ -672,6 +679,55 @@ export function SmeDashboard({
           </CardContent>
         </Card>
       </div>
+
+      {smeAgentsEnabled && Array.isArray(smeAgents) && smeAgents.length > 0 && (
+        <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {smeAgents.map(a => (
+            <Button
+              key={a.agent_key}
+              variant="secondary"
+              className="justify-start"
+              onClick={() => nav(`/agents?agent=${encodeURIComponent(a.agent_key)}`)}
+              title={a.short_desc}
+            >
+              {a.display_name}
+            </Button>
+          ))}
+        </div>
+      )}
+
+      {Array.isArray(smeAgents) && smeAgents.length > 0 && (
+        <div className="mt-3 flex flex-wrap gap-2">
+          {smeAgents.map(a => (
+            <Button
+              key={`tg-${a.agent_key}`}
+              size="sm"
+              variant="outline"
+              onClick={() => nav(`/agents?agent=${encodeURIComponent(a.agent_key)}`)}
+            >
+              Use with {a.display_name}
+            </Button>
+          ))}
+        </div>
+      )}
+
+      {Array.isArray(smeAgents) && smeAgents[0] && (
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle>Agent Insights</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="text-sm text-muted-foreground">
+              {smeAgents[0].short_desc}
+            </div>
+            <div>
+              <Button onClick={() => nav(`/agents?agent=${encodeURIComponent(smeAgents[0].agent_key)}`)}>
+                Open {smeAgents[0].display_name}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
