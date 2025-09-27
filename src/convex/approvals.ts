@@ -526,31 +526,39 @@ export const pendingForBusiness = query({
 // Add: SLA summary for dashboards (overdue and due soon within 2h)
 export const getSlaSummary = query({
   args: {
-    businessId: v.id("businesses"),
+    businessId: v.optional(v.id("businesses")),
   },
-  handler: async (ctx, { businessId }) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
+  handler: async (ctx, args) => {
+    // Guest-safe default if no tenant context is available
+    if (!args.businessId) {
+      return { overdue: 0, dueSoon: 0 };
+    }
+
+    // Narrow type for index usage after guard above
+    const businessId: Id<"businesses"> = args.businessId;
 
     const now = Date.now();
+    // Query approvals for this business and compute SLA counts
     const approvals = await ctx.db
       .query("approvalQueue")
       .withIndex("by_business", (q) => q.eq("businessId", businessId))
-      .filter((q) => q.eq(q.field("status"), "pending"))
-      .collect();
+      .take(500);
 
-    const overdue = approvals.filter(a => a.slaDeadline && a.slaDeadline < now);
-    const dueSoon = approvals.filter(a => 
-      a.slaDeadline && 
-      a.slaDeadline >= now && 
-      a.slaDeadline < now + (2 * 60 * 60 * 1000) // Due within 2 hours
-    );
+    let overdue = 0;
+    let dueSoon = 0;
 
-    return {
-      total: approvals.length,
-      overdue: overdue.length,
-      dueSoon: dueSoon.length,
-    };
+    for (const a of approvals) {
+      const deadline = (a as any).slaDeadline as number | undefined;
+      if (typeof deadline === "number") {
+        if (deadline < now) {
+          overdue++;
+        } else if (deadline - now <= 24 * 60 * 60 * 1000) {
+          dueSoon++;
+        }
+      }
+    }
+
+    return { overdue, dueSoon };
   },
 });
 
