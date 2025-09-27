@@ -15,7 +15,8 @@ const CAP_MAP: Record<string, Caps> = {
 };
 
 function resolveTier(tier?: string): keyof typeof CAP_MAP {
-  if (tier === "startup" || tier === "sme" || tier === "enterprise") return tier;
+  if (tier === "startup" || tier === "sme" || tier === "enterprise")
+    return tier;
   return "solopreneur";
 }
 

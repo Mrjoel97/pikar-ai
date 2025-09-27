@@ -38,14 +38,14 @@ export function SmeDashboard({
   const pendingApprovals = useQuery(
     api.approvals.getApprovalQueue,
     isGuest || !businessId
-      ? "skip"
+      ? undefined
       : { businessId, status: "pending" as const }
   );
 
   const auditHighlights = useQuery(
     api.audit.listForBusiness,
     isGuest || !businessId
-      ? "skip"
+      ? undefined
       : { businessId, limit: 5 }
   );
 
@@ -121,14 +121,14 @@ export function SmeDashboard({
   function BrainDumpSection({ businessId }: { businessId: string }) {
     const initiatives = useQuery(
       api.initiatives.getByBusiness as any,
-      businessId ? { businessId } : "skip"
+      businessId ? { businessId } : undefined
     );
     const initiativeId =
       initiatives && initiatives.length > 0 ? initiatives[0]._id : null;
 
     const dumps = useQuery(
       api.initiatives.listBrainDumpsByInitiative as any,
-      initiativeId ? { initiativeId, limit: 10 } : "skip"
+      initiativeId ? { initiativeId, limit: 10 } : undefined
     );
     const addDump = useMutation(api.initiatives.addBrainDump as any);
 
@@ -210,7 +210,7 @@ export function SmeDashboard({
         <div className="rounded-md border p-3 bg-amber-50 flex items-center gap-3">
           <Badge variant="outline" className="border-amber-300 text-amber-700">Upgrade</Badge>
           <div className="text-sm">
-            {upgradeNudges.nudges?.[0]?.message || "Unlock more workflows and premium analytics."}
+            {upgradeNudges.nudges?.[0]?.reason || "Unlock more workflows and premium analytics."}
           </div>
           <div className="ml-auto">
             <Button size="sm" variant="outline" onClick={onUpgrade}>See Plans</Button>
@@ -242,7 +242,7 @@ export function SmeDashboard({
           <Card>
             <CardContent className="p-4">
               <div className="text-sm text-muted-foreground">Risk Alerts</div>
-              <div className="text-2xl font-bold">{slaSummary && slaSummary !== "skip" ? (slaSummary.overdue + slaSummary.dueSoon) : (isGuest ? 3 : 0)}</div>
+              <div className="text-2xl font-bold">{slaSummary ? (slaSummary.overdue + slaSummary.dueSoon) : (isGuest ? 3 : 0)}</div>
             </CardContent>
           </Card>
         </div>
@@ -450,7 +450,7 @@ export function SmeDashboard({
         <h2 className="text-xl font-semibold mb-4">Department Views</h2>
         <div className="mb-4 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
           <div className="text-sm text-muted-foreground">
-            {slaSummary && slaSummary !== "skip"
+            {slaSummary
               ? `SLA: ${slaSummary.overdueCount} overdue, ${slaSummary.dueSoonCount} due soon`
               : null}
           </div>

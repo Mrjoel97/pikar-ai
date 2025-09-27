@@ -1,6 +1,6 @@
 "use node";
 
-import { action, internalMutation, internalQuery } from "./_generated/server";
+import { action } from "./_generated/server";
 import { v } from "convex/values";
 import { randomBytes, scryptSync } from "crypto";
 import { internal } from "./_generated/api";
@@ -17,111 +17,21 @@ function verifyPassword(password: string, hash: string, salt: string): boolean {
   return testHash === hash;
 }
 
-// Export internal queries and mutations so they are registered and callable via `internal.passwordAuth.*`
-export const getCredentialByEmail = internalQuery({
-  args: { email: v.string() },
-  handler: async (ctx, args) => {
-    return await ctx.db
-      .query("userCredentials")
-      .withIndex("by_email", (q) => q.eq("email", args.email.toLowerCase()))
-      .unique();
-  },
-});
+/** moved to passwordAuthData.ts: getCredentialByEmail */
 
-export const setCredential = internalMutation({
-  args: {
-    email: v.string(),
-    passwordHash: v.string(),
-    createdAt: v.number(),
-    updatedAt: v.number(),
-  },
-  handler: async (ctx, args) => {
-    return await ctx.db.insert("userCredentials", args);
-  },
-});
+/** moved to passwordAuthData.ts: setCredential */
 
-export const setResetToken = internalMutation({
-  args: {
-    email: v.string(),
-    token: v.string(),
-    expires: v.number(),
-  },
-  handler: async (ctx, args) => {
-    const existing = await ctx.runQuery(internal.passwordAuth.getCredentialByEmail, {
-      email: args.email,
-    });
-    if (!existing) throw new Error("No account found");
+/** moved to passwordAuthData.ts: setResetToken */
 
-    await ctx.db.patch(existing._id, {
-      passwordResetToken: args.token,
-      passwordResetExpires: args.expires,
-      updatedAt: Date.now(),
-    });
-  },
-});
+/** moved to passwordAuthData.ts: clearReset */
 
-export const clearReset = internalMutation({
-  args: { email: v.string() },
-  handler: async (ctx, args) => {
-    const existing = await ctx.runQuery(internal.passwordAuth.getCredentialByEmail, {
-      email: args.email,
-    });
-    if (!existing) return;
-
-    await ctx.db.patch(existing._id, {
-      passwordResetToken: undefined,
-      passwordResetExpires: undefined,
-      updatedAt: Date.now(),
-    });
-  },
-});
-
-export const createLoginToken = internalMutation({
-  args: {
-    email: v.string(),
-    token: v.string(),
-    expiresAt: v.number(),
-  },
-  handler: async (ctx, args) => {
-    return await ctx.db.insert("userLoginTokens", {
-      ...args,
-      createdAt: Date.now(),
-    });
-  },
-});
+/** moved to passwordAuthData.ts: createLoginToken */
 
 // New internal helper to find a credential by reset token (actions can't access db directly)
-export const getCredentialByResetToken = internalQuery({
-  args: { token: v.string() },
-  handler: async (ctx, args) => {
-    for await (const cred of ctx.db.query("userCredentials")) {
-      if (
-        cred.passwordResetToken === args.token &&
-        cred.passwordResetExpires &&
-        cred.passwordResetExpires > Date.now()
-      ) {
-        return cred;
-      }
-    }
-    return null;
-  },
-});
+/** moved to passwordAuthData.ts: getCredentialByResetToken */
 
 // New internal helper to update password hash by credential id
-export const updateCredentialHash = internalMutation({
-  args: {
-    id: v.id("userCredentials"),
-    passwordHash: v.string(),
-  },
-  handler: async (ctx, args) => {
-    await ctx.db.patch(args.id, {
-      passwordHash: args.passwordHash,
-      updatedAt: Date.now(),
-      passwordResetToken: undefined,
-      passwordResetExpires: undefined,
-    });
-  },
-});
+/** moved to passwordAuthData.ts: updateCredentialHash */
 
 // Public actions (now calling internal.* via ctx.runQuery/ctx.runMutation)
 
@@ -142,7 +52,7 @@ export const signUpPassword = action({
     }
 
     // Check if credential already exists
-    const existing = await ctx.runQuery(internal.passwordAuth.getCredentialByEmail, {
+    const existing = await ctx.runQuery(internal.passwordAuthData.getCredentialByEmail, {
       email,
     });
     if (existing) {
@@ -155,7 +65,7 @@ export const signUpPassword = action({
 
     // Store credential
     const now = Date.now();
-    await ctx.runMutation(internal.passwordAuth.setCredential, {
+    await ctx.runMutation(internal.passwordAuthData.setCredential, {
       email,
       passwordHash,
       createdAt: now,
@@ -174,7 +84,7 @@ export const loginPassword = action({
   handler: async (ctx, args) => {
     const email = args.email.toLowerCase().trim();
 
-    const credential = await ctx.runQuery(internal.passwordAuth.getCredentialByEmail, {
+    const credential = await ctx.runQuery(internal.passwordAuthData.getCredentialByEmail, {
       email,
     });
     if (!credential) {
@@ -191,7 +101,7 @@ export const loginPassword = action({
     const token = randomBytes(32).toString("hex");
     const expiresAt = Date.now() + 15 * 60 * 1000; // 15 minutes
 
-    await ctx.runMutation(internal.passwordAuth.createLoginToken, {
+    await ctx.runMutation(internal.passwordAuthData.createLoginToken, {
       email,
       token,
       expiresAt,
@@ -206,7 +116,7 @@ export const requestPasswordReset = action({
   handler: async (ctx, args) => {
     const email = args.email.toLowerCase().trim();
 
-    const credential = await ctx.runQuery(internal.passwordAuth.getCredentialByEmail, {
+    const credential = await ctx.runQuery(internal.passwordAuthData.getCredentialByEmail, {
       email,
     });
     if (!credential) {
@@ -220,7 +130,7 @@ export const requestPasswordReset = action({
     const token = randomBytes(32).toString("hex");
     const expires = Date.now() + 60 * 60 * 1000; // 1 hour
 
-    await ctx.runMutation(internal.passwordAuth.setResetToken, { email, token, expires });
+    await ctx.runMutation(internal.passwordAuthData.setResetToken, { email, token, expires });
 
     // For dev: return token directly
     // In production: send email via emailsActions
@@ -240,7 +150,7 @@ export const resetPassword = action({
 
     // Find credential by reset token (via internal query)
     const credential = await ctx.runQuery(
-      internal.passwordAuth.getCredentialByResetToken,
+      internal.passwordAuthData.getCredentialByResetToken,
       { token: args.token },
     );
     if (!credential) {
@@ -251,7 +161,7 @@ export const resetPassword = action({
     const { hash, salt } = hashPassword(args.newPassword);
     const passwordHash = `${salt}:${hash}`;
 
-    await ctx.runMutation(internal.passwordAuth.updateCredentialHash, {
+    await ctx.runMutation(internal.passwordAuthData.updateCredentialHash, {
       id: credential._id,
       passwordHash,
     });
