@@ -10,7 +10,7 @@ const evalTestValidator = v.object({
   expectedContains: v.optional(v.string()), // simple expectation check
 });
 
-export default defineSchema({
+const schema = defineSchema({
   users: defineTable({
     // Make legacy fields compatible and optional
     name: v.optional(v.string()),
@@ -1212,71 +1212,5 @@ export default defineSchema({
     .index("by_agent_link", ["title"]) // lightweight generic index to support listings
     .index("by_status", ["status"]),
 });
-export const schema = defineSchema({
-  // ... keep existing code (all current tables)
 
-  agentVersions: defineTable({
-    agent_key: v.string(),
-    version: v.string(), // e.g., 'v1-<timestamp>'
-    snapshot: v.object({
-      agent_key: v.string(),
-      display_name: v.string(),
-      short_desc: v.string(),
-      long_desc: v.string(),
-      capabilities: v.array(v.string()),
-      default_model: v.string(),
-      model_routing: v.string(),
-      prompt_template_version: v.string(),
-      prompt_templates: v.string(),
-      input_schema: v.string(),
-      output_schema: v.string(),
-      tier_restrictions: v.array(v.string()),
-      confidence_hint: v.number(),
-      active: v.boolean(),
-      createdAt: v.number(),
-      updatedAt: v.optional(v.number()),
-    }),
-    createdAt: v.number(),
-    createdBy: v.optional(v.id("users")),
-    note: v.optional(v.string()),
-  })
-    .index("by_agent_key", ["agent_key"])
-    .index("by_agent_key_and_version", ["agent_key", "version"]),
-
-  playbookVersions: defineTable({
-    playbook_key: v.string(),
-    version: v.string(),
-    snapshot: v.object({
-      playbook_key: v.string(),
-      display_name: v.string(),
-      version: v.string(),
-      triggers: v.any(),
-      input_schema: v.any(),
-      output_schema: v.any(),
-      steps: v.any(),
-      metadata: v.any(),
-      active: v.boolean(),
-    }),
-    createdAt: v.number(),
-    createdBy: v.optional(v.id("users")),
-    note: v.optional(v.string()),
-  })
-    .index("by_playbook_key", ["playbook_key"])
-    .index("by_playbook_key_and_version", ["playbook_key", "version"]),
-
-  agentDatasets: defineTable({
-    title: v.string(),
-    sourceType: v.union(v.literal("url"), v.literal("note")), // keep lightweight
-    sourceUrl: v.optional(v.string()),
-    noteText: v.optional(v.string()),
-    linkedAgentKeys: v.array(v.string()), // agent_key references
-    businessScope: v.optional(v.id("businesses")),
-    createdAt: v.number(),
-    createdBy: v.optional(v.id("users")),
-    status: v.optional(v.union(v.literal("new"), v.literal("ready"))),
-  })
-    .index("by_createdAt", ["createdAt"])
-    .index("by_agent_link", ["title"]) // lightweight generic index to support listings
-    .index("by_status", ["status"]),
-});
 export default schema;
