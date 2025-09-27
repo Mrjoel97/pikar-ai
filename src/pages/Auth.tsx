@@ -60,17 +60,17 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
   const [authMode, setAuthMode] = useState<"signup" | "login">("signup");
 
   useEffect(() => {
-    if (authLoading) return;
-    if (!isAuthenticated) return;
-    // If authenticated and onboarding status says we need onboarding, route there
-    if (onboardingStatus && onboardingStatus.needsOnboarding) {
+    if (authLoading || !isAuthenticated) return;
+    // Wait for the onboardingStatus query to resolve before deciding where to go
+    if (onboardingStatus === undefined) return;
+
+    if (onboardingStatus?.needsOnboarding) {
       navigate("/onboarding");
       return;
     }
-    if (!authLoading && isAuthenticated) {
-      const redirect = redirectAfterAuth || "/";
-      navigate(redirect);
-    }
+
+    const redirect = redirectAfterAuth || "/";
+    navigate(redirect);
   }, [isAuthenticated, authLoading, onboardingStatus, navigate, redirectAfterAuth]);
 
   const handleEmailSubmit = async (event: React.FormEvent<HTMLFormElement>) => {

@@ -20,19 +20,20 @@ function resolveTier(tier?: string): keyof typeof CAP_MAP {
 }
 
 export const getUpgradeNudges = query({
-  args: { businessId: v.optional(v.id("businesses")) },
+  args: {
+    businessId: v.optional(v.id("businesses")),
+  },
   handler: async (ctx, args) => {
-    // Guests / missing business context: safe defaults
+    // Early safe return for guests or pages without a business context
     if (!args.businessId) {
       return {
-        nudges: [],
         showBanner: false,
-        snapshot: { workflowsCount: 0, runsCount: 0, agentsCount: 0 },
+        nudges: [],
+        usage: { workflows: 0, runs: 0, agents: 0 },
       };
     }
 
-    // Treat as non-null after guard
-    const businessId = args.businessId!;
+    const businessId = args.businessId;
 
     const business = await ctx.db.get(businessId);
     const tier = resolveTier(business?.tier);
