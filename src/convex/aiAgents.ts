@@ -668,6 +668,11 @@ export const adminPublishAgent = mutation({
     if (agent.active === true) return { success: true, alreadyPublished: true };
 
     await ctx.db.patch(agent._id, { active: true, updatedAt: Date.now() });
+    // Save version snapshot after publish
+    await ctx.runMutation(internal.aiAgents.saveAgentVersionInternal, {
+      agent_key: args.agent_key,
+      note: "Published",
+    });
 
     try {
       await ctx.runMutation(api.audit.write as any, {
@@ -717,5 +722,207 @@ export const adminRollbackAgent = mutation({
     } catch {}
 
     return { success: true, alreadyRolledBack: false };
+  },
+});
+
+// Save a version snapshot internally (used on publish)
+export const saveAgentVersionInternal = internalMutation({
+  args: {
+    agent_key: v.string(),
+    note: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const doc = await ctx.db
+      .query("agentCatalog")
+      .withIndex("by_agent_key", (q) => q.eq("agent_key", args.agent_key))
+      .unique()
+      .catch(() => null);
+    if (!doc) return { saved: false };
+
+    const version = `v${(doc as any).prompt_template_version || "1"}-${Date.now()}`;
+    await ctx.db.insert("agentVersions", {
+      agent_key: args.agent_key,
+      version,
+      snapshot: {
+        agent_key: doc.agent_key,
+        display_name: doc.display_name,
+        short_desc: doc.short_desc,
+        long_desc: doc.long_desc,
+        capabilities: doc.capabilities,
+        default_model: doc.default_model,
+        model_routing: doc.model_routing,
+        prompt_template_version: doc.prompt_template_version,
+        prompt_templates: doc.prompt_templates,
+        input_schema: doc.input_schema,
+        output_schema: doc.output_schema,
+        tier_restrictions: doc.tier_restrictions,
+        confidence_hint: doc.confidence_hint,
+        active: doc.active,
+        createdAt: doc.createdAt,
+        updatedAt: doc.updatedAt,
+      },
+      createdAt: Date.now(),
+      note: args.note,
+    });
+    return { saved: true, version };
+  },
+});
+
+// Admin: list agent versions
+export const adminListAgentVersions = query({
+  args: { agent_key: v.string(), limit: v.optional(v.number()) },
+  handler: async (ctx, args) => {
+    const isAdmin = await ctx.runQuery(api.admin.getIsAdmin, {});
+    if (!isAdmin) return [];
+    const limit = Math.max(1, Math.min(args.limit ?? 25, 100));
+    const rows = await ctx.db
+      .query("agentVersions")
+      .withIndex("by_agent_key", (q) => q.eq("agent_key", args.agent_key))
+      .order("desc")
+      .take(limit);
+    return rows;
+  },
+});
+
+// Admin: rollback agent to a specific version
+export const adminRollbackAgentToVersion = mutation({
+  args: { agent_key: v.string(), versionId: v.id("agentVersions") },
+  handler: async (ctx, args) => {
+    const isAdmin = await ctx.runQuery(api.admin.getIsAdmin, {});
+    if (!isAdmin) throw new Error("Admin access required");
+
+    const versionDoc = await ctx.db.get(args.versionId);
+    if (!versionDoc || versionDoc.agent_key !== args.agent_key) {
+      throw new Error("Version not found");
+    }
+    const agent = await ctx.db
+      .query("agentCatalog")
+      .withIndex("by_agent_key", (q) => q.eq("agent_key", args.agent_key))
+      .unique()
+      .catch(() => null);
+    if (!agent) throw new Error("Agent not found");
+
+    const s = versionDoc.snapshot as any;
+    await ctx.db.patch(agent._id, {
+      display_name: s.display_name,
+      short_desc: s.short_desc,
+      long_desc: s.long_desc,
+      capabilities: s.capabilities,
+      default_model: s.default_model,
+      model_routing: s.model_routing,
+      prompt_template_version: s.prompt_template_version,
+      prompt_templates: s.prompt_templates,
+      input_schema: s.input_schema,
+      output_schema: s.output_schema,
+      tier_restrictions: s.tier_restrictions,
+      confidence_hint: s.confidence_hint,
+      active: s.active,
+      updatedAt: Date.now(),
+    });
+
+    await ctx.runMutation(api.audit.write as any, {
+      action: "admin_rollback_agent_to_version",
+      entityType: "agentCatalog",
+      entityId: agent._id,
+      details: {
+        agent_key: args.agent_key,
+        versionId: String(args.versionId),
+        correlationId: `agent-rollback-to-version-${args.agent_key}-${Date.now()}`,
+      },
+    });
+
+    return { success: true };
+  },
+});
+
+// Datasets: create lightweight dataset (url or note)
+export const adminCreateDataset = mutation({
+  args: {
+    title: v.string(),
+    sourceType: v.union(v.literal("url"), v.literal("note")),
+    sourceUrl: v.optional(v.string()),
+    noteText: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const isAdmin = await ctx.runQuery(api.admin.getIsAdmin, {});
+    if (!isAdmin) throw new Error("Admin access required");
+    const identity = await ctx.auth.getUserIdentity();
+
+    const id = await ctx.db.insert("agentDatasets", {
+      title: args.title,
+      sourceType: args.sourceType,
+      sourceUrl: args.sourceUrl,
+      noteText: args.noteText,
+      linkedAgentKeys: [] as Array<string>,
+      businessScope: undefined,
+      createdAt: Date.now(),
+      createdBy: undefined,
+      status: "new",
+    });
+
+    await ctx.runMutation(api.audit.write as any, {
+      action: "admin_create_dataset",
+      entityType: "agentDatasets",
+      entityId: id,
+      details: { title: args.title, sourceType: args.sourceType, createdBy: identity?.subject || "" },
+    });
+
+    return { datasetId: id };
+  },
+});
+
+// Datasets: list
+export const adminListDatasets = query({
+  args: { limit: v.optional(v.number()) },
+  handler: async (ctx, args) => {
+    const isAdmin = await ctx.runQuery(api.admin.getIsAdmin, {});
+    if (!isAdmin) return [];
+    const limit = Math.max(1, Math.min(args.limit ?? 100, 500));
+    const rows = await ctx.db.query("agentDatasets").order("desc").take(limit);
+    return rows;
+  },
+});
+
+// Datasets: link/unlink to agent
+export const adminLinkDatasetToAgent = mutation({
+  args: { datasetId: v.id("agentDatasets"), agent_key: v.string() },
+  handler: async (ctx, args) => {
+    const isAdmin = await ctx.runQuery(api.admin.getIsAdmin, {});
+    if (!isAdmin) throw new Error("Admin access required");
+    const ds = await ctx.db.get(args.datasetId);
+    if (!ds) throw new Error("Dataset not found");
+    const linked = new Set<string>(ds.linkedAgentKeys as string[]);
+    linked.add(args.agent_key);
+    await ctx.db.patch(args.datasetId, { linkedAgentKeys: Array.from(linked) });
+
+    await ctx.runMutation(api.audit.write as any, {
+      action: "admin_link_dataset_to_agent",
+      entityType: "agentDatasets",
+      entityId: args.datasetId,
+      details: { agent_key: args.agent_key },
+    });
+
+    return { success: true };
+  },
+});
+
+export const adminUnlinkDatasetFromAgent = mutation({
+  args: { datasetId: v.id("agentDatasets"), agent_key: v.string() },
+  handler: async (ctx, args) => {
+    const isAdmin = await ctx.runQuery(api.admin.getIsAdmin, {});
+    if (!isAdmin) throw new Error("Admin access required");
+    const ds = await ctx.db.get(args.datasetId);
+    if (!ds) throw new Error("Dataset not found");
+    const filtered = (ds.linkedAgentKeys as string[]).filter((k) => k !== args.agent_key);
+    await ctx.db.patch(args.datasetId, { linkedAgentKeys: filtered });
+
+    await ctx.runMutation(api.audit.write as any, {
+      action: "admin_unlink_dataset_from_agent",
+      entityType: "agentDatasets",
+      entityId: args.datasetId,
+      details: { agent_key: args.agent_key },
+    });
+
+    return { success: true };
   },
 });

@@ -243,6 +243,106 @@ export const seedDefaultPlaybooks = action({
   },
 });
 
+// Internal save version snapshot (called on publish)
+export const savePlaybookVersionInternal = internalMutation({
+  args: {
+    playbook_key: v.string(),
+    version: v.string(),
+    note: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const pb = await ctx.db
+      .query("playbooks")
+      .withIndex("by_key_and_version", (q) =>
+        q.eq("playbook_key", args.playbook_key).eq("version", args.version)
+      )
+      .unique()
+      .catch(() => null as any);
+    if (!pb) return { saved: false };
+
+    await ctx.db.insert("playbookVersions", {
+      playbook_key: args.playbook_key,
+      version: args.version,
+      snapshot: {
+        playbook_key: pb.playbook_key,
+        display_name: pb.display_name,
+        version: pb.version,
+        triggers: pb.triggers,
+        input_schema: pb.input_schema,
+        output_schema: pb.output_schema,
+        steps: pb.steps,
+        metadata: pb.metadata,
+        active: pb.active,
+      },
+      createdAt: Date.now(),
+      note: args.note,
+    });
+    return { saved: true };
+  },
+});
+
+// Admin: list playbook versions
+export const adminListPlaybookVersions = query({
+  args: { playbook_key: v.string(), limit: v.optional(v.number()) },
+  handler: async (ctx, args) => {
+    const isAdmin = await ctx.runQuery(api.admin.getIsAdmin, {});
+    if (!isAdmin) return [];
+    const limit = Math.max(1, Math.min(args.limit ?? 25, 100));
+    const rows = await ctx.db
+      .query("playbookVersions")
+      .withIndex("by_playbook_key", (q) => q.eq("playbook_key", args.playbook_key))
+      .order("desc")
+      .take(limit);
+    return rows;
+  },
+});
+
+// Admin: rollback playbook to specific version
+export const adminRollbackPlaybookToVersion = mutation({
+  args: { playbook_key: v.string(), versionId: v.id("playbookVersions") },
+  handler: async (ctx, args) => {
+    const isAdmin = await ctx.runQuery(api.admin.getIsAdmin, {});
+    if (!isAdmin) throw new Error("Admin access required");
+
+    const vdoc = await ctx.db.get(args.versionId);
+    if (!vdoc || vdoc.playbook_key !== args.playbook_key) throw new Error("Version not found");
+
+    const pb = await ctx.db
+      .query("playbooks")
+      .withIndex("by_key_and_version", (q) =>
+        q.eq("playbook_key", args.playbook_key).eq("version", vdoc.snapshot.version)
+      )
+      .unique()
+      .catch(() => null as any);
+
+    if (!pb) throw new Error("Playbook not found");
+
+    const s = vdoc.snapshot as any;
+    await ctx.db.patch(pb._id, {
+      display_name: s.display_name,
+      triggers: s.triggers,
+      input_schema: s.input_schema,
+      output_schema: s.output_schema,
+      steps: s.steps,
+      metadata: s.metadata,
+      active: s.active,
+    });
+
+    await ctx.runMutation(api.audit.write as any, {
+      action: "admin_rollback_playbook_to_version",
+      entityType: "playbooks",
+      entityId: pb._id,
+      details: {
+        playbook_key: args.playbook_key,
+        versionId: String(args.versionId),
+        correlationId: `playbook-rollback-to-version-${args.playbook_key}-${Date.now()}`,
+      },
+    });
+
+    return { success: true };
+  },
+});
+
 export const adminPublishPlaybook = mutation({
   args: {
     playbook_key: v.string(),
@@ -270,6 +370,19 @@ export const adminPublishPlaybook = mutation({
     if (playbook.active === true) return { success: true, alreadyPublished: true };
 
     await ctx.db.patch(playbook._id, { active: true });
+    // Save version snapshot after publish
+    await ctx.runMutation(internal.playbooks.savePlaybookVersionInternal, {
+      playbook_key: args.playbook_key,
+      version: args.version,
+      note: "Published",
+    });
+
+    // Save version snapshot
+    await ctx.runMutation(internal.playbooks.savePlaybookVersionInternal, {
+      playbook_key: args.playbook_key,
+      version: args.version,
+      note: `Published by admin on ${new Date().toISOString()}`,
+    });
 
     // Audit log
     await ctx.runMutation(api.audit.write as any, {

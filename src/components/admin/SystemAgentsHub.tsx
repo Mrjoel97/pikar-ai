@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerTrigger } from "@/components/ui/drawer";
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerTrigger, DrawerClose } from "@/components/ui/drawer";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -14,6 +14,7 @@ import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { Pencil, Power, PowerOff, Plus, RefreshCw } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import DatasetCreator from "./DatasetCreator";
 
 type Agent = {
   _id: string;
@@ -61,6 +62,7 @@ export function SystemAgentsHub() {
   const [expectedContains, setExpectedContains] = useState<string>("");
   const [createdSetId, setCreatedSetId] = useState<string | null>(null);
   const [viewRunsSetId, setViewRunsSetId] = useState<string | null>(null);
+  const [versionsOpen, setVersionsOpen] = useState(false);
 
   // Queries
   const agents = useQuery(api.aiAgents.adminListAgents, {
@@ -71,6 +73,13 @@ export function SystemAgentsHub() {
   const playbooks = useQuery(api.playbooks.adminListPlaybooks, {
     activeOnly: activeFilter === "active" ? true : activeFilter === "inactive" ? false : undefined,
   });
+
+  const agentVersions = useQuery(
+    api.aiAgents.adminListAgentVersions,
+    selectedAgentKey ? { agent_key: selectedAgentKey, limit: 25 } as any : undefined
+  );
+
+  const datasets = useQuery(api.aiAgents.adminListDatasets, {});
 
   // Evaluations data
   const evalSets = useQuery(api.evals.listSets, {});
@@ -300,6 +309,22 @@ export function SystemAgentsHub() {
     }
   };
 
+  const rollbackAgentToVersion = useMutation(api.aiAgents.adminRollbackAgentToVersion);
+  const createDataset = useMutation(api.aiAgents.adminCreateDataset);
+  const linkDataset = useMutation(api.aiAgents.adminLinkDatasetToAgent);
+  const unlinkDataset = useMutation(api.aiAgents.adminUnlinkDatasetFromAgent);
+
+  const handleRestoreVersion = async (versionId: string) => {
+    if (!selectedAgentKey) return;
+    try {
+      await rollbackAgentToVersion({ agent_key: selectedAgentKey, versionId } as any);
+      toast.success("Restored agent to selected version");
+      setVersionsOpen(false);
+    } catch (e) {
+      toast.error("Failed to restore version");
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -323,6 +348,7 @@ export function SystemAgentsHub() {
           <TabsTrigger value="training">Training</TabsTrigger>
           <TabsTrigger value="evaluations">Evaluations</TabsTrigger>
           <TabsTrigger value="activity">Activity</TabsTrigger>
+          <TabsTrigger value="datasets">Datasets</TabsTrigger>
         </TabsList>
 
         <TabsContent value="catalog" className="space-y-4">
@@ -586,6 +612,9 @@ export function SystemAgentsHub() {
                 <Button type="button" variant="outline" onClick={handleRollbackAgent} disabled={!selectedAgent}>
                   Rollback
                 </Button>
+                <Button type="button" variant="outline" onClick={() => setVersionsOpen(true)} disabled={!selectedAgent}>
+                  Versions
+                </Button>
               </div>
             </CardContent>
           </Card>
@@ -723,6 +752,88 @@ export function SystemAgentsHub() {
             Activity logs coming in Phase 6
           </div>
         </TabsContent>
+
+        <TabsContent value="datasets" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Datasets (lightweight)</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <DatasetCreator
+                onCreate={async (payload) => {
+                  try {
+                    await createDataset(payload as any);
+                    toast.success("Dataset created");
+                  } catch {
+                    toast.error("Failed to create dataset");
+                  }
+                }}
+              />
+              <div className="text-sm text-muted-foreground">
+                Link datasets to a selected agent to indicate training context. This is metadata-only for now.
+              </div>
+              <div className="border rounded-lg overflow-hidden">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Title</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Linked Agents</TableHead>
+                      <TableHead>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {(datasets || []).map((d: any) => (
+                      <TableRow key={String(d._id)}>
+                        <TableCell>{d.title}</TableCell>
+                        <TableCell><Badge variant="secondary">{d.sourceType}</Badge></TableCell>
+                        <TableCell className="text-xs">
+                          {(d.linkedAgentKeys || []).join(", ") || "—"}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              disabled={!selectedAgentKey}
+                              onClick={async () => {
+                                if (!selectedAgentKey) return;
+                                try {
+                                  await linkDataset({ datasetId: d._id, agent_key: selectedAgentKey } as any);
+                                  toast.success("Linked dataset");
+                                } catch {
+                                  toast.error("Failed to link");
+                                }
+                              }}
+                            >
+                              Link to {selectedAgentKey || "agent"}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              disabled={!selectedAgentKey}
+                              onClick={async () => {
+                                if (!selectedAgentKey) return;
+                                try {
+                                  await unlinkDataset({ datasetId: d._id, agent_key: selectedAgentKey } as any);
+                                  toast.success("Unlinked dataset");
+                                } catch {
+                                  toast.error("Failed to unlink");
+                                }
+                              }}
+                            >
+                              Unlink
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
       </Tabs>
 
       {/* Agent Edit Dialog */}
@@ -742,6 +853,43 @@ export function SystemAgentsHub() {
           onClose={() => setEditingPlaybook(null)}
         />
       )}
+
+      <Drawer open={versionsOpen} onOpenChange={setVersionsOpen}>
+        <DrawerContent className="p-4">
+          <DrawerHeader>
+            <DrawerTitle>Agent Versions {selectedAgentKey && `— ${selectedAgentKey}`}</DrawerTitle>
+          </DrawerHeader>
+          <div className="max-h-[50vh] overflow-y-auto border rounded-lg">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Version</TableHead>
+                  <TableHead>Created</TableHead>
+                  <TableHead>Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {(agentVersions || []).map((v: any) => (
+                  <TableRow key={String(v._id)}>
+                    <TableCell className="font-mono text-sm">{v.version}</TableCell>
+                    <TableCell>{new Date(v.createdAt || v._creationTime || Date.now()).toLocaleString()}</TableCell>
+                    <TableCell>
+                      <Button size="sm" variant="outline" onClick={() => handleRestoreVersion(String(v._id))}>
+                        Restore
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+          <div className="flex justify-end mt-3">
+            <DrawerClose asChild>
+              <Button variant="outline">Close</Button>
+            </DrawerClose>
+          </div>
+        </DrawerContent>
+      </Drawer>
     </div>
   );
 }
