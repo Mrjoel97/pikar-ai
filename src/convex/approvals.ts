@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 import { mutation, query, internalMutation, internalQuery } from "./_generated/server";
 import { internal } from "./_generated/api";
-import { Id } from "./_generated/dataModel";
+import type { Id } from "./_generated/dataModel";
 
 // Query to get approval queue items
 export const getApprovalQueue = query({
@@ -9,22 +9,22 @@ export const getApprovalQueue = query({
     businessId: v.optional(v.id("businesses")),
     assigneeId: v.optional(v.id("users")),
     status: v.optional(v.union(v.literal("pending"), v.literal("approved"), v.literal("rejected"))),
-    priority: v.optional(v.union(v.literal("low"), v.literal("medium"), v.literal("high"), v.literal("urgent"))),
+    priority: v.optional(
+      v.union(v.literal("low"), v.literal("medium"), v.literal("high"), v.literal("urgent"))
+    ),
   },
   handler: async (ctx, args) => {
-    // Guest-safe: if there's no business context, return empty list
+    // If there's no business context (public/guest), return an empty list
     if (!args.businessId) {
       return [];
     }
 
     const businessId = args.businessId as Id<"businesses">;
 
-    // Start from business-scoped index
     let q = ctx.db
       .query("approvalQueue")
       .withIndex("by_business", (iq) => iq.eq("businessId", businessId));
 
-    // Apply optional filters in index order-friendly manner
     if (args.status) {
       q = q.filter((qq) => qq.eq(qq.field("status"), args.status));
     }
@@ -35,9 +35,7 @@ export const getApprovalQueue = query({
       q = q.filter((qq) => qq.eq(qq.field("assigneeId"), args.assigneeId));
     }
 
-    // Most recent first for UX
-    const results = await q.order("desc").take(50);
-    return results;
+    return await q.order("desc").take(50);
   },
 });
 

@@ -39,12 +39,12 @@ export function EnterpriseDashboard({
 
   const approvals = useQuery(
     api.approvals.getApprovalQueue,
-    isGuest || !businessId ? "skip" : { businessId, status: "pending" as const }
+    isGuest || !businessId ? undefined : { businessId, status: "pending" as const }
   );
 
   const auditLatest = useQuery(
     api.audit.listForBusiness,
-    isGuest || !businessId ? "skip" : { businessId, limit: 5 }
+    isGuest || !businessId ? undefined : { businessId, limit: 5 }
   );
 
   const agents = isGuest ? demoData?.agents || [] : [];
@@ -58,7 +58,7 @@ export function EnterpriseDashboard({
   // Add: Feature flags query and toggle mutation
   const featureFlags = useQuery(
     api.featureFlags.getFeatureFlags,
-    isGuest || !businessId ? "skip" : { businessId }
+    isGuest || !businessId ? undefined : { businessId }
   );
   const toggleFlag = useMutation(api.featureFlags.toggleFeatureFlag);
 
@@ -132,7 +132,7 @@ export function EnterpriseDashboard({
   // Fetch SLA summary (skip in guest / when no business)
   const slaSummary = useConvexQuery(
     api.approvals.getSlaSummary,
-    isGuest || !businessId ? "skip" : { businessId }
+    isGuest || !businessId ? undefined : { businessId }
   );
 
   // Minimal draggable widget grid (persisted in localStorage)

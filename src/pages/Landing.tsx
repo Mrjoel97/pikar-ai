@@ -251,6 +251,25 @@ export default function Landing() {
 
   const upgradeNudges = useQuery(api.telemetry.getUpgradeNudges, undefined);
 
+  // Add a guarded business lookup and pass businessId or skip queries that require it
+  const business = useQuery(
+    api.businesses.currentUserBusiness,
+    undefined // public page; Convex will derive or return null when unauthenticated
+  );
+
+  // Replace any existing unguarded listForBusiness call:
+  // useQuery(api.audit.listForBusiness, {})  --> Guarded version
+  const recentAudit = useQuery(
+    api.audit.listForBusiness,
+    business?._id ? { businessId: business._id, limit: 20 } : undefined
+  );
+
+  // If this page lists campaigns anywhere, guard it similarly:
+  const recentCampaigns = useQuery(
+    api.emails.listCampaignsByBusiness,
+    business?._id ? { businessId: business._id } : undefined
+  );
+
   return (
     <motion.div
       initial={{ opacity: 0 }}

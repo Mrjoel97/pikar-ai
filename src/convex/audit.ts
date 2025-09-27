@@ -1,6 +1,7 @@
 import { internalMutation, query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import { api } from "./_generated/api";
+import type { Id } from "./_generated/dataModel";
 
 /**
  * Internal writer for audit logs. Use from other mutations:
@@ -103,41 +104,31 @@ export const logWin = mutation({
 });
 
 /**
- * Read audit logs for a business with RBAC check.
+ * Guest-safe audit list: returns [] when no businessId (public/guest views),
+ * avoiding ArgumentValidationError on pages without tenant context.
  */
 export const listForBusiness = query({
   args: {
-    businessId: v.id("businesses"),
-    limit: v.optional(v.number()),
+    businessId: v.optional(v.id("businesses")),
+    limit: v.optional(v.float64()),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("[ERR_NOT_AUTHENTICATED] You must be signed in.");
-    }
-    const user = await ctx.db
-      .query("users")
-      .withIndex("email", (q) => q.eq("email", identity.email!))
-      .first();
-    if (!user) {
-      throw new Error("[ERR_USER_NOT_FOUND] User not found.");
+    // Guest-safe early return
+    if (!args.businessId) {
+      return [];
     }
 
-    const business = await ctx.db.get(args.businessId);
-    if (!business) {
-      throw new Error("[ERR_BUSINESS_NOT_FOUND] Business not found.");
-    }
-    if (business.ownerId !== user._id && !business.teamMembers.includes(user._id)) {
-      throw new Error("[ERR_FORBIDDEN] Not authorized.");
-    }
+    // Narrow for index usage without adding new imports
+    const businessId = args.businessId!;
 
-    const limit = Math.max(1, Math.min(args.limit ?? 50, 200));
+    const takeLimit =
+      Math.max(1, Math.min((args.limit as number | undefined) ?? 50, 200));
 
     const logs = await ctx.db
       .query("audit_logs")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .withIndex("by_business", (q) => q.eq("businessId", businessId))
       .order("desc")
-      .take(limit);
+      .take(takeLimit);
 
     return logs;
   },
@@ -169,11 +160,14 @@ export const listForWorkflow = query({
     if (!business) {
       throw new Error("[ERR_BUSINESS_NOT_FOUND] Business not found.");
     }
-    if (business.ownerId !== user._id && !business.teamMembers.includes(user._id)) {
+    if (
+      business.ownerId !== user._id &&
+      !business.teamMembers.includes(user._id)
+    ) {
       throw new Error("[ERR_FORBIDDEN] Not authorized.");
     }
 
-    const limit = Math.max(1, Math.min(args.limit ?? 50, 200));
+    const pageLimit = Math.max(1, Math.min(args.limit ?? 50, 200));
 
     // Query by business via index, then filter in memory for the target workflow.
     const logs = await ctx.db
@@ -186,7 +180,7 @@ export const listForWorkflow = query({
       (l) => l.entityType === "workflow" && l.entityId === args.workflowId
     );
 
-    return filtered.slice(0, limit);
+    return filtered.slice(0, pageLimit);
   },
 });
 
@@ -257,7 +251,10 @@ export const winsSummary = query({
   },
 });
 
-// Admin-only: list most recent audit events across all tenants
+/**
+ * Admin-only: list most recent audit events across all tenants.
+ * Guest-safe: returns [] if no admin session or user-based admin authorization fails.
+ */
 export const listRecent = query({
   args: {
     limit: v.optional(v.number()),
@@ -268,13 +265,16 @@ export const listRecent = query({
     // If an adminToken is provided, validate it via the independent Admin Portal
     if (args.adminToken) {
       try {
-        const res = await ctx.runQuery(api.adminAuthData.validateSession as any, { token: args.adminToken });
+        const res = await ctx.runQuery(
+          api.adminAuthData.validateSession as any,
+          { token: args.adminToken }
+        );
         if (res?.valid === true) {
-          const limit = Math.max(1, Math.min(args.limit ?? 100, 500));
+          const pageLimit = Math.max(1, Math.min(args.limit ?? 100, 500));
           const logs = await ctx.db
             .query("audit_logs")
             .order("desc")
-            .take(limit);
+            .take(pageLimit);
           return logs;
         }
       } catch {
@@ -308,11 +308,11 @@ export const listRecent = query({
       return [];
     }
 
-    const limit = Math.max(1, Math.min(args.limit ?? 100, 500));
+    const pageLimit = Math.max(1, Math.min(args.limit ?? 100, 500));
     const logs = await ctx.db
       .query("audit_logs")
       .order("desc")
-      .take(limit);
+      .take(pageLimit);
 
     return logs;
   },

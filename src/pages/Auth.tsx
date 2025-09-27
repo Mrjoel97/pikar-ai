@@ -60,6 +60,26 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
   const [authMethod, setAuthMethod] = useState<"email" | "password" | "google">("password");
   const [authMode, setAuthMode] = useState<"signup" | "login">("signup");
 
+  // Ensure no queries requiring businessId run while unauthenticated.
+  // If present, guard them:
+  const business = useQuery(
+    api.businesses.currentUserBusiness,
+    undefined // unauth users -> Convex returns null; this keeps it guest-safe
+  );
+
+  // Replace any existing unguarded emails list call:
+  // useQuery(api.emails.listCampaignsByBusiness, {})  --> Guarded version
+  const recentCampaigns = useQuery(
+    api.emails.listCampaignsByBusiness,
+    business?._id ? { businessId: business._id } : undefined
+  );
+
+  // Similarly, if Auth page shows audits, guard it:
+  const recentAudit = useQuery(
+    api.audit.listForBusiness,
+    business?._id ? { businessId: business._id, limit: 10 } : undefined
+  );
+
   useEffect(() => {
     if (authLoading || !isAuthenticated) return;
     // Wait for the onboardingStatus query to resolve before deciding where to go

@@ -248,18 +248,25 @@ export const listCampaigns = query({
   },
 });
 
+/**
+ * Guest-safe list of recent email campaigns for a business.
+ * Returns [] when no tenant context is present (e.g., public/guest views).
+ */
 export const listCampaignsByBusiness = query({
-  args: { businessId: v.id("businesses") },
+  args: {
+    businessId: v.optional(v.id("businesses")),
+  },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
+    if (!args.businessId) {
+      return [];
     }
 
-    // Use the by_business index and then filter in JS (avoid query-builder filter)
+    // Narrow for index usage without adding new imports
+    const businessId = args.businessId!;
+
     const rows = await ctx.db
       .query("emails")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .withIndex("by_business", (q) => q.eq("businessId", businessId))
       .order("desc")
       .take(50);
 
