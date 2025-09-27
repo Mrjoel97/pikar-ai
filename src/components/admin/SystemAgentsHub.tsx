@@ -13,6 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { Pencil, Power, PowerOff, Plus, RefreshCw } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 type Agent = {
   _id: string;
@@ -54,6 +55,12 @@ export function SystemAgentsHub() {
   const [activeFilter, setActiveFilter] = useState<string>("all");
   const [editingAgent, setEditingAgent] = useState<Agent | null>(null);
   const [editingPlaybook, setEditingPlaybook] = useState<Playbook | null>(null);
+  const [selectedAgentKey, setSelectedAgentKey] = useState<string>("");
+  const [trainForm, setTrainForm] = useState<Partial<Agent> | null>(null);
+  const [testPrompt, setTestPrompt] = useState<string>("");
+  const [expectedContains, setExpectedContains] = useState<string>("");
+  const [createdSetId, setCreatedSetId] = useState<string | null>(null);
+  const [viewRunsSetId, setViewRunsSetId] = useState<string | null>(null);
 
   // Queries
   const agents = useQuery(api.aiAgents.adminListAgents, {
@@ -65,6 +72,14 @@ export function SystemAgentsHub() {
     activeOnly: activeFilter === "active" ? true : activeFilter === "inactive" ? false : undefined,
   });
 
+  // Evaluations data
+  const evalSets = useQuery(api.evals.listSets, {});
+  const evalSummary = useQuery(api.evals.latestSummary, {});
+  const evalRuns = useQuery(
+    api.evals.listRunsBySet,
+    viewRunsSetId ? { setId: viewRunsSetId } as any : undefined
+  );
+
   // Mutations
   const upsertAgent = useMutation(api.aiAgents.adminUpsertAgent);
   const toggleAgent = useMutation(api.aiAgents.adminToggleAgent);
@@ -74,17 +89,35 @@ export function SystemAgentsHub() {
   const seedAgents = useAction(api.seed.seedAgentCatalog);
   const seedPlaybooks = useAction(api.playbooks.seedDefaultPlaybooks);
 
-  // Filter agents
-  const filteredAgents = agents?.filter((agent: Agent) => 
-    agent.display_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    agent.agent_key.toLowerCase().includes(searchTerm.toLowerCase())
-  ) || [];
+  // Evaluation actions
+  const createEvalSet = useMutation(api.evals.createSet);
+  const runEvalSet = useAction(api.evals.runSet);
 
-  // Filter playbooks
-  const filteredPlaybooks = playbooks?.filter((playbook: Playbook) =>
-    playbook.display_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    playbook.playbook_key.toLowerCase().includes(searchTerm.toLowerCase())
-  ) || [];
+  // Filter agents
+  const filteredAgents =
+    agents?.filter((agent: Agent) =>
+      agent.display_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      agent.agent_key.toLowerCase().includes(searchTerm.toLowerCase())
+    ) || [];
+
+  const filteredPlaybooks =
+    playbooks?.filter((playbook: Playbook) =>
+      playbook.display_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      playbook.playbook_key.toLowerCase().includes(searchTerm.toLowerCase())
+    ) || [];
+
+  // Training helpers
+  const selectedAgent: Agent | undefined = filteredAgents.find((a) => a.agent_key === selectedAgentKey);
+  // Initialize training form when agent changes
+  React.useEffect(() => {
+    if (selectedAgent) {
+      setTrainForm({
+        ...selectedAgent,
+      });
+    } else {
+      setTrainForm(null);
+    }
+  }, [selectedAgentKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleToggleAgent = async (agent_key: string, active: boolean) => {
     try {
@@ -139,6 +172,81 @@ export function SystemAgentsHub() {
       toast.success("Playbooks seeded successfully");
     } catch (error) {
       toast.error("Failed to seed playbooks");
+    }
+  };
+
+  const handleTrainingSave = async () => {
+    if (!trainForm) return;
+    try {
+      // adminUpsertAgent requires all fields — pull from form or selected agent as fallback
+      const base = selectedAgent!;
+      await upsertAgent({
+        agent_key: base.agent_key,
+        display_name: trainForm.display_name ?? base.display_name,
+        short_desc: trainForm.short_desc ?? base.short_desc,
+        long_desc: (trainForm as any).long_desc ?? (base as any).long_desc ?? "",
+        capabilities: trainForm.capabilities ?? base.capabilities ?? [],
+        default_model: trainForm.default_model ?? base.default_model ?? "",
+        model_routing: (trainForm as any).model_routing ?? (base as any).model_routing ?? "",
+        prompt_template_version:
+          (trainForm as any).prompt_template_version ?? (base as any).prompt_template_version ?? "v1",
+        prompt_templates: (trainForm as any).prompt_templates ?? (base as any).prompt_templates ?? "",
+        input_schema: (trainForm as any).input_schema ?? (base as any).input_schema ?? "",
+        output_schema: (trainForm as any).output_schema ?? (base as any).output_schema ?? "",
+        tier_restrictions: trainForm.tier_restrictions ?? base.tier_restrictions ?? [],
+        confidence_hint: Number(trainForm.confidence_hint ?? base.confidence_hint ?? 0.8),
+        active: typeof trainForm.active === "boolean" ? trainForm.active : base.active,
+      } as any);
+      toast.success("Agent training content saved (published)");
+    } catch (e) {
+      toast.error("Failed to save agent training");
+    }
+  };
+
+  const handleTrainingRevert = () => {
+    if (!selectedAgent) return;
+    setTrainForm({ ...selectedAgent });
+    toast("Reverted unsaved changes");
+  };
+
+  const handleCreateEval = async () => {
+    if (!selectedAgent || !testPrompt || !expectedContains) {
+      toast.error("Provide test prompt and expected text");
+      return;
+    }
+    try {
+      const name = `Agent ${selectedAgent.agent_key} – ${new Date().toLocaleString()}`;
+      const res = await createEvalSet({
+        name,
+        description: `Quick test for ${selectedAgent.display_name}`,
+        tests: [
+          {
+            tool: "agents",
+            input: testPrompt,
+            expectedContains,
+          } as any,
+        ],
+      } as any);
+      const newId = (res as any)?._id || (res as any)?.id || null;
+      setCreatedSetId(newId);
+      setViewRunsSetId(newId);
+      toast.success("Evaluation set created");
+    } catch (e) {
+      toast.error("Failed to create evaluation set");
+    }
+  };
+
+  const handleRunEval = async (setId?: string | null) => {
+    const sid = setId ?? createdSetId;
+    if (!sid) {
+      toast.error("No evaluation set selected");
+      return;
+    }
+    try {
+      await runEvalSet({ setId: sid } as any);
+      toast.success("Evaluation started");
+    } catch (e) {
+      toast.error("Failed to run evaluation");
     }
   };
 
@@ -314,16 +422,216 @@ export function SystemAgentsHub() {
           </div>
         </TabsContent>
 
-        <TabsContent value="training">
-          <div className="text-center py-8 text-muted-foreground">
-            Training interface coming in Phase 3
-          </div>
+        <TabsContent value="training" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Train & Publish</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="col-span-1">
+                  <label className="text-sm font-medium">Pick Agent</label>
+                  <Select
+                    value={selectedAgentKey}
+                    onValueChange={(v) => setSelectedAgentKey(v)}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select an agent" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(agents || []).map((a: Agent) => (
+                        <SelectItem key={a.agent_key} value={a.agent_key}>
+                          {a.display_name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="col-span-1">
+                  <label className="text-sm font-medium">Display Name</label>
+                  <Input
+                    value={trainForm?.display_name ?? ""}
+                    onChange={(e) =>
+                      setTrainForm((prev) => ({ ...(prev || {}), display_name: e.target.value }))
+                    }
+                    disabled={!trainForm}
+                  />
+                </div>
+
+                <div className="col-span-1">
+                  <label className="text-sm font-medium">Default Model</label>
+                  <Input
+                    value={trainForm?.default_model ?? ""}
+                    onChange={(e) =>
+                      setTrainForm((prev) => ({ ...(prev || {}), default_model: e.target.value }))
+                    }
+                    disabled={!trainForm}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium">Training Notes / Long Description</label>
+                <Textarea
+                  rows={4}
+                  value={(trainForm as any)?.long_desc ?? ""}
+                  onChange={(e) =>
+                    setTrainForm((prev) => ({ ...(prev || {}), long_desc: e.target.value as any }))
+                  }
+                  disabled={!trainForm}
+                />
+              </div>
+
+              <div>
+                <label className="text-sm font-medium">Prompt Templates</label>
+                <Textarea
+                  rows={6}
+                  value={(trainForm as any)?.prompt_templates ?? ""}
+                  onChange={(e) =>
+                    setTrainForm((prev) => ({ ...(prev || {}), prompt_templates: e.target.value as any }))
+                  }
+                  disabled={!trainForm}
+                />
+              </div>
+
+              <div className="flex gap-2 justify-end">
+                <Button type="button" variant="outline" onClick={handleTrainingRevert} disabled={!trainForm}>
+                  Revert Unsaved
+                </Button>
+                <Button type="button" onClick={handleTrainingSave} disabled={!trainForm}>
+                  Save & Publish
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Quick Test</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium">Test Prompt</label>
+                  <Textarea
+                    rows={4}
+                    value={testPrompt}
+                    onChange={(e) => setTestPrompt(e.target.value)}
+                    placeholder="Ask the agent something it should handle..."
+                    disabled={!selectedAgent}
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Expected Contains</label>
+                  <Textarea
+                    rows={4}
+                    value={expectedContains}
+                    onChange={(e) => setExpectedContains(e.target.value)}
+                    placeholder="Provide a short expected text fragment that should appear in the answer"
+                    disabled={!selectedAgent}
+                  />
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <Button type="button" variant="outline" onClick={handleCreateEval} disabled={!selectedAgent}>
+                  Create Eval Set
+                </Button>
+                <Button type="button" onClick={() => handleRunEval()} disabled={!createdSetId}>
+                  Run Eval
+                </Button>
+              </div>
+              {createdSetId && (
+                <div className="text-sm text-muted-foreground">
+                  Created set: <span className="font-mono">{createdSetId}</span>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
 
-        <TabsContent value="evaluations">
-          <div className="text-center py-8 text-muted-foreground">
-            Evaluations interface coming in Phase 4
-          </div>
+        <TabsContent value="evaluations" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Evaluation Sets</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="text-sm">
+                Latest Summary:{" "}
+                <Badge variant={(evalSummary as any)?.allPassing ? "default" : "secondary"}>
+                  {(evalSummary as any)?.allPassing ? "All Passing" : "Has Failures"}
+                </Badge>
+                <span className="ml-2 text-muted-foreground">
+                  {typeof (evalSummary as any)?.passCount === "number" &&
+                    typeof (evalSummary as any)?.failCount === "number" && (
+                      <>Pass: {(evalSummary as any).passCount} · Fail: {(evalSummary as any).failCount}</>
+                    )}
+                </span>
+              </div>
+
+              <div className="border rounded-lg overflow-hidden">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Created</TableHead>
+                      <TableHead>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {(evalSets || []).map((s: any) => (
+                      <TableRow key={String(s._id)}>
+                        <TableCell>{s.name}</TableCell>
+                        <TableCell>{new Date(s._creationTime || Date.now()).toLocaleString()}</TableCell>
+                        <TableCell>
+                          <div className="flex gap-2">
+                            <Button size="sm" variant="outline" onClick={() => handleRunEval(String(s._id))}>
+                              Run
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => setViewRunsSetId(String(s._id))}
+                            >
+                              Runs
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+
+              {viewRunsSetId && (
+                <div className="space-y-2">
+                  <div className="text-sm font-medium">Recent Runs for Set {viewRunsSetId}</div>
+                  <div className="border rounded-lg overflow-hidden">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Started</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead>Pass</TableHead>
+                          <TableHead>Fail</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {(evalRuns || []).map((r: any) => (
+                          <TableRow key={String(r._id)}>
+                            <TableCell>{new Date(r.startedAt || r._creationTime || Date.now()).toLocaleString()}</TableCell>
+                            <TableCell>{r.status || "unknown"}</TableCell>
+                            <TableCell>{r.passCount ?? 0}</TableCell>
+                            <TableCell>{r.failCount ?? 0}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="activity">
