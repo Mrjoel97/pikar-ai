@@ -25,6 +25,7 @@ import { toast } from "sonner";
 /* removed duplicate useEffect import */
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
+import { setGuestMode, clearGuestMode } from "@/lib/guestUtils";
 
 interface AuthProps {
   redirectAfterAuth?: string;
@@ -119,7 +120,10 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
         }).then(r => r.json());
 
         if (result.error) throw new Error(result.error);
-        
+
+        // Clear any lingering guest markers on real auth
+        clearGuestMode();
+
         toast.success("Account created! Please verify your email to continue.");
         navigate("/onboarding");
       } else {
@@ -133,7 +137,10 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
         }).then(r => r.json());
 
         if (result.error) throw new Error(result.error);
-        
+
+        // Clear any lingering guest markers on real auth
+        clearGuestMode();
+
         toast.success("Signed in! Verify your email for full access.");
         navigate("/dashboard");
       }
@@ -152,6 +159,9 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
     try {
       const formData = new FormData(event.currentTarget);
       await signIn("email-otp", formData);
+
+      // Clear any lingering guest markers on real auth
+      clearGuestMode();
 
       console.log("signed in");
 
@@ -186,10 +196,9 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
     setIsLoading(true);
     setError(null);
     try {
-      // Do NOT call signIn("anonymous"); just navigate in guest mode
-      try {
-        localStorage.setItem("tierOverride", guestTier);
-      } catch {}
+      // Record guest markers centrally
+      setGuestMode(guestTier);
+
       toast("Signed in as guest");
       const redirect = "/dashboard?guest=1&tier=" + encodeURIComponent(guestTier);
       navigate(redirect);

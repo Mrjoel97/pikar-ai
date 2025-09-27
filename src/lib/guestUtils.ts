@@ -35,3 +35,25 @@ export function showUpgradeCTA(message: string) {
     }
   };
 }
+
+export function setGuestMode(tier: "solopreneur" | "startup" | "sme" | "enterprise") {
+  try {
+    localStorage.setItem("guest", "1");
+    localStorage.setItem("tierOverride", tier);
+  } catch {}
+}
+
+export function clearGuestMode() {
+  try {
+    localStorage.removeItem("guest");
+    localStorage.removeItem("tierOverride");
+  } catch {}
+}
+
+export function isGuestModeActive(): boolean {
+  try {
+    return localStorage.getItem("guest") === "1";
+  } catch {
+    return false;
+  }
+}
