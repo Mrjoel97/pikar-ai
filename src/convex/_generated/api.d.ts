@@ -53,6 +53,7 @@ import type * as notifications from "../notifications.js";
 import type * as nudges from "../nudges.js";
 import type * as onboarding from "../onboarding.js";
 import type * as openai from "../openai.js";
+import type * as passwordAuth from "../passwordAuth.js";
 import type * as schedule from "../schedule.js";
 import type * as seed from "../seed.js";
 import type * as solopreneur from "../solopreneur.js";
@@ -115,6 +116,7 @@ declare const fullApi: ApiFromModules<{
   nudges: typeof nudges;
   onboarding: typeof onboarding;
   openai: typeof openai;
+  passwordAuth: typeof passwordAuth;
   schedule: typeof schedule;
   seed: typeof seed;
   solopreneur: typeof solopreneur;
