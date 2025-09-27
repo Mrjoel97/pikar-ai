@@ -1132,4 +1132,19 @@ export default defineSchema({
   })
     .index("by_agent_key", ["agent_key"])
     .index("by_active", ["active"]),
+
+  playbooks: defineTable({
+    playbook_key: v.string(),
+    display_name: v.string(),
+    version: v.string(),
+    // Store complex JSONs permissively to avoid over-constraining schema
+    triggers: v.any(),
+    input_schema: v.any(),
+    output_schema: v.any(),
+    steps: v.any(),
+    metadata: v.any(),
+    active: v.boolean(),
+  })
+    .index("by_key_and_version", ["playbook_key", "version"])
+    .index("by_active", ["active"]),
 });
