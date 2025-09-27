@@ -16,7 +16,7 @@ export function AdminSidebar({ onNavigate, isAdminSession, onLogout }: Props) {
           Admin Assistant
         </button>
         <button onClick={() => onNavigate("section-system-agents")} className="text-left px-3 py-2 rounded-md hover:bg-white/10 transition">
-          System Agents
+          System Agents Hub
         </button>
         <button onClick={() => onNavigate("section-system-health")} className="text-left px-3 py-2 rounded-md hover:bg-white/10 transition">
           System Health

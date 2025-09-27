@@ -401,53 +401,163 @@ export const adminAgentSummary = query({
 // Admin-gated: list agent profiles (optionally by tenant), minimal fields
 export const adminListAgents = query({
   args: {
-    tenantId: v.optional(v.id("businesses")),
+    activeOnly: v.optional(v.boolean()),
+    tier: v.optional(v.string()),
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const isAdmin = await ctx.runQuery((api as any).admin.getIsAdmin, {});
-    if (!isAdmin) return [] as Array<{
-      _id: Id<"agentProfiles">;
-      businessId: Id<"businesses">;
-      userId: Id<"users">;
-      brandVoice?: string;
-      timezone?: string;
-      lastUpdated?: number;
-      trainingNotes?: string;
-    }>;
+    const isAdmin = await ctx.runQuery(api.admin.getIsAdmin, {});
+    if (!isAdmin) return [];
 
-    const limit = Math.max(1, Math.min(args.limit ?? 200, 1000));
-    let rows:
-      | Array<{
-          _id: Id<"agentProfiles">;
-          businessId: Id<"businesses">;
-          userId: Id<"users">;
-          brandVoice?: string;
-          timezone?: string;
-          lastUpdated?: number;
-          trainingNotes?: string;
-        }>
-      | undefined;
+    const limit = Math.max(1, Math.min(args.limit ?? 100, 500));
+    const base = ctx.db.query("agentCatalog");
 
-    if (args.tenantId) {
-      rows = await ctx.db
-        .query("agentProfiles")
-        .withIndex("by_business", (q) => q.eq("businessId", args.tenantId!))
-        .order("desc")
-        .take(limit);
-    } else {
-      rows = await ctx.db.query("agentProfiles").order("desc").take(limit);
+    const rows =
+      args.activeOnly !== undefined
+        ? await base
+            .withIndex("by_active", (q) => q.eq("active", args.activeOnly as boolean))
+            .order("desc")
+            .take(limit)
+        : await base.order("desc").take(limit);
+
+    if (args.tier) {
+      return rows.filter((agent) => {
+        const tiers = (agent as any).tier_restrictions || [];
+        return tiers.length === 0 || tiers.includes(args.tier as string);
+      });
     }
 
-    return rows.map((r) => ({
-      _id: r._id,
-      businessId: r.businessId,
-      userId: r.userId,
-      brandVoice: (r as any).brandVoice,
-      timezone: (r as any).timezone,
-      lastUpdated: (r as any).lastUpdated,
-      trainingNotes: (r as any).trainingNotes,
-    }));
+    return rows;
+  },
+});
+
+// Admin-gated: get single agent by key
+export const adminGetAgent = query({
+  args: { agent_key: v.string() },
+  handler: async (ctx, args) => {
+    const isAdmin = await ctx.runQuery(api.admin.getIsAdmin, {});
+    if (!isAdmin) throw new Error("Admin access required");
+
+    const agent = await ctx.db
+      .query("agentCatalog")
+      .withIndex("by_agent_key", (q) => q.eq("agent_key", args.agent_key))
+      .unique();
+
+    if (!agent) throw new Error("Agent not found");
+    return agent;
+  },
+});
+
+// Admin-gated: upsert agent (create or update)
+export const adminUpsertAgent = mutation({
+  args: {
+    agent_key: v.string(),
+    display_name: v.string(),
+    short_desc: v.string(),
+    long_desc: v.string(),
+    capabilities: v.array(v.string()),
+    default_model: v.string(),
+    model_routing: v.string(),
+    prompt_template_version: v.string(),
+    prompt_templates: v.string(),
+    input_schema: v.string(),
+    output_schema: v.string(),
+    tier_restrictions: v.array(v.string()),
+    confidence_hint: v.number(),
+    active: v.boolean(),
+  },
+  handler: async (ctx, args) => {
+    const isAdmin = await ctx.runQuery(api.admin.getIsAdmin, {});
+    if (!isAdmin) throw new Error("Admin access required");
+
+    const existing = await ctx.db
+      .query("agentCatalog")
+      .withIndex("by_agent_key", (q) => q.eq("agent_key", args.agent_key))
+      .unique();
+
+    const now = Date.now();
+    const agentData = {
+      agent_key: args.agent_key,
+      display_name: args.display_name,
+      short_desc: args.short_desc,
+      long_desc: args.long_desc,
+      capabilities: args.capabilities,
+      default_model: args.default_model,
+      model_routing: args.model_routing,
+      prompt_template_version: args.prompt_template_version,
+      prompt_templates: args.prompt_templates,
+      input_schema: args.input_schema,
+      output_schema: args.output_schema,
+      tier_restrictions: args.tier_restrictions,
+      confidence_hint: args.confidence_hint,
+      active: args.active,
+      updatedAt: now,
+    };
+
+    let agentId: string;
+    if (existing) {
+      await ctx.db.patch(existing._id, agentData);
+      agentId = existing._id;
+    } else {
+      agentId = await ctx.db.insert("agentCatalog", {
+        ...agentData,
+        createdAt: now,
+      });
+    }
+
+    // Audit log
+    await ctx.runMutation(api.audit.write as any, {
+      action: existing ? "admin_update_agent" : "admin_create_agent",
+      entityType: "agentCatalog",
+      entityId: agentId,
+      details: {
+        agent_key: args.agent_key,
+        display_name: args.display_name,
+        active: args.active,
+        correlationId: `agent-admin-${args.agent_key}-${now}`,
+      },
+    });
+
+    return { agentId, created: !existing };
+  },
+});
+
+// Admin-gated: toggle agent active status
+export const adminToggleAgent = mutation({
+  args: {
+    agent_key: v.string(),
+    active: v.boolean(),
+  },
+  handler: async (ctx, args) => {
+    const isAdmin = await ctx.runQuery(api.admin.getIsAdmin, {});
+    if (!isAdmin) throw new Error("Admin access required");
+
+    const agent = await ctx.db
+      .query("agentCatalog")
+      .withIndex("by_agent_key", (q) => q.eq("agent_key", args.agent_key))
+      .unique();
+
+    if (!agent) throw new Error("Agent not found");
+
+    await ctx.db.patch(agent._id, {
+      active: args.active,
+      updatedAt: Date.now(),
+    });
+
+    // Audit log
+    await ctx.runMutation(api.audit.write as any, {
+      action: "admin_toggle_agent",
+      entityType: "agentCatalog",
+      entityId: agent._id,
+      details: {
+        agent_key: args.agent_key,
+        active: args.active,
+        previous_active: agent.active,
+        correlationId: `agent-toggle-${args.agent_key}-${Date.now()}`,
+      },
+    });
+
+    return { success: true };
   },
 });
 

@@ -1,6 +1,6 @@
 import { query, mutation, action, internalMutation } from "./_generated/server";
 import { v } from "convex/values";
-import { internal } from "./_generated/api";
+import { api, internal } from "./_generated/api";
 import { DEFAULT_PLAYBOOKS } from "./data/playbooksSeed";
 
 // Query: list playbooks (optionally active only)
@@ -98,6 +98,133 @@ export const upsertPlaybook = mutation({
 
     await ctx.db.insert("playbooks", { ...p, active: p.active ?? true });
     return { updated: false, inserted: true };
+  },
+});
+
+// Admin-gated: list playbooks with filtering
+export const adminListPlaybooks = query({
+  args: {
+    activeOnly: v.optional(v.boolean()),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const isAdmin = await ctx.runQuery(api.admin.getIsAdmin, {});
+    if (!isAdmin) return [];
+
+    const limit = Math.max(1, Math.min(args.limit ?? 100, 500));
+    const base = ctx.db.query("playbooks");
+
+    const rows =
+      args.activeOnly !== undefined
+        ? await base
+            .withIndex("by_active", (q) => q.eq("active", args.activeOnly as boolean))
+            .order("desc")
+            .take(limit)
+        : await base.order("desc").take(limit);
+
+    return rows;
+  },
+});
+
+// Admin-gated: upsert playbook with audit
+export const adminUpsertPlaybook = mutation({
+  args: {
+    playbook_key: v.string(),
+    display_name: v.string(),
+    version: v.string(),
+    triggers: v.any(),
+    input_schema: v.any(),
+    output_schema: v.any(),
+    steps: v.any(),
+    metadata: v.any(),
+    active: v.boolean(),
+  },
+  handler: async (ctx, args) => {
+    const isAdmin = await ctx.runQuery(api.admin.getIsAdmin, {});
+    if (!isAdmin) throw new Error("Admin access required");
+
+    const existing = await ctx.db
+      .query("playbooks")
+      .withIndex("by_key_and_version", (q) => 
+        q.eq("playbook_key", args.playbook_key).eq("version", args.version)
+      )
+      .unique();
+
+    const playbookData = {
+      playbook_key: args.playbook_key,
+      display_name: args.display_name,
+      version: args.version,
+      triggers: args.triggers,
+      input_schema: args.input_schema,
+      output_schema: args.output_schema,
+      steps: args.steps,
+      metadata: args.metadata,
+      active: args.active,
+    };
+
+    let playbookId: string;
+    if (existing) {
+      await ctx.db.patch(existing._id, playbookData);
+      playbookId = existing._id;
+    } else {
+      playbookId = await ctx.db.insert("playbooks", playbookData);
+    }
+
+    // Audit log
+    await ctx.runMutation(api.audit.write as any, {
+      action: existing ? "admin_update_playbook" : "admin_create_playbook",
+      entityType: "playbooks",
+      entityId: playbookId,
+      details: {
+        playbook_key: args.playbook_key,
+        version: args.version,
+        display_name: args.display_name,
+        active: args.active,
+        correlationId: `playbook-admin-${args.playbook_key}-${Date.now()}`,
+      },
+    });
+
+    return { playbookId, created: !existing };
+  },
+});
+
+// Admin-gated: toggle playbook active status
+export const adminTogglePlaybook = mutation({
+  args: {
+    playbook_key: v.string(),
+    version: v.string(),
+    active: v.boolean(),
+  },
+  handler: async (ctx, args) => {
+    const isAdmin = await ctx.runQuery(api.admin.getIsAdmin, {});
+    if (!isAdmin) throw new Error("Admin access required");
+
+    const playbook = await ctx.db
+      .query("playbooks")
+      .withIndex("by_key_and_version", (q) => 
+        q.eq("playbook_key", args.playbook_key).eq("version", args.version)
+      )
+      .unique();
+
+    if (!playbook) throw new Error("Playbook not found");
+
+    await ctx.db.patch(playbook._id, { active: args.active });
+
+    // Audit log
+    await ctx.runMutation(api.audit.write as any, {
+      action: "admin_toggle_playbook",
+      entityType: "playbooks",
+      entityId: playbook._id,
+      details: {
+        playbook_key: args.playbook_key,
+        version: args.version,
+        active: args.active,
+        previous_active: playbook.active,
+        correlationId: `playbook-toggle-${args.playbook_key}-${Date.now()}`,
+      },
+    });
+
+    return { success: true };
   },
 });
 
