@@ -645,3 +645,77 @@ export const adminMarkAgentDisabled = mutation({
     return { disabled: true };
   },
 });
+
+export const adminPublishAgent = mutation({
+  args: { agent_key: v.string() },
+  handler: async (ctx, args) => {
+    const isAdmin = await ctx.runQuery(api.admin.getIsAdmin, {});
+    if (!isAdmin) throw new Error("Admin access required");
+
+    // Gate on evaluations: require allPassing
+    const evalSummary = await ctx.runQuery(api.evals.latestSummary, {});
+    if (!(evalSummary as any)?.allPassing) {
+      throw new Error("Evaluations gate failed: not all passing. Fix failures before publish.");
+    }
+
+    const agent = await ctx.db
+      .query("agentCatalog")
+      .withIndex("by_agent_key", (q) => q.eq("agent_key", args.agent_key))
+      .unique()
+      .catch(() => null);
+    if (!agent) throw new Error("Agent not found");
+
+    if (agent.active === true) return { success: true, alreadyPublished: true };
+
+    await ctx.db.patch(agent._id, { active: true, updatedAt: Date.now() });
+
+    try {
+      await ctx.runMutation(api.audit.write as any, {
+        action: "admin_publish_agent",
+        entityType: "agentCatalog",
+        entityId: agent._id,
+        details: {
+          agent_key: args.agent_key,
+          previous_active: agent.active,
+          correlationId: `agent-publish-${args.agent_key}-${Date.now()}`,
+        },
+      });
+    } catch {}
+
+    return { success: true, alreadyPublished: false };
+  },
+});
+
+export const adminRollbackAgent = mutation({
+  args: { agent_key: v.string() },
+  handler: async (ctx, args) => {
+    const isAdmin = await ctx.runQuery(api.admin.getIsAdmin, {});
+    if (!isAdmin) throw new Error("Admin access required");
+
+    const agent = await ctx.db
+      .query("agentCatalog")
+      .withIndex("by_agent_key", (q) => q.eq("agent_key", args.agent_key))
+      .unique()
+      .catch(() => null);
+    if (!agent) throw new Error("Agent not found");
+
+    if (agent.active === false) return { success: true, alreadyRolledBack: true };
+
+    await ctx.db.patch(agent._id, { active: false, updatedAt: Date.now() });
+
+    try {
+      await ctx.runMutation(api.audit.write as any, {
+        action: "admin_rollback_agent",
+        entityType: "agentCatalog",
+        entityId: agent._id,
+        details: {
+          agent_key: args.agent_key,
+          previous_active: agent.active,
+          correlationId: `agent-rollback-${args.agent_key}-${Date.now()}`,
+        },
+      });
+    } catch {}
+
+    return { success: true, alreadyRolledBack: false };
+  },
+});

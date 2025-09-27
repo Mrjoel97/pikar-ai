@@ -242,3 +242,87 @@ export const seedDefaultPlaybooks = action({
     return { inserted, updated, total: DEFAULT_PLAYBOOKS.length };
   },
 });
+
+export const adminPublishPlaybook = mutation({
+  args: {
+    playbook_key: v.string(),
+    version: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const isAdmin = await ctx.runQuery(api.admin.getIsAdmin, {});
+    if (!isAdmin) throw new Error("Admin access required");
+
+    // Gate on evaluations: require allPassing
+    const evalSummary = await ctx.runQuery(api.evals.latestSummary, {});
+    if (!(evalSummary as any)?.allPassing) {
+      throw new Error("Evaluations gate failed: not all passing. Fix failures before publish.");
+    }
+
+    const playbook = await ctx.db
+      .query("playbooks")
+      .withIndex("by_key_and_version", (q) =>
+        q.eq("playbook_key", args.playbook_key).eq("version", args.version)
+      )
+      .unique()
+      .catch(() => null as any);
+    if (!playbook) throw new Error("Playbook not found");
+
+    if (playbook.active === true) return { success: true, alreadyPublished: true };
+
+    await ctx.db.patch(playbook._id, { active: true });
+
+    // Audit log
+    await ctx.runMutation(api.audit.write as any, {
+      action: "admin_publish_playbook",
+      entityType: "playbooks",
+      entityId: playbook._id,
+      details: {
+        playbook_key: args.playbook_key,
+        version: args.version,
+        previous_active: playbook.active,
+        correlationId: `playbook-publish-${args.playbook_key}-${Date.now()}`,
+      },
+    });
+
+    return { success: true, alreadyPublished: false };
+  },
+});
+
+export const adminRollbackPlaybook = mutation({
+  args: {
+    playbook_key: v.string(),
+    version: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const isAdmin = await ctx.runQuery(api.admin.getIsAdmin, {});
+    if (!isAdmin) throw new Error("Admin access required");
+
+    const playbook = await ctx.db
+      .query("playbooks")
+      .withIndex("by_key_and_version", (q) =>
+        q.eq("playbook_key", args.playbook_key).eq("version", args.version)
+      )
+      .unique()
+      .catch(() => null as any);
+    if (!playbook) throw new Error("Playbook not found");
+
+    if (playbook.active === false) return { success: true, alreadyRolledBack: true };
+
+    await ctx.db.patch(playbook._id, { active: false });
+
+    // Audit log
+    await ctx.runMutation(api.audit.write as any, {
+      action: "admin_rollback_playbook",
+      entityType: "playbooks",
+      entityId: playbook._id,
+      details: {
+        playbook_key: args.playbook_key,
+        version: args.version,
+        previous_active: playbook.active,
+        correlationId: `playbook-rollback-${args.playbook_key}-${Date.now()}`,
+      },
+    });
+
+    return { success: true, alreadyRolledBack: false };
+  },
+});

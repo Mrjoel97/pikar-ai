@@ -85,6 +85,11 @@ export function SystemAgentsHub() {
   const toggleAgent = useMutation(api.aiAgents.adminToggleAgent);
   const upsertPlaybook = useMutation(api.playbooks.adminUpsertPlaybook);
   const togglePlaybook = useMutation(api.playbooks.adminTogglePlaybook);
+  // New publish/rollback mutations
+  const publishAgent = useMutation(api.aiAgents.adminPublishAgent);
+  const rollbackAgent = useMutation(api.aiAgents.adminRollbackAgent);
+  const publishPlaybook = useMutation(api.playbooks.adminPublishPlaybook);
+  const rollbackPlaybook = useMutation(api.playbooks.adminRollbackPlaybook);
   // Use actions for seeding (they are Convex actions)
   const seedAgents = useAction(api.seed.seedAgentCatalog);
   const seedPlaybooks = useAction(api.playbooks.seedDefaultPlaybooks);
@@ -107,7 +112,8 @@ export function SystemAgentsHub() {
     ) || [];
 
   // Training helpers
-  const selectedAgent: Agent | undefined = filteredAgents.find((a) => a.agent_key === selectedAgentKey);
+  const selectedAgent: Agent | undefined = filteredAgents.find((a: Agent) => a.agent_key === selectedAgentKey);
+
   // Initialize training form when agent changes
   React.useEffect(() => {
     if (selectedAgent) {
@@ -250,6 +256,50 @@ export function SystemAgentsHub() {
     }
   };
 
+  const handlePublishAgent = async () => {
+    if (!selectedAgent) {
+      toast.error("Select an agent first");
+      return;
+    }
+    try {
+      await publishAgent({ agent_key: selectedAgent.agent_key } as any);
+      toast.success("Agent published");
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to publish agent");
+    }
+  };
+
+  const handleRollbackAgent = async () => {
+    if (!selectedAgent) {
+      toast.error("Select an agent first");
+      return;
+    }
+    try {
+      await rollbackAgent({ agent_key: selectedAgent.agent_key } as any);
+      toast.success("Agent rolled back (disabled)");
+    } catch {
+      toast.error("Failed to rollback agent");
+    }
+  };
+
+  const handlePublishPlaybook = async (playbook: Playbook) => {
+    try {
+      await publishPlaybook({ playbook_key: playbook.playbook_key, version: playbook.version } as any);
+      toast.success("Playbook published");
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to publish playbook");
+    }
+  };
+
+  const handleRollbackPlaybook = async (playbook: Playbook) => {
+    try {
+      await rollbackPlaybook({ playbook_key: playbook.playbook_key, version: playbook.version } as any);
+      toast.success("Playbook rolled back (disabled)");
+    } catch {
+      toast.error("Failed to rollback playbook");
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -364,6 +414,20 @@ export function SystemAgentsHub() {
                         >
                           {agent.active ? <PowerOff className="h-4 w-4" /> : <Power className="h-4 w-4" />}
                         </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => publishAgent({ agent_key: agent.agent_key } as any).then(() => toast.success("Agent published")).catch((e:any)=>toast.error(e?.message || "Publish failed"))}
+                        >
+                          Publish
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => rollbackAgent({ agent_key: agent.agent_key } as any).then(()=>toast.success("Agent rolled back")).catch(()=>toast.error("Rollback failed"))}
+                        >
+                          Rollback
+                        </Button>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -412,6 +476,20 @@ export function SystemAgentsHub() {
                           onClick={() => handleTogglePlaybook(playbook.playbook_key, playbook.version, !playbook.active)}
                         >
                           {playbook.active ? <PowerOff className="h-4 w-4" /> : <Power className="h-4 w-4" />}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handlePublishPlaybook(playbook)}
+                        >
+                          Publish
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleRollbackPlaybook(playbook)}
+                        >
+                          Rollback
                         </Button>
                       </div>
                     </TableCell>
@@ -501,6 +579,12 @@ export function SystemAgentsHub() {
                 </Button>
                 <Button type="button" onClick={handleTrainingSave} disabled={!trainForm}>
                   Save & Publish
+                </Button>
+                <Button type="button" variant="outline" onClick={handlePublishAgent} disabled={!selectedAgent}>
+                  Publish Gate
+                </Button>
+                <Button type="button" variant="outline" onClick={handleRollbackAgent} disabled={!selectedAgent}>
+                  Rollback
                 </Button>
               </div>
             </CardContent>
