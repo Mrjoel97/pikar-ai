@@ -1,6 +1,6 @@
 import { Card, CardContent } from "@/components/ui/card";
-import { motion, useReducedMotion } from "framer-motion";
 import { BadgeCheck, Target } from "lucide-react";
+// Removed unused motion/useReducedMotion and incorrect Tanstack useQuery import
 
 type Phase = { title: string; desc: string };
 
@@ -11,7 +11,7 @@ export default function FreeTierPath({
   growthPhases: ReadonlyArray<Phase>;
   upgradeTrigger: string;
 }) {
-  const shouldReduceMotion = useReducedMotion();
+  // Removed unused reduce motion and upgrade nudges query
 
   return (
     <section className="py-10 sm:py-14 px-4 sm:px-6 lg:px-8 bg-accent/5">
