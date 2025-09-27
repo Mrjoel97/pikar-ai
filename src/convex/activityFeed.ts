@@ -1,19 +1,29 @@
 import { query } from "./_generated/server";
 import { v } from "convex/values";
+import { Id } from "./_generated/dataModel";
 
 // Unified recent activity feed: notifications + workflow runs
 export const getRecent = query({
   args: {
-    businessId: v.id("businesses"),
+    // already optional to support guest/public views
+    businessId: v.optional(v.id("businesses")),
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const limit = args.limit ?? 10;
 
+    // Early return for guest/public views with no business context
+    if (!args.businessId) {
+      return [];
+    }
+
+    // Narrow for TypeScript
+    const businessId: Id<"businesses"> = args.businessId as Id<"businesses">;
+
     // Fetch notifications by business
     const notifications = await ctx.db
       .query("notifications")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .withIndex("by_business", (q) => q.eq("businessId", businessId))
       .order("desc")
       .take(limit);
 
@@ -31,7 +41,7 @@ export const getRecent = query({
     // Fetch workflow runs by business
     const runs = await ctx.db
       .query("workflowRuns")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .withIndex("by_business", (q) => q.eq("businessId", businessId))
       .order("desc")
       .take(limit);
 
