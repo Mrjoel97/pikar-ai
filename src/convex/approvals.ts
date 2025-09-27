@@ -1,51 +1,43 @@
 import { v } from "convex/values";
 import { mutation, query, internalMutation, internalQuery } from "./_generated/server";
 import { internal } from "./_generated/api";
+import { Id } from "./_generated/dataModel";
 
 // Query to get approval queue items
 export const getApprovalQueue = query({
-  args: { 
-    businessId: v.id("businesses"),
+  args: {
+    businessId: v.optional(v.id("businesses")),
     assigneeId: v.optional(v.id("users")),
     status: v.optional(v.union(v.literal("pending"), v.literal("approved"), v.literal("rejected"))),
     priority: v.optional(v.union(v.literal("low"), v.literal("medium"), v.literal("high"), v.literal("urgent"))),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
+    // Guest-safe: if there's no business context, return empty list
+    if (!args.businessId) {
+      return [];
     }
 
-    let dbQuery = ctx.db
+    const businessId = args.businessId as Id<"businesses">;
+
+    // Start from business-scoped index
+    let q = ctx.db
       .query("approvalQueue")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId));
+      .withIndex("by_business", (iq) => iq.eq("businessId", businessId));
 
-    let approvals = await dbQuery.collect();
-
-    // Filter by assignee if provided
-    if (args.assigneeId) {
-      approvals = approvals.filter(approval => approval.assigneeId === args.assigneeId);
-    }
-
-    // Filter by status if provided
+    // Apply optional filters in index order-friendly manner
     if (args.status) {
-      approvals = approvals.filter(approval => approval.status === args.status);
+      q = q.filter((qq) => qq.eq(qq.field("status"), args.status));
     }
-
-    // Filter by priority if provided
     if (args.priority) {
-      approvals = approvals.filter(approval => approval.priority === args.priority);
+      q = q.filter((qq) => qq.eq(qq.field("priority"), args.priority));
+    }
+    if (args.assigneeId) {
+      q = q.filter((qq) => qq.eq(qq.field("assigneeId"), args.assigneeId));
     }
 
-    // Sort by priority (urgent first) then by creation date
-    const priorityOrder = { urgent: 0, high: 1, medium: 2, low: 3 };
-    approvals.sort((a, b) => {
-      const priorityDiff = priorityOrder[a.priority] - priorityOrder[b.priority];
-      if (priorityDiff !== 0) return priorityDiff;
-      return a._creationTime - b._creationTime;
-    });
-
-    return approvals;
+    // Most recent first for UX
+    const results = await q.order("desc").take(50);
+    return results;
   },
 });
 

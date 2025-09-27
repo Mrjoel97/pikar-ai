@@ -11,6 +11,8 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useEffect, useState } from "react";
 import { useQuery } from "convex/react";
+import { useAuth } from "@/hooks/use-auth";
+import { isGuestModeActive } from "@/lib/guestUtils";
 
 type Props = {
   disabled?: boolean; // hide/disable for guest
@@ -108,6 +110,11 @@ export function NotificationsCenter({ disabled }: Props) {
       toast.error(e?.message || "Failed to update notification");
     }
   };
+
+  const { user } = useAuth();
+  if (!user || isGuestModeActive()) {
+    return null;
+  }
 
   // Redundant guard: hide entirely for guests
   if (disabled || isGuestLike) {
