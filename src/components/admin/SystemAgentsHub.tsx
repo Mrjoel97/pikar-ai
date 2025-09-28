@@ -480,9 +480,8 @@ export function SystemAgentsHub() {
   const ensurePersistedAgent = async (agent_key: string) => {
     const a = (uiAgents || []).find((x: Agent) => x.agent_key === agent_key);
     if (!a) return;
-    if (!isVirtualAgent(a) && !isDefaultAgents) return;
 
-    // Upsert full agent definition to backend so actions can proceed
+    // Always upsert the agent to ensure backend persistence before actions like publish/toggle
     await upsertAgent({
       agent_key: a.agent_key,
       display_name: a.display_name,
