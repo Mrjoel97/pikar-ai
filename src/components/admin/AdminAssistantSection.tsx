@@ -121,9 +121,12 @@ export function AdminAssistantSection({ adminSessionValid, adminToken }: Props) 
   }
 
   // Add state for health check agent key
-  const [agentHealthKey, setAgentHealthKey] = useState<string>("");
+  const [agentKey, setAgentKey] = useState<string>("");
 
-  const toolHealth = useQuery((api as any).aiAgents.toolHealth as any, agentHealthKey ? ({ agent_key: agentHealthKey } as any) : undefined);
+  const toolHealth = useQuery(
+    api.aiAgents.toolHealth as any,
+    agentKey && agentKey.trim().length > 0 ? { agent_key: agentKey.trim() } : undefined
+  );
 
   async function runAssistant(msg: string) {
     setAssistantMessages((m) => [...m, { role: "user", content: msg }]);
@@ -504,13 +507,13 @@ export function AdminAssistantSection({ adminSessionValid, adminToken }: Props) 
               <div className="grid gap-2 md:grid-cols-[1fr]">
                 <Input
                   placeholder="Enter agent_key (e.g., strategic_planner)"
-                  value={agentHealthKey}
-                  onChange={(e) => setAgentHealthKey(e.target.value)}
+                  value={agentKey}
+                  onChange={(e) => setAgentKey(e.target.value)}
                 />
               </div>
 
               <div className="mt-3">
-                {!agentHealthKey ? (
+                {!agentKey ? (
                   <div className="text-sm text-muted-foreground">Enter an agent_key to check status.</div>
                 ) : !toolHealth ? (
                   <div className="text-sm text-muted-foreground">Checking tool health…</div>
