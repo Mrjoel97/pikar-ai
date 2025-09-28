@@ -220,8 +220,11 @@ export const adminPublishAgentEnhanced: any = mutation({
   handler: (ctx, args) => publish.adminPublishAgentEnhanced(ctx, args),
 });
 
-export const toolHealth: any = query({
+// Agent tool health check: verifies agent presence, publish status, and eval gate
+export const toolHealth = query({
   args: { agent_key: v.string() },
-  handler: (ctx: any, args: { agent_key: string }) =>
-    config.getAgentToolHealth(ctx, args),
+  // Explicit types to avoid implicit any recursion issues
+  handler: async (ctx: any, args: { agent_key: string }): Promise<{ ok: boolean; issues: string[]; summary: any }> => {
+    return await config.getAgentToolHealth(ctx, args);
+  },
 });

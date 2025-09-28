@@ -1,5 +1,66 @@
 import { api } from "../../_generated/api";
 
+// Returns a concise health summary for an agent's tooling readiness
+export async function getAgentToolHealth(
+  ctx: any,
+  args: { agent_key: string }
+): Promise<{ ok: boolean; issues: string[]; summary: any }> {
+  const issues: Array<string> = [];
+  let agent: any | null = null;
+
+  // Try indexed lookup first; fallback to a safe scan if index name differs
+  try {
+    agent = await ctx.db
+      .query("agentCatalog")
+      .withIndex("by_agent_key", (q: any) => q.eq("agent_key", args.agent_key))
+      .unique();
+  } catch {
+    // Fallback: safe async scan
+    for await (const row of ctx.db.query("agentCatalog")) {
+      if ((row as any).agent_key === args.agent_key) {
+        agent = row as any;
+        break;
+      }
+    }
+  }
+
+  if (!agent) {
+    issues.push("missing_agent");
+    return {
+      ok: false,
+      issues,
+      summary: { agent_key: args.agent_key, active: false, reason: "missing_agent" },
+    };
+  }
+
+  if (!agent.active) {
+    issues.push("not_published");
+  }
+
+  // Evaluate the global evaluation gate (if enabled)
+  let evalSummary: any = null;
+  try {
+    evalSummary = await ctx.runQuery(api.evals.latestSummary as any, {});
+    if (evalSummary?.gateRequired && evalSummary?.allPassing === false) {
+      issues.push("evals_failing");
+    }
+  } catch {
+    // Non-fatal; just include a hint
+    issues.push("evals_unknown");
+  }
+
+  // Summarize minimal info; expandable later with RAG/KG checks
+  const summary = {
+    agent_key: args.agent_key,
+    active: !!agent.active,
+    evalGate: evalSummary
+      ? { required: !!evalSummary.gateRequired, allPassing: !!evalSummary.allPassing }
+      : { required: false, allPassing: true },
+  };
+
+  return { ok: issues.length === 0, issues, summary };
+}
+
 export async function getAgentConfig(ctx: any, args: any) {
   const config = await ctx.db
     .query("agentConfigs")
@@ -55,73 +116,4 @@ export async function adminUpdateAgentConfig(ctx: any, args: any) {
   });
 
   return true;
-}
-
-export async function getAgentToolHealth(ctx: any, args: { agent_key: string }): Promise<any> {
-  // Load agent (to read active flag)
-  const agent = await ctx.db
-    .query("agentCatalog")
-    .withIndex("by_agent_key", (q: any) => q.eq("agent_key", args.agent_key))
-    .unique()
-    .catch(() => null);
-  const active = !!agent?.active;
-
-  // Eval gate status (best-effort)
-  let evalAllPassing = false;
-  try {
-    const evalSummary: any = await ctx.runQuery(api.evals.latestSummary as any, {});
-    evalAllPassing = !!(evalSummary as any)?.allPassing;
-  } catch {
-    // If evals not available, treat as not passing to surface the gate
-    evalAllPassing = false;
-  }
-
-  // Agent config (RAG/KG flags)
-  const cfg = await getAgentConfig(ctx, { agent_key: args.agent_key });
-  const useRag = !!(cfg as any)?.useRag;
-  const useKgraph = !!(cfg as any)?.useKgraph;
-
-  // RAG vector chunks existence (only if enabled)
-  let hasVectors = true;
-  if (useRag) {
-    const chunks = await ctx.db
-      .query("vectorChunks")
-      .withIndex("by_scope", (q: any) => q.eq("scope", "global"))
-      .take(1);
-    hasVectors = chunks.length > 0;
-  }
-
-  // Knowledge graph nodes existence (only if enabled)
-  let hasKgraph = true;
-  if (useKgraph) {
-    const nodes = await ctx.db.query("kgraphNodes").take(1);
-    hasKgraph = nodes.length > 0;
-  }
-
-  // Dataset linkage (lightweight scan) — treat as helpful signal
-  const ds = await ctx.db.query("agentDatasets").take(200);
-  const datasetsLinked = ds.some(
-    (d: any) => Array.isArray(d.linkedAgentKeys) && d.linkedAgentKeys.includes(args.agent_key)
-  );
-
-  // Compile issues list
-  const issues: Array<string> = [];
-  if (!active) issues.push("Agent is not published (inactive).");
-  if (!evalAllPassing) issues.push("Evaluation gate is failing.");
-  if (useRag && !hasVectors) issues.push("RAG enabled but no vector chunks found.");
-  if (useKgraph && !hasKgraph) issues.push("Knowledge Graph enabled but no nodes found.");
-  if ((useRag || useKgraph) && !datasetsLinked) issues.push("No datasets linked to this agent.");
-
-  return {
-    agent_key: args.agent_key,
-    active,
-    evalAllPassing,
-    config: { useRag, useKgraph },
-    hasVectors,
-    hasKgraph,
-    datasetsLinked,
-    issues,
-    ok: issues.length === 0,
-    checkedAt: Date.now(),
-  };
 }

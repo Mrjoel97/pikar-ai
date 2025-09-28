@@ -9,6 +9,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 
 type Props = {
   adminSessionValid: boolean;
@@ -118,6 +119,11 @@ export function AdminAssistantSection({ adminSessionValid, adminToken }: Props) 
       </div>
     );
   }
+
+  // Add state for health check agent key
+  const [agentHealthKey, setAgentHealthKey] = useState<string>("");
+
+  const toolHealth = useQuery((api as any).aiAgents.toolHealth as any, agentHealthKey ? ({ agent_key: agentHealthKey } as any) : undefined);
 
   async function runAssistant(msg: string) {
     setAssistantMessages((m) => [...m, { role: "user", content: msg }]);
@@ -490,6 +496,59 @@ export function AdminAssistantSection({ adminSessionValid, adminToken }: Props) 
                       : "Blocked — failing or missing runs. Run and pass all sets."
                     : "No evaluation sets — gate disabled."
                   : "Loading…"}
+              </div>
+            </div>
+
+            <div className="rounded-md border p-3">
+              <div className="font-semibold mb-2">Agent Tool Health</div>
+              <div className="grid gap-2 md:grid-cols-[1fr]">
+                <Input
+                  placeholder="Enter agent_key (e.g., strategic_planner)"
+                  value={agentHealthKey}
+                  onChange={(e) => setAgentHealthKey(e.target.value)}
+                />
+              </div>
+
+              <div className="mt-3">
+                {!agentHealthKey ? (
+                  <div className="text-sm text-muted-foreground">Enter an agent_key to check status.</div>
+                ) : !toolHealth ? (
+                  <div className="text-sm text-muted-foreground">Checking tool health…</div>
+                ) : (
+                  <Alert variant={toolHealth.ok ? "default" : "destructive"}>
+                    <AlertTitle>{toolHealth.ok ? "OK — Tooling Ready" : "Issues Detected"}</AlertTitle>
+                    <AlertDescription>
+                      <div className="space-y-2">
+                        <div className="text-xs text-muted-foreground">
+                          Agent: <span className="font-medium">{toolHealth.summary?.agent_key}</span> • Published:{" "}
+                          <span className="font-medium">{toolHealth.summary?.active ? "yes" : "no"}</span>
+                          {toolHealth.summary?.evalGate ? (
+                            <>
+                              {" "}
+                              • Eval Gate:{" "}
+                              <span className="font-medium">
+                                {toolHealth.summary.evalGate.required
+                                  ? toolHealth.summary.evalGate.allPassing
+                                    ? "required & passing"
+                                    : "required & failing"
+                                  : "not required"}
+                              </span>
+                            </>
+                          ) : null}
+                        </div>
+                        {Array.isArray(toolHealth.issues) && toolHealth.issues.length > 0 ? (
+                          <ul className="list-disc pl-5 text-sm">
+                            {toolHealth.issues.map((iss: string, i: number) => (
+                              <li key={i}>{iss}</li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <div className="text-sm">No issues found.</div>
+                        )}
+                      </div>
+                    </AlertDescription>
+                  </Alert>
+                )}
               </div>
             </div>
 
