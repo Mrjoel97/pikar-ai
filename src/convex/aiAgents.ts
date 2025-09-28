@@ -4,6 +4,14 @@ import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import { api } from "./_generated/api";
 
+// Import helper modules
+import * as training from "./lib/aiAgents/training";
+import * as admin from "./lib/aiAgents/admin";
+import * as versions from "./lib/aiAgents/versions";
+import * as datasets from "./lib/aiAgents/datasets";
+import * as config from "./lib/aiAgents/config";
+import * as publish from "./lib/aiAgents/publish";
+
 // Solopreneur S1: Initialize private agent profile with randomized high-traction industry
 export const initSolopreneurAgent = mutation({
   args: {
@@ -20,87 +28,7 @@ export const initSolopreneurAgent = mutation({
     ),
     docFileIds: v.optional(v.array(v.id("_storage"))), // optional initial uploads
   },
-  handler: async (ctx, args): Promise<any> => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
-
-    // Resolve current user
-    const user = await ctx.db
-      .query("users")
-      .withIndex("email", (q) => q.eq("email", identity.email || ""))
-      .unique()
-      .catch(() => null);
-    if (!user) throw new Error("User not found");
-
-    // Pick a random high-traction industry
-    const industries: Array<string> = [
-      "ecommerce",
-      "professional_services", 
-      "saas",
-      "education",
-      "healthcare",
-      "real_estate",
-      "hospitality",
-      "media",
-      "finance",
-      "nonprofit",
-    ];
-    const industry =
-      (user.industry as string | undefined) ||
-      industries[Math.floor(Math.random() * industries.length)];
-
-    // Upsert: ensure one profile per user+business
-    const existing = await ctx.db
-      .query("agentProfiles")
-      // Use by_business index and then filter in memory by user
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
-      .take(50);
-
-    const now = Date.now();
-    const payload = {
-      userId: user._id,
-      businessId: args.businessId,
-      businessSummary: args.businessSummary ?? "",
-      industry,
-      brandVoice: args.brandVoice ?? "casual",
-      timezone: args.timezone ?? "UTC",
-      preferences: {
-        automations: {
-          invoicing: args.automations?.invoicing ?? true,
-          emailDrafts: args.automations?.emailDrafts ?? true,
-          socialPosts: args.automations?.socialPosts ?? true,
-        },
-      },
-      docRefs: args.docFileIds ?? [],
-      trainingNotes: "",
-      onboardingScore: 0,
-      lastUpdated: now,
-    };
-
-    let profileId: Id<"agentProfiles">;
-    const sameBusiness = existing.find((p) => p.businessId === args.businessId);
-    if (sameBusiness) {
-      await ctx.db.patch(sameBusiness._id, payload);
-      profileId = sameBusiness._id;
-    } else {
-      profileId = await ctx.db.insert("agentProfiles", payload);
-    }
-
-    // Audit
-    await ctx.runMutation(internal.audit.write, {
-      businessId: args.businessId,
-      action: "agent_profile_initialized",
-      entityType: "agent_profile",
-      entityId: String(profileId),
-      details: {
-        industry,
-        brandVoice: payload.brandVoice,
-        automations: payload.preferences.automations,
-      },
-    });
-
-    return { profileId };
-  },
+  handler: (ctx, args): Promise<any> => training.initSolopreneurAgent(ctx, args),
 });
 
 // Summarize recent uploads for onboarding preview
@@ -109,62 +37,7 @@ export const summarizeUploads = query({
     userId: v.optional(v.id("users")), // if omitted, infer from identity
     limit: v.optional(v.number()),
   },
-  handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity && !args.userId) throw new Error("Not authenticated");
-
-    let userId: Id<"users"> | null = args.userId ?? null;
-    if (!userId && identity?.email) {
-      const user = await ctx.db
-        .query("users")
-        .withIndex("email", (q) => q.eq("email", identity.email || ""))
-        .unique()
-        .catch(() => null);
-      if (!user) throw new Error("User not found");
-      userId = user._id;
-    }
-    if (!userId) throw new Error("User not resolved");
-
-    const limit = Math.max(1, Math.min(args.limit ?? 5, 10));
-    const items = await ctx.db
-      .query("uploads")
-      .withIndex("by_user", (q) => q.eq("userId", userId!))
-      .order("desc")
-      .take(limit);
-
-    const summaries: Array<{
-      fileId: Id<"_storage">;
-      filename: string;
-      mimeType: string;
-      uploadedAt: number;
-      size?: number;
-      summary: string;
-    }> = [];
-
-    for (const u of items) {
-      const meta = await ctx.db.system.get(u.fileId);
-      const size = meta?.size;
-      const hint =
-        u.filename.toLowerCase().includes("invoice")
-          ? "Detected invoice-like document"
-          : u.filename.toLowerCase().includes("policy")
-            ? "Detected policy/guide document"
-            : u.filename.toLowerCase().includes("product")
-              ? "Detected product list/spec"
-              : "General document";
-      const summary = `${hint}. ${size ? `~${Math.ceil(size / 1024)}KB.` : ""}`.trim();
-      summaries.push({
-        fileId: u.fileId,
-        filename: u.filename,
-        mimeType: u.mimeType,
-        uploadedAt: u.uploadedAt,
-        size,
-        summary,
-      });
-    }
-
-    return summaries;
-  },
+  handler: (ctx, args) => training.summarizeUploads(ctx, args),
 });
 
 // Add: listRecommendedByTier public query
@@ -173,33 +46,7 @@ export const listRecommendedByTier = query({
     tier: v.string(),
     limit: v.optional(v.number()),
   },
-  handler: async (ctx, args) => {
-    const limit = args.limit ?? 4;
-    const results: Array<{
-      agent_key: string;
-      display_name: string;
-      short_desc: string;
-    }> = [];
-
-    // Query by "active" index then take first N matching tier (or global) agents
-    const iter = ctx.db
-      .query("agentCatalog")
-      .withIndex("by_active", (q) => q.eq("active", true))
-      .order("desc");
-
-    for await (const row of iter) {
-      const tiers = (row.tier_restrictions ?? []) as string[];
-      if (tiers.length > 0 && !tiers.includes(args.tier)) continue;
-      results.push({
-        agent_key: row.agent_key,
-        display_name: row.display_name,
-        short_desc: row.short_desc,
-      });
-      if (results.length >= limit) break;
-    }
-
-    return results;
-  },
+  handler: (ctx, args) => training.listRecommendedByTier(ctx, args),
 });
 
 // Compute quick micro-analytics (90d revenue, top products by margin, churn alert)
@@ -207,195 +54,25 @@ export const runQuickAnalytics = query({
   args: {
     businessId: v.id("businesses"),
   },
-  handler: async (ctx, args) => {
-    const now = Date.now();
-    const ninetyDaysMs = 90 * 24 * 60 * 60 * 1000;
-    const windowStart = now - ninetyDaysMs;
-
-    // Revenue 90d
-    let revenue90d = 0;
-    const revIter = ctx.db
-      .query("key_metrics")
-      .withIndex("by_business_and_metricKey", (q) =>
-        q.eq("businessId", args.businessId).eq("metricKey", "revenue")
-      );
-    for await (const row of revIter) {
-      if (row.windowStart >= windowStart && row.windowEnd <= now) {
-        revenue90d += row.value;
-      }
-    }
-
-    // Top products by margin (take last 90d)
-    type ProductAgg = { product: string; margin: number };
-    const marginMap: Record<string, number> = {};
-    const marginIter = ctx.db
-      .query("key_metrics")
-      .withIndex("by_business_and_metricKey", (q) =>
-        q.eq("businessId", args.businessId).eq("metricKey", "product_margin")
-      );
-    for await (const row of marginIter) {
-      if (row.windowStart >= windowStart && row.windowEnd <= now) {
-        // row.value expected as number; details may be encoded in metricKey detail in real systems.
-        // For MVP, assume row has details in createdAt buckets with product encoded in details (skipped).
-        // We'll bucket to a generic "Product" placeholder for deterministic MVP aggregation.
-        const key = "Product";
-        marginMap[key] = (marginMap[key] ?? 0) + row.value;
-      }
-    }
-    const topProducts: Array<ProductAgg> = Object.entries(marginMap)
-      .map(([product, margin]) => ({ product, margin }))
-      .sort((a, b) => b.margin - a.margin)
-      .slice(0, 5);
-
-    // Simple churn alert heuristic using metricKey=active_customers (delta negative beyond threshold)
-    let churnAlert = false;
-    let churnMessage = "Stable";
-    const actIter = ctx.db
-      .query("key_metrics")
-      .withIndex("by_business_and_metricKey", (q) =>
-        q.eq("businessId", args.businessId).eq("metricKey", "active_customers")
-      );
-    let earliest: number | null = null;
-    let latest: number | null = null;
-    let earliestVal = 0;
-    let latestVal = 0;
-    for await (const row of actIter) {
-      if (row.windowStart >= windowStart && row.windowEnd <= now) {
-        const center = row.windowEnd;
-        if (earliest === null || center < earliest) {
-          earliest = center;
-          earliestVal = row.value;
-        }
-        if (latest === null || center > latest) {
-          latest = center;
-          latestVal = row.value;
-        }
-      }
-    }
-    if (earliest !== null && latest !== null) {
-      const delta = latestVal - earliestVal;
-      if (delta < 0) {
-        churnAlert = true;
-        churnMessage = `Customer count down by ${Math.abs(delta)} over 90 days`;
-      }
-    }
-
-    return {
-      revenue90d,
-      topProducts,
-      churnAlert,
-      churnMessage,
-      asOf: now,
-    };
-  },
+  handler: (ctx, args) => training.runQuickAnalytics(ctx, args),
 });
 
 // Optional helper to unlink all docRefs (privacy "Forget uploads")
 export const forgetUploads = mutation({
   args: { businessId: v.id("businesses") },
-  handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("email", (q) => q.eq("email", identity.email || ""))
-      .unique()
-      .catch(() => null);
-    if (!user) throw new Error("User not found");
-
-    const profiles = await ctx.db
-      .query("agentProfiles")
-      // Scope to the provided business up front; these are the only ones we want to clear
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
-      .take(50);
-
-    let count = 0;
-    for (const p of profiles) {
-      if (p.businessId !== args.businessId) continue;
-      await ctx.db.patch(p._id, { docRefs: [] as Array<Id<"_storage">>, lastUpdated: Date.now() });
-      count++;
-    }
-
-    await ctx.runMutation(internal.audit.write, {
-      businessId: args.businessId,
-      action: "agent_forget_uploads",
-      entityType: "agent_profile",
-      entityId: "bulk",
-      details: { affectedProfiles: count },
-    });
-
-    return { updatedProfiles: count };
-  },
+  handler: (ctx, args) => training.forgetUploads(ctx, args),
 });
 
 // Add lightweight internal query to fetch agent profile context for the current user+business
 export const getAgentProfileLite = internalQuery({
   args: { businessId: v.id("businesses") },
-  handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) return null;
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("email", (q) => q.eq("email", identity.email || ""))
-      .unique()
-      .catch(() => null);
-    if (!user) return null;
-
-    const rows = await ctx.db
-      .query("agentProfiles")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
-      .take(50);
-
-    const p = rows.find((r) => r.userId === user._id) || rows[0] || null;
-    if (!p) return null;
-
-    return {
-      businessSummary: p.businessSummary ?? "",
-      industry: (p as any).industry ?? "",
-      brandVoice: (p as any).brandVoice ?? "casual",
-      timezone: (p as any).timezone ?? "UTC",
-      lastUpdated: (p as any).lastUpdated ?? 0,
-    };
-  },
+  handler: (ctx, args) => training.getAgentProfileLite(ctx, args),
 });
 
 // Admin-gated: summarize agents counts (global or by tenant)
 export const adminAgentSummary = query({
   args: { tenantId: v.optional(v.id("businesses")) },
-  handler: async (ctx, args) => {
-    const isAdmin = await ctx.runQuery((api as any).admin.getIsAdmin, {});
-    if (!isAdmin) return { total: 0, byTenant: [] as Array<{ businessId: Id<"businesses">; count: number }> };
-
-    const byTenantMap = new Map<string, number>();
-    let total = 0;
-
-    if (args.tenantId) {
-      const rows = await ctx.db
-        .query("agentProfiles")
-        .withIndex("by_business", (q) => q.eq("businessId", args.tenantId!))
-        .take(1000);
-      total = rows.length;
-      // Fix: ensure map key is a string
-      byTenantMap.set(String(args.tenantId), rows.length);
-    } else {
-      // iterate all agentProfiles in chunks (Convex scans; keep bounded)
-      // fetch by known businesses via index with no eq is not supported; fallback to take batches
-      const batch = await ctx.db.query("agentProfiles").take(1000);
-      total = batch.length;
-      for (const r of batch) {
-        const key = String(r.businessId);
-        byTenantMap.set(key, (byTenantMap.get(key) ?? 0) + 1);
-      }
-    }
-
-    const byTenant: Array<{ businessId: Id<"businesses">; count: number }> = Array.from(
-      byTenantMap.entries(),
-    ).map(([k, count]) => ({ businessId: k as unknown as Id<"businesses">, count }));
-
-    return { total, byTenant };
-  },
+  handler: (ctx, args) => admin.adminAgentSummary(ctx, args),
 });
 
 // Admin-gated: list agent profiles (optionally by tenant), minimal fields
@@ -405,47 +82,13 @@ export const adminListAgents = query({
     tier: v.optional(v.string()),
     limit: v.optional(v.number()),
   },
-  handler: async (ctx, args) => {
-    const isAdmin = await ctx.runQuery(api.admin.getIsAdmin, {});
-    if (!isAdmin) return [];
-
-    const limit = Math.max(1, Math.min(args.limit ?? 100, 500));
-    const base = ctx.db.query("agentCatalog");
-
-    const rows =
-      args.activeOnly !== undefined
-        ? await base
-            .withIndex("by_active", (q) => q.eq("active", args.activeOnly as boolean))
-            .order("desc")
-            .take(limit)
-        : await base.order("desc").take(limit);
-
-    if (args.tier) {
-      return rows.filter((agent) => {
-        const tiers = (agent as any).tier_restrictions || [];
-        return tiers.length === 0 || tiers.includes(args.tier as string);
-      });
-    }
-
-    return rows;
-  },
+  handler: (ctx, args) => admin.adminListAgents(ctx, args),
 });
 
 // Admin-gated: get single agent by key
 export const adminGetAgent = query({
   args: { agent_key: v.string() },
-  handler: async (ctx, args) => {
-    const isAdmin = await ctx.runQuery(api.admin.getIsAdmin, {});
-    if (!isAdmin) throw new Error("Admin access required");
-
-    const agent = await ctx.db
-      .query("agentCatalog")
-      .withIndex("by_agent_key", (q) => q.eq("agent_key", args.agent_key))
-      .unique();
-
-    if (!agent) throw new Error("Agent not found");
-    return agent;
-  },
+  handler: (ctx, args) => admin.adminGetAgent(ctx, args),
 });
 
 // Admin-gated: upsert agent (create or update)
@@ -466,60 +109,7 @@ export const adminUpsertAgent = mutation({
     confidence_hint: v.number(),
     active: v.boolean(),
   },
-  handler: async (ctx, args) => {
-    const isAdmin = await ctx.runQuery(api.admin.getIsAdmin, {});
-    if (!isAdmin) throw new Error("Admin access required");
-
-    const existing = await ctx.db
-      .query("agentCatalog")
-      .withIndex("by_agent_key", (q) => q.eq("agent_key", args.agent_key))
-      .unique();
-
-    const now = Date.now();
-    const agentData = {
-      agent_key: args.agent_key,
-      display_name: args.display_name,
-      short_desc: args.short_desc,
-      long_desc: args.long_desc,
-      capabilities: args.capabilities,
-      default_model: args.default_model,
-      model_routing: args.model_routing,
-      prompt_template_version: args.prompt_template_version,
-      prompt_templates: args.prompt_templates,
-      input_schema: args.input_schema,
-      output_schema: args.output_schema,
-      tier_restrictions: args.tier_restrictions,
-      confidence_hint: args.confidence_hint,
-      active: args.active,
-      updatedAt: now,
-    };
-
-    let agentId: string;
-    if (existing) {
-      await ctx.db.patch(existing._id, agentData);
-      agentId = existing._id;
-    } else {
-      agentId = await ctx.db.insert("agentCatalog", {
-        ...agentData,
-        createdAt: now,
-      });
-    }
-
-    // Audit log
-    await ctx.runMutation(api.audit.write as any, {
-      action: existing ? "admin_update_agent" : "admin_create_agent",
-      entityType: "agentCatalog",
-      entityId: agentId,
-      details: {
-        agent_key: args.agent_key,
-        display_name: args.display_name,
-        active: args.active,
-        correlationId: `agent-admin-${args.agent_key}-${now}`,
-      },
-    });
-
-    return { agentId, created: !existing };
-  },
+  handler: (ctx, args) => admin.adminUpsertAgent(ctx, args),
 });
 
 // Admin-gated: toggle agent active status
@@ -528,37 +118,7 @@ export const adminToggleAgent = mutation({
     agent_key: v.string(),
     active: v.boolean(),
   },
-  handler: async (ctx, args) => {
-    const isAdmin = await ctx.runQuery(api.admin.getIsAdmin, {});
-    if (!isAdmin) throw new Error("Admin access required");
-
-    const agent = await ctx.db
-      .query("agentCatalog")
-      .withIndex("by_agent_key", (q) => q.eq("agent_key", args.agent_key))
-      .unique();
-
-    if (!agent) throw new Error("Agent not found");
-
-    await ctx.db.patch(agent._id, {
-      active: args.active,
-      updatedAt: Date.now(),
-    });
-
-    // Audit log
-    await ctx.runMutation(api.audit.write as any, {
-      action: "admin_toggle_agent",
-      entityType: "agentCatalog",
-      entityId: agent._id,
-      details: {
-        agent_key: args.agent_key,
-        active: args.active,
-        previous_active: agent.active,
-        correlationId: `agent-toggle-${args.agent_key}-${Date.now()}`,
-      },
-    });
-
-    return { success: true };
-  },
+  handler: (ctx, args) => admin.adminToggleAgent(ctx, args),
 });
 
 // Admin-gated: update agent profile trainingNotes / brandVoice (retrain prompt)
@@ -568,42 +128,7 @@ export const adminUpdateAgentProfile = mutation({
     trainingNotes: v.optional(v.string()),
     brandVoice: v.optional(v.string()),
   },
-  handler: async (ctx, args) => {
-    const isAdmin = await ctx.runQuery(api.admin.getIsAdmin, {});
-    if (isAdmin !== true) {
-      throw new Error("Forbidden: admin privileges required");
-    }
-
-    const doc = await ctx.db.get(args.profileId);
-    if (!doc) throw new Error("Profile not found");
-
-    const patch: Record<string, unknown> = {};
-    if (typeof args.trainingNotes === "string") patch.trainingNotes = args.trainingNotes;
-    if (typeof args.brandVoice === "string") patch.brandVoice = args.brandVoice;
-    if (Object.keys(patch).length === 0) return { updated: false };
-
-    patch.lastUpdated = Date.now();
-    await ctx.db.patch(args.profileId, patch);
-
-    try {
-      await ctx.runMutation(api.audit.write as any, {
-        action: "admin_update_agent_profile",
-        entityType: "agent_profile",
-        entityId: args.profileId,
-        details: {
-          // minimal snapshot
-          fieldsUpdated: Object.keys({ brandVoice: args.brandVoice, trainingNotes: args.trainingNotes }).filter(
-            (k) => (args as any)[k] !== undefined
-          ),
-          correlationId: `agent-admin-${args.profileId}-${Date.now()}`,
-        },
-      });
-    } catch {
-      // swallow audit errors to avoid blocking admin action
-    }
-
-    return { updated: true };
-  },
+  handler: (ctx, args) => admin.adminUpdateAgentProfile(ctx, args),
 });
 
 // Admin-gated: mark agent as disabled (sentinel note append)
@@ -612,117 +137,17 @@ export const adminMarkAgentDisabled = mutation({
     profileId: v.id("agentProfiles"),
     reason: v.optional(v.string()),
   },
-  handler: async (ctx, args) => {
-    const isAdmin = await ctx.runQuery(api.admin.getIsAdmin, {});
-    if (isAdmin !== true) {
-      throw new Error("Forbidden: admin privileges required");
-    }
-
-    const profile = await ctx.db.get(args.profileId);
-    if (!profile) throw new Error("Agent profile not found");
-    const tn = (profile as any).trainingNotes || "";
-    const alreadyDisabled = typeof tn === "string" && tn.includes("[DISABLED]");
-
-    if (!alreadyDisabled) {
-      await ctx.db.patch(args.profileId, { trainingNotes: `${tn}\n[DISABLED]${args.reason ? ` Reason: ${args.reason}` : ""}`, lastUpdated: Date.now() });
-    }
-
-    try {
-      await ctx.runMutation(api.audit.write as any, {
-        action: "admin_disable_agent",
-        entityType: "agent_profile",
-        entityId: args.profileId,
-        details: {
-          reason: args.reason || "",
-          alreadyDisabled,
-          correlationId: `agent-admin-disable-${args.profileId}-${Date.now()}`,
-        },
-      });
-    } catch {
-      // swallow audit errors to avoid blocking admin action
-    }
-
-    return { disabled: true };
-  },
+  handler: (ctx, args) => admin.adminMarkAgentDisabled(ctx, args),
 });
 
 export const adminPublishAgent = mutation({
   args: { agent_key: v.string() },
-  handler: async (ctx, args) => {
-    const isAdmin = await ctx.runQuery(api.admin.getIsAdmin, {});
-    if (!isAdmin) throw new Error("Admin access required");
-
-    // Gate on evaluations: require allPassing
-    const evalSummary = await ctx.runQuery(api.evals.latestSummary, {});
-    if (!(evalSummary as any)?.allPassing) {
-      throw new Error("Evaluations gate failed: not all passing. Fix failures before publish.");
-    }
-
-    const agent = await ctx.db
-      .query("agentCatalog")
-      .withIndex("by_agent_key", (q) => q.eq("agent_key", args.agent_key))
-      .unique()
-      .catch(() => null);
-    if (!agent) throw new Error("Agent not found");
-
-    if (agent.active === true) return { success: true, alreadyPublished: true };
-
-    await ctx.db.patch(agent._id, { active: true, updatedAt: Date.now() });
-    // Save version snapshot after publish
-    await ctx.runMutation(internal.aiAgents.saveAgentVersionInternal, {
-      agent_key: args.agent_key,
-      note: "Published",
-    });
-
-    try {
-      await ctx.runMutation(api.audit.write as any, {
-        action: "admin_publish_agent",
-        entityType: "agentCatalog",
-        entityId: agent._id,
-        details: {
-          agent_key: args.agent_key,
-          previous_active: agent.active,
-          correlationId: `agent-publish-${args.agent_key}-${Date.now()}`,
-        },
-      });
-    } catch {}
-
-    return { success: true, alreadyPublished: false };
-  },
+  handler: (ctx, args) => publish.adminPublishAgent(ctx, args),
 });
 
 export const adminRollbackAgent = mutation({
   args: { agent_key: v.string() },
-  handler: async (ctx, args) => {
-    const isAdmin = await ctx.runQuery(api.admin.getIsAdmin, {});
-    if (!isAdmin) throw new Error("Admin access required");
-
-    const agent = await ctx.db
-      .query("agentCatalog")
-      .withIndex("by_agent_key", (q) => q.eq("agent_key", args.agent_key))
-      .unique()
-      .catch(() => null);
-    if (!agent) throw new Error("Agent not found");
-
-    if (agent.active === false) return { success: true, alreadyRolledBack: true };
-
-    await ctx.db.patch(agent._id, { active: false, updatedAt: Date.now() });
-
-    try {
-      await ctx.runMutation(api.audit.write as any, {
-        action: "admin_rollback_agent",
-        entityType: "agentCatalog",
-        entityId: agent._id,
-        details: {
-          agent_key: args.agent_key,
-          previous_active: agent.active,
-          correlationId: `agent-rollback-${args.agent_key}-${Date.now()}`,
-        },
-      });
-    } catch {}
-
-    return { success: true, alreadyRolledBack: false };
-  },
+  handler: (ctx, args) => publish.adminRollbackAgent(ctx, args),
 });
 
 // Save a version snapshot internally (used on publish)
@@ -731,108 +156,19 @@ export const saveAgentVersionInternal = internalMutation({
     agent_key: v.string(),
     note: v.optional(v.string()),
   },
-  handler: async (ctx, args) => {
-    const doc = await ctx.db
-      .query("agentCatalog")
-      .withIndex("by_agent_key", (q) => q.eq("agent_key", args.agent_key))
-      .unique()
-      .catch(() => null);
-    if (!doc) return { saved: false };
-
-    const version = `v${(doc as any).prompt_template_version || "1"}-${Date.now()}`;
-    await ctx.db.insert("agentVersions", {
-      agent_key: args.agent_key,
-      version,
-      snapshot: {
-        agent_key: doc.agent_key,
-        display_name: doc.display_name,
-        short_desc: doc.short_desc,
-        long_desc: doc.long_desc,
-        capabilities: doc.capabilities,
-        default_model: doc.default_model,
-        model_routing: doc.model_routing,
-        prompt_template_version: doc.prompt_template_version,
-        prompt_templates: doc.prompt_templates,
-        input_schema: doc.input_schema,
-        output_schema: doc.output_schema,
-        tier_restrictions: doc.tier_restrictions,
-        confidence_hint: doc.confidence_hint,
-        active: doc.active,
-        createdAt: doc.createdAt,
-        updatedAt: doc.updatedAt,
-      },
-      createdAt: Date.now(),
-      note: args.note,
-    });
-    return { saved: true, version };
-  },
+  handler: (ctx, args) => versions.saveAgentVersionInternal(ctx, args),
 });
 
 // Admin: list agent versions
 export const adminListAgentVersions = query({
   args: { agent_key: v.string(), limit: v.optional(v.number()) },
-  handler: async (ctx, args) => {
-    const isAdmin = await ctx.runQuery(api.admin.getIsAdmin, {});
-    if (!isAdmin) return [];
-    const limit = Math.max(1, Math.min(args.limit ?? 25, 100));
-    const rows = await ctx.db
-      .query("agentVersions")
-      .withIndex("by_agent_key", (q) => q.eq("agent_key", args.agent_key))
-      .order("desc")
-      .take(limit);
-    return rows;
-  },
+  handler: (ctx, args) => versions.adminListAgentVersions(ctx, args),
 });
 
 // Admin: rollback agent to a specific version
 export const adminRollbackAgentToVersion = mutation({
   args: { agent_key: v.string(), versionId: v.id("agentVersions") },
-  handler: async (ctx, args) => {
-    const isAdmin = await ctx.runQuery(api.admin.getIsAdmin, {});
-    if (!isAdmin) throw new Error("Admin access required");
-
-    const versionDoc = await ctx.db.get(args.versionId);
-    if (!versionDoc || versionDoc.agent_key !== args.agent_key) {
-      throw new Error("Version not found");
-    }
-    const agent = await ctx.db
-      .query("agentCatalog")
-      .withIndex("by_agent_key", (q) => q.eq("agent_key", args.agent_key))
-      .unique()
-      .catch(() => null);
-    if (!agent) throw new Error("Agent not found");
-
-    const s = versionDoc.snapshot as any;
-    await ctx.db.patch(agent._id, {
-      display_name: s.display_name,
-      short_desc: s.short_desc,
-      long_desc: s.long_desc,
-      capabilities: s.capabilities,
-      default_model: s.default_model,
-      model_routing: s.model_routing,
-      prompt_template_version: s.prompt_template_version,
-      prompt_templates: s.prompt_templates,
-      input_schema: s.input_schema,
-      output_schema: s.output_schema,
-      tier_restrictions: s.tier_restrictions,
-      confidence_hint: s.confidence_hint,
-      active: s.active,
-      updatedAt: Date.now(),
-    });
-
-    await ctx.runMutation(api.audit.write as any, {
-      action: "admin_rollback_agent_to_version",
-      entityType: "agentCatalog",
-      entityId: agent._id,
-      details: {
-        agent_key: args.agent_key,
-        versionId: String(args.versionId),
-        correlationId: `agent-rollback-to-version-${args.agent_key}-${Date.now()}`,
-      },
-    });
-
-    return { success: true };
-  },
+  handler: (ctx, args) => versions.adminRollbackAgentToVersion(ctx, args),
 });
 
 // Datasets: create lightweight dataset (url or note)
@@ -843,105 +179,30 @@ export const adminCreateDataset = mutation({
     sourceUrl: v.optional(v.string()),
     noteText: v.optional(v.string()),
   },
-  handler: async (ctx, args) => {
-    const isAdmin = await ctx.runQuery(api.admin.getIsAdmin, {});
-    if (!isAdmin) throw new Error("Admin access required");
-    const identity = await ctx.auth.getUserIdentity();
-
-    const id = await ctx.db.insert("agentDatasets", {
-      title: args.title,
-      sourceType: args.sourceType,
-      sourceUrl: args.sourceUrl,
-      noteText: args.noteText,
-      linkedAgentKeys: [] as Array<string>,
-      businessScope: undefined,
-      createdAt: Date.now(),
-      createdBy: undefined,
-      status: "new",
-    });
-
-    await ctx.runMutation(api.audit.write as any, {
-      action: "admin_create_dataset",
-      entityType: "agentDatasets",
-      entityId: id,
-      details: { title: args.title, sourceType: args.sourceType, createdBy: identity?.subject || "" },
-    });
-
-    return { datasetId: id };
-  },
+  handler: (ctx, args) => datasets.adminCreateDataset(ctx, args),
 });
 
 // Datasets: list
 export const adminListDatasets = query({
   args: { limit: v.optional(v.number()) },
-  handler: async (ctx, args) => {
-    const isAdmin = await ctx.runQuery(api.admin.getIsAdmin, {});
-    if (!isAdmin) return [];
-    const limit = Math.max(1, Math.min(args.limit ?? 100, 500));
-    const rows = await ctx.db.query("agentDatasets").order("desc").take(limit);
-    return rows;
-  },
+  handler: (ctx, args) => datasets.adminListDatasets(ctx, args),
 });
 
 // Datasets: link/unlink to agent
 export const adminLinkDatasetToAgent = mutation({
   args: { datasetId: v.id("agentDatasets"), agent_key: v.string() },
-  handler: async (ctx, args) => {
-    const isAdmin = await ctx.runQuery(api.admin.getIsAdmin, {});
-    if (!isAdmin) throw new Error("Admin access required");
-    const ds = await ctx.db.get(args.datasetId);
-    if (!ds) throw new Error("Dataset not found");
-    const linked = new Set<string>(ds.linkedAgentKeys as string[]);
-    linked.add(args.agent_key);
-    await ctx.db.patch(args.datasetId, { linkedAgentKeys: Array.from(linked) });
-
-    await ctx.runMutation(api.audit.write as any, {
-      action: "admin_link_dataset_to_agent",
-      entityType: "agentDatasets",
-      entityId: args.datasetId,
-      details: { agent_key: args.agent_key },
-    });
-
-    return { success: true };
-  },
+  handler: (ctx, args) => datasets.adminLinkDatasetToAgent(ctx, args),
 });
 
 export const adminUnlinkDatasetFromAgent = mutation({
   args: { datasetId: v.id("agentDatasets"), agent_key: v.string() },
-  handler: async (ctx, args) => {
-    const isAdmin = await ctx.runQuery(api.admin.getIsAdmin, {});
-    if (!isAdmin) throw new Error("Admin access required");
-    const ds = await ctx.db.get(args.datasetId);
-    if (!ds) throw new Error("Dataset not found");
-    const filtered = (ds.linkedAgentKeys as string[]).filter((k) => k !== args.agent_key);
-    await ctx.db.patch(args.datasetId, { linkedAgentKeys: filtered });
-
-    await ctx.runMutation(api.audit.write as any, {
-      action: "admin_unlink_dataset_from_agent",
-      entityType: "agentDatasets",
-      entityId: args.datasetId,
-      details: { agent_key: args.agent_key },
-    });
-
-    return { success: true };
-  },
+  handler: (ctx, args) => datasets.adminUnlinkDatasetFromAgent(ctx, args),
 });
 
 // Agent configuration queries and mutations
 export const getAgentConfig = query({
   args: { agent_key: v.string() },
-  handler: async (ctx, args) => {
-    const config = await ctx.db
-      .query("agentConfigs")
-      .withIndex("by_agent_key", (q) => q.eq("agent_key", args.agent_key))
-      .first();
-    
-    return config || { 
-      agent_key: args.agent_key, 
-      useRag: false, 
-      useKgraph: false 
-    };
-  },
+  handler: (ctx, args) => config.getAgentConfig(ctx, args),
 });
 
 export const adminUpdateAgentConfig = mutation({
@@ -950,97 +211,11 @@ export const adminUpdateAgentConfig = mutation({
     useRag: v.optional(v.boolean()),
     useKgraph: v.optional(v.boolean()),
   },
-  handler: async (ctx, args) => {
-    const isAdmin = await ctx.runQuery(api.admin.getIsAdmin, {});
-    if (!isAdmin) {
-      throw new Error("Admin access required");
-    }
-
-    const existing = await ctx.db
-      .query("agentConfigs")
-      .withIndex("by_agent_key", (q) => q.eq("agent_key", args.agent_key))
-      .first();
-
-    const now = Date.now();
-    
-    if (existing) {
-      await ctx.db.patch(existing._id, {
-        useRag: args.useRag ?? existing.useRag,
-        useKgraph: args.useKgraph ?? existing.useKgraph,
-        updatedAt: now,
-      });
-    } else {
-      await ctx.db.insert("agentConfigs", {
-        agent_key: args.agent_key,
-        useRag: args.useRag ?? false,
-        useKgraph: args.useKgraph ?? false,
-        createdAt: now,
-      });
-    }
-
-    // Audit log
-    await ctx.runMutation(api.audit.write, {
-      businessId: "global" as any,
-      action: "agent_config_update",
-      entityType: "agentConfigs",
-      entityId: args.agent_key,
-      details: {
-        agent_key: args.agent_key,
-        useRag: args.useRag,
-        useKgraph: args.useKgraph,
-      },
-    });
-
-    return true;
-  },
+  handler: (ctx, args) => config.adminUpdateAgentConfig(ctx, args),
 });
 
 // Enhanced publish with RAG/KG prerequisites check
 export const adminPublishAgentEnhanced: any = mutation({
   args: { agent_key: v.string() },
-  handler: async (ctx, args) => {
-    const isAdmin = await ctx.runQuery(api.admin.getIsAdmin, {});
-    if (!isAdmin) {
-      throw new Error("Admin access required");
-    }
-
-    // Check evaluation gate
-    const evalSummary = await ctx.runQuery(api.evals.latestSummary, {});
-    if (!(evalSummary as any)?.allPassing) {
-      throw new Error("Evaluations gate failed: not all passing. Fix failures before publish.");
-    }
-
-    // Check agent config prerequisites
-    const config = await ctx.runQuery(api.aiAgents.getAgentConfig, { 
-      agent_key: args.agent_key 
-    });
-
-    if (config.useRag) {
-      // Ensure some vector chunks exist
-      const chunks = await ctx.db
-        .query("vectorChunks")
-        .withIndex("by_scope", (q) => q.eq("scope", "global"))
-        .take(1);
-      
-      if (chunks.length === 0) {
-        throw new Error("RAG enabled but no vector chunks found. Ingest some datasets first.");
-      }
-    }
-
-    if (config.useKgraph) {
-      // Ensure some graph nodes exist
-      const nodes = await ctx.db
-        .query("kgraphNodes")
-        .take(1);
-      
-      if (nodes.length === 0) {
-        throw new Error("Knowledge Graph enabled but no nodes found. Ingest some datasets first.");
-      }
-    }
-
-    // Proceed with normal publish
-    return await ctx.runMutation(api.aiAgents.adminPublishAgent, { 
-      agent_key: args.agent_key 
-    });
-  },
+  handler: (ctx, args) => publish.adminPublishAgentEnhanced(ctx, args),
 });
