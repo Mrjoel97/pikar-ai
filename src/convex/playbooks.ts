@@ -34,33 +34,48 @@ export const getByKey = query({
   },
 });
 
-// Internal upsert for a single playbook (idempotent on key+version)
+// Relax internal upsert to accept optional fields and provide safe defaults
 export const upsertOneInternal = internalMutation({
   args: {
     playbook_key: v.string(),
     display_name: v.string(),
     version: v.string(),
-    triggers: v.any(),
-    input_schema: v.any(),
-    output_schema: v.any(),
-    steps: v.any(),
-    metadata: v.any(),
-    active: v.boolean(),
+    // Make all content fields optional and default in handler
+    triggers: v.optional(v.any()),
+    input_schema: v.optional(v.any()),
+    output_schema: v.optional(v.any()),
+    steps: v.optional(v.any()),
+    metadata: v.optional(v.any()),
+    active: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
+    // Normalize and default payload
+    const doc = {
+      playbook_key: args.playbook_key,
+      display_name: args.display_name,
+      version: args.version,
+      steps: Array.isArray(args.steps) ? args.steps : args.steps ?? [],
+      triggers: Array.isArray(args.triggers) ? args.triggers : args.triggers ?? [],
+      input_schema: args.input_schema ?? {},
+      output_schema: args.output_schema ?? {},
+      metadata: args.metadata ?? {},
+      active: args.active ?? true,
+    };
+
     const existing = await ctx.db
       .query("playbooks")
       .withIndex("by_key_and_version", (q) =>
-        q.eq("playbook_key", args.playbook_key).eq("version", args.version)
+        q.eq("playbook_key", doc.playbook_key).eq("version", doc.version)
       )
       .unique()
       .catch(() => null);
 
     if (existing) {
-      await ctx.db.replace(existing._id, { ...existing, ...args });
+      // Replace preserves other fields while ensuring normalized doc fields
+      await ctx.db.replace(existing._id, { ...existing, ...doc });
       return { updated: true, inserted: false };
     }
-    await ctx.db.insert("playbooks", { ...args });
+    await ctx.db.insert("playbooks", { ...doc });
     return { updated: false, inserted: true };
   },
 });
@@ -68,35 +83,45 @@ export const upsertOneInternal = internalMutation({
 // Public mutation to upsert one playbook (useful for admin/editor tooling)
 export const upsertPlaybook = mutation({
   args: {
-    playbook: v.object({
-      playbook_key: v.string(),
-      display_name: v.string(),
-      version: v.string(),
-      triggers: v.any(),
-      input_schema: v.any(),
-      output_schema: v.any(),
-      steps: v.any(),
-      metadata: v.any(),
-      active: v.optional(v.boolean()),
-    }),
+    playbook_key: v.string(),
+    display_name: v.string(),
+    version: v.string(),
+    steps: v.any(),
+    triggers: v.any(),
+    // Relax these to optional and default in handler
+    input_schema: v.optional(v.any()),
+    output_schema: v.optional(v.any()),
+    metadata: v.optional(v.any()),
+    active: v.optional(v.boolean()),
   },
-  // Avoid referencing `internal` here to prevent circular inference; add explicit return type
-  handler: async (ctx, args): Promise<{ updated: boolean; inserted: boolean }> => {
-    const p = args.playbook;
+  handler: async (ctx, args) => {
+    // Defaults for optional fields to satisfy schema at rest
+    const doc = {
+      playbook_key: args.playbook_key,
+      display_name: args.display_name,
+      version: args.version,
+      steps: Array.isArray(args.steps) ? args.steps : args.steps ?? [],
+      triggers: Array.isArray(args.triggers) ? args.triggers : args.triggers ?? [],
+      input_schema: args.input_schema ?? {},
+      output_schema: args.output_schema ?? {},
+      metadata: args.metadata ?? {},
+      active: args.active ?? true,
+    };
+
     const existing = await ctx.db
       .query("playbooks")
       .withIndex("by_key_and_version", (q) =>
-        q.eq("playbook_key", p.playbook_key).eq("version", p.version)
+        q.eq("playbook_key", doc.playbook_key).eq("version", doc.version)
       )
       .unique()
       .catch(() => null as any);
 
     if (existing) {
-      await ctx.db.replace(existing._id, { ...existing, ...p, active: p.active ?? true });
+      await ctx.db.replace(existing._id, { ...existing, ...doc, active: doc.active ?? true });
       return { updated: true, inserted: false };
     }
 
-    await ctx.db.insert("playbooks", { ...p, active: p.active ?? true });
+    await ctx.db.insert("playbooks", { ...doc, active: doc.active ?? true });
     return { updated: false, inserted: true };
   },
 });
@@ -132,34 +157,48 @@ export const adminUpsertPlaybook = mutation({
     playbook_key: v.string(),
     display_name: v.string(),
     version: v.string(),
-    triggers: v.any(),
-    input_schema: v.any(),
-    output_schema: v.any(),
     steps: v.any(),
-    metadata: v.any(),
-    active: v.boolean(),
+    triggers: v.any(),
+    input_schema: v.optional(v.any()),
+    output_schema: v.optional(v.any()),
+    metadata: v.optional(v.any()),
+    active: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const isAdmin = await ctx.runQuery(api.admin.getIsAdmin, {});
     if (!isAdmin) throw new Error("Admin access required");
 
-    const existing = await ctx.db
-      .query("playbooks")
-      .withIndex("by_key_and_version", (q) => 
-        q.eq("playbook_key", args.playbook_key).eq("version", args.version)
-      )
-      .unique();
-
-    const playbookData = {
+    const doc = {
       playbook_key: args.playbook_key,
       display_name: args.display_name,
       version: args.version,
-      triggers: args.triggers,
-      input_schema: args.input_schema,
-      output_schema: args.output_schema,
-      steps: args.steps,
-      metadata: args.metadata,
-      active: args.active,
+      steps: Array.isArray(args.steps) ? args.steps : args.steps ?? [],
+      triggers: Array.isArray(args.triggers) ? args.triggers : args.triggers ?? [],
+      input_schema: args.input_schema ?? {},
+      output_schema: args.output_schema ?? {},
+      metadata: args.metadata ?? {},
+      active: args.active ?? true,
+    };
+
+    const existing =
+      (await ctx.db
+        .query("playbooks")
+        .withIndex("by_key_and_version", (q) =>
+          q.eq("playbook_key", doc.playbook_key).eq("version", doc.version)
+        )
+        .unique()
+        .catch(() => null as any)) || null;
+
+    const playbookData = {
+      playbook_key: doc.playbook_key,
+      display_name: doc.display_name,
+      version: doc.version,
+      triggers: doc.triggers,
+      input_schema: doc.input_schema,
+      output_schema: doc.output_schema,
+      steps: doc.steps,
+      metadata: doc.metadata,
+      active: doc.active,
     };
 
     let playbookId: string;
@@ -170,7 +209,6 @@ export const adminUpsertPlaybook = mutation({
       playbookId = await ctx.db.insert("playbooks", playbookData);
     }
 
-    // Audit log
     await ctx.runMutation(api.audit.write as any, {
       action: existing ? "admin_update_playbook" : "admin_create_playbook",
       entityType: "playbooks",
@@ -232,10 +270,23 @@ export const adminTogglePlaybook = mutation({
 export const seedDefaultPlaybooks = action({
   args: {},
   handler: async (ctx) => {
+    // When calling upsert, ensure defaults are provided:
+    const toUpsert = (p: any) => ({
+      playbook_key: p.playbook_key,
+      display_name: p.display_name,
+      version: p.version ?? "v1.0",
+      steps: Array.isArray(p.steps) ? p.steps : p.steps ?? [],
+      triggers: Array.isArray(p.triggers) ? p.triggers : p.triggers ?? [],
+      input_schema: p.input_schema ?? {},
+      output_schema: p.output_schema ?? {},
+      metadata: p.metadata ?? {},
+      active: p.active ?? true,
+    });
+
     let inserted = 0;
     let updated = 0;
     for (const p of DEFAULT_PLAYBOOKS) {
-      const res = await ctx.runMutation(internal.playbooks.upsertOneInternal, p);
+      const res = await ctx.runMutation(internal.playbooks.upsertOneInternal, toUpsert(p));
       if (res.inserted) inserted += 1;
       if (res.updated) updated += 1;
     }
@@ -377,14 +428,8 @@ export const adminPublishPlaybook = mutation({
     if (playbook.active === true) return { success: true, alreadyPublished: true };
 
     await ctx.db.patch(playbook._id, { active: true });
-    // Save version snapshot after publish
-    await ctx.runMutation(internal.playbooks.savePlaybookVersionInternal, {
-      playbook_key: args.playbook_key,
-      version: args.version,
-      note: "Published",
-    });
 
-    // Save version snapshot
+    // Save version snapshot once (avoid duplicate insert)
     await ctx.runMutation(internal.playbooks.savePlaybookVersionInternal, {
       playbook_key: args.playbook_key,
       version: args.version,

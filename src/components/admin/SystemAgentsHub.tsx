@@ -81,7 +81,7 @@ export function SystemAgentsHub() {
     selectedAgentKey ? { agent_key: selectedAgentKey, limit: 25 } as any : undefined
   );
 
-  const datasets = useQuery(api.aiAgents.adminListDatasets, {});
+  const datasets = useQuery(api.agentDatasets.adminListDatasets, {});
 
   // Playbook versions query
   const playbookVersions = useQuery(
@@ -102,23 +102,32 @@ export function SystemAgentsHub() {
   const toggleAgent = useMutation(api.aiAgents.adminToggleAgent);
   const upsertPlaybook = useMutation(api.playbooks.adminUpsertPlaybook);
   const togglePlaybook = useMutation(api.playbooks.adminTogglePlaybook);
-  // New publish/rollback mutations
   const publishAgent = useMutation(api.aiAgents.adminPublishAgent);
   const rollbackAgent = useMutation(api.aiAgents.adminRollbackAgent);
   const publishPlaybook = useMutation(api.playbooks.adminPublishPlaybook);
   const rollbackPlaybook = useMutation(api.playbooks.adminRollbackPlaybook);
-  // Use actions for seeding (they are Convex actions)
-  const seedAgents = useAction(api.seed.seedAgentCatalog);
+  const seedAgents = useAction(api.seed.seedAgentCatalogSafe);
   const seedPlaybooks = useAction(api.playbooks.seedDefaultPlaybooks);
 
   // Evaluation actions
   const createEvalSet = useMutation(api.evals.createSet);
   const runEvalSet = useAction(api.evals.runSet);
 
-  // Add new mutations for vector and knowledge graph operations
+  // Vector & config operations (remove nonexistent KGraph ingestion)
   const ingestVectors = useMutation(api.vectors.adminIngestChunks);
-  const ingestKgraph = useMutation(api.kgraph.adminIngestFromDataset);
-  const updateAgentConfig = useMutation(api.aiAgents.adminUpdateAgentConfig);
+  // Removed: const ingestKgraph = useMutation(api.kgraph.adminIngestFromDataset);
+  // Removed unused duplicate: const updateAgentConfig = useMutation(api.aiAgents.adminUpdateAgentConfig);
+
+  // FIX: Use correct module names for dataset mutations
+  const createDataset = useMutation(api.agentDatasets.adminCreateDataset);
+  const linkDataset = useMutation(api.agentDatasets.adminLinkDataset);
+  const unlinkDataset = useMutation(api.agentDatasets.adminUnlinkDataset);
+
+  // Playbook version restore mutation
+  const restorePlaybookVersion = useMutation(api.playbooks.adminRestorePlaybookVersion);
+
+  // FIX: Use correct function for agent version restoration
+  const restoreAgentVersion = useMutation(api.aiAgents.adminRestoreAgentVersion);
 
   // Filter agents
   const filteredAgents =
@@ -325,18 +334,10 @@ export function SystemAgentsHub() {
     }
   };
 
-  const rollbackAgentToVersion = useMutation(api.aiAgents.adminRollbackAgentToVersion);
-  const createDataset = useMutation(api.aiAgents.adminCreateDataset);
-  const linkDataset = useMutation(api.aiAgents.adminLinkDatasetToAgent);
-  const unlinkDataset = useMutation(api.aiAgents.adminUnlinkDatasetFromAgent);
-
-  // Playbook version restore mutation
-  const restorePlaybookVersion = useMutation(api.playbooks.adminRestorePlaybookVersion);
-
   const handleRestoreVersion = async (versionId: string) => {
     if (!selectedAgentKey) return;
     try {
-      await rollbackAgentToVersion({ agent_key: selectedAgentKey, versionId } as any);
+      await restoreAgentVersion({ agent_key: selectedAgentKey, versionId } as any);
       toast.success("Restored agent to selected version");
       setVersionsOpen(false);
     } catch (e) {
@@ -870,20 +871,6 @@ export function SystemAgentsHub() {
                               }}
                             >
                               Ingest Vectors
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={async () => {
-                                try {
-                                  await ingestKgraph({ datasetId: d._id } as any);
-                                  toast.success("Knowledge graph ingested");
-                                } catch {
-                                  toast.error("Failed to ingest knowledge graph");
-                                }
-                              }}
-                            >
-                              Ingest KGraph
                             </Button>
                             <Button
                               size="sm"

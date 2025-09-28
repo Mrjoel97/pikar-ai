@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { SystemAgentsHub } from "@/components/admin/SystemAgentsHub";
 
 export default function SystemAgentsPage() {
-  const seedAgents = useAction(api.seed.seedAgentCatalog);
+  const seedAgents = useAction(api.seed.seedAgentCatalogSafe);
   const seedPlaybooks = useAction(api.playbooks.seedDefaultPlaybooks);
   const [busy, setBusy] = useState<"none" | "agents" | "playbooks">("none");
 

@@ -41,20 +41,19 @@ export const listSets = query({
 });
 
 export const listRunsBySet = query({
-  args: { setId: v.optional(v.id("evalSets")) }, // already optional
+  args: { setId: v.optional(v.id("evalSets")) },
   handler: async (ctx, args) => {
+    // No set selected yet — return an empty list safely
     if (!args.setId) {
       return [];
     }
-    // Ensure TS knows setId is defined
-    const setId = args.setId as Id<"evalSets">;
-
-    const runs = await ctx.db
+    // Fetch runs for the selected setId using the existing index
+    const rows = await ctx.db
       .query("evalRuns")
-      .withIndex("by_set", (q) => q.eq("setId", setId))
+      .withIndex("by_set", (q) => q.eq("setId", args.setId as any))
       .order("desc")
       .take(50);
-    return runs;
+    return rows;
   },
 });
 
