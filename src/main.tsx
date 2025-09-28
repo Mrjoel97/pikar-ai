@@ -23,6 +23,7 @@ import SettingsPage from "@/pages/Settings.tsx";
 import AdminPage from "@/pages/Admin.tsx";
 import AdminAuthPage from "./pages/AdminAuth.tsx";
 import LearningHubPage from "@/pages/LearningHub.tsx";
+import SystemAgentsPage from "@/pages/SystemAgents";
 
 class ErrorBoundary extends Component<
   { children: React.ReactNode },
@@ -124,6 +125,7 @@ createRoot(document.getElementById("root")!).render(
               <Route path="/admin" element={<AdminPage />} />
               <Route path="/admin-auth" element={<AdminAuthPage />} />
               <Route path="/learning-hub" element={<LearningHubPage />} />
+              <Route path="/admin/system-agents" element={<SystemAgentsPage />} />
               <Route
                 path="/src/components/dashboards/SolopreneurDashboard.tsx"
                 element={<Navigate to="/dashboard" replace />}
