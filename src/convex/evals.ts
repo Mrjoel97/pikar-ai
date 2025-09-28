@@ -81,8 +81,23 @@ export const runSet: any = action({
           data = await ctx.runQuery((api as any).featureFlags.getFeatureFlags, {});
         } else if (t.tool === "alerts") {
           const { api } = await import("./_generated/api");
-          // listAlerts is guest-safe (returns [] if unauthorized)
           data = await ctx.runQuery((api as any).admin.listAlerts, {});
+        } else if (t.tool === "retrieval") {
+          // New retrieval tool for vector search testing
+          const { api } = await import("./_generated/api");
+          data = await ctx.runQuery((api as any).vectors.retrieve, {
+            query: t.input || "test query",
+            topK: 3,
+          });
+        } else if (t.tool === "kgraph") {
+          // New knowledge graph tool for testing
+          const { api } = await import("./_generated/api");
+          data = await ctx.runQuery((api as any).kgraph.neighborhood, {
+            type: "dataset",
+            key: t.input || "test",
+            depth: 1,
+            limit: 5,
+          });
         } else {
           throw new Error(`Unknown tool: ${t.tool}`);
         }

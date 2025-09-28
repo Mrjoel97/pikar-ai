@@ -20,7 +20,7 @@ export const initSolopreneurAgent = mutation({
     ),
     docFileIds: v.optional(v.array(v.id("_storage"))), // optional initial uploads
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<any> => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Not authenticated");
 
@@ -924,5 +924,123 @@ export const adminUnlinkDatasetFromAgent = mutation({
     });
 
     return { success: true };
+  },
+});
+
+// Agent configuration queries and mutations
+export const getAgentConfig = query({
+  args: { agent_key: v.string() },
+  handler: async (ctx, args) => {
+    const config = await ctx.db
+      .query("agentConfigs")
+      .withIndex("by_agent_key", (q) => q.eq("agent_key", args.agent_key))
+      .first();
+    
+    return config || { 
+      agent_key: args.agent_key, 
+      useRag: false, 
+      useKgraph: false 
+    };
+  },
+});
+
+export const adminUpdateAgentConfig = mutation({
+  args: {
+    agent_key: v.string(),
+    useRag: v.optional(v.boolean()),
+    useKgraph: v.optional(v.boolean()),
+  },
+  handler: async (ctx, args) => {
+    const isAdmin = await ctx.runQuery(api.admin.getIsAdmin, {});
+    if (!isAdmin) {
+      throw new Error("Admin access required");
+    }
+
+    const existing = await ctx.db
+      .query("agentConfigs")
+      .withIndex("by_agent_key", (q) => q.eq("agent_key", args.agent_key))
+      .first();
+
+    const now = Date.now();
+    
+    if (existing) {
+      await ctx.db.patch(existing._id, {
+        useRag: args.useRag ?? existing.useRag,
+        useKgraph: args.useKgraph ?? existing.useKgraph,
+        updatedAt: now,
+      });
+    } else {
+      await ctx.db.insert("agentConfigs", {
+        agent_key: args.agent_key,
+        useRag: args.useRag ?? false,
+        useKgraph: args.useKgraph ?? false,
+        createdAt: now,
+      });
+    }
+
+    // Audit log
+    await ctx.runMutation(api.audit.write, {
+      businessId: "global" as any,
+      action: "agent_config_update",
+      entityType: "agentConfigs",
+      entityId: args.agent_key,
+      details: {
+        agent_key: args.agent_key,
+        useRag: args.useRag,
+        useKgraph: args.useKgraph,
+      },
+    });
+
+    return true;
+  },
+});
+
+// Enhanced publish with RAG/KG prerequisites check
+export const adminPublishAgentEnhanced: any = mutation({
+  args: { agent_key: v.string() },
+  handler: async (ctx, args) => {
+    const isAdmin = await ctx.runQuery(api.admin.getIsAdmin, {});
+    if (!isAdmin) {
+      throw new Error("Admin access required");
+    }
+
+    // Check evaluation gate
+    const evalSummary = await ctx.runQuery(api.evals.latestSummary, {});
+    if (!(evalSummary as any)?.allPassing) {
+      throw new Error("Evaluations gate failed: not all passing. Fix failures before publish.");
+    }
+
+    // Check agent config prerequisites
+    const config = await ctx.runQuery(api.aiAgents.getAgentConfig, { 
+      agent_key: args.agent_key 
+    });
+
+    if (config.useRag) {
+      // Ensure some vector chunks exist
+      const chunks = await ctx.db
+        .query("vectorChunks")
+        .withIndex("by_scope", (q) => q.eq("scope", "global"))
+        .take(1);
+      
+      if (chunks.length === 0) {
+        throw new Error("RAG enabled but no vector chunks found. Ingest some datasets first.");
+      }
+    }
+
+    if (config.useKgraph) {
+      // Ensure some graph nodes exist
+      const nodes = await ctx.db
+        .query("kgraphNodes")
+        .take(1);
+      
+      if (nodes.length === 0) {
+        throw new Error("Knowledge Graph enabled but no nodes found. Ingest some datasets first.");
+      }
+    }
+
+    // Proceed with normal publish
+    return await ctx.runMutation(api.aiAgents.adminPublishAgent, { 
+      agent_key: args.agent_key 
+    });
   },
 });

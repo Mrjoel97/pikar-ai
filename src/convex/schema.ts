@@ -1211,6 +1211,56 @@ const schema = defineSchema({
     .index("by_createdAt", ["createdAt"])
     .index("by_agent_link", ["title"]) // lightweight generic index to support listings
     .index("by_status", ["status"]),
+
+  // Vector database tables for Phase A
+  vectorChunks: defineTable({
+    scope: v.union(v.literal("global"), v.literal("dataset"), v.literal("business")),
+    businessId: v.optional(v.id("businesses")),
+    datasetId: v.optional(v.id("agentDatasets")),
+    agentKeys: v.array(v.string()),
+    content: v.string(),
+    meta: v.any(),
+    embedding: v.array(v.number()),
+    createdAt: v.number(),
+  })
+    .index("by_scope", ["scope"])
+    .index("by_business", ["businessId"])
+    .index("by_dataset", ["datasetId"]),
+
+  // Knowledge graph tables for Phase B
+  kgraphNodes: defineTable({
+    businessId: v.optional(v.id("businesses")),
+    type: v.string(),
+    key: v.string(),
+    attrs: v.any(),
+    summary: v.optional(v.string()),
+    createdAt: v.number(),
+  })
+    .index("by_type_and_key", ["type", "key"])
+    .index("by_business_and_type", ["businessId", "type"]),
+
+  kgraphEdges: defineTable({
+    businessId: v.optional(v.id("businesses")),
+    srcNodeId: v.id("kgraphNodes"),
+    dstNodeId: v.id("kgraphNodes"),
+    relation: v.string(),
+    weight: v.optional(v.number()),
+    attrs: v.optional(v.any()),
+    createdAt: v.number(),
+  })
+    .index("by_business_and_src", ["businessId", "srcNodeId"])
+    .index("by_business_and_dst", ["businessId", "dstNodeId"]),
+
+  // Agent configuration for Phase C
+  agentConfigs: defineTable({
+    agent_key: v.string(),
+    useRag: v.optional(v.boolean()),
+    useKgraph: v.optional(v.boolean()),
+    createdAt: v.number(),
+    updatedAt: v.optional(v.number()),
+  })
+    .index("by_agent_key", ["agent_key"]),
+
 });
 
 export default schema;

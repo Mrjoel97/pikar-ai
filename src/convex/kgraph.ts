@@ -1,0 +1,210 @@
+import { query, mutation } from "./_generated/server";
+import { v } from "convex/values";
+import { api } from "./_generated/api";
+
+// Admin-gated mutation to ingest nodes/edges from a dataset
+export const adminIngestFromDataset = mutation({
+  args: { datasetId: v.id("agentDatasets") },
+  handler: async (ctx, args) => {
+    // RBAC check
+    const isAdmin = await ctx.runQuery(api.admin.getIsAdmin, {});
+    if (!isAdmin) {
+      throw new Error("Admin access required");
+    }
+
+    // Get the dataset
+    const dataset = await ctx.db.get(args.datasetId);
+    if (!dataset) {
+      throw new Error("Dataset not found");
+    }
+
+    const businessId = dataset.businessScope;
+    const createdAt = Date.now();
+
+    // Create main dataset node
+    const datasetNodeId = await ctx.db.insert("kgraphNodes", {
+      businessId,
+      type: "dataset",
+      key: dataset.title,
+      attrs: {
+        sourceType: dataset.sourceType,
+        sourceUrl: dataset.sourceUrl,
+        noteText: dataset.noteText,
+      },
+      summary: `Dataset: ${dataset.title}`,
+      createdAt,
+    });
+
+    let tokenNodes = [];
+    let edgeCount = 0;
+
+    // Extract tokens from content and create nodes/edges
+    const content = dataset.sourceUrl || dataset.noteText || "";
+    const tokens = extractTokens(content);
+    
+    for (const token of tokens.slice(0, 50)) { // Limit to 50 tokens
+      // Create or find token node
+      const existingNode = await ctx.db
+        .query("kgraphNodes")
+        .withIndex("by_type_and_key", (q) => q.eq("type", "token").eq("key", token))
+        .filter((q) => q.eq(q.field("businessId"), businessId))
+        .first();
+
+      let tokenNodeId;
+      if (existingNode) {
+        tokenNodeId = existingNode._id;
+      } else {
+        tokenNodeId = await ctx.db.insert("kgraphNodes", {
+          businessId,
+          type: "token",
+          key: token,
+          attrs: { frequency: 1 },
+          summary: `Token: ${token}`,
+          createdAt,
+        });
+      }
+
+      // Create edge from dataset to token
+      await ctx.db.insert("kgraphEdges", {
+        businessId,
+        srcNodeId: datasetNodeId,
+        dstNodeId: tokenNodeId,
+        relation: "mentions",
+        weight: 1.0,
+        createdAt,
+      });
+
+      tokenNodes.push(tokenNodeId);
+      edgeCount++;
+    }
+
+    // Audit log
+    await ctx.runMutation(api.audit.write, {
+      businessId: businessId || ("global" as any),
+      action: "kgraph_ingest",
+      entityType: "kgraph",
+      entityId: args.datasetId,
+      details: {
+        datasetTitle: dataset.title,
+        nodesCreated: tokenNodes.length + 1,
+        edgesCreated: edgeCount,
+      },
+    });
+
+    return {
+      datasetNodeId,
+      tokenNodes,
+      edgeCount,
+      nodesCreated: tokenNodes.length + 1,
+    };
+  },
+});
+
+// Query to get neighborhood around a node
+export const neighborhood = query({
+  args: {
+    type: v.string(),
+    key: v.string(),
+    businessId: v.optional(v.id("businesses")),
+    depth: v.optional(v.number()),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const depth = Math.min(args.depth || 1, 3);
+    const limit = Math.min(args.limit || 25, 100);
+
+    // Find the root node
+    const rootNode = await ctx.db
+      .query("kgraphNodes")
+      .withIndex("by_type_and_key", (q) => q.eq("type", args.type).eq("key", args.key))
+      .filter((q) => q.eq(q.field("businessId"), args.businessId))
+      .first();
+
+    if (!rootNode) {
+      return { nodes: [], edges: [], summary: "Node not found" };
+    }
+
+    const nodes = [rootNode];
+    const edges = [];
+    const visitedNodes = new Set([rootNode._id]);
+
+    // BFS traversal
+    let currentLevel = [rootNode._id];
+    
+    for (let d = 0; d < depth && currentLevel.length > 0; d++) {
+      const nextLevel = [];
+      
+      for (const nodeId of currentLevel) {
+        // Get outgoing edges
+        const outEdges = await ctx.db
+          .query("kgraphEdges")
+          .withIndex("by_business_and_src", (q) => 
+            q.eq("businessId", args.businessId).eq("srcNodeId", nodeId)
+          )
+          .take(limit);
+
+        // Get incoming edges
+        const inEdges = await ctx.db
+          .query("kgraphEdges")
+          .withIndex("by_business_and_dst", (q) => 
+            q.eq("businessId", args.businessId).eq("dstNodeId", nodeId)
+          )
+          .take(limit);
+
+        const allEdges = [...outEdges, ...inEdges];
+        
+        for (const edge of allEdges.slice(0, limit)) {
+          edges.push(edge);
+          
+          // Add connected nodes
+          const connectedNodeId = edge.srcNodeId === nodeId ? edge.dstNodeId : edge.srcNodeId;
+          
+          if (!visitedNodes.has(connectedNodeId)) {
+            const connectedNode = await ctx.db.get(connectedNodeId);
+            if (connectedNode) {
+              nodes.push(connectedNode);
+              visitedNodes.add(connectedNodeId);
+              nextLevel.push(connectedNodeId);
+            }
+          }
+        }
+      }
+      
+      currentLevel = nextLevel.slice(0, limit);
+    }
+
+    const summary = `Found ${nodes.length} nodes and ${edges.length} edges around ${args.type}:${args.key}`;
+
+    return { nodes: nodes.slice(0, limit), edges: edges.slice(0, limit), summary };
+  },
+});
+
+// Helper function to extract simple tokens
+function extractTokens(text: string): string[] {
+  if (!text) return [];
+  
+  // Simple tokenization - extract words, URLs, and meaningful phrases
+  const tokens = new Set<string>();
+  
+  // Extract URLs
+  const urlRegex = /https?:\/\/[^\s]+/g;
+  const urls = text.match(urlRegex) || [];
+  urls.forEach(url => tokens.add(url));
+  
+  // Extract words (3+ characters)
+  const words = text.toLowerCase()
+    .replace(/[^\w\s]/g, ' ')
+    .split(/\s+/)
+    .filter(word => word.length >= 3 && word.length <= 50);
+  
+  words.forEach(word => tokens.add(word));
+  
+  // Extract quoted phrases
+  const phrases = text.match(/"([^"]+)"/g) || [];
+  phrases.forEach(phrase => {
+    const clean = phrase.replace(/"/g, '').trim();
+    if (clean.length >= 3) tokens.add(clean);
+  });
+  
+  return Array.from(tokens).slice(0, 100); // Limit tokens
+}

@@ -4,122 +4,132 @@ import { action } from "./_generated/server";
 import { v } from "convex/values";
 import { api, internal } from "./_generated/api";
 
-type RouteResult = {
-  summaryText: string;
-  data: {
-    profile: any;
-    uploads: any[];
-    analytics: any;
-    mode: string;
-  };
-  provider: "openai" | "none";
-};
-
 export const route = action({
   args: {
     message: v.string(),
     businessId: v.optional(v.id("businesses")),
-    tools: v.optional(v.array(v.string())), // reserved for future tool routing
+    agentKey: v.optional(v.string()),
   },
-  handler: async (ctx, args): Promise<RouteResult> => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
+  handler: async (ctx, args): Promise<{ response: string; sources?: any[] }> => {
+    try {
+      let contextBlocks = [];
+      let sources = [];
 
-    const bizDoc =
-      args.businessId ? null : await ctx.runQuery(api.businesses.currentUserBusiness, {});
-    const businessId = args.businessId ?? (bizDoc?._id as any);
-    if (!businessId) {
-      throw new Error("No business selected");
-    }
+      // Get agent configuration if specified
+      if (args.agentKey) {
+        try {
+          const config = await ctx.runQuery(api.aiAgents.getAgentConfig, {
+            agent_key: args.agentKey
+          });
 
-    const profile =
-      (await ctx
-        .runQuery(internal.aiAgents.getAgentProfileLite, { businessId })
-        .catch(() => null)) ?? null;
+          // RAG retrieval if enabled
+          if (config.useRag) {
+            try {
+              const retrieval = await ctx.runQuery(api.vectors.retrieve, {
+                query: args.message,
+                agent_key: args.agentKey,
+                businessId: args.businessId,
+                topK: 5,
+              });
 
-    const uploads =
-      (await ctx
-        .runQuery(api.aiAgents.summarizeUploads as any, { limit: 3 })
-        .catch(() => [])) ?? [];
+              if (retrieval.chunks && retrieval.chunks.length > 0) {
+                const ragContext = retrieval.chunks
+                  .map((chunk: any, i: number) => 
+                    `[Source ${i + 1}]: ${chunk.content.slice(0, 500)}...`
+                  )
+                  .join('\n\n');
+                
+                contextBlocks.push(`## Retrieved Context:\n${ragContext}`);
+                sources.push(...retrieval.chunks.map((chunk: any) => ({
+                  type: 'vector',
+                  content: chunk.content.slice(0, 200),
+                  score: chunk.score,
+                  datasetId: chunk.datasetId,
+                })));
+              }
+            } catch (ragError) {
+              // Continue without RAG on error
+              contextBlocks.push(`## RAG Error: ${String(ragError).slice(0, 100)}`);
+            }
+          }
 
-    const analytics =
-      (await ctx
-        .runQuery(api.aiAgents.runQuickAnalytics as any, { businessId })
-        .catch(() => null)) ?? null;
+          // Knowledge Graph retrieval if enabled
+          if (config.useKgraph && args.businessId) {
+            try {
+              // Simple heuristic: use business name or message keywords as node key
+              const business = await ctx.runQuery(api.businesses.getById, { 
+                businessId: args.businessId 
+              });
+              
+              if (business?.name) {
+                const neighborhood = await ctx.runQuery(api.kgraph.neighborhood, {
+                  type: "dataset",
+                  key: business.name,
+                  businessId: args.businessId,
+                  depth: 1,
+                  limit: 10,
+                });
 
-    const hasOpenAI =
-      !!process.env.OPENAI_API_KEY || !!process.env.OPENAI_API_KEY?.toString();
-
-    if (hasOpenAI) {
-      const parts: Array<string> = [];
-      if (profile) {
-        parts.push(
-          `Agent Profile: industry=${profile.industry || "n/a"}, voice=${profile.brandVoice || "n/a"}, summary="${profile.businessSummary || ""}"`
-        );
+                if (neighborhood.nodes && neighborhood.nodes.length > 0) {
+                  const kgContext = neighborhood.nodes
+                    .map((node: any) => `${node.type}:${node.key} - ${node.summary || ''}`)
+                    .join('\n');
+                  
+                  contextBlocks.push(`## Knowledge Graph:\n${kgContext}`);
+                  sources.push(...neighborhood.nodes.map((node: any) => ({
+                    type: 'kgraph',
+                    nodeType: node.type,
+                    key: node.key,
+                    summary: node.summary,
+                  })));
+                }
+              }
+            } catch (kgError) {
+              // Continue without KG on error
+              contextBlocks.push(`## KG Error: ${String(kgError).slice(0, 100)}`);
+            }
+          }
+        } catch (configError) {
+          // Continue without enhanced context on config error
+        }
       }
-      if (analytics) {
-        parts.push(
-          `Analytics: revenue_90d=${analytics.revenue90d}, churnAlert=${
-            analytics.churnAlert ? "yes" : "no"
-          }, msg="${analytics.churnMessage}"`
-        );
+
+      // Prepare enhanced prompt with context
+      const enhancedMessage = contextBlocks.length > 0 
+        ? `${args.message}\n\n${contextBlocks.join('\n\n')}`
+        : args.message;
+
+      // Generate response using existing OpenAI integration
+      const response = await ctx.runAction(api.openai.generate, {
+        prompt: enhancedMessage,
+        maxTokens: 500,
+      });
+
+      // Audit the context usage
+      if (args.businessId && (contextBlocks.length > 0 || sources.length > 0)) {
+        await ctx.runMutation(api.audit.write, {
+          businessId: args.businessId,
+          action: "agent_context_used",
+          entityType: "agentRouter",
+          entityId: args.agentKey || "",
+          details: {
+            agentKey: args.agentKey,
+            contextBlocksCount: contextBlocks.length,
+            sourcesCount: sources.length,
+            ragUsed: sources.some(s => s.type === 'vector'),
+            kgUsed: sources.some(s => s.type === 'kgraph'),
+          },
+        });
       }
-      if (Array.isArray(uploads) && uploads.length > 0) {
-        const uploadsText = uploads
-          .map((u: any) => `${u.filename} (${u.summary || ""})`)
-          .slice(0, 3)
-          .join("; ");
-        parts.push(`Recent Uploads: ${uploadsText}`);
-      }
-      parts.push(`User request: ${args.message}`);
 
-      const prompt = [
-        "You are a helpful business agent for Pikar AI.",
-        "Use the context to propose 3 concise, actionable recommendations.",
-        "Be concrete and avoid fluff.",
-        "",
-        "Context:",
-        parts.join("\n"),
-        "",
-        "Output:",
-        "- 3 bullets with concrete next actions",
-        "- Brief rationale",
-        "- If applicable, include simple KPI targets",
-      ].join("\n");
-
-      const llm: { text?: string } | null = (await ctx.runAction(api.openai.generate, {
-        prompt,
-        model: "gpt-4o-mini",
-        temperature: 0.3,
-        maxTokens: 700,
-      })) as any;
-
-      const summaryText = (llm?.text || "").trim();
-
-      return {
-        summaryText,
-        data: { profile, uploads, analytics, mode: "agent_router" },
-        provider: "openai",
+      return { 
+        response: response.text || "I apologize, but I couldn't generate a response.", 
+        sources: sources.length > 0 ? sources : undefined 
+      };
+    } catch (error) {
+      return { 
+        response: `I encountered an error: ${String(error).slice(0, 200)}. Please try again.` 
       };
     }
-
-    // Fallback if OPENAI_API_KEY is not configured
-    const lines: string[] = [
-      "OpenAI not configured. Returning context summary.",
-      `Message: ${args.message}`,
-      profile
-        ? `Profile industry=${profile.industry}, voice=${profile.brandVoice}`
-        : "No profile",
-      analytics
-        ? `Revenue90d=${analytics.revenue90d}, churnAlert=${analytics.churnAlert}`
-        : "No analytics",
-      `Uploads: ${(uploads as any[]).length}`,
-    ];
-
-    return {
-      summaryText: lines.join(" | "),
-      data: { profile, uploads, analytics, mode: "agent_router" },
-      provider: "none",
-    };
   },
 });

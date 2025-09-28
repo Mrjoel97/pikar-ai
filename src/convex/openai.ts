@@ -123,3 +123,69 @@ export const transcribeAudio = action({
     return { transcript, summary, provider: "openai", note: "" };
   },
 });
+
+export const embedText = action({
+  args: { texts: v.array(v.string()) },
+  handler: async (ctx, args): Promise<{ embeddings: number[][], stubbed: boolean }> => {
+    const apiKey = process.env.OPENAI_API_KEY;
+    
+    if (!apiKey) {
+      // Return deterministic pseudo-embeddings when no API key
+      const stubEmbeddings = args.texts.map(text => {
+        // Create a simple hash-based pseudo-embedding
+        const hash = simpleHash(text);
+        const embedding = Array.from({ length: 1536 }, (_, i) => 
+          Math.sin(hash + i) * 0.1 // Small values to simulate embeddings
+        );
+        return embedding;
+      });
+      
+      return { embeddings: stubEmbeddings, stubbed: true };
+    }
+
+    try {
+      const response = await fetch("https://api.openai.com/v1/embeddings", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "text-embedding-3-small",
+          input: args.texts,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`OpenAI API error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      const embeddings = data.data.map((item: any) => item.embedding);
+      
+      return { embeddings, stubbed: false };
+    } catch (error) {
+      // Fallback to pseudo-embeddings on error
+      const stubEmbeddings = args.texts.map(text => {
+        const hash = simpleHash(text);
+        const embedding = Array.from({ length: 1536 }, (_, i) => 
+          Math.sin(hash + i) * 0.1
+        );
+        return embedding;
+      });
+      
+      return { embeddings: stubEmbeddings, stubbed: true };
+    }
+  },
+});
+
+// Helper function for deterministic hashing
+function simpleHash(str: string): number {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash; // Convert to 32-bit integer
+  }
+  return Math.abs(hash);
+}
