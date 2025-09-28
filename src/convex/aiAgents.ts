@@ -219,3 +219,9 @@ export const adminPublishAgentEnhanced: any = mutation({
   args: { agent_key: v.string() },
   handler: (ctx, args) => publish.adminPublishAgentEnhanced(ctx, args),
 });
+
+export const toolHealth: any = query({
+  args: { agent_key: v.string() },
+  handler: (ctx: any, args: { agent_key: string }) =>
+    config.getAgentToolHealth(ctx, args),
+});
