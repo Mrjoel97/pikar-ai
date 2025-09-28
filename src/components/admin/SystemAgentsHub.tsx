@@ -63,6 +63,8 @@ export function SystemAgentsHub() {
   const [createdSetId, setCreatedSetId] = useState<string | null>(null);
   const [viewRunsSetId, setViewRunsSetId] = useState<string | null>(null);
   const [versionsOpen, setVersionsOpen] = useState(false);
+  const [playbookVersionsOpen, setPlaybookVersionsOpen] = useState(false);
+  const [selectedPlaybookKey, setSelectedPlaybookKey] = useState<string>("");
 
   // Queries
   const agents = useQuery(api.aiAgents.adminListAgents, {
@@ -80,6 +82,12 @@ export function SystemAgentsHub() {
   );
 
   const datasets = useQuery(api.aiAgents.adminListDatasets, {});
+
+  // Playbook versions query
+  const playbookVersions = useQuery(
+    api.playbooks.adminListPlaybookVersions,
+    selectedPlaybookKey ? ({ playbook_key: selectedPlaybookKey, limit: 25 } as any) : undefined
+  );
 
   // Evaluations data
   const evalSets = useQuery(api.evals.listSets, {});
@@ -317,6 +325,9 @@ export function SystemAgentsHub() {
   const linkDataset = useMutation(api.aiAgents.adminLinkDatasetToAgent);
   const unlinkDataset = useMutation(api.aiAgents.adminUnlinkDatasetFromAgent);
 
+  // Playbook version restore mutation
+  const restorePlaybookVersion = useMutation(api.playbooks.adminRestorePlaybookVersion);
+
   const handleRestoreVersion = async (versionId: string) => {
     if (!selectedAgentKey) return;
     try {
@@ -325,6 +336,17 @@ export function SystemAgentsHub() {
       setVersionsOpen(false);
     } catch (e) {
       toast.error("Failed to restore version");
+    }
+  };
+
+  const handleRestorePlaybookVersion = async (versionId: string) => {
+    if (!selectedPlaybookKey) return;
+    try {
+      await restorePlaybookVersion({ playbook_key: selectedPlaybookKey, versionId } as any);
+      toast.success("Restored playbook to selected version");
+      setPlaybookVersionsOpen(false);
+    } catch {
+      toast.error("Failed to restore playbook version");
     }
   };
 
@@ -519,6 +541,16 @@ export function SystemAgentsHub() {
                           onClick={() => handleRollbackPlaybook(playbook)}
                         >
                           Rollback
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setSelectedPlaybookKey(playbook.playbook_key);
+                            setPlaybookVersionsOpen(true);
+                          }}
+                        >
+                          Versions
                         </Button>
                       </div>
                     </TableCell>
@@ -893,6 +925,48 @@ export function SystemAgentsHub() {
                     <TableCell>{new Date(v.createdAt || v._creationTime || Date.now()).toLocaleString()}</TableCell>
                     <TableCell>
                       <Button size="sm" variant="outline" onClick={() => handleRestoreVersion(String(v._id))}>
+                        Restore
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+          <div className="flex justify-end mt-3">
+            <DrawerClose asChild>
+              <Button variant="outline">Close</Button>
+            </DrawerClose>
+          </div>
+        </DrawerContent>
+      </Drawer>
+
+      {/* Playbook Versions Drawer */}
+      <Drawer open={playbookVersionsOpen} onOpenChange={setPlaybookVersionsOpen}>
+        <DrawerContent className="p-4">
+          <DrawerHeader>
+            <DrawerTitle>Playbook Versions {selectedPlaybookKey && `— ${selectedPlaybookKey}`}</DrawerTitle>
+          </DrawerHeader>
+          <div className="max-h-[50vh] overflow-y-auto border rounded-lg">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Version</TableHead>
+                  <TableHead>Created</TableHead>
+                  <TableHead>Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {(playbookVersions || []).map((v: any) => (
+                  <TableRow key={String(v._id)}>
+                    <TableCell className="font-mono text-sm">{v.version}</TableCell>
+                    <TableCell>{new Date(v.createdAt || v._creationTime || Date.now()).toLocaleString()}</TableCell>
+                    <TableCell>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleRestorePlaybookVersion(String(v._id))}
+                      >
                         Restore
                       </Button>
                     </TableCell>
