@@ -49,7 +49,7 @@ type Playbook = {
   active: boolean;
 };
 
-// Add built-in defaults to show when backend returns no data
+// Expand built-in defaults to 10 agents
 const DEFAULT_AGENTS: Agent[] = [
   {
     _id: "virtual-content",
@@ -105,6 +105,150 @@ const DEFAULT_AGENTS: Agent[] = [
     active: true,
     createdAt: Date.now(),
   },
+  {
+    _id: "virtual-analytics",
+    agent_key: "analytics_insights",
+    display_name: "Analytics Insights",
+    short_desc: "Generates concise KPI insights and deltas.",
+    long_desc: "Summarizes KPIs and highlights anomalies with suggested actions.",
+    capabilities: ["summarize", "insight", "alert"],
+    default_model: "gpt-4o-mini",
+    model_routing: "default",
+    prompt_template_version: "v1",
+    prompt_templates: "",
+    input_schema: "{}",
+    output_schema: "{}",
+    tier_restrictions: ["startup", "sme", "enterprise"],
+    confidence_hint: 0.82,
+    active: true,
+    createdAt: Date.now(),
+  },
+  {
+    _id: "virtual-governance",
+    agent_key: "governance_guard",
+    display_name: "Governance Guard",
+    short_desc: "Checks workflows for policy compliance.",
+    long_desc: "Validates approval chains, SLA floors, and role diversity.",
+    capabilities: ["validate", "recommend_fixes"],
+    default_model: "gpt-4o-mini",
+    model_routing: "default",
+    prompt_template_version: "v1",
+    prompt_templates: "",
+    input_schema: "{}",
+    output_schema: "{}",
+    tier_restrictions: ["sme", "enterprise"],
+    confidence_hint: 0.84,
+    active: true,
+    createdAt: Date.now(),
+  },
+  {
+    _id: "virtual-router",
+    agent_key: "agent_router",
+    display_name: "Agent Router",
+    short_desc: "Routes prompts to best-suited agents.",
+    long_desc: "Classifies intent and dispatches to specialized agents.",
+    capabilities: ["route", "classify"],
+    default_model: "gpt-4o-mini",
+    model_routing: "default",
+    prompt_template_version: "v1",
+    prompt_templates: "",
+    input_schema: "{}",
+    output_schema: "{}",
+    tier_restrictions: [],
+    confidence_hint: 0.83,
+    active: true,
+    createdAt: Date.now(),
+  },
+  {
+    _id: "virtual-campaigns",
+    agent_key: "campaign_planner",
+    display_name: "Campaign Planner",
+    short_desc: "Plans multi-step content campaigns.",
+    long_desc: "Generates calendars, themes, and CTAs across channels.",
+    capabilities: ["plan", "calendar", "cta"],
+    default_model: "gpt-4o-mini",
+    model_routing: "default",
+    prompt_template_version: "v1",
+    prompt_templates: "",
+    input_schema: "{}",
+    output_schema: "{}",
+    tier_restrictions: ["solopreneur", "startup", "sme"],
+    confidence_hint: 0.79,
+    active: true,
+    createdAt: Date.now(),
+  },
+  {
+    _id: "virtual-research",
+    agent_key: "market_researcher",
+    display_name: "Market Researcher",
+    short_desc: "Synthesizes market trends and competitor notes.",
+    long_desc: "Pulls structured insights and highlights positioning gaps.",
+    capabilities: ["summarize", "compare", "position"],
+    default_model: "gpt-4o-mini",
+    model_routing: "default",
+    prompt_template_version: "v1",
+    prompt_templates: "",
+    input_schema: "{}",
+    output_schema: "{}",
+    tier_restrictions: ["startup", "sme", "enterprise"],
+    confidence_hint: 0.8,
+    active: true,
+    createdAt: Date.now(),
+  },
+  {
+    _id: "virtual-ops",
+    agent_key: "ops_optimizer",
+    display_name: "Ops Optimizer",
+    short_desc: "Suggests process improvements and SOP drafts.",
+    long_desc: "Analyzes handoffs, SLAs, and proposes risk-reducing tweaks.",
+    capabilities: ["optimize", "document"],
+    default_model: "gpt-4o-mini",
+    model_routing: "default",
+    prompt_template_version: "v1",
+    prompt_templates: "",
+    input_schema: "{}",
+    output_schema: "{}",
+    tier_restrictions: ["sme", "enterprise"],
+    confidence_hint: 0.81,
+    active: true,
+    createdAt: Date.now(),
+  },
+  {
+    _id: "virtual-finance",
+    agent_key: "finance_advisor",
+    display_name: "Finance Advisor",
+    short_desc: "Creates lightweight forecasts and cashflow summaries.",
+    long_desc: "Turns KPIs into high-level forecasts and guardrails.",
+    capabilities: ["forecast", "summarize"],
+    default_model: "gpt-4o-mini",
+    model_routing: "default",
+    prompt_template_version: "v1",
+    prompt_templates: "",
+    input_schema: "{}",
+    output_schema: "{}",
+    tier_restrictions: ["sme", "enterprise"],
+    confidence_hint: 0.77,
+    active: true,
+    createdAt: Date.now(),
+  },
+  {
+    _id: "virtual-retention",
+    agent_key: "retention_coach",
+    display_name: "Retention Coach",
+    short_desc: "Suggests offers and content to reduce churn.",
+    long_desc: "Analyzes signals and proposes targeted outreach.",
+    capabilities: ["analyze", "recommend"],
+    default_model: "gpt-4o-mini",
+    model_routing: "default",
+    prompt_template_version: "v1",
+    prompt_templates: "",
+    input_schema: "{}",
+    output_schema: "{}",
+    tier_restrictions: ["solopreneur", "startup"],
+    confidence_hint: 0.8,
+    active: true,
+    createdAt: Date.now(),
+  },
 ];
 
 const DEFAULT_PLAYBOOKS: Playbook[] = [
@@ -150,6 +294,8 @@ export function SystemAgentsHub() {
   const [versionsOpen, setVersionsOpen] = useState(false);
   const [playbookVersionsOpen, setPlaybookVersionsOpen] = useState(false);
   const [selectedPlaybookKey, setSelectedPlaybookKey] = useState<string>("");
+
+  // Bootstrap removed; defaults are shown without backend persistence
 
   // Queries
   const agents = useQuery(api.aiAgents.adminListAgents, {
@@ -212,6 +358,39 @@ export function SystemAgentsHub() {
 
   // FIX: Use correct function for agent version restoration
   const restoreAgentVersion = useMutation(api.aiAgents.adminRestoreAgentVersion);
+
+  // Helper: determine if an agent is virtual (not yet persisted)
+  const isVirtualAgent = (a: Agent | undefined | null) =>
+    !!a && typeof a._id === "string" && a._id.startsWith("virtual");
+
+  // Helper: upsert a virtual/default agent before performing actions
+  const ensurePersistedAgent = async (agent_key: string) => {
+    const a = (uiAgents || []).find((x: Agent) => x.agent_key === agent_key);
+    if (!a) return;
+    if (!isVirtualAgent(a) && !isDefaultAgents) return;
+
+    // Upsert full agent definition to backend so actions can proceed
+    await upsertAgent({
+      agent_key: a.agent_key,
+      display_name: a.display_name,
+      short_desc: a.short_desc,
+      long_desc: (a as any).long_desc ?? "",
+      capabilities: a.capabilities ?? [],
+      default_model: a.default_model ?? "",
+      model_routing: (a as any).model_routing ?? "default",
+      prompt_template_version: (a as any).prompt_template_version ?? "v1",
+      prompt_templates: (a as any).prompt_templates ?? "",
+      input_schema: (a as any).input_schema ?? "{}",
+      output_schema: (a as any).output_schema ?? "{}",
+      tier_restrictions: a.tier_restrictions ?? [],
+      confidence_hint: Number(a.confidence_hint ?? 0.8),
+      active: typeof a.active === "boolean" ? a.active : true,
+    } as any);
+  };
+
+  // Bootstrap auto-persist removed — defaults are shown immediately without mutating the backend
+
+  // Admin check not required for showing defaults
 
   // Filter agents
   const filteredAgents =
@@ -280,6 +459,7 @@ export function SystemAgentsHub() {
 
   const handleToggleAgent = async (agent_key: string, active: boolean) => {
     try {
+      await ensurePersistedAgent(agent_key);
       await toggleAgent({ agent_key, active });
       toast.success(`Agent ${active ? 'enabled' : 'disabled'} successfully`);
     } catch (error) {
@@ -399,6 +579,7 @@ export function SystemAgentsHub() {
       return;
     }
     try {
+      await ensurePersistedAgent(selectedAgent.agent_key);
       await publishAgent({ agent_key: selectedAgent.agent_key } as any);
       toast.success("Agent published");
     } catch (e: any) {
@@ -565,7 +746,6 @@ export function SystemAgentsHub() {
                             size="sm"
                             variant="outline"
                             onClick={() => setEditingAgent(agent)}
-                            disabled={isDefaultAgents}
                           >
                             <Pencil className="h-4 w-4" />
                           </Button>
@@ -573,19 +753,21 @@ export function SystemAgentsHub() {
                             size="sm"
                             variant="outline"
                             onClick={() => handleToggleAgent(agent.agent_key, !agent.active)}
-                            disabled={isDefaultAgents}
                           >
                             {agent.active ? <PowerOff className="h-4 w-4" /> : <Power className="h-4 w-4" />}
                           </Button>
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() =>
-                              publishAgent({ agent_key: agent.agent_key } as any)
-                                .then(() => toast.success("Agent published"))
-                                .catch((e:any)=>toast.error(e?.message || "Publish failed"))
-                            }
-                            disabled={isDefaultAgents}
+                            onClick={async () => {
+                              try {
+                                await ensurePersistedAgent(agent.agent_key);
+                                await publishAgent({ agent_key: agent.agent_key } as any);
+                                toast.success("Agent published");
+                              } catch (e:any) {
+                                toast.error(e?.message || "Publish failed");
+                              }
+                            }}
                           >
                             Publish
                           </Button>
@@ -597,7 +779,6 @@ export function SystemAgentsHub() {
                                 .then(()=>toast.success("Agent rolled back"))
                                 .catch(()=>toast.error("Rollback failed"))
                             }
-                            disabled={isDefaultAgents}
                           >
                             Rollback
                           </Button>
