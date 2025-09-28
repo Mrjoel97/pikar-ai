@@ -244,8 +244,18 @@ const AgentsPage: React.FC = () => {
         return;
       }
 
-      const res = await routeAction({ message: ask.trim(), dryRun: false } as any);
-      const summary = (res as any)?.summaryText || "No summary returned.";
+      // Call exec agent with business context so RAG can enrich answers
+      const res = await routeAction({
+        message: ask.trim(),
+        businessId: businessId as any,
+        agentKey: "exec_assistant",
+      } as any);
+
+      // Agent Router returns { response, sources? }
+      const summary =
+        (res as any)?.response ||
+        (res as any)?.text ||
+        "No summary returned.";
       setReply(summary);
       const newEntry = { q: ask.trim(), a: summary, at: Date.now() };
       persistHistory([newEntry, ...askHistory].slice(0, 200));

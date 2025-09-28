@@ -510,24 +510,40 @@ export const addBrainDump = mutation({
       throw new Error("[ERR_FORBIDDEN] Not authorized to add brain dump for this initiative.");
     }
 
-    const now = Date.now();
-    const id = await ctx.db.insert("brainDumps", {
+    // Insert brain dump with safe defaults
+    const dumpId = await ctx.db.insert("brainDumps", {
       businessId: initiative.businessId,
       initiativeId: args.initiativeId,
       userId: user._id,
       content: args.content,
-      createdAt: now,
-    });
+      title: args.title,
+      transcript: undefined,
+      summary: undefined,
+      tags: [],
+      voice: false,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    } as any);
 
-    await ctx.runMutation(internal.audit.write as any, {
-      businessId: initiative.businessId,
-      type: "initiative.brain_dump_create",
-      message: "Brain dump created",
-      actorUserId: user._id,
-      data: { initiativeId: args.initiativeId, brainDumpId: id },
-    });
+    // Schedule vector ingestion (summary-first fallback not applicable here; use content)
+    try {
+      const contentForEmbedding = args.content.slice(0, 2000);
+      await ctx.scheduler.runAfter(0, internal.vectors.ingestFromInitiatives, {
+        businessId: initiative.businessId,
+        content: contentForEmbedding,
+        agentKeys: ["exec_assistant"],
+        meta: {
+          source: "brain_dump",
+          dumpId,
+          tags: [],
+          title: args.title,
+        },
+      });
+    } catch (e) {
+      // best-effort
+    }
 
-    return id;
+    return dumpId;
   },
 });
 
@@ -586,18 +602,43 @@ export const addVoiceBrainDump = mutation({
     const initiative = await ctx.db.get(args.initiativeId);
     if (!initiative) throw new Error("Initiative not found");
 
-    const _id = await ctx.db.insert("brainDumps", {
+    const dumpId = await ctx.db.insert("brainDumps", {
       businessId: initiative.businessId,
       initiativeId: args.initiativeId,
       userId,
-      content: args.content,
-      createdAt: Date.now(),
-      voice: true,
-      transcript: args.transcript,
+      content: args.transcript ?? "",
+      transcript: args.transcript ?? "",
       summary: args.summary,
       tags: args.tags ?? [],
-    });
-    return { ok: true as const, _id };
+      voice: true,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    } as any);
+
+    try {
+      const contentForEmbedding = (args.summary && args.summary.trim().length > 0
+        ? args.summary
+        : (args.transcript ?? "")).slice(0, 2000);
+
+      if (contentForEmbedding.length > 0) {
+        await ctx.scheduler.runAfter(0, internal.vectors.ingestFromInitiatives, {
+          businessId: initiative.businessId,
+          content: contentForEmbedding,
+          agentKeys: ["exec_assistant"],
+          meta: {
+            source: "voice_brain_dump",
+            dumpId,
+            tags: args.tags ?? [],
+            summary: args.summary,
+            channel: "voice",
+          },
+        });
+      }
+    } catch (e) {
+      // best-effort
+    }
+
+    return dumpId;
   },
 });
 
@@ -614,18 +655,43 @@ export const addVoiceNote = mutation({
     const userId = await getAuthUserId(ctx);
     if (!userId) throw new Error("Not authenticated");
 
-    const _id = await ctx.db.insert("brainDumps", {
+    const dumpId = await ctx.db.insert("brainDumps", {
       businessId: args.businessId,
       initiativeId: args.initiativeId,
       userId,
-      content: args.summary ?? args.transcript.slice(0, 140),
-      createdAt: Date.now(),
-      voice: true,
-      transcript: args.transcript,
+      content: args.transcript ?? "",
+      transcript: args.transcript ?? "",
       summary: args.summary,
       tags: args.tags ?? [],
-    });
-    return { ok: true as const, _id };
+      voice: true,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    } as any);
+
+    try {
+      const contentForEmbedding = (args.summary && args.summary.trim().length > 0
+        ? args.summary
+        : (args.transcript ?? "")).slice(0, 2000);
+
+      if (contentForEmbedding.length > 0) {
+        await ctx.scheduler.runAfter(0, internal.vectors.ingestFromInitiatives, {
+          businessId: args.businessId,
+          content: contentForEmbedding,
+          agentKeys: ["exec_assistant"],
+          meta: {
+            source: "voice_note",
+            dumpId,
+            tags: args.tags ?? [],
+            summary: args.summary,
+            channel: "voice",
+          },
+        });
+      }
+    } catch (e) {
+      // best-effort
+    }
+
+    return dumpId;
   },
 });
 

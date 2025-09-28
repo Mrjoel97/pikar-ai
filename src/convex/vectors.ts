@@ -256,3 +256,48 @@ function simpleHash(str: string): number {
   }
   return Math.abs(hash);
 }
+
+// Add a safe internal ingestion path for initiatives/brain dumps
+import { internalMutation } from "./_generated/server";
+
+export const ingestFromInitiatives = internalMutation({
+  args: {
+    businessId: v.optional(v.id("businesses")),
+    datasetId: v.optional(v.id("agentDatasets")),
+    agentKeys: v.optional(v.array(v.string())),
+    content: v.string(),
+    meta: v.optional(v.object({
+      source: v.optional(v.string()),
+      dumpId: v.optional(v.id("brainDumps")),
+      tags: v.optional(v.array(v.string())),
+      summary: v.optional(v.string()),
+      title: v.optional(v.string()),
+      channel: v.optional(v.string()),
+    })),
+  },
+  handler: async (ctx, args) => {
+    // Deterministic pseudo-embedding (V8-safe): 16-dim char code bucket sum normalized
+    const dim = 16;
+    const buckets: Array<number> = Array.from({ length: dim }, () => 0);
+    for (let i = 0; i < args.content.length; i++) {
+      const code = args.content.charCodeAt(i) || 0;
+      buckets[i % dim] += code;
+    }
+    const norm = Math.sqrt(buckets.reduce((s, x) => s + x * x, 0)) || 1;
+    const embedding: Array<number> = buckets.map((x) => x / norm);
+
+    await ctx.db.insert("vectorChunks", {
+      scope: "business",
+      businessId: args.businessId,
+      datasetId: (args as any).datasetId ?? undefined,
+      agentKeys: args.agentKeys ?? [],
+      content: args.content,
+      meta: {
+        ...(args.meta ?? {}),
+        source: (args.meta?.source ?? "brain_dump"),
+      } as any,
+      embedding,
+      createdAt: Date.now(),
+    } as any);
+  },
+});
