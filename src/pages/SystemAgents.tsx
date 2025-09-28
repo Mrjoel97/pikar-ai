@@ -4,7 +4,7 @@ import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import SystemAgentsHub from "@/components/admin/SystemAgentsHub";
+import { SystemAgentsHub } from "@/components/admin/SystemAgentsHub";
 
 export default function SystemAgentsPage() {
   const seedAgents = useAction(api.seed.seedAgentCatalog);

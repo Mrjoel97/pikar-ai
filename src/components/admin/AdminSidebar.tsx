@@ -15,7 +15,17 @@ export function AdminSidebar({ onNavigate, isAdminSession, onLogout }: Props) {
         <button onClick={() => onNavigate("section-admin-assistant")} className="text-left px-3 py-2 rounded-md hover:bg-white/10 transition">
           Admin Assistant
         </button>
-        <button onClick={() => onNavigate("section-system-agents")} className="text-left px-3 py-2 rounded-md hover:bg-white/10 transition">
+        <button
+          onClick={() => {
+            try {
+              // Prefer client-side route change inside MemoryRouter if available
+              (window as any).parent?.postMessage?.({ type: "navigateTo", path: "/admin/system-agents" }, "*");
+            } catch {}
+            // Fallback to direct navigation
+            window.location.href = "/admin/system-agents";
+          }}
+          className="text-left px-3 py-2 rounded-md hover:bg-white/10 transition"
+        >
           System Agents Hub
         </button>
         <button onClick={() => onNavigate("section-system-health")} className="text-left px-3 py-2 rounded-md hover:bg-white/10 transition">
