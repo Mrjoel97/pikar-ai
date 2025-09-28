@@ -1,6 +1,7 @@
 import { action, mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
+import type { Id } from "./_generated/dataModel";
 
 const evalTestValidator = v.object({
   tool: v.string(), // "health" | "flags" | "alerts"
@@ -40,11 +41,17 @@ export const listSets = query({
 });
 
 export const listRunsBySet = query({
-  args: { setId: v.id("evalSets") },
+  args: { setId: v.optional(v.id("evalSets")) }, // already optional
   handler: async (ctx, args) => {
+    if (!args.setId) {
+      return [];
+    }
+    // Ensure TS knows setId is defined
+    const setId = args.setId as Id<"evalSets">;
+
     const runs = await ctx.db
       .query("evalRuns")
-      .withIndex("by_set", (q) => q.eq("setId", args.setId))
+      .withIndex("by_set", (q) => q.eq("setId", setId))
       .order("desc")
       .take(50);
     return runs;

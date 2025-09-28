@@ -5,7 +5,7 @@ import { ConvexAuthProvider } from "@convex-dev/auth/react";
 import { ConvexReactClient } from "convex/react";
 import React, { StrictMode, useEffect, Component } from "react";
 import { createRoot } from "react-dom/client";
-import { MemoryRouter, Route, Routes, useLocation, Navigate } from "react-router";
+import { MemoryRouter, Route, Routes, useLocation, Navigate, useNavigate } from "react-router";
 import "./index.css";
 import Landing from "./pages/Landing.tsx";
 import NotFound from "./pages/NotFound.tsx";
@@ -75,6 +75,7 @@ function AppProviders({ children }: { children: React.ReactNode }) {
 }
 
 function RouteSyncer() {
+  const navigate = useNavigate(); // Add in-app navigation support
   const location = useLocation();
   useEffect(() => {
     window.parent.postMessage(
@@ -85,6 +86,11 @@ function RouteSyncer() {
 
   useEffect(() => {
     function handleMessage(event: MessageEvent) {
+      // Support programmatic route navigation within MemoryRouter
+      if (event.data?.type === "navigateTo" && typeof event.data.path === "string") {
+        navigate(event.data.path);
+        return;
+      }
       if (event.data?.type === "navigate") {
         if (event.data.direction === "back") window.history.back();
         if (event.data.direction === "forward") window.history.forward();
@@ -92,7 +98,7 @@ function RouteSyncer() {
     }
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
-  }, []);
+  }, [navigate]);
 
   return null;
 }
