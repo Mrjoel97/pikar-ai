@@ -110,7 +110,7 @@ export const logWin = mutation({
 export const listForBusiness = query({
   args: {
     businessId: v.optional(v.id("businesses")),
-    limit: v.optional(v.float64()),
+    limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     // Guest-safe early return

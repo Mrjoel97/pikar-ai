@@ -311,13 +311,16 @@ export const runPhase0Diagnostics = mutation({
       });
       initiative = await ctx.db.get(initiativeId);
 
-      // Audit creation
+      // Audit creation (fixed args)
       await ctx.runMutation(internal.audit.write, {
         businessId: args.businessId,
-        type: "initiative.create",
-        message: "Initiative created (during diagnostics)",
-        actorUserId: user._id,
-        data: { initiativeId },
+        action: "initiative.create",
+        entityType: "initiative",
+        entityId: String(initiativeId),
+        details: {
+          message: "Initiative created (during diagnostics)",
+          actorUserId: user._id,
+        },
       });
     }
 

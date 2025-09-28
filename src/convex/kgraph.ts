@@ -45,11 +45,14 @@ export const adminIngestFromDataset = mutation({
     
     for (const token of tokens.slice(0, 50)) { // Limit to 50 tokens
       // Create or find token node
-      const existingNode = await ctx.db
+      // Replace direct filtered query to avoid equality against undefined businessId
+      let nodeQ = ctx.db
         .query("kgraphNodes")
-        .withIndex("by_type_and_key", (q) => q.eq("type", "token").eq("key", token))
-        .filter((q) => q.eq(q.field("businessId"), businessId))
-        .first();
+        .withIndex("by_type_and_key", (q) => q.eq("type", "token").eq("key", token));
+      if (businessId) {
+        nodeQ = nodeQ.filter((q) => q.eq(q.field("businessId"), businessId));
+      }
+      const existingNode = await nodeQ.first();
 
       let tokenNodeId;
       if (existingNode) {
@@ -85,7 +88,8 @@ export const adminIngestFromDataset = mutation({
         businessId,
         action: "kgraph_ingest",
         entityType: "kgraph",
-        entityId: args.datasetId,
+        // Convert Id to string for audit entityId
+        entityId: String(args.datasetId),
         details: {
           datasetTitle: dataset.title,
           nodesCreated: tokenNodes.length + 1,
@@ -115,6 +119,11 @@ export const neighborhood = query({
   handler: async (ctx, args) => {
     const depth = Math.min(args.depth || 1, 3);
     const limit = Math.min(args.limit || 25, 100);
+
+    // Early guard to avoid invalid index equality with undefined businessId
+    if (!args.businessId) {
+      return { nodes: [], edges: [], summary: "businessId required" };
+    }
 
     // Find the root node
     const rootNode = await ctx.db

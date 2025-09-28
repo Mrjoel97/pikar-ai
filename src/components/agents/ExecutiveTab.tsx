@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Brain, Send, Zap, Calendar, TrendingUp, Copy } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
+import { useQuery } from "convex/react";
 
 export default function ExecutiveTab() {
   const { user } = useAuth();
@@ -25,6 +26,12 @@ export default function ExecutiveTab() {
   const agentProfile = useQuery(api.aiAgents.getAgentProfile, 
     currentBiz?._id ? { businessId: currentBiz._id } : "skip"
   );
+  const execEnabled = useQuery(api.featureFlags.solopreneurExecAssistantEnabled, undefined);
+
+  // Gate entire Executive tab if the feature flag is explicitly disabled
+  if (execEnabled === false) {
+    return null;
+  }
 
   // Load chat history from localStorage
   useEffect(() => {

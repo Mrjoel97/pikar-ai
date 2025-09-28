@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { api } from "./_generated/api";
 
 // Make getFeatureFlags fully guest-safe; never require auth and never throw
 export const getFeatureFlags = query({
@@ -220,5 +221,90 @@ export const updateFeatureFlag = mutation({
 
     await ctx.db.patch(args.flagId, patch);
     return true;
+  },
+});
+
+/**
+ * Solopreneur Exec Assistant flag - default ON if not explicitly set.
+ * Guest-safe and index-agnostic: returns true when flag is missing or on errors.
+ */
+export const solopreneurExecAssistantEnabled = query({
+  args: {
+    businessId: v.optional(v.id("businesses")),
+  },
+  handler: async (ctx, args) => {
+    try {
+      // Try to find an explicit flag scoped to tenant first
+      const flags = await ctx.db.query("featureFlags").collect();
+      const tenantScoped = flags.find(
+        (f: any) =>
+          f.flagName === "solopreneur_exec_assistant" &&
+          f.tenantId &&
+          args.businessId &&
+          String(f.tenantId) === String(args.businessId)
+      );
+      if (tenantScoped) {
+        return !!tenantScoped.isEnabled;
+      }
+
+      // Fallback to global flag if present
+      const global = flags.find(
+        (f: any) =>
+          f.flagName === "solopreneur_exec_assistant" && !f.tenantId
+      );
+      if (global) {
+        return !!global.isEnabled;
+      }
+
+      // Default ON when flag is absent
+      return true;
+    } catch {
+      // Be permissive if flags cannot be read
+      return true;
+    }
+  },
+});
+
+/**
+ * Admin-only: set the Solopreneur Exec Assistant toggle (global or tenant-scoped).
+ * Creates or updates a feature flag record. Returns the resulting document id.
+ */
+export const setSolopreneurExecAssistant = mutation({
+  args: {
+    enabled: v.boolean(),
+    businessId: v.optional(v.id("businesses")),
+  },
+  handler: async (ctx, args) => {
+    // Admin gate via existing admin getIsAdmin check
+    const isAdmin = await ctx.runQuery(api.admin.getIsAdmin as any, {});
+    if (!isAdmin) {
+      throw new Error("Admin access required");
+    }
+
+    // Load all flags; update if existing, else insert
+    const flags = await ctx.db.query("featureFlags").collect();
+    const existing = flags.find(
+      (f: any) =>
+        f.flagName === "solopreneur_exec_assistant" &&
+        (args.businessId ? String(f.tenantId) === String(args.businessId) : !f.tenantId)
+    );
+
+    if (existing) {
+      await ctx.db.patch(existing._id, {
+        isEnabled: args.enabled,
+        tenantId: args.businessId,
+      } as any);
+      return existing._id;
+    }
+
+    const id = await ctx.db.insert("featureFlags", {
+      flagName: "solopreneur_exec_assistant",
+      isEnabled: args.enabled,
+      tenantId: args.businessId,
+      rolloutPct: 100,
+      createdAt: Date.now(),
+    } as any);
+
+    return id;
   },
 });

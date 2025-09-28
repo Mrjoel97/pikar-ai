@@ -60,7 +60,8 @@ export const adminIngestChunks: any = mutation({
         businessId: args.businessId,
         action: "vector_ingest",
         entityType: "vectors",
-        entityId: args.datasetId || "",
+        // Convert Id to string for audit entityId
+        entityId: args.datasetId ? String(args.datasetId) : "",
         details: {
           scope: args.scope,
           count: args.items.length,
@@ -99,7 +100,8 @@ export const adminDeleteDatasetChunks = mutation({
         businessId: chunks[0].businessId,
         action: "vector_delete_dataset",
         entityType: "vectors",
-        entityId: args.datasetId,
+        // Convert Id to string for audit entityId
+        entityId: String(args.datasetId),
         details: { deletedCount: chunks.length },
       });
     }
