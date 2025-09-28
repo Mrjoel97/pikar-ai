@@ -9,7 +9,6 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Brain, Send, Zap, Calendar, TrendingUp, Copy } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
-import { useQuery } from "convex/react";
 
 export default function ExecutiveTab() {
   const { user } = useAuth();
@@ -21,10 +20,11 @@ export default function ExecutiveTab() {
     timestamp: number;
   }>>([]);
 
-  const currentBiz = useQuery(api.businesses.currentUserBusiness);
+  const currentBiz = useQuery(api.businesses.currentUserBusiness, {});
   const execRouter = useAction(api.agentRouter.execRouter);
-  const agentProfile = useQuery(api.aiAgents.getAgentProfile, 
-    currentBiz?._id ? { businessId: currentBiz._id } : "skip"
+  const agentProfile = useQuery(
+    api.aiAgents.getAgentProfile,
+    currentBiz?._id ? { businessId: currentBiz._id } : undefined
   );
   const execEnabled = useQuery(api.featureFlags.solopreneurExecAssistantEnabled, undefined);
 

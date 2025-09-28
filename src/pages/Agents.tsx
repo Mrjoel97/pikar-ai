@@ -618,7 +618,7 @@ const AgentsPage: React.FC = () => {
           </TabsList>
 
           <TabsContent value="my-agents" className="space-y-6">
-            <MyAgentsTab />
+            <MyAgentsTab selectedTier="solopreneur" />
           </TabsContent>
 
           <TabsContent value="executive" className="space-y-6">
@@ -626,7 +626,7 @@ const AgentsPage: React.FC = () => {
           </TabsContent>
 
           <TabsContent value="templates" className="space-y-6">
-            <TemplatesTab />
+            <TemplatesTab selectedTier="solopreneur" />
           </TabsContent>
 
           <TabsContent value="marketplace" className="space-y-6">
@@ -634,7 +634,7 @@ const AgentsPage: React.FC = () => {
           </TabsContent>
 
           <TabsContent value="builder" className="space-y-6">
-            <BuilderTab />
+            <BuilderTab selectedTier="solopreneur" />
           </TabsContent>
 
           <TabsContent value="monitoring" className="space-y-6">
