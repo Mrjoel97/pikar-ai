@@ -134,6 +134,9 @@ export function SystemAgentsHub() {
     }
   }, [selectedAgentKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Add computed gate status from eval summary
+  const gatePassing = (evalSummary as any)?.allPassing === true;
+
   const handleToggleAgent = async (agent_key: string, active: boolean) => {
     try {
       await toggleAgent({ agent_key, active });
@@ -532,6 +535,21 @@ export function SystemAgentsHub() {
               <CardTitle>Train & Publish</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              {/* Publish Gate banner */}
+              <div className="flex items-center justify-between rounded-md border p-3 bg-muted/40">
+                <div className="text-sm">
+                  Publish Gate:{" "}
+                  <Badge variant={gatePassing ? "default" : "secondary"}>
+                    {gatePassing ? "All Passing" : "Has Failures"}
+                  </Badge>
+                </div>
+                {!gatePassing && (
+                  <div className="text-xs text-muted-foreground">
+                    Fix failing evaluation tests before publishing.
+                  </div>
+                )}
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="col-span-1">
                   <label className="text-sm font-medium">Pick Agent</label>
