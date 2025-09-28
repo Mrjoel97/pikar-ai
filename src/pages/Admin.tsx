@@ -247,15 +247,9 @@ export default function AdminPage() {
     navigate("/admin-auth");
   };
 
-  if (isAdmin === undefined && !adminToken) {
-    return (
-      <div className="p-6">
-        <Card>
-          <CardContent className="p-6">Loading...</CardContent>
-        </Card>
-      </div>
-    );
-  }
+  // Removed early return to avoid violating React Hooks rules (hooks must run in the same order every render).
+  // When isAdmin is undefined and there's no adminToken yet, we will still render the shell; downstream sections
+  // already handle undefined data and won't crash.
 
   if (!hasAdminAccess) {
     return (
