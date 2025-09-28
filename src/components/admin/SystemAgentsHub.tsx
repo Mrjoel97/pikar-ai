@@ -503,6 +503,8 @@ export function SystemAgentsHub() {
 
   // Helper: upsert a virtual/default agent before performing actions
   const ensurePersistedAgent = async (agent_key: string) => {
+    // Add admin guard
+    if (!requireAdmin()) return;
     const a = (uiAgents || []).find((x: Agent) => x.agent_key === agent_key);
     if (!a) return;
 
@@ -601,7 +603,20 @@ export function SystemAgentsHub() {
   // Add computed gate status from eval summary
   const gatePassing = (evalSummary as any)?.allPassing === true;
 
+  // Add: Admin check
+  const isAdmin = useQuery(api.admin.getIsAdmin, {}); // boolean or null while loading
+
+  // Helper: require admin guard
+  const requireAdmin = React.useCallback(() => {
+    if (isAdmin !== true) {
+      toast.error("Admin access required");
+      return false;
+    }
+    return true;
+  }, [isAdmin]);
+
   const handleToggleAgent = async (agent_key: string, active: boolean) => {
+    if (!requireAdmin()) return;
     try {
       await ensurePersistedAgent(agent_key);
       await toggleAgent({ agent_key, active });
@@ -612,6 +627,7 @@ export function SystemAgentsHub() {
   };
 
   const handleTogglePlaybook = async (playbook_key: string, version: string, active: boolean) => {
+    if (!requireAdmin()) return;
     try {
       await togglePlaybook({ playbook_key, version, active });
       toast.success(`Playbook ${active ? 'enabled' : 'disabled'} successfully`);
@@ -621,6 +637,7 @@ export function SystemAgentsHub() {
   };
 
   const handleSaveAgent = async (agentData: Partial<Agent>) => {
+    if (!requireAdmin()) return;
     try {
       await upsertAgent(agentData as any);
       toast.success("Agent saved successfully");
@@ -631,6 +648,7 @@ export function SystemAgentsHub() {
   };
 
   const handleSavePlaybook = async (playbookData: Partial<Playbook>) => {
+    if (!requireAdmin()) return;
     try {
       await upsertPlaybook(playbookData as any);
       toast.success("Playbook saved successfully");
@@ -640,10 +658,8 @@ export function SystemAgentsHub() {
     }
   };
 
-  // removed seeding handlers
-
   const handleTrainingSave = async () => {
-    if (!trainForm) return;
+    if (!requireAdmin() || !trainForm) return;
     try {
       // adminUpsertAgent requires all fields — pull from form or selected agent as fallback
       const base = selectedAgent!;
@@ -718,6 +734,7 @@ export function SystemAgentsHub() {
   };
 
   const handlePublishAgent = async () => {
+    if (!requireAdmin()) return;
     if (!selectedAgent) {
       toast.error("Select an agent first");
       return;
@@ -739,6 +756,7 @@ export function SystemAgentsHub() {
   };
 
   const handleRollbackAgent = async () => {
+    if (!requireAdmin()) return;
     if (!selectedAgent) {
       toast.error("Select an agent first");
       return;
@@ -752,6 +770,7 @@ export function SystemAgentsHub() {
   };
 
   const handlePublishPlaybook = async (playbook: Playbook) => {
+    if (!requireAdmin()) return;
     try {
       await publishPlaybook({ playbook_key: playbook.playbook_key, version: playbook.version } as any);
       toast.success("Playbook published");
@@ -761,6 +780,7 @@ export function SystemAgentsHub() {
   };
 
   const handleRollbackPlaybook = async (playbook: Playbook) => {
+    if (!requireAdmin()) return;
     try {
       await rollbackPlaybook({ playbook_key: playbook.playbook_key, version: playbook.version } as any);
       toast.success("Playbook rolled back (disabled)");
@@ -799,6 +819,7 @@ export function SystemAgentsHub() {
           <button
             className="px-3 py-2 rounded-md bg-emerald-600 text-white hover:bg-emerald-700 transition"
             onClick={async () => {
+              if (!requireAdmin()) return;
               try {
                 // Persist defaults first if we're showing non-persisted virtual agents
                 toast("Activating all agents...");
@@ -817,6 +838,7 @@ export function SystemAgentsHub() {
                 toast.error(e?.message || "Activation failed");
               }
             }}
+            disabled={isAdmin !== true}
           >
             Activate All
           </button>
@@ -930,6 +952,7 @@ export function SystemAgentsHub() {
                             size="sm"
                             variant="outline"
                             onClick={() => handleToggleAgent(agent.agent_key, !agent.active)}
+                            disabled={isAdmin !== true}
                           >
                             {agent.active ? <PowerOff className="h-4 w-4" /> : <Power className="h-4 w-4" />}
                           </Button>
@@ -952,6 +975,7 @@ export function SystemAgentsHub() {
                                 }
                               }
                             }}
+                            disabled={isAdmin !== true}
                           >
                             Publish
                           </Button>
@@ -963,6 +987,7 @@ export function SystemAgentsHub() {
                                 .then(()=>toast.success("Agent rolled back"))
                                 .catch(()=>toast.error("Rollback failed"))
                             }
+                            disabled={isAdmin !== true}
                           >
                             Rollback
                           </Button>
@@ -1006,7 +1031,7 @@ export function SystemAgentsHub() {
                           size="sm"
                           variant="outline"
                           onClick={() => setEditingPlaybook(playbook)}
-                          disabled={isDefaultPlaybooks}
+                          disabled={isDefaultPlaybooks || isAdmin !== true}
                         >
                           <Pencil className="h-4 w-4" />
                         </Button>
@@ -1014,7 +1039,7 @@ export function SystemAgentsHub() {
                           size="sm"
                           variant="outline"
                           onClick={() => handleTogglePlaybook(playbook.playbook_key, playbook.version, !playbook.active)}
-                          disabled={isDefaultPlaybooks}
+                          disabled={isDefaultPlaybooks || isAdmin !== true}
                         >
                           {playbook.active ? <PowerOff className="h-4 w-4" /> : <Power className="h-4 w-4" />}
                         </Button>
@@ -1022,7 +1047,7 @@ export function SystemAgentsHub() {
                           size="sm"
                           variant="outline"
                           onClick={() => handlePublishPlaybook(playbook)}
-                          disabled={isDefaultPlaybooks}
+                          disabled={isDefaultPlaybooks || isAdmin !== true}
                         >
                           Publish
                         </Button>
@@ -1030,7 +1055,7 @@ export function SystemAgentsHub() {
                           size="sm"
                           variant="outline"
                           onClick={() => handleRollbackPlaybook(playbook)}
-                          disabled={isDefaultPlaybooks}
+                          disabled={isDefaultPlaybooks || isAdmin !== true}
                         >
                           Rollback
                         </Button>
@@ -1041,7 +1066,7 @@ export function SystemAgentsHub() {
                             setSelectedPlaybookKey(playbook.playbook_key);
                             setPlaybookVersionsOpen(true);
                           }}
-                          disabled={isDefaultPlaybooks}
+                          disabled={isDefaultPlaybooks || isAdmin !== true}
                         >
                           Versions
                         </Button>
@@ -1102,7 +1127,7 @@ export function SystemAgentsHub() {
                     onChange={(e) =>
                       setTrainForm((prev) => ({ ...(prev || {}), display_name: e.target.value }))
                     }
-                    disabled={!trainForm}
+                    disabled={!trainForm || isAdmin !== true}
                   />
                 </div>
 
@@ -1113,7 +1138,7 @@ export function SystemAgentsHub() {
                     onChange={(e) =>
                       setTrainForm((prev) => ({ ...(prev || {}), default_model: e.target.value }))
                     }
-                    disabled={!trainForm}
+                    disabled={!trainForm || isAdmin !== true}
                   />
                 </div>
               </div>
@@ -1126,7 +1151,7 @@ export function SystemAgentsHub() {
                   onChange={(e) =>
                     setTrainForm((prev) => ({ ...(prev || {}), long_desc: e.target.value as any }))
                   }
-                  disabled={!trainForm}
+                  disabled={!trainForm || isAdmin !== true}
                 />
               </div>
 
@@ -1138,7 +1163,7 @@ export function SystemAgentsHub() {
                   onChange={(e) =>
                     setTrainForm((prev) => ({ ...(prev || {}), prompt_templates: e.target.value as any }))
                   }
-                  disabled={!trainForm}
+                  disabled={!trainForm || isAdmin !== true}
                 />
               </div>
 
@@ -1153,19 +1178,19 @@ export function SystemAgentsHub() {
               )}
 
               <div className="flex gap-2 justify-end">
-                <Button type="button" variant="outline" onClick={handleTrainingRevert} disabled={!trainForm}>
+                <Button type="button" variant="outline" onClick={handleTrainingRevert} disabled={!trainForm || isAdmin !== true}>
                   Revert Unsaved
                 </Button>
-                <Button type="button" onClick={handleTrainingSave} disabled={!trainForm}>
+                <Button type="button" onClick={handleTrainingSave} disabled={!trainForm || isAdmin !== true}>
                   Save & Publish
                 </Button>
-                <Button type="button" variant="outline" onClick={handlePublishAgent} disabled={!selectedAgent}>
+                <Button type="button" variant="outline" onClick={handlePublishAgent} disabled={!selectedAgent || isAdmin !== true}>
                   Publish Gate
                 </Button>
-                <Button type="button" variant="outline" onClick={handleRollbackAgent} disabled={!selectedAgent}>
+                <Button type="button" variant="outline" onClick={handleRollbackAgent} disabled={!selectedAgent || isAdmin !== true}>
                   Rollback
                 </Button>
-                <Button type="button" variant="outline" onClick={() => setVersionsOpen(true)} disabled={!selectedAgent}>
+                <Button type="button" variant="outline" onClick={() => setVersionsOpen(true)} disabled={!selectedAgent || isAdmin !== true}>
                   Versions
                 </Button>
               </div>
@@ -1185,7 +1210,7 @@ export function SystemAgentsHub() {
                     value={testPrompt}
                     onChange={(e) => setTestPrompt(e.target.value)}
                     placeholder="Ask the agent something it should handle..."
-                    disabled={!selectedAgent}
+                    disabled={!selectedAgent || isAdmin !== true}
                   />
                 </div>
                 <div>
@@ -1195,15 +1220,15 @@ export function SystemAgentsHub() {
                     value={expectedContains}
                     onChange={(e) => setExpectedContains(e.target.value)}
                     placeholder="Provide a short expected text fragment that should appear in the answer"
-                    disabled={!selectedAgent}
+                    disabled={!selectedAgent || isAdmin !== true}
                   />
                 </div>
               </div>
               <div className="flex gap-2">
-                <Button type="button" variant="outline" onClick={handleCreateEval} disabled={!selectedAgent}>
+                <Button type="button" variant="outline" onClick={handleCreateEval} disabled={!selectedAgent || isAdmin !== true}>
                   Create Eval Set
                 </Button>
-                <Button type="button" onClick={() => handleRunEval()} disabled={!createdSetId}>
+                <Button type="button" onClick={() => handleRunEval()} disabled={!createdSetId || isAdmin !== true}>
                   Run Eval
                 </Button>
               </div>
@@ -1362,7 +1387,7 @@ export function SystemAgentsHub() {
                             <Button
                               size="sm"
                               variant="outline"
-                              disabled={!selectedAgentKey}
+                              disabled={!selectedAgentKey || isAdmin !== true}
                               onClick={async () => {
                                 if (!selectedAgentKey) return;
                                 try {
@@ -1378,7 +1403,7 @@ export function SystemAgentsHub() {
                             <Button
                               size="sm"
                               variant="outline"
-                              disabled={!selectedAgentKey}
+                              disabled={!selectedAgentKey || isAdmin !== true}
                               onClick={async () => {
                                 if (!selectedAgentKey) return;
                                 try {
