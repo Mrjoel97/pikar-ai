@@ -101,7 +101,12 @@ createRoot(document.getElementById("root")!).render(
     <ErrorBoundary>
       <AppProviders>
         <InstrumentationProvider>
-          <MemoryRouter>
+          <MemoryRouter
+            // Initialize MemoryRouter with the actual current URL so deep links like /admin work
+            initialEntries={[
+              `${window.location.pathname}${window.location.search}${window.location.hash}`,
+            ]}
+          >
             <RouteSyncer />
             <Routes>
               <Route path="/" element={<Landing />} />
