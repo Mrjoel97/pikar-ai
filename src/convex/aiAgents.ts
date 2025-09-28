@@ -161,8 +161,17 @@ export const saveAgentVersionInternal = internalMutation({
 
 // Admin: list agent versions
 export const adminListAgentVersions = query({
-  args: { agent_key: v.string(), limit: v.optional(v.number()) },
-  handler: (ctx, args) => versions.adminListAgentVersions(ctx, args),
+  // Make agent_key optional and no-op when missing
+  args: { agent_key: v.optional(v.string()), limit: v.optional(v.number()) },
+  handler: async (ctx, args) => {
+    const key = (args.agent_key || "").trim();
+    if (!key) {
+      // Gracefully return empty list if no agent key provided
+      return [];
+    }
+    // Delegate to versions helper with a guaranteed key
+    return await versions.adminListAgentVersions(ctx, { agent_key: key, limit: args.limit });
+  },
 });
 
 // Admin: rollback agent to a specific version
