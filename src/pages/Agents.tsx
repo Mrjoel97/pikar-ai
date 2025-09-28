@@ -713,6 +713,7 @@ function MonitoringTab({}: { userId?: Id<"users"> }) {
 function OnboardingAssistantDialog() {
   const initExec = useMutation(api.aiAgents.initSolopreneurAgent);
   const addSlot = useMutation(api.schedule.addSlot);
+  const deleteSlot = useMutation(api.schedule.deleteSlot);
 
   const [open, setOpen] = useState(false);
   const [businessId, setBusinessId] = useState<string>("");
@@ -797,14 +798,40 @@ function OnboardingAssistantDialog() {
         },
       } as any);
 
-      // Seed suggested schedule slots (optional but recommended)
+      // Seed suggested schedule slots and capture their ids for undo
+      const addedSlotIds: Array<string> = [];
       for (const s of suggestedSlots) {
-        await addSlot({
-          businessId: businessId as any,
-          label: s.label,
-          channel: s.channel,
-          scheduledAt: s.scheduledAt,
-        } as any);
+        try {
+          const slotId = await addSlot({
+            businessId: businessId as any,
+            label: s.label,
+            channel: s.channel,
+            scheduledAt: s.scheduledAt,
+          } as any);
+          if (slotId) addedSlotIds.push(String(slotId));
+        } catch (e: any) {
+          // continue creating others; notify per-slot failure
+          toast.error(`Failed to add slot "${s.label}": ${e?.message ?? "Unknown error"}`);
+        }
+      }
+
+      // Offer undo for seeded slots
+      if (addedSlotIds.length > 0) {
+        toast.success("Schedule prepared. Undo?", {
+          action: {
+            label: "Undo",
+            onClick: async () => {
+              try {
+                for (const id of addedSlotIds) {
+                  await deleteSlot({ slotId: id as any });
+                }
+                toast.success("Seeded slots removed.");
+              } catch (e: any) {
+                toast.error(`Could not undo slots: ${e?.message ?? "Unknown error"}`);
+              }
+            },
+          },
+        });
       }
 
       // Optionally create first capsule now via playbook trigger
