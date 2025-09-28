@@ -90,6 +90,7 @@ import MarketplaceTab from "@/components/agents/MarketplaceTab";
 import BuilderTab from "@/components/agents/BuilderTab";
 import MonitoringTab from "@/components/agents/MonitoringTab";
 import OnboardingAssistantDialog from "@/components/agents/OnboardingAssistantDialog";
+import ExecutiveTab from "@/components/agents/ExecutiveTab";
 
 interface AgentBuilderNode {
   id: string;
@@ -606,53 +607,38 @@ const AgentsPage: React.FC = () => {
         </Sheet>
 
         {/* Main Tabs */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5">
-            <TabsTrigger value="my-agents" className="flex items-center gap-2">
-              <Bot className="w-4 h-4" />
-              My Agents
-            </TabsTrigger>
-            <TabsTrigger value="templates" className="flex items-center gap-2">
-              <Sparkles className="w-4 h-4" />
-              Templates
-            </TabsTrigger>
-            <TabsTrigger value="marketplace" className="flex items-center gap-2">
-              <Share className="w-4 h-4" />
-              Marketplace
-            </TabsTrigger>
-            <TabsTrigger value="builder" className="flex items-center gap-2">
-              <Zap className="w-4 h-4" />
-              Builder
-            </TabsTrigger>
-            <TabsTrigger value="monitoring" className="flex items-center gap-2">
-              <BarChart3 className="w-4 h-4" />
-              Monitoring
-            </TabsTrigger>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-6">
+            <TabsTrigger value="my-agents">My Agents</TabsTrigger>
+            <TabsTrigger value="executive">Ask My Executive</TabsTrigger>
+            <TabsTrigger value="templates">Templates</TabsTrigger>
+            <TabsTrigger value="marketplace">Marketplace</TabsTrigger>
+            <TabsTrigger value="builder">Builder</TabsTrigger>
+            <TabsTrigger value="monitoring">Monitoring</TabsTrigger>
           </TabsList>
 
-          {/* My Agents Tab */}
-          <TabsContent value="my-agents">
-            <MyAgentsTab userId={user?._id} selectedTier={selectedTier} />
+          <TabsContent value="my-agents" className="space-y-6">
+            <MyAgentsTab />
           </TabsContent>
 
-          {/* Templates Tab */}
-          <TabsContent value="templates">
-            <TemplatesTab userId={user?._id} selectedTier={selectedTier} />
+          <TabsContent value="executive" className="space-y-6">
+            <ExecutiveTab />
           </TabsContent>
 
-          {/* Marketplace Tab */}
-          <TabsContent value="marketplace">
-            <MarketplaceTab userId={user?._id} />
+          <TabsContent value="templates" className="space-y-6">
+            <TemplatesTab />
           </TabsContent>
 
-          {/* Builder Tab */}
-          <TabsContent value="builder">
-            <BuilderTab userId={user?._id} selectedTier={selectedTier} />
+          <TabsContent value="marketplace" className="space-y-6">
+            <MarketplaceTab />
           </TabsContent>
 
-          {/* Monitoring Tab */}
-          <TabsContent value="monitoring">
-            <MonitoringTab userId={user?._id} />
+          <TabsContent value="builder" className="space-y-6">
+            <BuilderTab />
+          </TabsContent>
+
+          <TabsContent value="monitoring" className="space-y-6">
+            <MonitoringTab />
           </TabsContent>
         </Tabs>
       </motion.div>
