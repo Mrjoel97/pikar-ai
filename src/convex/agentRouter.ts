@@ -2,7 +2,7 @@
 
 import { action } from "./_generated/server";
 import { v } from "convex/values";
-import { api, internal } from "./_generated/api";
+import { api } from "./_generated/api";
 
 export const route = action({
   args: {
@@ -134,11 +134,11 @@ export const route = action({
   },
 });
 
-export const execRouter = action({
+export const execRouter: any = action({
   args: {
     mode: v.union(
       v.literal("summarizeIdeas"),
-      v.literal("proposeNextAction"), 
+      v.literal("proposeNextAction"),
       v.literal("planWeek"),
       v.literal("updateProfile"),
       v.literal("createCapsule")
@@ -146,137 +146,181 @@ export const execRouter = action({
     businessId: v.id("businesses"),
     userId: v.optional(v.id("users")),
     input: v.optional(v.string()),
-    context: v.optional(v.any())
+    context: v.optional(v.any()),
   },
-  handler: async (ctx, args) => {
-    const { mode, businessId, userId, input, context } = args;
-    
-    // Get agent profile for context
-    const profile = await ctx.runQuery(internal.agentProfile.getByBusiness, { businessId });
-    
-    // Get recent brain dumps for context
-    const recentIdeas = await ctx.runQuery(api.initiatives.listBrainDumpsFiltered, {
-      businessId,
-      limit: 10
-    });
-    
+  handler: async (ctx, args): Promise<any> => {
+    const { mode, businessId, userId, input } = args;
+
+    // Load agent profile (guest-safe)
+    let profile: any = null;
+    try {
+      profile = await ctx.runQuery(api.agentProfile.getMyAgentProfile, { businessId });
+    } catch (_e) {
+      // ignore
+    }
+
+    // Resolve initiative for this business (first one)
+    let initiativeId: any = undefined;
+    try {
+      const initiatives = (await ctx.runQuery(api.initiatives.getByBusiness, { businessId })) as any[];
+      initiativeId = initiatives[0]?._id;
+    } catch (_e) {
+      // ignore
+    }
+
+    // Load recent ideas (brain dumps) tied to initiative
+    let recentIdeas: Array<{ content?: string; summary?: string; tags?: string[] }> = [];
+    if (initiativeId) {
+      try {
+        recentIdeas = (await ctx.runQuery(api.initiatives.listBrainDumpsFiltered, {
+          initiativeId,
+          limit: 10,
+        })) as any;
+      } catch (_e) {
+        // ignore
+      }
+    }
+
     switch (mode) {
       case "summarizeIdeas": {
-        const ideas = recentIdeas.map(dump => ({
-          content: dump.content,
-          summary: dump.summary,
-          tags: dump.tags || []
-        }));
-        
-        const prompt = `Based on these recent ideas: ${JSON.stringify(ideas)}, provide a concise summary of key themes and actionable opportunities.`;
-        
+        const ideas: Array<{ content?: string; summary?: string; tags?: string[] }> = recentIdeas.map(
+          (dump: any) => ({
+            content: dump?.content,
+            summary: dump?.summary,
+            tags: (dump?.tags as string[]) || [],
+          })
+        );
+
+        const prompt: string =
+          `Based on these recent ideas: ${JSON.stringify(ideas)}, provide a concise summary of key themes and actionable opportunities.`;
+
         const response = await ctx.runAction(api.openai.generate, {
-          messages: [{ role: "user", content: prompt }],
-          model: "gpt-4o-mini"
+          prompt,
+          model: "gpt-4o-mini",
         });
-        
+
         return {
-          summary: response.content,
-          keyThemes: ideas.flatMap(i => i.tags).slice(0, 5),
-          actionableCount: ideas.length
+          summary: (response as any)?.text,
+          keyThemes: ideas.flatMap((i: { tags?: string[] }) => i.tags || []).slice(0, 5),
+          actionableCount: ideas.length,
         };
       }
-      
+
       case "proposeNextAction": {
-        const goals = profile?.businessSummary || "grow business";
-        const recentTags = recentIdeas.flatMap(i => i.tags || []).slice(0, 10);
-        
-        // Get upcoming schedule slots
-        const upcomingSlots = await ctx.runQuery(api.schedule.listSlots, {
-          userId: userId!,
-          limit: 3
-        });
-        
-        const prompt = `Given goals: "${goals}", recent focus areas: ${recentTags.join(", ")}, and upcoming schedule: ${upcomingSlots.map(s => s.label).join(", ")}, suggest the single most impactful next action.`;
-        
+        const goals: string = profile?.businessSummary || "grow business";
+        const recentTags: string[] = recentIdeas
+          .flatMap((i: { tags?: string[] }) => i.tags || [])
+          .slice(0, 10);
+
+        // Upcoming schedule slots for the user/business
+        const upcomingSlots: Array<{ label?: string }> = (await ctx.runQuery(api.schedule.listSlots, {
+          businessId,
+          limit: 3,
+        })) as any[];
+
+        const prompt: string = `Given goals: "${goals}", recent focus areas: ${recentTags.join(
+          ", "
+        )}, and upcoming schedule: ${upcomingSlots.map((s) => s.label).join(
+          ", "
+        )}, suggest the single most impactful next action.`;
+
         const response = await ctx.runAction(api.openai.generate, {
-          messages: [{ role: "user", content: prompt }],
-          model: "gpt-4o-mini"
+          prompt,
+          model: "gpt-4o-mini",
         });
-        
+
         return {
-          action: response.content,
+          action: (response as any)?.text,
           priority: "high",
           estimatedTime: "15-30 min",
-          category: recentTags[0] || "general"
+          category: recentTags[0] || "general",
         };
       }
-      
+
       case "planWeek": {
-        const goals = profile?.businessSummary || "grow business";
-        
-        const prompt = `Create a focused weekly plan for: "${goals}". Include 3 key priorities, suggested content themes, and optimal posting schedule.`;
-        
+        const goals: string = profile?.businessSummary || "grow business";
+        const prompt: string = `Create a focused weekly plan for: "${goals}". Include 3 key priorities, suggested content themes, and optimal posting schedule.`;
+
         const response = await ctx.runAction(api.openai.generate, {
-          messages: [{ role: "user", content: prompt }],
-          model: "gpt-4o-mini"
+          prompt,
+          model: "gpt-4o-mini",
         });
-        
+
         return {
-          weeklyPlan: response.content,
+          weeklyPlan: (response as any)?.text,
           priorities: ["Content creation", "Audience engagement", "Business development"],
-          suggestedSlots: 3
+          suggestedSlots: 3,
         };
       }
-      
+
       case "updateProfile": {
         if (!input) throw new Error("Input required for profile update");
-        
+
         await ctx.runMutation(api.aiAgents.initSolopreneurAgent, {
           businessId,
           businessSummary: input,
           brandVoice: profile?.brandVoice,
-          timezone: profile?.timezone
+          timezone: profile?.timezone,
         });
-        
+
         return {
           success: true,
           message: "Profile updated successfully",
-          updatedAt: Date.now()
+          updatedAt: Date.now(),
         };
       }
-      
+
       case "createCapsule": {
-        // Trigger Weekly Momentum playbook
         try {
-          const response = await fetch(`/api/playbooks/weekly_momentum_capsule/trigger`, {
+          // Resolve absolute base URL for server-side fetch
+          const baseUrl =
+            process.env.VITE_PUBLIC_BASE_URL ||
+            process.env.PUBLIC_BASE_URL ||
+            process.env.BASE_URL;
+
+          if (!baseUrl) {
+            throw new Error("Public base URL not configured (VITE_PUBLIC_BASE_URL / PUBLIC_BASE_URL / BASE_URL)");
+          }
+
+          const response = await fetch(`${baseUrl}/api/playbooks/weekly_momentum_capsule/trigger`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ businessId })
+            body: JSON.stringify({ businessId }),
           });
-          
+
           if (!response.ok) {
             throw new Error(`Playbook failed: ${response.status}`);
           }
-          
-          // Log win
-          await ctx.runMutation(api.audit.logWin, {
+
+          await ctx.runMutation(api.audit.write, {
             businessId,
-            winType: "capsule_created",
-            timeSavedMinutes: 45,
-            details: { playbook: "weekly_momentum_capsule" }
+            action: "win_logged",
+            entityType: "playbook",
+            entityId: "weekly_momentum_capsule",
+            details: {
+              winType: "capsule_created",
+              timeSavedMinutes: 45,
+              playbook: "weekly_momentum_capsule",
+            },
           });
-          
+
           return {
             success: true,
             message: "Weekly capsule created successfully",
-            timeSaved: 45
+            timeSaved: 45,
           };
-        } catch (error) {
+        } catch (error: unknown) {
           return {
             success: false,
-            message: `Failed to create capsule: ${error.message}`
+            message: `Failed to create capsule: ${
+              error instanceof Error ? error.message : String(error)
+            }`,
           };
         }
       }
-      
+
       default:
         throw new Error(`Unknown exec mode: ${mode}`);
     }
-  }
+  },
 });
