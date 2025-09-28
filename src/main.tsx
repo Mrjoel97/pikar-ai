@@ -20,7 +20,7 @@ import BusinessPage from "@/pages/Business.tsx";
 import AnalyticsPage from "@/pages/Analytics.tsx";
 import PricingPage from "./pages/Pricing.tsx";
 import SettingsPage from "@/pages/Settings.tsx";
-import AdminPage from "./pages/Admin";
+import AdminPage from "@/pages/Admin";
 import AdminAuthPage from "./pages/AdminAuth";
 import LearningHubPage from "@/pages/LearningHub.tsx";
 
