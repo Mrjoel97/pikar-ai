@@ -249,6 +249,24 @@ const DEFAULT_AGENTS: Agent[] = [
     active: true,
     createdAt: Date.now(),
   },
+  {
+    _id: "virtual-strategy",
+    agent_key: "strategic_planner",
+    display_name: "Strategic Planner",
+    short_desc: "Creates strategic plans and alignment roadmaps.",
+    long_desc: "Generates multi-horizon strategies with milestones and alignment guidance.",
+    capabilities: ["plan", "roadmap", "align"],
+    default_model: "gpt-4o-mini",
+    model_routing: "default",
+    prompt_template_version: "v1",
+    prompt_templates: "",
+    input_schema: "{}",
+    output_schema: "{}",
+    tier_restrictions: ["startup", "sme", "enterprise"],
+    confidence_hint: 0.81,
+    active: true,
+    createdAt: Date.now(),
+  },
 ];
 
 const DEFAULT_PLAYBOOKS: Playbook[] = [
