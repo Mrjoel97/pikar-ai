@@ -915,7 +915,14 @@ export function SystemAgentsHub() {
                                 await publishAgent({ agent_key: agent.agent_key } as any);
                                 toast.success("Agent published");
                               } catch (e:any) {
-                                toast.error(e?.message || "Publish failed");
+                                try {
+                                  // Fallback to enhanced path with RAG/KG gate awareness
+                                  await publishAgentEnhanced({ agent_key: agent.agent_key } as any);
+                                  toast.success("Agent published via enhanced path");
+                                } catch (e2:any) {
+                                  const msg = e2?.message || e?.message || "Publish failed";
+                                  toast.error(msg);
+                                }
                               }
                             }}
                           >
