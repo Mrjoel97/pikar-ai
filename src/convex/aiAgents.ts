@@ -247,3 +247,61 @@ export const toolHealth = query({
     return await config.getAgentToolHealth(ctx, { agent_key: key });
   },
 });
+
+// Add: Admin bulk activation to publish all existing agents with fallback
+export const adminActivateAll = mutation({
+  args: {},
+  handler: async (ctx) => {
+    // Admin gate
+    const isAdmin = await ctx.runQuery(api.admin.getIsAdmin, {});
+    if (!isAdmin) {
+      throw new Error("Admin access required");
+    }
+
+    // Load current agents (DB-backed only)
+    let agents: Array<any> = [];
+    try {
+      agents = await ctx.runQuery(api.aiAgents.adminListAgents as any, {
+        tenantId: undefined,
+        limit: 500,
+      } as any);
+    } catch (e: any) {
+      throw new Error(`Failed to list agents: ${e?.message || String(e)}`);
+    }
+
+    const results: Array<{ agent_key: string; ok: boolean; mode: "standard" | "enhanced"; error?: string }> = [];
+
+    for (const a of agents) {
+      const agent_key = String(a.agent_key || a.agentKey || "");
+      if (!agent_key) {
+        results.push({ agent_key: "(unknown)", ok: false, mode: "standard", error: "missing agent_key" });
+        continue;
+      }
+      try {
+        // First attempt: standard publish
+        await ctx.runMutation(api.aiAgents.adminPublishAgent as any, { agent_key } as any);
+        results.push({ agent_key, ok: true, mode: "standard" });
+      } catch (e1: any) {
+        // Fallback attempt: enhanced publish (handles RAG/KG prerequisites)
+        try {
+          await ctx.runMutation(api.aiAgents.adminPublishAgentEnhanced as any, { agent_key } as any);
+          results.push({ agent_key, ok: true, mode: "enhanced" });
+        } catch (e2: any) {
+          results.push({
+            agent_key,
+            ok: false,
+            mode: "enhanced",
+            error: e2?.message || e1?.message || "publish failed",
+          });
+        }
+      }
+    }
+
+    return {
+      total: agents.length,
+      success: results.filter((r) => r.ok).length,
+      failed: results.filter((r) => !r.ok).length,
+      results,
+    };
+  },
+});

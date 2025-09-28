@@ -480,10 +480,8 @@ export function SystemAgentsHub() {
   const createEvalSet = useMutation(api.evals.createSet);
   const runEvalSet = useAction(api.evals.runSet);
 
-  // Vector & config operations (remove nonexistent KGraph ingestion)
+  // Vector & config operations
   const ingestVectors = useMutation(api.vectors.adminIngestChunks);
-  // Removed: const ingestKgraph = useMutation(api.kgraph.adminIngestFromDataset);
-  // Removed unused duplicate: const updateAgentConfig = useMutation(api.aiAgents.adminUpdateAgentConfig);
 
   // FIX: Use correct module names for dataset mutations
   const createDataset = useMutation(api.agentDatasets.adminCreateDataset);
@@ -495,6 +493,9 @@ export function SystemAgentsHub() {
 
   // FIX: Use correct function for agent version restoration
   const restoreAgentVersion = useMutation(api.aiAgents.adminRestoreAgentVersion);
+
+  // ADD: Admin bulk activation mutation (declare hook at top-level, not inside onClick)
+  const activateAll = useMutation(api.aiAgents.adminActivateAll);
 
   // Helper: determine if an agent is virtual (not yet persisted)
   const isVirtualAgent = (a: Agent | undefined | null) =>
@@ -794,6 +795,32 @@ export function SystemAgentsHub() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold">System Agents Hub</h2>
+        <div className="flex gap-2">
+          <button
+            className="px-3 py-2 rounded-md bg-emerald-600 text-white hover:bg-emerald-700 transition"
+            onClick={async () => {
+              try {
+                // Persist defaults first if we're showing non-persisted virtual agents
+                toast("Activating all agents...");
+                if (isDefaultAgents) {
+                  for (const a of uiAgents) {
+                    await ensurePersistedAgent(a.agent_key);
+                  }
+                }
+                const res = await activateAll({});
+                if (res?.failed > 0) {
+                  toast.error(`Activated ${res.success}/${res.total} agents. Some failed.`);
+                } else {
+                  toast.success(`Activated all ${res.success}/${res.total} agents.`);
+                }
+              } catch (e: any) {
+                toast.error(e?.message || "Activation failed");
+              }
+            }}
+          >
+            Activate All
+          </button>
+        </div>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
