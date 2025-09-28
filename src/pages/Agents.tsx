@@ -135,6 +135,30 @@ const AgentsPage: React.FC = () => {
   const [reply, setReply] = useState<string | null>(null);
   const [asking, setAsking] = useState(false);
 
+  // Phase 4: Ask history (local, persistent transcript)
+  const [askHistoryOpen, setAskHistoryOpen] = useState(false);
+  const [askHistory, setAskHistory] = useState<Array<{ q: string; a: string; at: number }>>([]);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("agentAskHistory");
+      if (raw) {
+        const parsed = JSON.parse(raw) as Array<{ q: string; a: string; at: number }>;
+        if (Array.isArray(parsed)) setAskHistory(parsed.slice(0, 200)); // cap to 200 entries
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
+  const persistHistory = (entries: Array<{ q: string; a: string; at: number }>) => {
+    setAskHistory(entries);
+    try {
+      localStorage.setItem("agentAskHistory", JSON.stringify(entries));
+    } catch {
+      // ignore quota errors
+    }
+  };
+
   useEffect(() => {
     const initSeed = async () => {
       try {
@@ -175,6 +199,9 @@ const AgentsPage: React.FC = () => {
       const res = await routeAction({ message: ask.trim() } as any);
       const summary = (res as any)?.summaryText || "No summary returned.";
       setReply(summary);
+      // Phase 4: capture transcript
+      const newEntry = { q: ask.trim(), a: summary, at: Date.now() };
+      persistHistory([newEntry, ...askHistory].slice(0, 200));
       toast("Agent responded.");
     } catch (e: any) {
       toast(`Agent failed: ${e?.message ?? "Unknown error"}`);
@@ -220,16 +247,26 @@ const AgentsPage: React.FC = () => {
           </div>
         </div>
 
-        {/* New: Ask My Agent (OpenAI-powered) */}
+        {/* Ask My Agent (OpenAI-powered) with History */}
         <Card className="border-emerald-200">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Bot className="w-5 h-5 text-emerald-600" />
-              Ask My Agent
-            </CardTitle>
-            <CardDescription>
-              Get quick, actionable recommendations summarized by your agent using your context.
-            </CardDescription>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <Bot className="w-5 h-5 text-emerald-600" />
+                  Ask My Agent
+                </CardTitle>
+                <CardDescription>
+                  Get quick, actionable recommendations summarized by your agent using your context.
+                </CardDescription>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button variant="secondary" onClick={() => setAskHistoryOpen(true)}>
+                  <History className="w-4 h-4 mr-2" />
+                  History
+                </Button>
+              </div>
+            </div>
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="flex flex-col md:flex-row gap-3">
@@ -251,6 +288,51 @@ const AgentsPage: React.FC = () => {
             )}
           </CardContent>
         </Card>
+
+        {/* History Drawer */}
+        <Sheet open={askHistoryOpen} onOpenChange={setAskHistoryOpen}>
+          <SheetContent side="right" className="w-[420px] sm:w-[540px]">
+            <SheetHeader>
+              <SheetTitle>Conversation History</SheetTitle>
+              <SheetDescription>Your recent questions and summarized answers.</SheetDescription>
+            </SheetHeader>
+            <div className="mt-4 space-y-3">
+              {askHistory.length === 0 ? (
+                <div className="text-sm text-gray-600">No history yet. Ask something to get started.</div>
+              ) : (
+                <div className="space-y-4">
+                  {askHistory.map((h, idx) => (
+                    <div key={idx} className="rounded-md border bg-white p-3">
+                      <div className="text-xs text-gray-500 mb-1">
+                        {new Date(h.at).toLocaleString()}
+                      </div>
+                      <div className="text-sm">
+                        <span className="font-medium">Q:</span> {h.q}
+                      </div>
+                      <div className="text-sm mt-1 whitespace-pre-wrap">
+                        <span className="font-medium">A:</span> {h.a}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div className="mt-4 flex items-center justify-between gap-2">
+              <Button variant="secondary" onClick={() => setAskHistoryOpen(false)}>Close</Button>
+              <Button
+                variant="destructive"
+                onClick={() => {
+                  persistHistory([]);
+                  toast.success("History cleared.");
+                }}
+                disabled={askHistory.length === 0}
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                Clear
+              </Button>
+            </div>
+          </SheetContent>
+        </Sheet>
 
         {/* Main Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
