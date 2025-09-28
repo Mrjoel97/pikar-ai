@@ -429,66 +429,86 @@ export function SystemAgentsHub() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredAgents.map((agent: Agent) => (
-                  <TableRow key={agent._id}>
-                    <TableCell className="font-mono text-sm">{agent.agent_key}</TableCell>
-                    <TableCell>
-                      <div>
-                        <div className="font-medium">{agent.display_name}</div>
-                        <div className="text-sm text-muted-foreground">{agent.short_desc}</div>
-                      </div>
-                    </TableCell>
-                    <TableCell>{agent.default_model}</TableCell>
-                    <TableCell>
-                      <div className="flex gap-1 flex-wrap">
-                        {agent.tier_restrictions.length === 0 ? (
-                          <Badge variant="secondary">All</Badge>
-                        ) : (
-                          agent.tier_restrictions.map((tier: string) => (
-                            <Badge key={tier} variant="outline">{tier}</Badge>
-                          ))
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={agent.active ? "default" : "secondary"}>
-                        {agent.active ? "Active" : "Inactive"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => setEditingAgent(agent)}
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleToggleAgent(agent.agent_key, !agent.active)}
-                        >
-                          {agent.active ? <PowerOff className="h-4 w-4" /> : <Power className="h-4 w-4" />}
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => publishAgent({ agent_key: agent.agent_key } as any).then(() => toast.success("Agent published")).catch((e:any)=>toast.error(e?.message || "Publish failed"))}
-                        >
-                          Publish
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => rollbackAgent({ agent_key: agent.agent_key } as any).then(()=>toast.success("Agent rolled back")).catch(()=>toast.error("Rollback failed"))}
-                        >
-                          Rollback
-                        </Button>
+                {/* Show helpful empty state when no agents are visible (often admin-gating or filters) */}
+                {filteredAgents.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6}>
+                      <div className="text-sm text-muted-foreground">
+                        No agents found. Clear filters above. If you just seeded, refresh in a few seconds.
+                        You must be an admin to view agents — use /admin-auth or add your email to ADMIN_EMAILS.
                       </div>
                     </TableCell>
                   </TableRow>
-                ))}
+                ) : (
+                  filteredAgents.map((agent: Agent) => (
+                    <TableRow key={agent._id}>
+                      <TableCell className="font-mono text-sm">{agent.agent_key}</TableCell>
+                      <TableCell>
+                        <div>
+                          <div className="font-medium">{agent.display_name}</div>
+                          <div className="text-sm text-muted-foreground">{agent.short_desc}</div>
+                        </div>
+                      </TableCell>
+                      <TableCell>{agent.default_model}</TableCell>
+                      <TableCell>
+                        <div className="flex gap-1 flex-wrap">
+                          {agent.tier_restrictions.length === 0 ? (
+                            <Badge variant="secondary">All</Badge>
+                          ) : (
+                            agent.tier_restrictions.map((tier: string) => (
+                              <Badge key={tier} variant="outline">{tier}</Badge>
+                            ))
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={agent.active ? "default" : "secondary"}>
+                          {agent.active ? "Active" : "Inactive"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setEditingAgent(agent)}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleToggleAgent(agent.agent_key, !agent.active)}
+                          >
+                            {agent.active ? <PowerOff className="h-4 w-4" /> : <Power className="h-4 w-4" />}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() =>
+                              publishAgent({ agent_key: agent.agent_key } as any)
+                                .then(() => toast.success("Agent published"))
+                                .catch((e:any)=>toast.error(e?.message || "Publish failed"))
+                            }
+                          >
+                            Publish
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() =>
+                              rollbackAgent({ agent_key: agent.agent_key } as any)
+                                .then(()=>toast.success("Agent rolled back"))
+                                .catch(()=>toast.error("Rollback failed"))
+                            }
+                          >
+                            Rollback
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
               </TableBody>
             </Table>
           </div>
