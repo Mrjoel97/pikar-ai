@@ -77,6 +77,7 @@ import {
   Zap,
   Target,
   BarChart3,
+  Copy,
 } from "lucide-react";
 import { useLocation } from "react-router";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -134,6 +135,10 @@ const AgentsPage: React.FC = () => {
   const [ask, setAsk] = useState("");
   const [reply, setReply] = useState<string | null>(null);
   const [asking, setAsking] = useState(false);
+  // Phase 5: Dry run + rate limit
+  const [dryRun, setDryRun] = useState<boolean>(false);
+  const [lastAskAt, setLastAskAt] = useState<number>(0);
+  const ASK_RATE_LIMIT_MS = 8000;
 
   // Phase 4: Ask history (local, persistent transcript)
   const [askHistoryOpen, setAskHistoryOpen] = useState(false);
@@ -193,13 +198,33 @@ const AgentsPage: React.FC = () => {
       toast("Type a question for your agent.");
       return;
     }
+    // Lightweight rate limiting
+    const now = Date.now();
+    const since = now - lastAskAt;
+    if (since < ASK_RATE_LIMIT_MS) {
+      const remaining = Math.ceil((ASK_RATE_LIMIT_MS - since) / 1000);
+      toast(`Please wait ${remaining}s before asking again.`);
+      return;
+    }
+    setLastAskAt(now);
+
     try {
       setAsking(true);
       setReply(null);
-      const res = await routeAction({ message: ask.trim() } as any);
+
+      if (dryRun) {
+        // Client-side simulation; do not call backend
+        const summary = `Dry run: would route message -> "${ask.trim()}"`;
+        setReply(summary);
+        const newEntry = { q: ask.trim(), a: summary, at: Date.now() };
+        persistHistory([newEntry, ...askHistory].slice(0, 200));
+        toast("Dry run completed.");
+        return;
+      }
+
+      const res = await routeAction({ message: ask.trim(), dryRun: false } as any);
       const summary = (res as any)?.summaryText || "No summary returned.";
       setReply(summary);
-      // Phase 4: capture transcript
       const newEntry = { q: ask.trim(), a: summary, at: Date.now() };
       persistHistory([newEntry, ...askHistory].slice(0, 200));
       toast("Agent responded.");
@@ -261,6 +286,11 @@ const AgentsPage: React.FC = () => {
                 </CardDescription>
               </div>
               <div className="flex items-center gap-2">
+                {/* Phase 5: Dry Run toggle */}
+                <div className="hidden sm:flex items-center gap-2 border rounded-md px-3 py-1.5">
+                  <span className="text-sm">Dry Run</span>
+                  <Switch checked={dryRun} onCheckedChange={setDryRun} />
+                </div>
                 <Button variant="secondary" onClick={() => setAskHistoryOpen(true)}>
                   <History className="w-4 h-4 mr-2" />
                   History
@@ -277,13 +307,46 @@ const AgentsPage: React.FC = () => {
                 className="flex-1"
                 disabled={asking}
               />
-              <Button onClick={handleAsk} disabled={asking} className="md:w-40">
-                {asking ? "Thinking…" : "Ask"}
+              <Button
+                onClick={handleAsk}
+                disabled={asking || (Date.now() - lastAskAt < ASK_RATE_LIMIT_MS)}
+                className="md:w-40"
+              >
+                {asking
+                  ? "Thinking…"
+                  : (Date.now() - lastAskAt < ASK_RATE_LIMIT_MS)
+                  ? `Wait ${Math.ceil((ASK_RATE_LIMIT_MS - (Date.now() - lastAskAt)) / 1000)}s`
+                  : "Ask"}
               </Button>
             </div>
+            {/* Subtext with cooldown + mode */}
+            <div className="text-xs text-gray-500">
+              {dryRun ? "Dry Run is enabled — no backend calls will be made." : "Live mode — responses use your configured model."}
+              {(Date.now() - lastAskAt < ASK_RATE_LIMIT_MS) && " • Cooldown active to prevent rapid asks."}
+            </div>
             {reply && (
-              <div className="rounded-md border bg-white p-3 text-sm leading-6 whitespace-pre-wrap">
-                {reply}
+              <div className="rounded-md border bg-white p-3">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="text-sm font-medium text-gray-700">Answer</div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => {
+                        if (reply) {
+                          navigator.clipboard.writeText(reply).then(
+                            () => toast.success("Answer copied."),
+                            () => toast.error("Failed to copy.")
+                          );
+                        }
+                      }}
+                    >
+                      <Copy className="w-4 h-4 mr-1" />
+                      Copy
+                    </Button>
+                  </div>
+                </div>
+                <div className="text-sm leading-6 whitespace-pre-wrap">{reply}</div>
               </div>
             )}
           </CardContent>
@@ -296,6 +359,39 @@ const AgentsPage: React.FC = () => {
               <SheetTitle>Conversation History</SheetTitle>
               <SheetDescription>Your recent questions and summarized answers.</SheetDescription>
             </SheetHeader>
+            {/* Phase 5: Export control */}
+            <div className="mt-3 flex items-center justify-between">
+              <div className="text-xs text-gray-500">
+                {askHistory.length} entr{askHistory.length === 1 ? "y" : "ies"}
+              </div>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => {
+                  try {
+                    const jsonl = askHistory
+                      .map((h) => JSON.stringify(h))
+                      .join("\n");
+                    const blob = new Blob([jsonl], { type: "application/jsonl;charset=utf-8" });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement("a");
+                    a.href = url;
+                    a.download = `agent_history_${new Date().toISOString().replace(/[:.]/g, "-")}.jsonl`;
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                    URL.revokeObjectURL(url);
+                    toast.success("Transcript exported.");
+                  } catch {
+                    toast.error("Failed to export transcript.");
+                  }
+                }}
+                disabled={askHistory.length === 0}
+              >
+                <Download className="w-4 h-4 mr-2" />
+                Export
+              </Button>
+            </div>
             <div className="mt-4 space-y-3">
               {askHistory.length === 0 ? (
                 <div className="text-sm text-gray-600">No history yet. Ask something to get started.</div>
