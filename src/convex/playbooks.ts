@@ -281,16 +281,23 @@ export const savePlaybookVersionInternal = internalMutation({
   },
 });
 
-// Admin: list playbook versions
+// Admin: list playbook versions (make playbook_key optional and safely no-op)
 export const adminListPlaybookVersions = query({
-  args: { playbook_key: v.string(), limit: v.optional(v.number()) },
+  args: { playbook_key: v.optional(v.string()), limit: v.optional(v.number()) },
   handler: async (ctx, args) => {
     const isAdmin = await ctx.runQuery(api.admin.getIsAdmin, {});
     if (!isAdmin) return [];
+
+    const key = (args.playbook_key || "").trim();
+    if (!key) {
+      // Gracefully return empty list if no key provided (initial load / nothing selected)
+      return [];
+    }
+
     const limit = Math.max(1, Math.min(args.limit ?? 25, 100));
     const rows = await ctx.db
       .query("playbookVersions")
-      .withIndex("by_playbook_key", (q) => q.eq("playbook_key", args.playbook_key))
+      .withIndex("by_playbook_key", (q) => q.eq("playbook_key", key))
       .order("desc")
       .take(limit);
     return rows;
