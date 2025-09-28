@@ -92,10 +92,15 @@ export const create = mutation({
     // Write audit log (internal)
     await ctx.runMutation(internal.audit.write, {
       businessId,
-      type: "business.create",
-      message: `Business created: ${args.name}`,
-      actorUserId: user._id,
-      data: { industry: args.industry, tier: args.tier ?? null },
+      action: "business.create",
+      entityType: "business",
+      entityId: String(businessId),
+      details: {
+        message: `Business created: ${args.name}`,
+        actorUserId: user._id,
+        industry: args.industry,
+        tier: args.tier ?? null,
+      },
     });
 
     return businessId;
@@ -203,10 +208,14 @@ export const update = mutation({
     // Audit
     await ctx.runMutation(internal.audit.write, {
       businessId: id,
-      type: "business.update",
-      message: "Business updated",
-      actorUserId: user._id,
-      data: updates,
+      action: "business.update",
+      entityType: "business",
+      entityId: String(id),
+      details: {
+        message: "Business updated",
+        actorUserId: user._id,
+        ...updates,
+      },
     });
 
     return await ctx.db.get(id);
@@ -253,10 +262,14 @@ export const addTeamMember = mutation({
     // Audit
     await ctx.runMutation(internal.audit.write, {
       businessId: args.businessId,
-      type: "business.add_team_member",
-      message: "Team member added",
-      actorUserId: user._id,
-      data: { addedUserId: args.userId },
+      action: "business.add_team_member",
+      entityType: "business",
+      entityId: String(args.businessId),
+      details: {
+        message: "Team member added",
+        actorUserId: user._id,
+        addedUserId: args.userId,
+      },
     });
 
     return await ctx.db.get(args.businessId);
@@ -299,10 +312,14 @@ export const removeTeamMember = mutation({
     // Audit
     await ctx.runMutation(internal.audit.write, {
       businessId: args.businessId,
-      type: "business.remove_team_member",
-      message: "Team member removed",
-      actorUserId: user._id,
-      data: { removedUserId: args.userId },
+      action: "business.remove_team_member",
+      entityType: "business",
+      entityId: String(args.businessId),
+      details: {
+        message: "Team member removed",
+        actorUserId: user._id,
+        removedUserId: args.userId,
+      },
     });
 
     return await ctx.db.get(args.businessId);

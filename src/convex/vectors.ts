@@ -1,6 +1,6 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
-import { api } from "./_generated/api";
+import { api, internal } from "./_generated/api";
 
 // Admin-gated mutation to ingest chunks with deterministic pseudo-embeddings (no external action calls)
 export const adminIngestChunks: any = mutation({
@@ -54,20 +54,22 @@ export const adminIngestChunks: any = mutation({
       insertedIds.push(id);
     }
 
-    // Audit log
-    await ctx.runMutation(api.audit.write, {
-      businessId: args.businessId || ("global" as any),
-      action: "vector_ingest",
-      entityType: "vectors",
-      entityId: args.datasetId || "",
-      details: {
-        scope: args.scope,
-        count: args.items.length,
-        datasetId: args.datasetId,
-        agentKeys: args.agentKeys,
-        stubbed: true, // embeddings are pseudo/stubbed
-      },
-    });
+    // Audit log (only if businessId is provided; avoid invalid placeholder)
+    if (args.businessId) {
+      await ctx.runMutation(internal.audit.write, {
+        businessId: args.businessId,
+        action: "vector_ingest",
+        entityType: "vectors",
+        entityId: args.datasetId || "",
+        details: {
+          scope: args.scope,
+          count: args.items.length,
+          datasetId: args.datasetId,
+          agentKeys: args.agentKeys,
+          stubbed: true, // embeddings are pseudo/stubbed
+        },
+      });
+    }
 
     return { insertedIds, count: insertedIds.length, stubbed: true };
   },
@@ -92,13 +94,15 @@ export const adminDeleteDatasetChunks = mutation({
     }
 
     // Audit log
-    await ctx.runMutation(api.audit.write, {
-      businessId: chunks[0]?.businessId || ("global" as any),
-      action: "vector_delete_dataset",
-      entityType: "vectors",
-      entityId: args.datasetId,
-      details: { deletedCount: chunks.length },
-    });
+    if (chunks.length > 0 && chunks[0]?.businessId) {
+      await ctx.runMutation(internal.audit.write, {
+        businessId: chunks[0].businessId,
+        action: "vector_delete_dataset",
+        entityType: "vectors",
+        entityId: args.datasetId,
+        details: { deletedCount: chunks.length },
+      });
+    }
 
     return { deletedCount: chunks.length };
   },
@@ -123,7 +127,7 @@ export const adminDeleteBusinessChunks = mutation({
     }
 
     // Audit log
-    await ctx.runMutation(api.audit.write, {
+    await ctx.runMutation(internal.audit.write, {
       businessId: args.businessId,
       action: "vector_delete_business",
       entityType: "vectors",

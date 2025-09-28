@@ -67,10 +67,14 @@ export const upsertForBusiness = mutation({
     // Audit
     await ctx.runMutation(internal.audit.write, {
       businessId: args.businessId,
-      type: "initiative.create",
-      message: "Initiative created",
-      actorUserId: user._id,
-      data: { initiativeId, name: args.name ?? null },
+      action: "initiative.create",
+      entityType: "initiative",
+      entityId: String(initiativeId),
+      details: {
+        message: "Initiative created",
+        actorUserId: user._id,
+        name: args.name ?? null,
+      },
     });
 
     return await ctx.db.get(initiativeId);
@@ -127,10 +131,13 @@ export const updateOnboarding = mutation({
     // Audit
     await ctx.runMutation(internal.audit.write, {
       businessId: business._id,
-      type: "initiative.update_onboarding",
-      message: "Onboarding profile updated",
-      actorUserId: user._id,
-      data: { initiativeId: args.initiativeId },
+      action: "initiative.update_onboarding",
+      entityType: "initiative",
+      entityId: String(args.initiativeId),
+      details: {
+        message: "Onboarding profile updated",
+        actorUserId: user._id,
+      },
     });
 
     return await ctx.db.get(args.initiativeId);
@@ -187,10 +194,15 @@ export const advancePhase = mutation({
     // Audit
     await ctx.runMutation(internal.audit.write, {
       businessId: business._id,
-      type: "initiative.advance_phase",
-      message: `Initiative phase advanced to ${args.toPhase}`,
-      actorUserId: user._id,
-      data: { initiativeId: args.initiativeId, from: currentPhase, to: args.toPhase },
+      action: "initiative.advance_phase",
+      entityType: "initiative",
+      entityId: String(args.initiativeId),
+      details: {
+        message: `Initiative phase advanced to ${args.toPhase}`,
+        actorUserId: user._id,
+        from: currentPhase,
+        to: args.toPhase,
+      },
     });
 
     return await ctx.db.get(args.initiativeId);
@@ -336,10 +348,14 @@ export const runPhase0Diagnostics = mutation({
     // Audit diagnostics
     await ctx.runMutation(internal.audit.write, {
       businessId: args.businessId,
-      type: "diagnostics.run",
-      message: "Phase 0 diagnostics run",
-      actorUserId: user._id,
-      data: { diagnosticId, initiativeId: initiative._id },
+      action: "diagnostics.run",
+      entityType: "diagnostics",
+      entityId: String(diagnosticId),
+      details: {
+        message: "Phase 0 diagnostics run",
+        actorUserId: user._id,
+        initiativeId: initiative._id,
+      },
     });
 
     return diagnosticId;
@@ -381,13 +397,17 @@ export const seedForEmail = mutation({
       });
       business = await ctx.db.get(businessId);
 
-      // Audit
+      // After creating business
       await ctx.runMutation(internal.audit.write, {
         businessId: businessId,
-        type: "business.create",
-        message: "Business created (seed)",
-        actorUserId: user._id,
-        data: { seeded: true },
+        action: "business.create",
+        entityType: "business",
+        entityId: String(businessId),
+        details: {
+          message: "Business created (seed)",
+          actorUserId: user._id,
+          seeded: true,
+        },
       });
     }
 
@@ -420,13 +440,16 @@ export const seedForEmail = mutation({
       });
       initiative = await ctx.db.get(initiativeId);
 
-      // Audit
+      // After creating initiative
       await ctx.runMutation(internal.audit.write, {
         businessId: business._id,
-        type: "initiative.create",
-        message: "Initiative created (seed)",
-        actorUserId: user._id,
-        data: { initiativeId },
+        action: "initiative.create",
+        entityType: "initiative",
+        entityId: String(initiativeId),
+        details: {
+          message: "Initiative created (seed)",
+          actorUserId: user._id,
+        },
       });
     }
 
@@ -450,25 +473,33 @@ export const seedForEmail = mutation({
       runAt: Date.now(),
     });
 
-    // Audit
+    // After creating diagnostics
     await ctx.runMutation(internal.audit.write, {
       businessId: business._id,
-      type: "diagnostics.run",
-      message: "Diagnostics seeded",
-      actorUserId: user._id,
-      data: { diagnosticId },
+      action: "diagnostics.run",
+      entityType: "diagnostics",
+      entityId: String(diagnosticId),
+      details: {
+        message: "Diagnostics seeded",
+        actorUserId: user._id,
+      },
     });
 
     // Advance to phase 1
     if (initiative) {
       await ctx.db.patch(initiative._id, { currentPhase: 1, updatedAt: Date.now() });
 
+      // After advancing initiative phase
       await ctx.runMutation(internal.audit.write, {
         businessId: business._id,
-        type: "initiative.advance_phase",
-        message: "Initiative advanced to phase 1 (seed)",
-        actorUserId: user._id,
-        data: { initiativeId: initiative._id, to: 1 },
+        action: "initiative.advance_phase",
+        entityType: "initiative",
+        entityId: String(initiative._id),
+        details: {
+          message: "Initiative advanced to phase 1 (seed)",
+          actorUserId: user._id,
+          to: 1,
+        },
       });
     }
 

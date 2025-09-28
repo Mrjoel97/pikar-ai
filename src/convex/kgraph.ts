@@ -1,6 +1,7 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import { api } from "./_generated/api";
+import { internal } from "./_generated/api";
 
 // Admin-gated mutation to ingest nodes/edges from a dataset
 export const adminIngestFromDataset = mutation({
@@ -78,18 +79,20 @@ export const adminIngestFromDataset = mutation({
       edgeCount++;
     }
 
-    // Audit log
-    await ctx.runMutation(api.audit.write, {
-      businessId: businessId || ("global" as any),
-      action: "kgraph_ingest",
-      entityType: "kgraph",
-      entityId: args.datasetId,
-      details: {
-        datasetTitle: dataset.title,
-        nodesCreated: tokenNodes.length + 1,
-        edgesCreated: edgeCount,
-      },
-    });
+    // Audit log (only if businessId exists)
+    if (businessId) {
+      await ctx.runMutation(internal.audit.write, {
+        businessId,
+        action: "kgraph_ingest",
+        entityType: "kgraph",
+        entityId: args.datasetId,
+        details: {
+          datasetTitle: dataset.title,
+          nodesCreated: tokenNodes.length + 1,
+          edgesCreated: edgeCount,
+        },
+      });
+    }
 
     return {
       datasetNodeId,
