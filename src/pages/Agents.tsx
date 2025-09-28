@@ -723,6 +723,8 @@ function OnboardingAssistantDialog() {
   const [useSocial, setUseSocial] = useState(true);
   const [cadence, setCadence] = useState("weekly"); // weekly, biweekly
   const [saving, setSaving] = useState(false);
+  // Add: create first capsule now
+  const [createNow, setCreateNow] = useState<boolean>(true);
 
   // Optional: if you already have a current business query, wire it here to prefill
   const currentBiz = useQuery(api.businesses?.currentUserBusiness as any, undefined);
@@ -758,6 +760,24 @@ function OnboardingAssistantDialog() {
     [useEmail, useSocial]
   );
 
+  // New: trigger Weekly Momentum Capsule playbook after setup
+  const runWeeklyMomentum = async (bizId: string) => {
+    try {
+      const res = await fetch(`/api/playbooks/weekly_momentum_capsule/trigger`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ businessId: bizId }),
+      });
+      if (!res.ok) {
+        const msg = await res.text().catch(() => "");
+        throw new Error(msg || `Failed with status ${res.status}`);
+      }
+      toast.success("First capsule created and queued!");
+    } catch (e: any) {
+      toast.error(`Could not start first capsule: ${e?.message ?? "Unknown error"}`);
+    }
+  };
+
   const handleSave = async () => {
     if (!businessId) {
       toast.error("Select or create a workspace first (businessId missing)");
@@ -785,6 +805,11 @@ function OnboardingAssistantDialog() {
           channel: s.channel,
           scheduledAt: s.scheduledAt,
         } as any);
+      }
+
+      // Optionally create first capsule now via playbook trigger
+      if (createNow) {
+        await runWeeklyMomentum(businessId);
       }
 
       toast.success("Executive Assistant initialized and schedule prepared");
@@ -865,6 +890,18 @@ function OnboardingAssistantDialog() {
               We will add {suggestedSlots.length} initial schedule slot(s) for your capsule workflow.
             </div>
           )}
+
+          {/* New: Create first capsule now option */}
+          <div className="flex items-center gap-3">
+            <Checkbox
+              id="createNow"
+              checked={createNow}
+              onCheckedChange={(v: boolean) => setCreateNow(v)}
+            />
+            <label htmlFor="createNow" className="text-sm">
+              Create my first capsule now (runs Weekly Momentum playbook)
+            </label>
+          </div>
 
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => setOpen(false)} disabled={saving}>Cancel</Button>
