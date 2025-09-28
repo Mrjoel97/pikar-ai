@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useQuery, useMutation, useAction } from "convex/react";
+import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { Pencil, Power, PowerOff, Plus, RefreshCw } from "lucide-react";
+import { Pencil, Power, PowerOff, Plus } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import DatasetCreator from "./DatasetCreator";
 
@@ -48,6 +48,91 @@ type Playbook = {
   metadata: any;
   active: boolean;
 };
+
+// Add built-in defaults to show when backend returns no data
+const DEFAULT_AGENTS: Agent[] = [
+  {
+    _id: "virtual-content",
+    agent_key: "content_creator",
+    display_name: "Content Creator",
+    short_desc: "Generates blogs, emails, and posts from briefs.",
+    long_desc: "Built-in agent for content drafting across channels.",
+    capabilities: ["drafting", "rewrite", "summarize"],
+    default_model: "gpt-4o-mini",
+    model_routing: "default",
+    prompt_template_version: "v1",
+    prompt_templates: "",
+    input_schema: "{}",
+    output_schema: "{}",
+    tier_restrictions: [],
+    confidence_hint: 0.85,
+    active: true,
+    createdAt: Date.now(),
+  },
+  {
+    _id: "virtual-sales",
+    agent_key: "sales_intelligence",
+    display_name: "Sales Intelligence",
+    short_desc: "Prospects, enriches leads, and drafts outreach.",
+    long_desc: "Finds leads, enriches with context, and drafts outreach.",
+    capabilities: ["prospect", "enrich", "outreach"],
+    default_model: "gpt-4o-mini",
+    model_routing: "default",
+    prompt_template_version: "v1",
+    prompt_templates: "",
+    input_schema: "{}",
+    output_schema: "{}",
+    tier_restrictions: ["startup", "sme", "enterprise"],
+    confidence_hint: 0.8,
+    active: true,
+    createdAt: Date.now(),
+  },
+  {
+    _id: "virtual-support",
+    agent_key: "customer_support",
+    display_name: "Customer Support",
+    short_desc: "Triage and reply suggestions for inbound emails.",
+    long_desc: "Assists with quick triage and reply drafting.",
+    capabilities: ["triage", "reply_suggest"],
+    default_model: "gpt-4o-mini",
+    model_routing: "default",
+    prompt_template_version: "v1",
+    prompt_templates: "",
+    input_schema: "{}",
+    output_schema: "{}",
+    tier_restrictions: ["solopreneur", "startup"],
+    confidence_hint: 0.78,
+    active: true,
+    createdAt: Date.now(),
+  },
+];
+
+const DEFAULT_PLAYBOOKS: Playbook[] = [
+  {
+    _id: "virtual-playbook-1",
+    playbook_key: "weekly_newsletter",
+    display_name: "Weekly Newsletter",
+    version: "v1",
+    triggers: [{ type: "cron", schedule: "weekly" }],
+    input_schema: {},
+    output_schema: {},
+    steps: [{ type: "agent", agent_key: "content_creator", action: "draft_email" }],
+    metadata: { category: "marketing" },
+    active: true,
+  },
+  {
+    _id: "virtual-playbook-2",
+    playbook_key: "lead_followup",
+    display_name: "Lead Follow-Up",
+    version: "v1",
+    triggers: [{ type: "event", event: "new_lead" }],
+    input_schema: {},
+    output_schema: {},
+    steps: [{ type: "agent", agent_key: "sales_intelligence", action: "draft_sequence" }],
+    metadata: { category: "sales" },
+    active: true,
+  },
+];
 
 export function SystemAgentsHub() {
   const [activeTab, setActiveTab] = useState("catalog");
@@ -106,8 +191,7 @@ export function SystemAgentsHub() {
   const rollbackAgent = useMutation(api.aiAgents.adminRollbackAgent);
   const publishPlaybook = useMutation(api.playbooks.adminPublishPlaybook);
   const rollbackPlaybook = useMutation(api.playbooks.adminRollbackPlaybook);
-  const seedAgents = useAction(api.seed.seedAgentCatalogSafe);
-  const seedPlaybooks = useAction(api.playbooks.seedDefaultPlaybooks);
+  // removed seeding actions
 
   // Evaluation actions
   const createEvalSet = useMutation(api.evals.createSet);
@@ -142,8 +226,43 @@ export function SystemAgentsHub() {
       playbook.playbook_key.toLowerCase().includes(searchTerm.toLowerCase())
     ) || [];
 
+  // Compute whether we're showing defaults (no backend data)
+  const isDefaultAgents = !agents || (Array.isArray(agents) && agents.length === 0);
+  const isDefaultPlaybooks = !playbooks || (Array.isArray(playbooks) && playbooks.length === 0);
+
+  // Apply existing filters to defaults to keep UX consistent
+  const defaultAgentsFiltered =
+    DEFAULT_AGENTS.filter((agent) => {
+      const matchesSearch =
+        agent.display_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        agent.agent_key.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesTier =
+        tierFilter === "all" ||
+        agent.tier_restrictions.length === 0 ||
+        agent.tier_restrictions.includes(tierFilter);
+      const matchesActive =
+        activeFilter === "all" ||
+        (activeFilter === "active" ? agent.active : !agent.active);
+      return matchesSearch && matchesTier && matchesActive;
+    }) || [];
+
+  const defaultPlaybooksFiltered =
+    DEFAULT_PLAYBOOKS.filter((pb) => {
+      const matchesSearch =
+        pb.display_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        pb.playbook_key.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesActive =
+        activeFilter === "all" ||
+        (activeFilter === "active" ? pb.active : !pb.active);
+      return matchesSearch && matchesActive;
+    }) || [];
+
+  // Choose UI data source
+  const uiAgents = isDefaultAgents ? defaultAgentsFiltered : (filteredAgents || []);
+  const uiPlaybooks = isDefaultPlaybooks ? defaultPlaybooksFiltered : (filteredPlaybooks || []);
+
   // Training helpers
-  const selectedAgent: Agent | undefined = filteredAgents.find((a: Agent) => a.agent_key === selectedAgentKey);
+  const selectedAgent: Agent | undefined = uiAgents.find((a: Agent) => a.agent_key === selectedAgentKey);
 
   // Initialize training form when agent changes
   React.useEffect(() => {
@@ -197,23 +316,7 @@ export function SystemAgentsHub() {
     }
   };
 
-  const handleSeedAgents = async () => {
-    try {
-      await seedAgents({});
-      toast.success("Agents seeded successfully");
-    } catch (error) {
-      toast.error("Failed to seed agents");
-    }
-  };
-
-  const handleSeedPlaybooks = async () => {
-    try {
-      await seedPlaybooks({});
-      toast.success("Playbooks seeded successfully");
-    } catch (error) {
-      toast.error("Failed to seed playbooks");
-    }
-  };
+  // removed seeding handlers
 
   const handleTrainingSave = async () => {
     if (!trainForm) return;
@@ -360,16 +463,6 @@ export function SystemAgentsHub() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold">System Agents Hub</h2>
-        <div className="flex gap-2">
-          <Button onClick={handleSeedAgents} variant="outline" size="sm">
-            <RefreshCw className="h-4 w-4 mr-2" />
-            Seed Agents
-          </Button>
-          <Button onClick={handleSeedPlaybooks} variant="outline" size="sm">
-            <RefreshCw className="h-4 w-4 mr-2" />
-            Seed Playbooks
-          </Button>
-        </div>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -430,7 +523,7 @@ export function SystemAgentsHub() {
               </TableHeader>
               <TableBody>
                 {/* Show helpful empty state when no agents are visible (often admin-gating or filters) */}
-                {filteredAgents.length === 0 ? (
+                {uiAgents.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={6}>
                       <div className="text-sm text-muted-foreground">
@@ -440,7 +533,7 @@ export function SystemAgentsHub() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredAgents.map((agent: Agent) => (
+                  uiAgents.map((agent: Agent) => (
                     <TableRow key={agent._id}>
                       <TableCell className="font-mono text-sm">{agent.agent_key}</TableCell>
                       <TableCell>
@@ -472,6 +565,7 @@ export function SystemAgentsHub() {
                             size="sm"
                             variant="outline"
                             onClick={() => setEditingAgent(agent)}
+                            disabled={isDefaultAgents}
                           >
                             <Pencil className="h-4 w-4" />
                           </Button>
@@ -479,6 +573,7 @@ export function SystemAgentsHub() {
                             size="sm"
                             variant="outline"
                             onClick={() => handleToggleAgent(agent.agent_key, !agent.active)}
+                            disabled={isDefaultAgents}
                           >
                             {agent.active ? <PowerOff className="h-4 w-4" /> : <Power className="h-4 w-4" />}
                           </Button>
@@ -490,6 +585,7 @@ export function SystemAgentsHub() {
                                 .then(() => toast.success("Agent published"))
                                 .catch((e:any)=>toast.error(e?.message || "Publish failed"))
                             }
+                            disabled={isDefaultAgents}
                           >
                             Publish
                           </Button>
@@ -501,6 +597,7 @@ export function SystemAgentsHub() {
                                 .then(()=>toast.success("Agent rolled back"))
                                 .catch(()=>toast.error("Rollback failed"))
                             }
+                            disabled={isDefaultAgents}
                           >
                             Rollback
                           </Button>
@@ -528,7 +625,7 @@ export function SystemAgentsHub() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredPlaybooks.map((playbook: Playbook) => (
+                {uiPlaybooks.map((playbook: Playbook) => (
                   <TableRow key={playbook._id}>
                     <TableCell className="font-mono text-sm">{playbook.playbook_key}</TableCell>
                     <TableCell>{playbook.display_name}</TableCell>
@@ -544,6 +641,7 @@ export function SystemAgentsHub() {
                           size="sm"
                           variant="outline"
                           onClick={() => setEditingPlaybook(playbook)}
+                          disabled={isDefaultPlaybooks}
                         >
                           <Pencil className="h-4 w-4" />
                         </Button>
@@ -551,6 +649,7 @@ export function SystemAgentsHub() {
                           size="sm"
                           variant="outline"
                           onClick={() => handleTogglePlaybook(playbook.playbook_key, playbook.version, !playbook.active)}
+                          disabled={isDefaultPlaybooks}
                         >
                           {playbook.active ? <PowerOff className="h-4 w-4" /> : <Power className="h-4 w-4" />}
                         </Button>
@@ -558,6 +657,7 @@ export function SystemAgentsHub() {
                           size="sm"
                           variant="outline"
                           onClick={() => handlePublishPlaybook(playbook)}
+                          disabled={isDefaultPlaybooks}
                         >
                           Publish
                         </Button>
@@ -565,6 +665,7 @@ export function SystemAgentsHub() {
                           size="sm"
                           variant="outline"
                           onClick={() => handleRollbackPlaybook(playbook)}
+                          disabled={isDefaultPlaybooks}
                         >
                           Rollback
                         </Button>
@@ -575,6 +676,7 @@ export function SystemAgentsHub() {
                             setSelectedPlaybookKey(playbook.playbook_key);
                             setPlaybookVersionsOpen(true);
                           }}
+                          disabled={isDefaultPlaybooks}
                         >
                           Versions
                         </Button>
@@ -619,7 +721,7 @@ export function SystemAgentsHub() {
                       <SelectValue placeholder="Select an agent" />
                     </SelectTrigger>
                     <SelectContent>
-                      {(agents || []).map((a: Agent) => (
+                      {(uiAgents || []).map((a: Agent) => (
                         <SelectItem key={a.agent_key} value={a.agent_key}>
                           {a.display_name}
                         </SelectItem>
