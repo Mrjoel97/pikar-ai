@@ -93,24 +93,39 @@ export default function ExecutiveTab() {
       });
 
       if (mode === "createCapsule") {
-        if (response.success) {
-          toast.success(`Capsule created! Saved ${response.timeSaved} minutes`);
+        // Robust error handling for playbook execution
+        const ok = !!(response as any)?.success;
+        if (ok) {
+          const saved = typeof (response as any)?.timeSaved === "number" ? (response as any).timeSaved : undefined;
+          toast.success(`Capsule created${saved ? `! Saved ${saved} minutes` : "!"}`);
         } else {
-          toast.error(response.message);
+          const message =
+            (response as any)?.message ||
+            (response as any)?.error ||
+            "Playbook failed to run. Please try again.";
+          const correlationId = (response as any)?.correlationId;
+          toast.error(`${message}${correlationId ? ` (ref: ${correlationId})` : ""}`);
+          // Log full response for debugging visibility
+          // (Safe: console only; no user PII exposure beyond message)
+          console.error("Playbook execution error", { response });
         }
-      } else {
-        const newEntry = {
-          question: `Quick action: ${mode}`,
-          answer: response.action || response.weeklyPlan || "Action completed",
-          timestamp: Date.now()
-        };
-        
-        const newHistory = [newEntry, ...chatHistory].slice(0, 20);
-        saveHistory(newHistory);
-        toast.success("Quick action completed");
+        return;
       }
+
+      const newEntry = {
+        question: `Quick action: ${mode}`,
+        answer: (response as any).action || (response as any).weeklyPlan || "Action completed",
+        timestamp: Date.now()
+      };
+      
+      const newHistory = [newEntry, ...chatHistory].slice(0, 20);
+      saveHistory(newHistory);
+      toast.success("Quick action completed");
     } catch (error: any) {
-      toast.error(`Action failed: ${error.message}`);
+      // Network, transport, or unexpected errors
+      const message = error?.message || "Action failed due to an unexpected error.";
+      toast.error(`Action failed: ${message}`);
+      console.error("Quick action error", error);
     }
   };
 
