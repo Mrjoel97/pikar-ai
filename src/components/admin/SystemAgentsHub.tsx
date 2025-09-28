@@ -391,6 +391,30 @@ const DEFAULT_PLAYBOOKS: Playbook[] = [
   },
 ];
 
+// Add strategic tier distribution override mapping just after Playbook type
+const STRATEGIC_TIERS: Record<string, string[]> = {
+  // 1. Strategic Planning Agent
+  strategic_planner: ["startup", "sme", "enterprise"],
+  // 2. Customer Support Agent
+  customer_support: ["solopreneur", "startup"],
+  // 3. Sales Intelligence Agent
+  sales_intelligence: ["startup", "sme", "enterprise"],
+  // 4. Content Creation Agent
+  content_creator: [], // All tiers
+  // 5. Data Analysis Agent
+  data_analysis: ["startup", "sme", "enterprise"],
+  // 6. Marketing Automation Agent
+  marketing_automation: ["solopreneur", "startup", "sme"],
+  // 7. Financial Analysis Agent
+  financial_analysis: ["sme", "enterprise"],
+  // 8. Operations Optimization Agent
+  ops_optimizer: ["sme", "enterprise"],
+  // 9. Compliance & Risk Agent
+  compliance_risk: ["sme", "enterprise"],
+  // 10. HR & Recruitment Agent
+  hr_recruitment: ["startup", "sme", "enterprise"],
+};
+
 export function SystemAgentsHub() {
   const [activeTab, setActiveTab] = useState("catalog");
   const [searchTerm, setSearchTerm] = useState("");
@@ -481,6 +505,9 @@ export function SystemAgentsHub() {
     const a = (uiAgents || []).find((x: Agent) => x.agent_key === agent_key);
     if (!a) return;
 
+    // Apply strategic tier overrides if present
+    const strategicTiers = STRATEGIC_TIERS[a.agent_key] ?? a.tier_restrictions ?? [];
+
     // Always upsert the agent to ensure backend persistence before actions like publish/toggle
     await upsertAgent({
       agent_key: a.agent_key,
@@ -494,7 +521,8 @@ export function SystemAgentsHub() {
       prompt_templates: (a as any).prompt_templates ?? "",
       input_schema: (a as any).input_schema ?? "{}",
       output_schema: (a as any).output_schema ?? "{}",
-      tier_restrictions: a.tier_restrictions ?? [],
+      // Use strategic tier mapping for correct distribution
+      tier_restrictions: strategicTiers,
       confidence_hint: Number(a.confidence_hint ?? 0.8),
       active: typeof a.active === "boolean" ? a.active : true,
     } as any);
@@ -565,6 +593,9 @@ export function SystemAgentsHub() {
       setTrainForm(null);
     }
   }, [selectedAgentKey]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Add an enhanced publish mutation for fallback
+  const publishAgentEnhanced = useMutation(api.aiAgents.adminPublishAgentEnhanced as any);
 
   // Add computed gate status from eval summary
   const gatePassing = (evalSummary as any)?.allPassing === true;
@@ -695,7 +726,14 @@ export function SystemAgentsHub() {
       await publishAgent({ agent_key: selectedAgent.agent_key } as any);
       toast.success("Agent published");
     } catch (e: any) {
-      toast.error(e?.message || "Failed to publish agent");
+      // Fallback: try enhanced publish (handles RAG/KG gate awareness)
+      try {
+        await publishAgentEnhanced({ agent_key: selectedAgent.agent_key } as any);
+        toast.success("Agent published via enhanced path");
+      } catch (e2: any) {
+        const msg = e2?.message || e?.message || "Failed to publish agent";
+        toast.error(msg);
+      }
     }
   };
 
