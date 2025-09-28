@@ -201,6 +201,20 @@ const AgentsPage: React.FC = () => {
     }
   }, []);
 
+  const initExec = useMutation(api.aiAgents.initSolopreneurAgent);
+  const createQuickWF = useMutation(api.workflows.createQuickFromIdea as any);
+  const addSlot = useMutation(api.schedule.addSlot);
+
+  const currentBiz = useQuery(api.businesses?.currentUserBusiness as any, undefined);
+  const businessId = (currentBiz?._id as any) || undefined;
+
+  // Executive Settings local state
+  const [execGoals, setExecGoals] = useState<string>("");
+  const [execTone, setExecTone] = useState<string>("practical, concise, friendly");
+  const [execCadence, setExecCadence] = useState<string>("weekly");
+  const [execSaving, setExecSaving] = useState<boolean>(false);
+  const [execLastSavedAt, setExecLastSavedAt] = useState<number | null>(null);
+
   const handleAsk = async () => {
     if (!ask.trim()) {
       toast("Type a question for your agent.");
@@ -243,6 +257,75 @@ const AgentsPage: React.FC = () => {
     }
   };
 
+  const handleSaveExecutiveSettings = async () => {
+    if (!businessId) {
+      toast("No workspace found. Please create or select a business first.");
+      return;
+    }
+    setExecSaving(true);
+    try {
+      await initExec({
+        businessId,
+        businessSummary: execGoals || undefined,
+        brandVoice: execTone || undefined,
+        timezone: undefined,
+        automations: {
+          invoicing: false,
+          emailDrafts: true,
+          socialPosts: true,
+        },
+        cadence: execCadence,
+      } as any);
+      setExecLastSavedAt(Date.now());
+      toast.success("Executive profile saved.");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Failed to save executive profile");
+    } finally {
+      setExecSaving(false);
+    }
+  };
+
+  const handleUseAsWorkflow = async () => {
+    if (!businessId) {
+      toast("Sign in and connect a workspace to create workflows.");
+      return;
+    }
+    if (!reply && !ask.trim()) {
+      toast("Nothing to convert. Ask a question first.");
+      return;
+    }
+    try {
+      const ideaText = reply ? `${ask.trim()}\n\n${reply}` : ask.trim();
+      await createQuickWF({
+        businessId,
+        ideaText,
+        title: (ask || "Executive Suggestion").slice(0, 80),
+      } as any);
+      toast.success("Workflow created from answer.");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Failed to create workflow");
+    }
+  };
+
+  const handleScheduleNow = async () => {
+    if (!businessId) {
+      toast("Sign in and connect a workspace to schedule.");
+      return;
+    }
+    try {
+      const when = Date.now() + 15 * 60 * 1000; // +15 minutes
+      await addSlot({
+        businessId,
+        label: "Exec: Quick Slot",
+        channel: "email",
+        scheduledAt: when,
+      } as any);
+      toast.success("Scheduled a quick slot in ~15 minutes.");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Failed to add schedule slot");
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50 p-4 md:p-8">
       <motion.div
@@ -279,6 +362,66 @@ const AgentsPage: React.FC = () => {
             </Select>
           </div>
         </div>
+
+        {/* Executive Settings */}
+        <Card className="border-emerald-200">
+          <CardHeader>
+            <CardTitle className="flex items-center justify-between">
+              <span>Executive Settings</span>
+              {execLastSavedAt && (
+                <span className="text-xs text-gray-500">
+                  Last saved {new Date(execLastSavedAt).toLocaleString()}
+                </span>
+              )}
+            </CardTitle>
+            <CardDescription>
+              Update your Executive Assistant's goals, tone, and cadence. These guide playbooks and suggestions.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <Label className="text-sm">Goals / Focus</Label>
+              <Textarea
+                rows={3}
+                value={execGoals}
+                onChange={(e) => setExecGoals(e.target.value)}
+                placeholder="Describe what you want your assistant to prioritize"
+              />
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label className="text-sm">Tone / Persona</Label>
+                <Input
+                  value={execTone}
+                  onChange={(e) => setExecTone(e.target.value)}
+                  placeholder="e.g., practical, concise, friendly"
+                />
+              </div>
+              <div>
+                <Label className="text-sm">Cadence</Label>
+                <Select value={execCadence} onValueChange={setExecCadence}>
+                  <SelectTrigger><SelectValue placeholder="Select cadence" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="weekly">Weekly</SelectItem>
+                    <SelectItem value="biweekly">Bi-Weekly</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="flex items-center justify-end gap-2">
+              <Button variant="secondary" onClick={() => {
+                setExecGoals("");
+                setExecTone("practical, concise, friendly");
+                setExecCadence("weekly");
+              }}>
+                Reset
+              </Button>
+              <Button onClick={handleSaveExecutiveSettings} disabled={execSaving}>
+                {execSaving ? "Saving..." : "Save"}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Ask My Agent (OpenAI-powered) with History */}
         <Card className="border-emerald-200">
@@ -337,6 +480,20 @@ const AgentsPage: React.FC = () => {
                 <div className="flex items-center justify-between mb-2">
                   <div className="text-sm font-medium text-gray-700">Answer</div>
                   <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleUseAsWorkflow}
+                    >
+                      Use as Workflow
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleScheduleNow}
+                    >
+                      Schedule Now
+                    </Button>
                     <Button
                       variant="secondary"
                       size="sm"
