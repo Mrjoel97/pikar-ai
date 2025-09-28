@@ -222,9 +222,19 @@ export const adminPublishAgentEnhanced: any = mutation({
 
 // Agent tool health check: verifies agent presence, publish status, and eval gate
 export const toolHealth = query({
-  args: { agent_key: v.string() },
-  // Explicit types to avoid implicit any recursion issues
-  handler: async (ctx: any, args: { agent_key: string }): Promise<{ ok: boolean; issues: string[]; summary: any }> => {
-    return await config.getAgentToolHealth(ctx, args);
+  // Make agent_key optional so accidental {} invocations don't throw ArgumentValidationError
+  args: { agent_key: v.optional(v.string()) },
+  handler: async (ctx, args) => {
+    const key = (args.agent_key || "").trim();
+    if (!key) {
+      // Gracefully return a neutral health object instead of throwing
+      return {
+        ok: false,
+        issues: ["agent_key missing"],
+        summary: null,
+      };
+    }
+    // Delegate to config, passing a guaranteed non-empty key
+    return await config.getAgentToolHealth(ctx, { agent_key: key });
   },
 });

@@ -3,8 +3,18 @@ import { api } from "../../_generated/api";
 // Returns a concise health summary for an agent's tooling readiness
 export async function getAgentToolHealth(
   ctx: any,
-  args: { agent_key: string }
+  args: { agent_key?: string }
 ): Promise<{ ok: boolean; issues: string[]; summary: any }> {
+  // Normalize and guard missing key - return shape must match the function signature
+  const key = (args.agent_key || "").trim();
+  if (!key) {
+    return {
+      ok: false,
+      issues: ["agent_key missing"],
+      summary: null,
+    };
+  }
+
   const issues: Array<string> = [];
   let agent: any | null = null;
 
@@ -12,12 +22,12 @@ export async function getAgentToolHealth(
   try {
     agent = await ctx.db
       .query("agentCatalog")
-      .withIndex("by_agent_key", (q: any) => q.eq("agent_key", args.agent_key))
+      .withIndex("by_agent_key", (q: any) => q.eq("agent_key", key))
       .unique();
   } catch {
     // Fallback: safe async scan
     for await (const row of ctx.db.query("agentCatalog")) {
-      if ((row as any).agent_key === args.agent_key) {
+      if ((row as any).agent_key === key) {
         agent = row as any;
         break;
       }
@@ -29,7 +39,7 @@ export async function getAgentToolHealth(
     return {
       ok: false,
       issues,
-      summary: { agent_key: args.agent_key, active: false, reason: "missing_agent" },
+      summary: { agent_key: key, active: false, reason: "missing_agent" },
     };
   }
 
@@ -51,7 +61,7 @@ export async function getAgentToolHealth(
 
   // Summarize minimal info; expandable later with RAG/KG checks
   const summary = {
-    agent_key: args.agent_key,
+    agent_key: key,
     active: !!agent.active,
     evalGate: evalSummary
       ? { required: !!evalSummary.gateRequired, allPassing: !!evalSummary.allPassing }
