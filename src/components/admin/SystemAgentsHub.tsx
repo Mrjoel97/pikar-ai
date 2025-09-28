@@ -389,6 +389,51 @@ const DEFAULT_PLAYBOOKS: Playbook[] = [
     metadata: { category: "sales" },
     active: true,
   },
+  {
+    _id: "virtual-playbook-3",
+    playbook_key: "weekly_newsletter_capsule",
+    display_name: "Weekly Momentum Capsule",
+    version: "v1",
+    triggers: [{ type: "cron", schedule: "weekly" }],
+    input_schema: {},
+    output_schema: {},
+    steps: [
+      { type: "agent", agent_key: "content_creator", action: "draft_email" },
+      { type: "agent", agent_key: "campaign_planner", action: "plan_calendar" }
+    ],
+    metadata: { category: "solopreneur" },
+    active: true,
+  },
+  {
+    _id: "virtual-playbook-4",
+    playbook_key: "quick_newsletter_sprint",
+    display_name: "Quick Newsletter Sprint",
+    version: "v1",
+    triggers: [{ type: "manual", source: "dashboard_cta" }],
+    input_schema: {},
+    output_schema: {},
+    steps: [
+      { type: "agent", agent_key: "content_creator", action: "draft_email" },
+      { type: "agent", agent_key: "analytics_insights", action: "optimize_subject" }
+    ],
+    metadata: { category: "solopreneur" },
+    active: true,
+  },
+  {
+    _id: "virtual-playbook-5",
+    playbook_key: "social_micro_calendar",
+    display_name: "Social Micro-Calendar (5-day)",
+    version: "v1",
+    triggers: [{ type: "manual", source: "dashboard_cta" }, { type: "cron", schedule: "monthly" }],
+    input_schema: {},
+    output_schema: {},
+    steps: [
+      { type: "agent", agent_key: "content_creator", action: "draft_micro_posts" },
+      { type: "agent", agent_key: "marketing_automation", action: "distribute_drip" }
+    ],
+    metadata: { category: "solopreneur" },
+    active: true,
+  },
 ];
 
 // Add strategic tier distribution override mapping just after Playbook type
@@ -772,6 +817,7 @@ export function SystemAgentsHub() {
   const handlePublishPlaybook = async (playbook: Playbook) => {
     if (!requireAdmin()) return;
     try {
+      await ensurePersistedPlaybook(playbook.playbook_key);
       await publishPlaybook({ playbook_key: playbook.playbook_key, version: playbook.version } as any);
       toast.success("Playbook published");
     } catch (e: any) {
@@ -809,6 +855,48 @@ export function SystemAgentsHub() {
     } catch {
       toast.error("Failed to restore playbook version");
     }
+  };
+
+  const handleRunPlaybook = async (playbook: Playbook) => {
+    if (!requireAdmin()) return;
+    try {
+      await ensurePersistedPlaybook(playbook.playbook_key);
+      // Attempt to trigger via HTTP endpoint
+      const res = await fetch(`/api/playbooks/${encodeURIComponent(playbook.playbook_key)}/trigger`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ source: "admin_hub" }),
+      });
+      if (!res.ok) {
+        const text = await res.text().catch(() => "");
+        throw new Error(text || `HTTP ${res.status}`);
+      }
+      toast.success("Playbook run started");
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to run playbook");
+    }
+  };
+
+  // Helper: upsert a virtual/default playbook before performing actions
+  const ensurePersistedPlaybook = async (playbook_key: string) => {
+    if (!requireAdmin()) return;
+    const pb = ((uiPlaybooks || []) as Array<Playbook>).find(
+      (x: Playbook) => x.playbook_key === playbook_key
+    );
+    if (!pb) return;
+
+    await upsertPlaybook({
+      playbook_key: pb.playbook_key,
+      display_name: pb.display_name,
+      version: pb.version,
+      // Provide safe defaults for optional fields
+      triggers: (pb as any).triggers ?? [],
+      input_schema: (pb as any).input_schema ?? {},
+      output_schema: (pb as any).output_schema ?? {},
+      steps: (pb as any).steps ?? [],
+      metadata: (pb as any).metadata ?? { category: "solopreneur" },
+      active: typeof pb.active === "boolean" ? pb.active : true,
+    } as any);
   };
 
   return (
@@ -1039,7 +1127,7 @@ export function SystemAgentsHub() {
                           size="sm"
                           variant="outline"
                           onClick={() => handleTogglePlaybook(playbook.playbook_key, playbook.version, !playbook.active)}
-                          disabled={isDefaultPlaybooks || isAdmin !== true}
+                          disabled={isAdmin !== true}
                         >
                           {playbook.active ? <PowerOff className="h-4 w-4" /> : <Power className="h-4 w-4" />}
                         </Button>
@@ -1047,7 +1135,7 @@ export function SystemAgentsHub() {
                           size="sm"
                           variant="outline"
                           onClick={() => handlePublishPlaybook(playbook)}
-                          disabled={isDefaultPlaybooks || isAdmin !== true}
+                          disabled={isAdmin !== true}
                         >
                           Publish
                         </Button>
@@ -1055,9 +1143,17 @@ export function SystemAgentsHub() {
                           size="sm"
                           variant="outline"
                           onClick={() => handleRollbackPlaybook(playbook)}
-                          disabled={isDefaultPlaybooks || isAdmin !== true}
+                          disabled={isAdmin !== true}
                         >
                           Rollback
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleRunPlaybook(playbook)}
+                          disabled={isAdmin !== true}
+                        >
+                          Run
                         </Button>
                         <Button
                           size="sm"
@@ -1066,7 +1162,7 @@ export function SystemAgentsHub() {
                             setSelectedPlaybookKey(playbook.playbook_key);
                             setPlaybookVersionsOpen(true);
                           }}
-                          disabled={isDefaultPlaybooks || isAdmin !== true}
+                          disabled={isAdmin !== true}
                         >
                           Versions
                         </Button>
