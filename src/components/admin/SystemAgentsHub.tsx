@@ -1211,7 +1211,6 @@ export function SystemAgentsHub() {
                             size="sm"
                             variant="outline"
                             onClick={() => setEditingPlaybook(playbook)}
-                            disabled={isAdmin !== true} // allow editing even when showing defaults/fallbacks
                           >
                             <Pencil className="h-4 w-4" />
                           </Button>
