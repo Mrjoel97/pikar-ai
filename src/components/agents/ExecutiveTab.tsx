@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, Brain, Send, Zap, Calendar, TrendingUp, Copy } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 
 export default function ExecutiveTab() {
