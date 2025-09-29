@@ -313,15 +313,31 @@ http.route({
         // no-op
       }
 
-      // Fetch active playbooks via a public query (avoid ctx.db in httpAction)
-      const active = await ctx.runQuery(api.playbooks.list as any, { activeOnly: true });
+      // Try industry-scoped listing first (based on slug prefix), then fall back to global active list
+      const industryKey = slug.split("_")[0] || "";
+      let active: any[] = [];
+      try {
+        if (industryKey) {
+          active = await ctx.runQuery(api.playbooks.listActiveByIndustry as any, {
+            industry: industryKey,
+            limit: 200,
+          });
+        }
+      } catch {
+        active = [];
+      }
+      if (!Array.isArray(active) || active.length === 0) {
+        active = await ctx.runQuery(api.playbooks.list as any, { activeOnly: true });
+      }
 
       const reqPath = url.pathname;
+      const expectedPath = `/api/playbooks/${slug}/trigger`;
+
       const match = (active as any[]).find((p: any) => {
         const key: string = String(p.playbook_key || "");
         const triggers: Array<any> = Array.isArray(p.triggers) ? p.triggers : [];
         const hasExactPath =
-          triggers.some((t) => typeof t?.path === "string" && t.path === reqPath);
+          triggers.some((t) => typeof t?.path === "string" && (t.path === reqPath || t.path === expectedPath));
         return hasExactPath || key === slug || key.startsWith(`${slug}_`);
       });
 
