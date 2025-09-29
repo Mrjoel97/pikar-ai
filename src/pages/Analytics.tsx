@@ -16,18 +16,31 @@ export default function AnalyticsPage() {
 
   const businesses = useQuery(api.businesses.getUserBusinesses, {});
   const firstBizId = businesses?.[0]?._id;
-  const initiatives = useQuery(api.initiatives.getByBusiness, firstBizId ? ({ businessId: firstBizId } as any) : ("skip" as any));
-  const agents = useQuery(api.aiAgents.getByBusiness, firstBizId ? ({ businessId: firstBizId } as any) : ("skip" as any));
-  const workflows = useQuery(api.workflows.listWorkflows, firstBizId ? ({ businessId: firstBizId } as any) : ("skip" as any));
+  const initiatives = useQuery(
+    api.initiatives.getByBusiness,
+    firstBizId ? ({ businessId: firstBizId } as any) : undefined
+  );
+  const agents = useQuery(
+    api.aiAgents.getByBusiness,
+    firstBizId ? ({ businessId: firstBizId } as any) : undefined
+  );
+  const workflows = useQuery(
+    api.workflows.listWorkflows,
+    firstBizId ? ({ businessId: firstBizId } as any) : undefined
+  );
 
   // Normalize initiatives to an array for counting
   const initiativesList = Array.isArray(initiatives) ? initiatives : (initiatives ? [initiatives] : []);
 
-  const workflowExecutions = useQuery(api.workflows.getExecutions, 
-    firstBizId && workflows?.[0] ? { 
-      workflowId: workflows[0]._id,
-      paginationOpts: { numItems: 5, cursor: null }
-    } : "skip");
+  const workflowExecutions = useQuery(
+    api.workflows.getExecutions,
+    firstBizId && workflows?.[0]
+      ? {
+          workflowId: workflows[0]._id,
+          paginationOpts: { numItems: 5, cursor: null },
+        }
+      : undefined
+  );
 
   if (authLoading) {
     return (
