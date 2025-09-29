@@ -38,8 +38,8 @@ export const smokeRunHttpAllIndustries = action({
     }> = [];
 
     for (const { key } of INDUSTRIES) {
-      // Admin-gated list with filter; safe because caller is admin
-      const list = await ctx.runQuery(api.playbooks.adminListPlaybooksByIndustry, {
+      // Use public, guest-safe list of active playbooks by industry
+      const list = await ctx.runQuery(api.playbooks.listActiveByIndustry, {
         industry: key,
         limit: 50,
       });
