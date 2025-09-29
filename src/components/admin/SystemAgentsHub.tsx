@@ -1090,6 +1090,26 @@ export function SystemAgentsHub() {
         </TabsContent>
 
         <TabsContent value="playbooks" className="space-y-4">
+          {/* Filters */}
+          <div className="flex gap-4 items-center">
+            <Input
+              placeholder="Search playbooks..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="max-w-sm"
+            />
+            <Select value={activeFilter} onValueChange={setActiveFilter}>
+              <SelectTrigger className="w-32">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All</SelectItem>
+                <SelectItem value="active">Active</SelectItem>
+                <SelectItem value="inactive">Inactive</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
           {/* Playbooks Table */}
           <div className="border rounded-lg">
             <Table>
@@ -1103,73 +1123,85 @@ export function SystemAgentsHub() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {uiPlaybooks.map((playbook: Playbook) => (
-                  <TableRow key={playbook._id}>
-                    <TableCell className="font-mono text-sm">{playbook.playbook_key}</TableCell>
-                    <TableCell>{playbook.display_name}</TableCell>
-                    <TableCell>{playbook.version}</TableCell>
-                    <TableCell>
-                      <Badge variant={playbook.active ? "default" : "secondary"}>
-                        {playbook.active ? "Active" : "Inactive"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => setEditingPlaybook(playbook)}
-                          disabled={isDefaultPlaybooks || isAdmin !== true}
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleTogglePlaybook(playbook.playbook_key, playbook.version, !playbook.active)}
-                          disabled={isAdmin !== true}
-                        >
-                          {playbook.active ? <PowerOff className="h-4 w-4" /> : <Power className="h-4 w-4" />}
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handlePublishPlaybook(playbook)}
-                          disabled={isAdmin !== true}
-                        >
-                          Publish
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleRollbackPlaybook(playbook)}
-                          disabled={isAdmin !== true}
-                        >
-                          Rollback
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleRunPlaybook(playbook)}
-                          disabled={isAdmin !== true}
-                        >
-                          Run
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => {
-                            setSelectedPlaybookKey(playbook.playbook_key);
-                            setPlaybookVersionsOpen(true);
-                          }}
-                          disabled={isAdmin !== true}
-                        >
-                          Versions
-                        </Button>
+                {/* Show helpful empty state when no playbooks are visible */}
+                {uiPlaybooks.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={5}>
+                      <div className="text-sm text-muted-foreground">
+                        No playbooks found. Clear filters above. If you just published, refresh in a few seconds.
+                        You must be an admin to view and manage playbooks — use /admin-auth or add your email to ADMIN_EMAILS.
                       </div>
                     </TableCell>
                   </TableRow>
-                ))}
+                ) : (
+                  uiPlaybooks.map((playbook: Playbook) => (
+                    <TableRow key={playbook._id}>
+                      <TableCell className="font-mono text-sm">{playbook.playbook_key}</TableCell>
+                      <TableCell>{playbook.display_name}</TableCell>
+                      <TableCell>{playbook.version}</TableCell>
+                      <TableCell>
+                        <Badge variant={playbook.active ? "default" : "secondary"}>
+                          {playbook.active ? "Active" : "Inactive"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setEditingPlaybook(playbook)}
+                            disabled={isDefaultPlaybooks || isAdmin !== true}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleTogglePlaybook(playbook.playbook_key, playbook.version, !playbook.active)}
+                            disabled={isAdmin !== true}
+                          >
+                            {playbook.active ? <PowerOff className="h-4 w-4" /> : <Power className="h-4 w-4" />}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handlePublishPlaybook(playbook)}
+                            disabled={isAdmin !== true}
+                          >
+                            Publish
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleRollbackPlaybook(playbook)}
+                            disabled={isAdmin !== true}
+                          >
+                            Rollback
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleRunPlaybook(playbook)}
+                            disabled={isAdmin !== true}
+                          >
+                            Run
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              setSelectedPlaybookKey(playbook.playbook_key);
+                              setPlaybookVersionsOpen(true);
+                            }}
+                            disabled={isAdmin !== true}
+                          >
+                            Versions
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
               </TableBody>
             </Table>
           </div>
