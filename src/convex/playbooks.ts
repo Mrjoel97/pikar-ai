@@ -705,10 +705,15 @@ export const listActiveByIndustry = query({
   },
   handler: async (ctx, args) => {
     const limit = Math.max(1, Math.min(args.limit ?? 100, 500));
-    // Query then filter by metadata.industry and active=true (mirrors existing admin list approach)
-    const all = await ctx.db.query("playbooks").order("desc").take(limit * 2);
-    return all
-      .filter((p: any) => (p?.metadata as any)?.industry === args.industry && p?.active === true)
+    // Collect all active playbooks first, then filter by industry, then apply limit
+    const allActive = await ctx.db
+      .query("playbooks")
+      .withIndex("by_active", (q) => q.eq("active", true))
+      .order("desc")
+      .collect();
+
+    return allActive
+      .filter((p: any) => (p?.metadata as any)?.industry === args.industry)
       .slice(0, limit);
   },
 });

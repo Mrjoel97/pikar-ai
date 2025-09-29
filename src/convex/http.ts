@@ -285,6 +285,78 @@ http.route({
   }),
 });
 
+// Public HTTP endpoint to trigger playbooks by slug.
+// Matches paths like: /api/playbooks/:slug/trigger
+http.route({
+  path: "/api/playbooks/:slug/trigger",
+  method: "POST",
+  handler: httpAction(async (ctx, req) => {
+    try {
+      const url = new URL(req.url);
+      const parts = url.pathname.split("/");
+
+      // Expect: ["", "api", "playbooks", ":slug", "trigger"]
+      const idx = parts.findIndex((p) => p === "playbooks");
+      const slug = idx >= 0 ? parts[idx + 1] : null;
+      if (!slug) {
+        return new Response(JSON.stringify({ error: "Missing playbook slug" }), {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      // Best-effort parse body (optional)
+      let payload: any = null;
+      try {
+        payload = await req.json();
+      } catch {
+        // no-op
+      }
+
+      // Find an active playbook whose triggers include this exact path
+      // or whose key equals the slug or starts with `${slug}_` (handles version suffixes).
+      const reqPath = url.pathname;
+      const active = await ctx.db
+        .query("playbooks")
+        .withIndex("by_active", (q) => q.eq("active", true))
+        .order("desc")
+        .collect();
+
+      const match = active.find((p: any) => {
+        const key: string = String(p.playbook_key || "");
+        const triggers: Array<any> = Array.isArray(p.triggers) ? p.triggers : [];
+        const hasExactPath =
+          triggers.some((t) => typeof t?.path === "string" && t.path === reqPath);
+        return hasExactPath || key === slug || key.startsWith(`${slug}_`);
+      });
+
+      if (!match) {
+        return new Response(
+          JSON.stringify({ error: "Playbook not found or inactive", slug }),
+          { status: 404, headers: { "Content-Type": "application/json" } }
+        );
+      }
+
+      // Acknowledge receipt (stub). Real orchestration can be wired here.
+      return new Response(
+        JSON.stringify({
+          ok: true,
+          playbook_key: match.playbook_key,
+          receivedAt: Date.now(),
+          echo: payload ?? null,
+          note: "Trigger accepted (stub).",
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      );
+    } catch (e: any) {
+      return new Response(
+        JSON.stringify({ error: e?.message || "Failed to trigger playbook" }),
+        { status: 500, headers: { "Content-Type": "application/json" } }
+      );
+    }
+  }),
+});
+
 /**
  * Helper: Map a Stripe price ID back to a tier using env vars.
  */
