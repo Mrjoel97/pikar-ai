@@ -489,6 +489,15 @@ export function SystemAgentsHub() {
     activeOnly: activeFilter === "active" ? true : activeFilter === "inactive" ? false : undefined,
   });
 
+  // Public-safe fallback to surface active playbooks even if admin-gated query returns none
+  const publicPlaybooks = useQuery(
+    api.playbooks.list as any,
+    {
+      activeOnly:
+        activeFilter === "active" ? true : activeFilter === "inactive" ? false : undefined,
+    } as any
+  );
+
   const agentVersions = useQuery(
     api.aiAgents.adminListAgentVersions,
     selectedAgentKey ? { agent_key: selectedAgentKey, limit: 25 } as any : undefined
@@ -593,6 +602,13 @@ export function SystemAgentsHub() {
       playbook.playbook_key.toLowerCase().includes(searchTerm.toLowerCase())
     ) || [];
 
+  // NEW: Apply the same filters to the public fallback list
+  const filteredPublicPlaybooks =
+    publicPlaybooks?.filter((playbook: Playbook) =>
+      playbook.display_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      playbook.playbook_key.toLowerCase().includes(searchTerm.toLowerCase())
+    ) || [];
+
   // Compute whether we're showing defaults (no backend data)
   const isDefaultAgents = !agents || (Array.isArray(agents) && agents.length === 0);
   const isDefaultPlaybooks = !playbooks || (Array.isArray(playbooks) && playbooks.length === 0);
@@ -626,7 +642,9 @@ export function SystemAgentsHub() {
 
   // Choose UI data source
   const uiAgents = isDefaultAgents ? defaultAgentsFiltered : (filteredAgents || []);
-  const uiPlaybooks = isDefaultPlaybooks ? defaultPlaybooksFiltered : (filteredPlaybooks || []);
+  const uiPlaybooks = isDefaultPlaybooks
+    ? (filteredPublicPlaybooks.length > 0 ? filteredPublicPlaybooks : defaultPlaybooksFiltered)
+    : (filteredPlaybooks || []);
 
   // Training helpers
   const selectedAgent: Agent | undefined = uiAgents.find((a: Agent) => a.agent_key === selectedAgentKey);
