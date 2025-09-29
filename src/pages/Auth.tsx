@@ -32,6 +32,12 @@ interface AuthProps {
 }
 
 function Auth({ redirectAfterAuth }: AuthProps = {}) {
+  // Prevent rendering on the public landing page ("/") where ConvexProvider is intentionally not mounted.
+  // This avoids calling Convex hooks (useQuery/useAction) without a provider.
+  if (typeof window !== "undefined" && window.location.pathname === "/") {
+    return null;
+  }
+
   const { isAuthenticated, isLoading: authLoading, signIn } = useAuth();
   const navigate = useNavigate();
   const [step, setStep] = useState<"signIn" | { email: string }>("signIn");
