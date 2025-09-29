@@ -351,6 +351,28 @@ export const getByBusiness = query({
   },
 });
 
+// Public: get a user's agent profile for a specific business (guest-safe)
+export const getAgentProfile = query({
+  args: {
+    businessId: v.optional(v.id("businesses")),
+    userId: v.optional(v.id("users")),
+  },
+  handler: async (ctx, args) => {
+    // Guest-safe: require both IDs; otherwise return null
+    if (!args.businessId || !args.userId) return null;
+
+    // Use compound index for efficient lookup
+    const doc = await ctx.db
+      .query("agentProfiles")
+      .withIndex("by_user_and_business", (q) =>
+        q.eq("userId", args.userId as Id<"users">).eq("businessId", args.businessId as Id<"businesses">)
+      )
+      .unique();
+
+    return doc ?? null;
+  },
+});
+
 // Create a custom (user-trained) agent entry in a guest-safe way.
 // We persist minimally to agentProfiles, packing arbitrary fields into `preferences`.
 export const createCustomAgent = mutation({

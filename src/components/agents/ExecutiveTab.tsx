@@ -29,8 +29,10 @@ export default function ExecutiveTab() {
   const currentBiz = useQuery(api.businesses.currentUserBusiness, {});
   const execRouter = useAction(api.agentRouter.execRouter);
   const agentProfile = useQuery(
-    api.aiAgents.getAgentProfile,
-    currentBiz?._id ? { businessId: currentBiz._id } : undefined
+    api.aiAgents.getAgentProfile as any,
+    currentBiz?._id && user?._id
+      ? { businessId: currentBiz._id, userId: user._id as any }
+      : undefined
   );
   const execEnabled = useQuery(api.featureFlags.solopreneurExecAssistantEnabled, undefined);
 
