@@ -917,6 +917,37 @@ export function SystemAgentsHub() {
     } as any);
   };
 
+  // Bulk publish all visible playbooks in the Orchestrations tab
+  const handlePublishAllPlaybooks = async () => {
+    if (!requireAdmin()) return;
+    try {
+      const list = (uiPlaybooks || []) as Array<Playbook>;
+      if (list.length === 0) {
+        toast("No playbooks to publish with current filters");
+        return;
+      }
+      toast("Publishing all playbooks...");
+      let success = 0;
+      let failed = 0;
+      for (const pb of list) {
+        try {
+          await ensurePersistedPlaybook(pb.playbook_key);
+          await publishPlaybook({ playbook_key: pb.playbook_key, version: pb.version } as any);
+          success++;
+        } catch {
+          failed++;
+        }
+      }
+      if (failed > 0) {
+        toast.error(`Published ${success}/${list.length} playbooks. Some failed.`);
+      } else {
+        toast.success(`Published all ${success}/${list.length} playbooks.`);
+      }
+    } catch (e: any) {
+      toast.error(e?.message || "Bulk publish failed");
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -1108,6 +1139,18 @@ export function SystemAgentsHub() {
         </TabsContent>
 
         <TabsContent value="playbooks" className="space-y-4">
+          {/* Header row with bulk actions */}
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-semibold">Orchestrations</h3>
+            <Button
+              variant="default"
+              onClick={handlePublishAllPlaybooks}
+              disabled={isAdmin !== true || (uiPlaybooks || []).length === 0}
+            >
+              Activate All Playbooks
+            </Button>
+          </div>
+
           {/* Filters */}
           <div className="flex gap-4 items-center">
             <Input
