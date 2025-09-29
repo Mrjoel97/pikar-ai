@@ -26,9 +26,6 @@ import KpiTrendsCard from "@/components/landing/KpiTrendsCard";
 import ContextualTipsStrip from "@/components/landing/ContextualTipsStrip";
 import { Input } from "@/components/ui/input";
 import { Mail } from "lucide-react";
-import { useAction } from "convex/react";
-import { api } from "@/convex/_generated/api";
-import { useQuery } from "convex/react";
 import { useMemo } from "react";
 import React from "react";
 
@@ -192,8 +189,6 @@ export default function Landing() {
     }
   };
 
-  const sendSalesInquiry = useAction(api.emailsActions.sendSalesInquiry);
-
   const handleSubscribe = async (e: React.FormEvent) => {
     e.preventDefault();
     const email = newsletterEmail.trim();
@@ -204,14 +199,8 @@ export default function Landing() {
     }
     try {
       setNewsletterSubmitting(true);
-      await sendSalesInquiry({
-        name: "Newsletter Subscriber",
-        email,
-        company: undefined,
-        plan: "newsletter",
-        message:
-          "Please add me to updates. This was submitted from the Pikar AI landing page newsletter form.",
-      });
+      // Simulate local subscription without backend to avoid Convex dependency on Landing
+      await new Promise((resolve) => setTimeout(resolve, 800));
       toast(`Subscribed with ${email}. Welcome to Pikar AI!`);
       setNewsletterEmail("");
     } catch (err: any) {
@@ -248,27 +237,6 @@ export default function Landing() {
     // Show all industries randomized
     return shuffled;
   }, []);
-
-  const upgradeNudges = useQuery(api.telemetry.getUpgradeNudges, undefined);
-
-  // Add a guarded business lookup and pass businessId or skip queries that require it
-  const business = useQuery(
-    api.businesses.currentUserBusiness,
-    undefined // public page; Convex will derive or return null when unauthenticated
-  );
-
-  // Replace any existing unguarded listForBusiness call:
-  // useQuery(api.audit.listForBusiness, {})  --> Guarded version
-  const recentAudit = useQuery(
-    api.audit.listForBusiness,
-    business?._id ? { businessId: business._id, limit: 20 } : undefined
-  );
-
-  // If this page lists campaigns anywhere, guard it similarly:
-  const recentCampaigns = useQuery(
-    api.emails.listCampaignsByBusiness,
-    business?._id ? { businessId: business._id } : undefined
-  );
 
   return (
     <motion.div
