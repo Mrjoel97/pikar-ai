@@ -306,15 +306,15 @@ export const adminActivateAll = mutation({
   },
 });
 
-// Add a guest-safe public query to list custom (user-trained) agents for a business.
+// Tighten typing in listCustomAgents and keep guest-safe behavior
 export const listCustomAgents = query({
   args: { businessId: v.optional(v.id("businesses")) },
   handler: async (ctx, args) => {
     // Guest-safe: if no business scope provided, return empty list
     if (!args.businessId) return [];
 
-    // Narrow before use in the closure to avoid TS complaints
-    const businessId = args.businessId as any;
+    // Narrow before use to satisfy TS
+    const businessId = args.businessId as Id<"businesses">;
 
     const profiles = await ctx.db
       .query("agentProfiles")
@@ -322,5 +322,31 @@ export const listCustomAgents = query({
       .collect();
 
     return profiles;
+  },
+});
+
+// Make getByBusiness guest-safe and ensure it's registered as a public query
+export const getByBusiness = query({
+  // Optional to avoid accidental validation errors from empty args
+  args: { businessId: v.optional(v.id("businesses")) },
+  handler: async (ctx, args) => {
+    // Fetch active system agents from the catalog; tenant scoping can be added later
+    const rows = await ctx.db
+      .query("agentCatalog")
+      .withIndex("by_active", (q) => q.eq("active", true))
+      .collect();
+
+    // Shape results to match frontend expectations in MyAgentsTab
+    return rows.map((a: any) => ({
+      _id: a._id,
+      name: a.display_name ?? a.agent_key ?? "Agent",
+      description: a.short_desc ?? a.long_desc ?? "Built-in agent",
+      capabilities: Array.isArray(a.capabilities) ? a.capabilities : [],
+      isActive: a.active === true,
+      performance: {
+        tasksCompleted: 0,
+        successRate: 0,
+      },
+    }));
   },
 });
