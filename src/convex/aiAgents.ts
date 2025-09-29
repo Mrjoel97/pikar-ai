@@ -421,3 +421,60 @@ export const seedEnhancedForBusiness = mutation({
     return { ok: true, added: 0 };
   },
 });
+
+export const listTemplates = query({
+  args: {
+    tier: v.optional(v.string()),
+    search: v.optional(v.string()),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    // Source templates from active agent catalog entries; guest-safe
+    const rows = await ctx.db
+      .query("agentCatalog")
+      .withIndex("by_active", (q) => q.eq("active", true))
+      .collect();
+
+    // Map to a flexible template shape to satisfy various UIs
+    let templates = rows.map((a: any) => ({
+      _id: a._id,
+      agent_key: a.agent_key,
+      key: a.agent_key,
+      title: a.display_name ?? a.agent_key,
+      name: a.display_name ?? a.agent_key,
+      short_desc: a.short_desc ?? "",
+      description: a.long_desc ?? a.short_desc ?? "",
+      long_desc: a.long_desc ?? "",
+      capabilities: Array.isArray(a.capabilities) ? a.capabilities : [],
+      tier_restrictions: Array.isArray(a.tier_restrictions) ? a.tier_restrictions : [],
+      tags: Array.isArray(a.capabilities) ? a.capabilities : [],
+      default_model: a.default_model ?? "gpt-4o-mini",
+      active: a.active === true,
+    }));
+
+    // Optional tier filter (if provided)
+    if (args.tier) {
+      const t = String(args.tier).toLowerCase();
+      templates = templates.filter((tpl) =>
+        (tpl.tier_restrictions ?? []).length === 0 ||
+        (tpl.tier_restrictions ?? []).some((x: string) => String(x).toLowerCase() === t)
+      );
+    }
+
+    // Optional search filter
+    if (args.search) {
+      const s = String(args.search).toLowerCase();
+      templates = templates.filter((tpl) =>
+        (tpl.title ?? "").toLowerCase().includes(s) ||
+        (tpl.name ?? "").toLowerCase().includes(s) ||
+        (tpl.short_desc ?? "").toLowerCase().includes(s) ||
+        (tpl.description ?? "").toLowerCase().includes(s) ||
+        (tpl.agent_key ?? "").toLowerCase().includes(s)
+      );
+    }
+
+    // Optional limit
+    const limit = typeof args.limit === "number" && args.limit > 0 ? args.limit : undefined;
+    return limit ? templates.slice(0, limit) : templates;
+  },
+});
