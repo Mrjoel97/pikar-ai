@@ -697,23 +697,3 @@ export const adminRollbackIndustry = mutation({
     return { industry: args.industry, rolledBack, failed, total: playbooks.length, errors };
   },
 });
-
-export const listActiveByIndustry = query({
-  args: {
-    industry: v.string(),
-    limit: v.optional(v.number()),
-  },
-  handler: async (ctx, args) => {
-    const limit = Math.max(1, Math.min(args.limit ?? 100, 500));
-    // Collect all active playbooks first, then filter by industry, then apply limit
-    const allActive = await ctx.db
-      .query("playbooks")
-      .withIndex("by_active", (q) => q.eq("active", true))
-      .order("desc")
-      .collect();
-
-    return allActive
-      .filter((p: any) => (p?.metadata as any)?.industry === args.industry)
-      .slice(0, limit);
-  },
-});

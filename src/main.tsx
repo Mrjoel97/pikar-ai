@@ -57,13 +57,13 @@ class ErrorBoundary extends Component<
 }
 
 function AppProviders({ children }: { children: React.ReactNode }) {
-  // Remove route-based skip logic so Convex provider is always mounted when configured
-  // const path = window.location.pathname;
-  // const isPublicLanding = path === "/"; // keep scope minimal and safe
+  // Skip Convex provider on public landing to prevent unauthenticated calls from firing
+  const path = window.location.pathname;
+  const isPublicLanding = path === "/"; // keep scope minimal and safe
 
-  // if (isPublicLanding) {
-  //   return <>{children}</>;
-  // }
+  if (isPublicLanding) {
+    return <>{children}</>;
+  }
 
   const convexUrl = import.meta.env.VITE_CONVEX_URL as string | undefined;
   if (!convexUrl || convexUrl === "undefined") {

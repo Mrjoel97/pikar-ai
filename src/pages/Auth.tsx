@@ -32,12 +32,6 @@ interface AuthProps {
 }
 
 function Auth({ redirectAfterAuth }: AuthProps = {}) {
-  // Prevent rendering on the public landing page ("/") where ConvexProvider is intentionally not mounted.
-  // This avoids calling Convex hooks (useQuery/useAction) without a provider.
-  if (typeof window !== "undefined" && window.location.pathname === "/") {
-    return null;
-  }
-
   const { isAuthenticated, isLoading: authLoading, signIn } = useAuth();
   const navigate = useNavigate();
   const [step, setStep] = useState<"signIn" | { email: string }>("signIn");
@@ -740,25 +734,7 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
 
 export default function AuthPage(props: AuthProps) {
   return (
-    <Suspense
-      fallback={
-        <div className="min-h-screen flex items-center justify-center px-4 py-10">
-          <div className="w-full max-w-md">
-            <Card className="w-full neu-raised rounded-2xl border-0 shadow-xl bg-emerald-800 text-emerald-50">
-              <CardHeader className="text-center">
-                <CardTitle className="text-xl text-emerald-50">Loading…</CardTitle>
-                <CardDescription className="text-emerald-200">
-                  Please wait while we prepare the authentication form.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="flex items-center justify-center py-6">
-                <Loader2 className="h-6 w-6 animate-spin text-emerald-200" />
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      }
-    >
+    <Suspense>
       <Auth {...props} />
     </Suspense>
   );

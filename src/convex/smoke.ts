@@ -3,17 +3,14 @@
 import { action } from "./_generated/server";
 import { api } from "./_generated/api";
 import { INDUSTRIES } from "./data/playbooksSeed";
-import { v } from "convex/values";
 
 type HttpTrigger = { type: string; path?: string; method?: string };
 
 export const smokeRunHttpAllIndustries = action({
-  args: { baseOverride: v.optional(v.string()) },
-  handler: async (ctx, args) => {
-    // Prefer explicit override; fallback to env vars
-    const baseInput = (args.baseOverride || "").trim();
+  args: {},
+  handler: async (ctx) => {
+    // Use configured public base URL; fall back keys if present
     const base =
-      baseInput ||
       process.env.VITE_PUBLIC_BASE_URL ||
       process.env.PUBLIC_BASE_URL ||
       "";
@@ -22,8 +19,7 @@ export const smokeRunHttpAllIndustries = action({
       return {
         summary: { total: 0, ok: 0, failed: 0, base },
         results: [],
-        error:
-          "Missing public base URL (VITE_PUBLIC_BASE_URL or PUBLIC_BASE_URL).",
+        error: "Missing public base URL (VITE_PUBLIC_BASE_URL or PUBLIC_BASE_URL).",
       };
     }
 
@@ -38,8 +34,8 @@ export const smokeRunHttpAllIndustries = action({
     }> = [];
 
     for (const { key } of INDUSTRIES) {
-      // Use public, guest-safe list of active playbooks by industry
-      const list = await ctx.runQuery(api.playbooks.listActiveByIndustry, {
+      // Admin-gated list with filter; safe because caller is admin
+      const list = await ctx.runQuery(api.playbooks.adminListPlaybooksByIndustry, {
         industry: key,
         limit: 50,
       });
