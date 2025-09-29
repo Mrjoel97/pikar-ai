@@ -83,7 +83,10 @@ export default function ExecutiveTab() {
   };
 
   const handleQuickAction = async (mode: "proposeNextAction" | "planWeek" | "createCapsule") => {
-    if (!currentBiz?._id) return;
+    if (!currentBiz?._id) {
+      toast("Please sign in and select a workspace to use quick actions.");
+      return;
+    }
 
     try {
       const response = await execRouter({
@@ -223,8 +226,8 @@ export default function ExecutiveTab() {
         </CardContent>
       </Card>
 
-      {/* Chat History */}
-      {chatHistory.length > 0 && (
+      {/* Chat History - refined empty state */}
+      {chatHistory.length > 0 ? (
         <Card>
           <CardHeader>
             <CardTitle>Recent Conversations</CardTitle>
@@ -254,6 +257,17 @@ export default function ExecutiveTab() {
                   </div>
                 </div>
               ))}
+            </div>
+          </CardContent>
+        </Card>
+      ) : (
+        <Card>
+          <CardHeader>
+            <CardTitle>Recent Conversations</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="rounded-md border bg-white p-4 text-sm text-muted-foreground">
+              No conversations yet. Ask a question above or try a Quick Action like "Next Best Action" to get started.
             </div>
           </CardContent>
         </Card>

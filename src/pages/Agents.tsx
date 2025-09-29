@@ -216,6 +216,13 @@ const AgentsPage: React.FC = () => {
   const [execSaving, setExecSaving] = useState<boolean>(false);
   const [execLastSavedAt, setExecLastSavedAt] = useState<number | null>(null);
 
+  // Add lightweight evaluation summary badge (global) with guest-safe guard
+  const evalSummary = useQuery(api.evals?.latestSummary as any, undefined);
+  const publishGateOk =
+    !!evalSummary && typeof (evalSummary as any).passCount === "number" && typeof (evalSummary as any).failCount === "number"
+      ? (evalSummary as any).failCount === 0
+      : undefined;
+
   const handleAsk = async () => {
     if (!ask.trim()) {
       toast("Type a question for your agent.");
@@ -356,21 +363,33 @@ const AgentsPage: React.FC = () => {
                 : "Build, deploy, and manage intelligent automation agents"}
             </p>
           </div>
-          
-          {/* Tier Switcher */}
-          <div className="flex items-center gap-2">
-            <Label>Tier:</Label>
-            <Select value={selectedTier} onValueChange={setSelectedTier}>
-              <SelectTrigger className="w-40">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="solopreneur">Solopreneur</SelectItem>
-                <SelectItem value="startup">Startup</SelectItem>
-                <SelectItem value="sme">SME</SelectItem>
-                <SelectItem value="enterprise">Enterprise</SelectItem>
-              </SelectContent>
-            </Select>
+
+          {/* Tier Switcher + Publish Gate badge */}
+          <div className="flex items-center gap-3">
+            {publishGateOk !== undefined && (
+              <span
+                className={`rounded-full px-3 py-1 text-xs font-medium ${
+                  publishGateOk ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"
+                }`}
+                title="Evaluation summary across sets"
+              >
+                {publishGateOk ? "Publish Gate: Passing" : "Publish Gate: Failing"}
+              </span>
+            )}
+            <div className="flex items-center gap-2">
+              <Label>Tier:</Label>
+              <Select value={selectedTier} onValueChange={setSelectedTier}>
+                <SelectTrigger className="w-40">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="solopreneur">Solopreneur</SelectItem>
+                  <SelectItem value="startup">Startup</SelectItem>
+                  <SelectItem value="sme">SME</SelectItem>
+                  <SelectItem value="enterprise">Enterprise</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </div>
 
