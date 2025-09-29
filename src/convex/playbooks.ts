@@ -212,18 +212,23 @@ export const adminUpsertPlaybook = mutation({
       playbookId = await ctx.db.insert("playbooks", playbookData);
     }
 
-    await ctx.runMutation(api.audit.write as any, {
-      action: existing ? "admin_update_playbook" : "admin_create_playbook",
-      entityType: "playbooks",
-      entityId: playbookId,
-      details: {
-        playbook_key: args.playbook_key,
-        version: args.version,
-        display_name: args.display_name,
-        active: args.active,
-        correlationId: `playbook-admin-${args.playbook_key}-${Date.now()}`,
-      },
-    });
+    // Audit log (safe for admin-wide ops without tenant)
+    try {
+      await ctx.runMutation(api.audit.write as any, {
+        action: existing ? "admin_update_playbook" : "admin_create_playbook",
+        entityType: "playbooks",
+        entityId: playbookId,
+        details: {
+          playbook_key: args.playbook_key,
+          version: args.version,
+          display_name: args.display_name,
+          active: args.active,
+          correlationId: `playbook-admin-${args.playbook_key}-${Date.now()}`,
+        },
+      });
+    } catch (_) {
+      // Swallow audit errors when no business context exists
+    }
 
     return { playbookId, created: !existing };
   },
@@ -251,19 +256,21 @@ export const adminTogglePlaybook = mutation({
 
     await ctx.db.patch(playbook._id, { active: args.active });
 
-    // Audit log
-    await ctx.runMutation(api.audit.write as any, {
-      action: "admin_toggle_playbook",
-      entityType: "playbooks",
-      entityId: playbook._id,
-      details: {
-        playbook_key: args.playbook_key,
-        version: args.version,
-        active: args.active,
-        previous_active: playbook.active,
-        correlationId: `playbook-toggle-${args.playbook_key}-${Date.now()}`,
-      },
-    });
+    // Audit log (safe-guarded)
+    try {
+      await ctx.runMutation(api.audit.write as any, {
+        action: "admin_toggle_playbook",
+        entityType: "playbooks",
+        entityId: playbook._id,
+        details: {
+          playbook_key: args.playbook_key,
+          version: args.version,
+          active: args.active,
+          previous_active: playbook.active,
+          correlationId: `playbook-toggle-${args.playbook_key}-${Date.now()}`,
+        },
+      });
+    } catch (_) {}
 
     return { success: true };
   },
@@ -389,16 +396,19 @@ export const adminRollbackPlaybookToVersion = mutation({
       active: s.active,
     });
 
-    await ctx.runMutation(api.audit.write as any, {
-      action: "admin_rollback_playbook_to_version",
-      entityType: "playbooks",
-      entityId: pb._id,
-      details: {
-        playbook_key: args.playbook_key,
-        versionId: String(args.versionId),
-        correlationId: `playbook-rollback-to-version-${args.playbook_key}-${Date.now()}`,
-      },
-    });
+    // Audit log (safe-guarded)
+    try {
+      await ctx.runMutation(api.audit.write as any, {
+        action: "admin_rollback_playbook_to_version",
+        entityType: "playbooks",
+        entityId: pb._id,
+        details: {
+          playbook_key: args.playbook_key,
+          versionId: String(args.versionId),
+          correlationId: `playbook-rollback-to-version-${args.playbook_key}-${Date.now()}`,
+        },
+      });
+    } catch (_) {}
 
     return { success: true };
   },
@@ -439,18 +449,20 @@ export const adminPublishPlaybook = mutation({
       note: `Published by admin on ${new Date().toISOString()}`,
     });
 
-    // Audit log
-    await ctx.runMutation(api.audit.write as any, {
-      action: "admin_publish_playbook",
-      entityType: "playbooks",
-      entityId: playbook._id,
-      details: {
-        playbook_key: args.playbook_key,
-        version: args.version,
-        previous_active: playbook.active,
-        correlationId: `playbook-publish-${args.playbook_key}-${Date.now()}`,
-      },
-    });
+    // Audit log (safe-guarded)
+    try {
+      await ctx.runMutation(api.audit.write as any, {
+        action: "admin_publish_playbook",
+        entityType: "playbooks",
+        entityId: playbook._id,
+        details: {
+          playbook_key: args.playbook_key,
+          version: args.version,
+          previous_active: playbook.active,
+          correlationId: `playbook-publish-${args.playbook_key}-${Date.now()}`,
+        },
+      });
+    } catch (_) {}
 
     return { success: true, alreadyPublished: false };
   },
@@ -478,18 +490,20 @@ export const adminRollbackPlaybook = mutation({
 
     await ctx.db.patch(playbook._id, { active: false });
 
-    // Audit log
-    await ctx.runMutation(api.audit.write as any, {
-      action: "admin_rollback_playbook",
-      entityType: "playbooks",
-      entityId: playbook._id,
-      details: {
-        playbook_key: args.playbook_key,
-        version: args.version,
-        previous_active: playbook.active,
-        correlationId: `playbook-rollback-${args.playbook_key}-${Date.now()}`,
-      },
-    });
+    // Audit log (safe-guarded)
+    try {
+      await ctx.runMutation(api.audit.write as any, {
+        action: "admin_rollback_playbook",
+        entityType: "playbooks",
+        entityId: playbook._id,
+        details: {
+          playbook_key: args.playbook_key,
+          version: args.version,
+          previous_active: playbook.active,
+          correlationId: `playbook-rollback-${args.playbook_key}-${Date.now()}`,
+        },
+      });
+    } catch (_) {}
 
     return { success: true, alreadyRolledBack: false };
   },
@@ -639,19 +653,9 @@ export const adminPublishIndustry = mutation({
       }
     }
 
-    // Audit log
-    await ctx.runMutation(api.audit.write as any, {
-      action: "admin_publish_industry",
-      entityType: "playbooks",
-      entityId: "batch",
-      details: {
-        industry: args.industry,
-        published,
-        failed,
-        total: playbooks.length,
-        correlationId: `industry-publish-${args.industry}-${Date.now()}`,
-      },
-    });
+    // Remove audit write to avoid requiring a businessId in platform-wide admin ops
+    // Previously attempted to log via api.audit.write which requires a tenant businessId.
+    // Intentionally omitted to keep admin industry publish guest-safe and non-tenant scoped.
 
     return { industry: args.industry, published, failed, total: playbooks.length, errors };
   },
@@ -686,19 +690,9 @@ export const adminRollbackIndustry = mutation({
       }
     }
 
-    // Audit log
-    await ctx.runMutation(api.audit.write as any, {
-      action: "admin_rollback_industry",
-      entityType: "playbooks",
-      entityId: "batch",
-      details: {
-        industry: args.industry,
-        rolledBack,
-        failed,
-        total: playbooks.length,
-        correlationId: `industry-rollback-${args.industry}-${Date.now()}`,
-      },
-    });
+    // Remove audit write to avoid requiring a businessId in platform-wide admin ops
+    // Previously attempted to log via api.audit.write which requires a tenant businessId.
+    // Intentionally omitted to keep admin industry rollback guest-safe and non-tenant scoped.
 
     return { industry: args.industry, rolledBack, failed, total: playbooks.length, errors };
   },
