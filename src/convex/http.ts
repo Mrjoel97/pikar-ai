@@ -313,16 +313,11 @@ http.route({
         // no-op
       }
 
-      // Find an active playbook whose triggers include this exact path
-      // or whose key equals the slug or starts with `${slug}_` (handles version suffixes).
-      const reqPath = url.pathname;
-      const active = await ctx.db
-        .query("playbooks")
-        .withIndex("by_active", (q) => q.eq("active", true))
-        .order("desc")
-        .collect();
+      // Fetch active playbooks via a public query (avoid ctx.db in httpAction)
+      const active = await ctx.runQuery(api.playbooks.list as any, { activeOnly: true });
 
-      const match = active.find((p: any) => {
+      const reqPath = url.pathname;
+      const match = (active as any[]).find((p: any) => {
         const key: string = String(p.playbook_key || "");
         const triggers: Array<any> = Array.isArray(p.triggers) ? p.triggers : [];
         const hasExactPath =
