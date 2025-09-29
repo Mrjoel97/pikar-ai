@@ -7,7 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
-import { Brain, Send, Zap, Calendar, TrendingUp, Copy } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { AlertCircle } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 
 export default function ExecutiveTab() {
@@ -19,6 +20,11 @@ export default function ExecutiveTab() {
     answer: string;
     timestamp: number;
   }>>([]);
+  const [lastError, setLastError] = useState<{
+    title: string;
+    message: string;
+    correlationId?: string;
+  } | null>(null);
 
   const currentBiz = useQuery(api.businesses.currentUserBusiness, {});
   const execRouter = useAction(api.agentRouter.execRouter);
@@ -108,9 +114,15 @@ export default function ExecutiveTab() {
       saveHistory(newHistory);
       setQuestion("");
       
+      setLastError(null); // clear any previous error on success
       toast.success("Executive response generated");
     } catch (error: any) {
-      toast.error(`Failed to get response: ${error.message}`);
+      const msg = error?.message || "Failed to get response.";
+      setLastError({
+        title: "Assistant Error",
+        message: msg,
+      });
+      toast.error(`Failed to get response: ${msg}`);
     } finally {
       setIsAsking(false);
     }
@@ -130,24 +142,28 @@ export default function ExecutiveTab() {
           userId: user?._id,
         });
 
-      // Retry only for potentially transient failures; keep attempts small
       const response = await withRetry(run, 3, 400);
 
       if (mode === "createCapsule") {
-        // Refined, user-friendly outcomes with correlationId surfaced if present
         const ok = !!(response as any)?.success;
         const correlationId = (response as any)?.correlationId;
         if (ok) {
           const saved =
             typeof (response as any)?.timeSaved === "number" ? (response as any).timeSaved : undefined;
+          setLastError(null); // clear on success
           toast.success(`Capsule created${saved ? `! Saved ${saved} minutes.` : "!"}`);
         } else {
           const message =
             (response as any)?.message ||
             (response as any)?.error ||
             "The capsule action didn't complete. Please review your setup and try again.";
+          setLastError({
+            title: "Playbook Execution Failed",
+            message,
+            correlationId,
+          });
           toast.error(`${message}${correlationId ? ` (ref: ${correlationId})` : ""}`);
-          console.error("Playbook execution error", { response }); // safe console detail
+          console.error("Playbook execution error", { response });
         }
         return;
       }
@@ -163,15 +179,19 @@ export default function ExecutiveTab() {
 
       const newHistory = [newEntry, ...chatHistory].slice(0, 20);
       saveHistory(newHistory);
+      setLastError(null); // clear on success
       toast.success("Quick action completed");
     } catch (error: any) {
-      // Refined error messaging: differentiate transient vs non-transient
       const transient = isTransientError(error);
       const message =
         error?.message ||
         (transient
           ? "Network hiccup prevented this action. Please try again shortly."
           : "Action failed due to an unexpected error.");
+      setLastError({
+        title: "Playbook Error",
+        message,
+      });
       toast.error(message);
       console.error("Quick action error", error);
     }
@@ -214,6 +234,36 @@ export default function ExecutiveTab() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Global Playbook/Assistant Error Banner */}
+      {lastError && (
+        <Alert variant="destructive" className="border-red-300">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="h-4 w-4 mt-0.5 text-red-600" />
+            <div className="flex-1">
+              <AlertTitle>{lastError.title}</AlertTitle>
+              <AlertDescription>
+                <div className="space-y-1">
+                  <div>{lastError.message}</div>
+                  {lastError.correlationId && (
+                    <div className="text-xs text-muted-foreground">
+                      Reference: <code>{lastError.correlationId}</code>
+                    </div>
+                  )}
+                </div>
+              </AlertDescription>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="shrink-0"
+              onClick={() => setLastError(null)}
+            >
+              Dismiss
+            </Button>
+          </div>
+        </Alert>
+      )}
 
       {/* Ask My Executive */}
       <Card>
