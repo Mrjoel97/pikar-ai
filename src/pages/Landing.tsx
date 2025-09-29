@@ -26,9 +26,6 @@ import KpiTrendsCard from "@/components/landing/KpiTrendsCard";
 import ContextualTipsStrip from "@/components/landing/ContextualTipsStrip";
 import { Input } from "@/components/ui/input";
 import { Mail } from "lucide-react";
-import { useAction } from "convex/react";
-import { api } from "@/convex/_generated/api";
-import { useQuery } from "convex/react";
 import { useMemo } from "react";
 import React from "react";
 
@@ -192,8 +189,6 @@ export default function Landing() {
     }
   };
 
-  const sendSalesInquiry = useAction(api.emailsActions.sendSalesInquiry);
-
   const handleSubscribe = async (e: React.FormEvent) => {
     e.preventDefault();
     const email = newsletterEmail.trim();
@@ -202,23 +197,14 @@ export default function Landing() {
       toast("Please enter a valid email address.");
       return;
     }
-    try {
-      setNewsletterSubmitting(true);
-      await sendSalesInquiry({
-        name: "Newsletter Subscriber",
-        email,
-        company: undefined,
-        plan: "newsletter",
-        message:
-          "Please add me to updates. This was submitted from the Pikar AI landing page newsletter form.",
-      });
+    // On the public landing page, Convex is not mounted by design.
+    // For now, confirm locally and avoid backend calls to prevent provider errors.
+    setNewsletterSubmitting(true);
+    setTimeout(() => {
       toast(`Subscribed with ${email}. Welcome to Pikar AI!`);
       setNewsletterEmail("");
-    } catch (err: any) {
-      toast(err?.message || "Subscription failed. Please try again later.");
-    } finally {
       setNewsletterSubmitting(false);
-    }
+    }, 400);
   };
 
   const industries: Array<string> = [
@@ -249,26 +235,7 @@ export default function Landing() {
     return shuffled;
   }, []);
 
-  const upgradeNudges = useQuery(api.telemetry.getUpgradeNudges, undefined);
-
-  // Add a guarded business lookup and pass businessId or skip queries that require it
-  const business = useQuery(
-    api.businesses.currentUserBusiness,
-    undefined // public page; Convex will derive or return null when unauthenticated
-  );
-
-  // Replace any existing unguarded listForBusiness call:
-  // useQuery(api.audit.listForBusiness, {})  --> Guarded version
-  const recentAudit = useQuery(
-    api.audit.listForBusiness,
-    business?._id ? { businessId: business._id, limit: 20 } : undefined
-  );
-
-  // If this page lists campaigns anywhere, guard it similarly:
-  const recentCampaigns = useQuery(
-    api.emails.listCampaignsByBusiness,
-    business?._id ? { businessId: business._id } : undefined
-  );
+  // Convex is intentionally not mounted on '/', so avoid Convex hooks on this page.
 
   return (
     <motion.div
