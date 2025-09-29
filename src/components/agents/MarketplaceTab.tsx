@@ -8,9 +8,7 @@ import {
 import { Star } from "lucide-react";
 
 export default function MarketplaceTab({ userId }: { userId?: Id<"users"> }) {
-  const items = useQuery(api.aiAgents.listMarketplaceAgents, {
-    status: "approved",
-  });
+  const items = useQuery(api.aiAgents.listMarketplaceAgents, {} as any);
 
   if (items === undefined) {
     return <div className="text-gray-600">Loading marketplace...</div>;
