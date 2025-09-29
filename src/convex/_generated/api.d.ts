@@ -72,6 +72,7 @@ import type * as playbookVersions from "../playbookVersions.js";
 import type * as playbooks from "../playbooks.js";
 import type * as schedule from "../schedule.js";
 import type * as seed from "../seed.js";
+import type * as smoke from "../smoke.js";
 import type * as solopreneur from "../solopreneur.js";
 import type * as tasks from "../tasks.js";
 import type * as telemetry from "../telemetry.js";
@@ -152,6 +153,7 @@ declare const fullApi: ApiFromModules<{
   playbooks: typeof playbooks;
   schedule: typeof schedule;
   seed: typeof seed;
+  smoke: typeof smoke;
   solopreneur: typeof solopreneur;
   tasks: typeof tasks;
   telemetry: typeof telemetry;
