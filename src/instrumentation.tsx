@@ -180,10 +180,16 @@ export function InstrumentationProvider({
   const [hasShownEnvToast, setHasShownEnvToast] = useState(false);
   const [hasShownQueueToast, setHasShownQueueToast] = useState(false);
 
-  const healthStatus = useQuery(api.health.envStatus, {});
+  // Determine if Convex is configured before issuing any queries
+  const hasConvex = Boolean(
+    import.meta.env.VITE_CONVEX_URL && import.meta.env.VITE_CONVEX_URL !== "undefined"
+  );
+
+  // Gate queries to avoid network errors when Convex isn't configured/reachable
+  const healthStatus = useQuery(api.health.envStatus as any, hasConvex ? ({} as any) : undefined);
 
   useEffect(() => {
-    if (!healthStatus || hasShownEnvToast) return;
+    if (!hasConvex || !healthStatus || hasShownEnvToast) return;
 
     const missingVars = [];
     if (!healthStatus.hasRESEND) missingVars.push("RESEND_API_KEY");
@@ -196,25 +202,25 @@ export function InstrumentationProvider({
       toast.error(`Missing environment variables: ${missingVars.join(", ")}`);
       setHasShownEnvToast(true);
     }
-  }, [healthStatus, hasShownEnvToast]);
+  }, [hasConvex, healthStatus, hasShownEnvToast]);
 
   useEffect(() => {
-    if (!healthStatus || hasShownQueueToast) return;
+    if (!hasConvex || !healthStatus || hasShownQueueToast) return;
 
     if (healthStatus.emailQueueDepth > 100) {
       toast.warning(`High email queue depth: ${healthStatus.emailQueueDepth} pending`);
       setHasShownQueueToast(true);
     }
-  }, [healthStatus, hasShownQueueToast]);
+  }, [hasConvex, healthStatus, hasShownQueueToast]);
 
   const [error, setError] = useState<GenericError | null>(null);
 
   // Add: environment precheck to surface actionable toasts once
-  const envStatus = useQuery(api.health.envStatus as any, {} as any);
+  const envStatus = useQuery(api.health.envStatus as any, hasConvex ? ({} as any) : undefined);
   const [envToastsShown, setEnvToastsShown] = useState(false);
 
   useEffect(() => {
-    if (!envStatus || envToastsShown) return;
+    if (!hasConvex || !envStatus || envToastsShown) return;
     try {
       const hasResend = Boolean((envStatus as any)?.hasRESEND);
       const hasSalesInbox = Boolean(
@@ -245,7 +251,7 @@ export function InstrumentationProvider({
     } finally {
       setEnvToastsShown(true);
     }
-  }, [envStatus, envToastsShown]);
+  }, [hasConvex, envStatus, envToastsShown]);
 
   useEffect(() => {
     const handleError = async (event: ErrorEvent) => {
