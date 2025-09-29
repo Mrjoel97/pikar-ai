@@ -51,6 +51,40 @@ export default function ExecutiveTab() {
     localStorage.setItem("exec_chat_history", JSON.stringify(newHistory));
   };
 
+  // Helper: transient error detector
+  const isTransientError = (err: unknown): boolean => {
+    const msg = (err as any)?.message?.toLowerCase?.() || "";
+    // Network hiccups, 5xx-like hints, and fetch failures
+    return (
+      msg.includes("failed to fetch") ||
+      msg.includes("network") ||
+      msg.includes("timeout") ||
+      msg.includes("temporarily") ||
+      msg.includes("try again") ||
+      msg.includes("internal server")
+    );
+  };
+
+  // Helper: retry with simple exponential backoff
+  const withRetry = async <T,>(
+    fn: () => Promise<T>,
+    attempts: number = 3,
+    baseDelayMs: number = 400
+  ): Promise<T> => {
+    let lastErr: unknown;
+    for (let i = 0; i < attempts; i++) {
+      try {
+        return await fn();
+      } catch (err) {
+        lastErr = err;
+        if (!isTransientError(err) || i === attempts - 1) break;
+        const wait = baseDelayMs * Math.pow(2, i); // 400, 800, 1600
+        await new Promise((res) => setTimeout(res, wait));
+      }
+    }
+    throw lastErr;
+  };
+
   const handleAsk = async () => {
     if (!question.trim() || !currentBiz?._id || isAsking) return;
 
@@ -89,45 +123,56 @@ export default function ExecutiveTab() {
     }
 
     try {
-      const response = await execRouter({
-        mode,
-        businessId: currentBiz._id,
-        userId: user?._id
-      });
+      const run = () =>
+        execRouter({
+          mode,
+          businessId: currentBiz._id,
+          userId: user?._id,
+        });
+
+      // Retry only for potentially transient failures; keep attempts small
+      const response = await withRetry(run, 3, 400);
 
       if (mode === "createCapsule") {
-        // Robust error handling for playbook execution
+        // Refined, user-friendly outcomes with correlationId surfaced if present
         const ok = !!(response as any)?.success;
+        const correlationId = (response as any)?.correlationId;
         if (ok) {
-          const saved = typeof (response as any)?.timeSaved === "number" ? (response as any).timeSaved : undefined;
-          toast.success(`Capsule created${saved ? `! Saved ${saved} minutes` : "!"}`);
+          const saved =
+            typeof (response as any)?.timeSaved === "number" ? (response as any).timeSaved : undefined;
+          toast.success(`Capsule created${saved ? `! Saved ${saved} minutes.` : "!"}`);
         } else {
           const message =
             (response as any)?.message ||
             (response as any)?.error ||
-            "Playbook failed to run. Please try again.";
-          const correlationId = (response as any)?.correlationId;
+            "The capsule action didn't complete. Please review your setup and try again.";
           toast.error(`${message}${correlationId ? ` (ref: ${correlationId})` : ""}`);
-          // Log full response for debugging visibility
-          // (Safe: console only; no user PII exposure beyond message)
-          console.error("Playbook execution error", { response });
+          console.error("Playbook execution error", { response }); // safe console detail
         }
         return;
       }
 
       const newEntry = {
         question: `Quick action: ${mode}`,
-        answer: (response as any).action || (response as any).weeklyPlan || "Action completed",
-        timestamp: Date.now()
+        answer:
+          (response as any).action ||
+          (response as any).weeklyPlan ||
+          "Action completed",
+        timestamp: Date.now(),
       };
-      
+
       const newHistory = [newEntry, ...chatHistory].slice(0, 20);
       saveHistory(newHistory);
       toast.success("Quick action completed");
     } catch (error: any) {
-      // Network, transport, or unexpected errors
-      const message = error?.message || "Action failed due to an unexpected error.";
-      toast.error(`Action failed: ${message}`);
+      // Refined error messaging: differentiate transient vs non-transient
+      const transient = isTransientError(error);
+      const message =
+        error?.message ||
+        (transient
+          ? "Network hiccup prevented this action. Please try again shortly."
+          : "Action failed due to an unexpected error.");
+      toast.error(message);
       console.error("Quick action error", error);
     }
   };
