@@ -1,20 +1,722 @@
-/**
- * Aggregated re-exports for playbooks seed data.
- * This file stays as the single import surface to avoid changing other modules.
- */
+// Centralized seed data for orchestration playbooks.
+// This is imported by src/convex/playbooks.ts to keep that file small and focused.
 
-export { DEFAULT_PLAYBOOKS } from "./defaults";
-export { SOLOPRENEUR_PLAYBOOKS } from "./solopreneur";
-export { INDUSTRIES, PLAYBOOK_CATEGORIES, TIER_DISTRIBUTION } from "./constants";
-export { generateIndustryPlaybooks, INDUSTRY_PLAYBOOKS } from "./generators";
-
-// Convenience combined export (unchanged API)
-import { DEFAULT_PLAYBOOKS as BASE_DEFAULTS } from "./defaults";
-import { SOLOPRENEUR_PLAYBOOKS as SOLO_DEFAULTS } from "./solopreneur";
-import { INDUSTRY_PLAYBOOKS as ALL_INDUSTRY } from "./generators";
-
-export const DEFAULT_PLAYBOOKS_EXTENDED = [
-  ...BASE_DEFAULTS,
-  ...SOLO_DEFAULTS,
-  ...ALL_INDUSTRY,
+export const DEFAULT_PLAYBOOKS: Array<any> = [
+  {
+    playbook_key: "market_entry_v1",
+    display_name: "Market Entry (Strategic Planning led)",
+    version: "v1.0",
+    triggers: [{ type: "http", path: "/api/playbooks/market_entry/trigger", method: "POST" }],
+    input_schema: { type: "object", required: ["company_profile", "target_market"] },
+    output_schema: { type: "object" },
+    steps: [
+      {
+        step_id: "sp_1",
+        name: "Strategic scan",
+        agent_key: "strategic_planning",
+        action: "generate_market_scan",
+        input_map: {
+          company_profile: "$.company_profile",
+          market_context: "$.target_market",
+        },
+        output_map: { strategic_output: "$.steps.sp_1.output" },
+        validations: [{ type: "confidence", field: "strategic_output.confidence", min: 0.75 }],
+        on_failure: [{ action: "escalate_to_human", reason: "low_confidence" }],
+      },
+      {
+        step_id: "da_1",
+        name: "Demand forecast",
+        agent_key: "data_analysis",
+        action: "forecast_demand",
+        input_map: {
+          dataset_summary: "$.external.historical_sales",
+          analysis_query: "forecast monthly demand using strategic opportunities",
+          market_opportunities: "$.steps.sp_1.output.opportunities",
+        },
+        output_map: { forecast: "$.steps.da_1.output" },
+      },
+      {
+        step_id: "fa_1",
+        name: "Financial modelling",
+        agent_key: "financial_analysis",
+        action: "build_financial_model",
+        input_map: {
+          forecast: "$.steps.da_1.output",
+          cost_structure: "$.company_profile.costs",
+        },
+        output_map: { financials: "$.steps.fa_1.output" },
+      },
+      {
+        step_id: "compliance_1",
+        name: "Regulatory check",
+        agent_key: "compliance_risk",
+        action: "validate_regulatory",
+        input_map: {
+          jurisdiction: "$.target_market",
+          activity: "$.company_profile.activity_description",
+        },
+        output_map: { compliance_report: "$.steps.compliance_1.output" },
+      },
+      {
+        step_id: "ma_1",
+        name: "Initial campaign plan",
+        agent_key: "marketing_automation",
+        action: "plan_campaign",
+        input_map: {
+          objectives: { launch: true },
+          audience_profile: "$.steps.sp_1.output.opportunities",
+          budget: "$.company_profile.launch_budget",
+        },
+        output_map: { campaign_plan: "$.steps.ma_1.output" },
+      },
+      {
+        step_id: "synth_1",
+        name: "Synthesize go-to-market plan",
+        agent_key: "content_creation",
+        action: "synthesize_final_plan",
+        input_map: {
+          strategic: "$.steps.sp_1.output",
+          forecast: "$.steps.da_1.output",
+          financials: "$.steps.fa_1.output",
+          compliance: "$.steps.compliance_1.output",
+          campaign: "$.steps.ma_1.output",
+        },
+        output_map: { final_plan: "$.steps.synth_1.output" },
+      },
+    ],
+    metadata: { owner_role: "growth", human_in_loop: true, auto_execute: false, audit: true },
+    active: true,
+  },
+  {
+    playbook_key: "onboarding_activation_v1",
+    display_name: "Onboarding & Activation (Content Creation led)",
+    version: "v1.0",
+    triggers: [{ type: "event", event_name: "user.signup" }],
+    input_schema: { type: "object", required: ["user_id", "business_id"] },
+    output_schema: { type: "object" },
+    steps: [
+      {
+        step_id: "cc_1",
+        name: "Create onboarding content",
+        agent_key: "content_creation",
+        action: "compose_onboarding_brief",
+        input_map: {
+          brief: "$.business_profile.onboarding_brief",
+          brand_voice: "$.business_profile.brand_voice",
+        },
+        output_map: { onboarding_content: "$.steps.cc_1.output" },
+      },
+      {
+        step_id: "ma_1",
+        name: "Configure drip campaign",
+        agent_key: "marketing_automation",
+        action: "create_drip_campaign",
+        input_map: {
+          campaign_objectives: { activate_new_users: true },
+          audience_profile: "$.user_id",
+          assets: "$.steps.cc_1.output",
+        },
+        output_map: { drip_campaign: "$.steps.ma_1.output" },
+      },
+      {
+        step_id: "da_1",
+        name: "Monitor activation metrics",
+        agent_key: "data_analysis",
+        action: "generate_activation_dashboard",
+        input_map: {
+          dataset_summary: "$.external.analytics",
+          analysis_query: "compute activation, retention",
+        },
+        output_map: { activation_metrics: "$.steps.da_1.output" },
+      },
+      {
+        step_id: "cs_1",
+        name: "Seed proactive support",
+        agent_key: "customer_support",
+        action: "seed_proactive_messages",
+        input_map: {
+          user: "$.user_id",
+          messages: "$.steps.cc_1.output.tutorials",
+        },
+        output_map: { support_tasks: "$.steps.cs_1.output" },
+      },
+    ],
+    metadata: { owner_role: "growth", human_in_loop: false, auto_execute: true, audit: true },
+    active: true,
+  },
+  {
+    playbook_key: "operations_optimization_v1",
+    display_name: "Operations Optimization (Operations Optimization led)",
+    version: "v1.0",
+    triggers: [{ type: "scheduled", cron: "0 2 * * *" }],
+    input_schema: {
+      type: "object",
+      properties: { production_metrics: { type: "object" }, process_map: { type: "object" } },
+    },
+    steps: [
+      {
+        step_id: "da_1",
+        name: "Analyze telemetry",
+        agent_key: "data_analysis",
+        action: "detect_anomalies",
+        input_map: {
+          dataset_summary: "$.production_metrics",
+          analysis_query: "detect bottlenecks",
+        },
+        output_map: { anomalies: "$.steps.da_1.output" },
+      },
+      {
+        step_id: "oo_1",
+        name: "Recommend optimizations",
+        agent_key: "operations_optimization",
+        action: "propose_optimizations",
+        input_map: {
+          process_map: "$.process_map",
+          metrics: "$.production_metrics",
+          anomalies: "$.steps.da_1.output",
+        },
+        output_map: { optimization_plan: "$.steps.oo_1.output" },
+      },
+      {
+        step_id: "compliance_1",
+        name: "Validate changes",
+        agent_key: "compliance_risk",
+        action: "validate_changes",
+        input_map: {
+          jurisdiction: "$.company_profile.jurisdiction",
+          activity: "$.steps.oo_1.output.proposed_changes",
+        },
+        output_map: { compliance_check: "$.steps.compliance_1.output" },
+      },
+      {
+        step_id: "fa_1",
+        name: "Cost-benefit analysis",
+        agent_key: "financial_analysis",
+        action: "evaluate_roi",
+        input_map: {
+          optimization_plan: "$.steps.oo_1.output",
+          current_costs: "$.company_profile.ops_costs",
+        },
+        output_map: { roi_report: "$.steps.fa_1.output" },
+      },
+      {
+        step_id: "rollout_1",
+        name: "Compose rollout plan",
+        agent_key: "operations_optimization",
+        action: "compose_rollout_plan",
+        input_map: {
+          optimization_plan: "$.steps.oo_1.output",
+          roi: "$.steps.fa_1.output",
+        },
+        output_map: { rollout_plan: "$.steps.rollout_1.output" },
+      },
+    ],
+    metadata: { owner_role: "ops", human_in_loop: true, auto_execute: false, audit: true },
+    active: true,
+  },
+  {
+    playbook_key: "sales_acceleration_v1",
+    display_name: "Sales Acceleration (Sales Intelligence led)",
+    version: "v1.0",
+    triggers: [{ type: "event", event_name: "deal.stage_changed" }],
+    input_schema: { type: "object", required: ["deal_id", "account_id", "current_stage"] },
+    steps: [
+      {
+        step_id: "si_1",
+        name: "Score deal",
+        agent_key: "sales_intelligence",
+        action: "score_deal",
+        input_map: {
+          lead_profile: "$.account_id",
+          account_history: "$.external.crm_history[$.account_id]",
+        },
+        output_map: { scorecard: "$.steps.si_1.output" },
+      },
+      {
+        step_id: "cc_1",
+        name: "Create tailored assets",
+        agent_key: "content_creation",
+        action: "create_deal_assets",
+        input_map: {
+          brief: "deal {{deal_id}} stage {{current_stage}}",
+          recommended_playbook: "$.steps.si_1.output.recommended_playbook",
+        },
+        output_map: { assets: "$.steps.cc_1.output" },
+      },
+      {
+        step_id: "ma_1",
+        name: "Seed nurture",
+        agent_key: "marketing_automation",
+        action: "seed_personalized_nurture",
+        input_map: {
+          audience_profile: "$.account_id",
+          assets: "$.steps.cc_1.output",
+        },
+        output_map: { nurture_flow: "$.steps.ma_1.output" },
+      },
+      {
+        step_id: "fa_1",
+        name: "Profit sanity",
+        agent_key: "financial_analysis",
+        action: "check_deal_profitability",
+        input_map: {
+          revenue_estimate: "$.steps.si_1.output.estimated_value",
+          costs: "$.deal.estimated_costs",
+        },
+        output_map: { financial_check: "$.steps.fa_1.output" },
+      },
+    ],
+    metadata: { owner_role: "sales", human_in_loop: false, auto_execute: true, audit: true },
+    active: true,
+  },
+  {
+    playbook_key: "recruitment_pipeline_v1",
+    display_name: "Recruitment & Training (HR led)",
+    version: "v1.0",
+    triggers: [{ type: "http", path: "/api/playbooks/recruitment/trigger", method: "POST" }],
+    input_schema: { type: "object", required: ["candidate_resume", "role_spec"] },
+    steps: [
+      {
+        step_id: "hr_1",
+        name: "Screen resume",
+        agent_key: "hr_recruitment",
+        action: "screen_resume",
+        input_map: { resume_text: "$.candidate_resume", role_spec: "$.role_spec" },
+        output_map: { screen_result: "$.steps.hr_1.output" },
+      },
+      {
+        step_id: "compliance_1",
+        name: "Check eligibility",
+        agent_key: "compliance_risk",
+        action: "validate_candidate_eligibility",
+        input_map: {
+          jurisdiction: "$.company_profile.jurisdiction",
+          activity: "$.role_spec.role_title",
+        },
+        output_map: { eligibility: "$.steps.compliance_1.output" },
+      },
+      {
+        step_id: "sp_1",
+        name: "Capacity planning",
+        agent_key: "strategic_planning",
+        action: "align_hiring_with_strategy",
+        input_map: { company_profile: "$.company_profile", hires_needed: "$.steps.hr_1.output" },
+        output_map: { hiring_plan: "$.steps.sp_1.output" },
+      },
+      {
+        step_id: "cc_1",
+        name: "Compose training materials",
+        agent_key: "content_creation",
+        action: "compose_training_materials",
+        input_map: {
+          brief: "training for {{role_spec.role_title}}",
+          brand_voice: "$.company_profile.brand_voice",
+        },
+        output_map: { training_materials: "$.steps.cc_1.output" },
+      },
+    ],
+    metadata: { owner_role: "hr", human_in_loop: true, auto_execute: false, audit: true },
+    active: true,
+  },
+  {
+    playbook_key: "compliance_audit_v1",
+    display_name: "Compliance Audit (Compliance & Risk led)",
+    version: "v1.0",
+    triggers: [{ type: "scheduled", cron: "0 3 1 * *" }],
+    input_schema: { type: "object", properties: { audit_scope: { type: "array" } } },
+    steps: [
+      {
+        step_id: "da_1",
+        name: "Collect evidence",
+        agent_key: "data_analysis",
+        action: "summarize_evidence",
+        input_map: {
+          dataset_summary: "$.external.audit_logs",
+          analysis_query: "collect records for audit_scope",
+        },
+        output_map: { evidence: "$.steps.da_1.output" },
+      },
+      {
+        step_id: "compliance_1",
+        name: "Run audit checks",
+        agent_key: "compliance_risk",
+        action: "run_audit_checklist",
+        input_map: {
+          jurisdiction: "$.company_profile.jurisdiction",
+          activity: "$.audit_scope",
+          evidence: "$.steps.da_1.output",
+        },
+        output_map: { audit_results: "$.steps.compliance_1.output" },
+      },
+      {
+        step_id: "synth_1",
+        name: "Draft audit report",
+        agent_key: "content_creation",
+        action: "draft_audit_report",
+        input_map: { findings: "$.steps.compliance_1.output" },
+        output_map: { report: "$.steps.synth_1.output" },
+      },
+    ],
+    metadata: { owner_role: "compliance", human_in_loop: true, auto_execute: true, audit: true },
+    active: true,
+  },
+  {
+    playbook_key: "finance_planning_v1",
+    display_name: "Quarterly Finance Planning (Financial Analysis led)",
+    version: "v1.0",
+    triggers: [{ type: "event", event_name: "finance.quarter_roll" }],
+    input_schema: {
+      type: "object",
+      properties: { baseline_financials: { type: "object" }, strategic_priorities: { type: "object" } },
+    },
+    steps: [
+      {
+        step_id: "da_1",
+        name: "Validate data",
+        agent_key: "data_analysis",
+        action: "validate_financial_timeseries",
+        input_map: { dataset_summary: "$.baseline_financials" },
+        output_map: { validation_report: "$.steps.da_1.output" },
+      },
+      {
+        step_id: "fa_1",
+        name: "Generate scenarios",
+        agent_key: "financial_analysis",
+        action: "generate_scenarios",
+        input_map: {
+          inputs: "$.baseline_financials",
+          strategic_assumptions: "$.strategic_priorities",
+        },
+        output_map: { scenarios: "$.steps.fa_1.output" },
+      },
+      {
+        step_id: "sp_1",
+        name: "Prioritize investments",
+        agent_key: "strategic_planning",
+        action: "prioritize_investments",
+        input_map: { scenarios: "$.steps.fa_1.output" },
+        output_map: { prioritized_plan: "$.steps.sp_1.output" },
+      },
+      {
+        step_id: "synth_1",
+        name: "Compose finance pack",
+        agent_key: "content_creation",
+        action: "compose_finance_pack",
+        input_map: { financials: "$.steps.fa_1.output", priorities: "$.steps.sp_1.output" },
+        output_map: { finance_pack: "$.steps.synth_1.output" },
+      },
+    ],
+    metadata: { owner_role: "finance", human_in_loop: true, auto_execute: false, audit: true },
+    active: true,
+  },
+  {
+    playbook_key: "content_campaign_v1",
+    display_name: "Cross-Channel Content Campaign (Marketing Automation led)",
+    version: "v1.0",
+    triggers: [{ type: "http", path: "/api/playbooks/content_campaign/trigger", method: "POST" }],
+    input_schema: { type: "object", required: ["campaign_brief", "audience"] },
+    steps: [
+      {
+        step_id: "cc_1",
+        name: "Generate campaign assets",
+        agent_key: "content_creation",
+        action: "generate_assets_from_brief",
+        input_map: {
+          brief: "$.campaign_brief",
+          brand_voice: "$.company_profile.brand_voice",
+        },
+        output_map: { assets: "$.steps.cc_1.output" },
+      },
+      {
+        step_id: "ma_1",
+        name: "Design campaign",
+        agent_key: "marketing_automation",
+        action: "design_campaign_flow",
+        input_map: {
+          campaign_objectives: "$.campaign_brief.objectives",
+          audience_profile: "$.audience",
+          assets: "$.steps.cc_1.output",
+        },
+        output_map: { campaign_flow: "$.steps.ma_1.output" },
+      },
+      {
+        step_id: "si_1",
+        name: "Sales enablement",
+        agent_key: "sales_intelligence",
+        action: "create_enablement_playbook",
+        input_map: {
+          assets: "$.steps.cc_1.output",
+          audience_segments: "$.steps.ma_1.output.audience_segments",
+        },
+        output_map: { enablement_playbook: "$.steps.si_1.output" },
+      },
+      {
+        step_id: "da_1",
+        name: "Monitor & report",
+        agent_key: "data_analysis",
+        action: "campaign_analytics",
+        input_map: { dataset_summary: "$.external.campaign_metrics" },
+        output_map: { performance_dashboard: "$.steps.da_1.output" },
+      },
+    ],
+    metadata: { owner_role: "marketing", human_in_loop: false, auto_execute: true, audit: true },
+    active: true,
+  },
+  {
+    playbook_key: "support_escalation_v1",
+    display_name: "Support Escalation (Customer Support led)",
+    version: "v1.0",
+    triggers: [{ type: "event", event_name: "support.ticket_created" }],
+    input_schema: {
+      type: "object",
+      required: ["ticket_id", "ticket_text", "customer_id"],
+    },
+    steps: [
+      {
+        step_id: "cs_1",
+        name: "Triage & draft reply",
+        agent_key: "customer_support",
+        action: "classify_and_draft_reply",
+        input_map: {
+          ticket_text: "$.ticket_text",
+          customer_metadata: "$.external.customer_profile",
+          kb_documents: "$.external.kb_documents",
+        },
+        output_map: { triage_result: "$.steps.cs_1.output" },
+      },
+      {
+        step_id: "da_1",
+        name: "If technical, fetch telemetry",
+        agent_key: "data_analysis",
+        action: "fetch_and_analyze_telemetry",
+        input_map: {
+          dataset_summary: "$.external.telemetry",
+          analysis_query: "fetch logs for customer",
+        },
+        output_map: { telemetry_analysis: "$.steps.da_1.output" },
+        validations: [
+          {
+            type: "conditional",
+            when: '$.steps.cs_1.output.classification == "technical"',
+            assert: "telemetry_analysis is object",
+          },
+        ],
+      },
+      {
+        step_id: "oo_1",
+        name: "Propose ops fix if needed",
+        agent_key: "operations_optimization",
+        action: "propose_quick_fix",
+        input_map: {
+          process_map: "$.external.process_map",
+          metrics: "$.external.metrics",
+          issue: "$.steps.da_1.output",
+        },
+        output_map: { quick_fix: "$.steps.oo_1.output" },
+      },
+      {
+        step_id: "cs_finalize",
+        name: "Finalize reply and closure",
+        agent_key: "customer_support",
+        action: "finalize_reply_and_close",
+        input_map: {
+          draft_reply: "$.steps.cs_1.output.reply_text",
+          resolution_steps: ["$.steps.oo_1.output", "$.steps.da_1.output"],
+        },
+        output_map: { closure: "$.steps.cs_finalize.output" },
+      },
+    ],
+    metadata: { owner_role: "support", human_in_loop: true, auto_execute: true, audit: true },
+    active: true,
+  },
+  {
+    playbook_key: "data_governance_v1",
+    display_name: "Data Governance & KB Sync (Data Analysis led)",
+    version: "v1.0",
+    triggers: [{ type: "scheduled", cron: "0 1 * * SUN" }],
+    input_schema: { type: "object", properties: { docs_bucket: { type: "string" } } },
+    steps: [
+      {
+        step_id: "da_1",
+        name: "Audit changed docs",
+        agent_key: "data_analysis",
+        action: "scan_doc_change_logs",
+        input_map: { dataset_summary: "$.external.docs_change_log" },
+        output_map: { changed_docs: "$.steps.da_1.output" },
+      },
+      {
+        step_id: "cc_1",
+        name: "Summarize docs",
+        agent_key: "content_creation",
+        action: "summarize_documents",
+        input_map: {
+          briefs: "$.steps.da_1.output",
+          brand_voice: "$.company_profile.brand_voice",
+        },
+        output_map: { summaries: "$.steps.cc_1.output" },
+      },
+      {
+        step_id: "cs_1",
+        name: "Update KB & re-embed",
+        agent_key: "customer_support",
+        action: "update_kb_and_trigger_embeddings",
+        input_map: { summaries: "$.steps.cc_1.output" },
+        output_map: { update_report: "$.steps.cs_1.output" },
+      },
+      {
+        step_id: "da_2",
+        name: "Validate retrieval quality",
+        agent_key: "data_analysis",
+        action: "run_retrieval_quality_tests",
+        input_map: {
+          sample_queries: "$.external.sample_kb_queries",
+          kb_state: "$.steps.cs_1.output",
+        },
+        output_map: { retrieval_metrics: "$.steps.da_2.output" },
+        validations: [
+          { type: "numeric_range", field: "retrieval_metrics.mean_relevance", min: 0.6 },
+        ],
+      },
+    ],
+    metadata: { owner_role: "data", human_in_loop: false, auto_execute: true, audit: true },
+    active: true,
+  },
 ];
+
+export const SOLOPRENEUR_PLAYBOOKS = [
+  {
+    playbook_key: "weekly_momentum_capsule",
+    display_name: "Weekly Momentum Capsule",
+    version: "v1.0",
+    triggers: [{ type: "http", path: "/api/playbooks/weekly_momentum_capsule/trigger", method: "POST" }],
+    input_schema: { type: "object", required: ["businessId"] },
+    output_schema: { type: "object" },
+    steps: [
+      {
+        step_id: "content_1",
+        name: "Draft newsletter content",
+        agent_key: "content_creation",
+        action: "create_newsletter_draft",
+        input_map: {
+          brief: "weekly momentum update",
+          brand_voice: "$.company_profile.brand_voice"
+        },
+        output_map: { newsletter_content: "$.steps.content_1.output" }
+      },
+      {
+        step_id: "social_1", 
+        name: "Create social posts",
+        agent_key: "content_creation",
+        action: "create_social_posts",
+        input_map: {
+          count: 2,
+          theme: "$.steps.content_1.output.theme"
+        },
+        output_map: { social_posts: "$.steps.social_1.output" }
+      },
+      {
+        step_id: "schedule_1",
+        name: "Schedule content",
+        agent_key: "marketing_automation", 
+        action: "schedule_content_batch",
+        input_map: {
+          newsletter: "$.steps.content_1.output",
+          posts: "$.steps.social_1.output"
+        },
+        output_map: { scheduled_items: "$.steps.schedule_1.output" }
+      }
+    ],
+    metadata: { owner_role: "solopreneur", human_in_loop: false, auto_execute: true, audit: true },
+    active: true
+  },
+  {
+    playbook_key: "quick_newsletter_sprint",
+    display_name: "Quick Newsletter Sprint", 
+    version: "v1.0",
+    triggers: [{ type: "http", path: "/api/playbooks/quick_newsletter_sprint/trigger", method: "POST" }],
+    input_schema: { type: "object", required: ["businessId", "subject_hint"] },
+    output_schema: { type: "object" },
+    steps: [
+      {
+        step_id: "optimize_1",
+        name: "Optimize subject line",
+        agent_key: "marketing_automation",
+        action: "optimize_subject",
+        input_map: { hint: "$.subject_hint" },
+        output_map: { optimized_subject: "$.steps.optimize_1.output" }
+      },
+      {
+        step_id: "content_1", 
+        name: "Generate newsletter body",
+        agent_key: "content_creation",
+        action: "create_newsletter_body",
+        input_map: {
+          subject: "$.steps.optimize_1.output",
+          cta_focus: "engagement"
+        },
+        output_map: { newsletter_body: "$.steps.content_1.output" }
+      },
+      {
+        step_id: "preflight_1",
+        name: "Compliance preflight",
+        agent_key: "compliance_risk", 
+        action: "check_email_compliance",
+        input_map: {
+          content: "$.steps.content_1.output",
+          sender_config: "$.company_profile.email_config"
+        },
+        output_map: { compliance_check: "$.steps.preflight_1.output" }
+      }
+    ],
+    metadata: { owner_role: "solopreneur", human_in_loop: false, auto_execute: true, audit: true },
+    active: true
+  },
+  {
+    playbook_key: "social_micro_calendar",
+    display_name: "Social Micro-Calendar (5-day)",
+    version: "v1.0", 
+    triggers: [{ type: "http", path: "/api/playbooks/social_micro_calendar/trigger", method: "POST" }],
+    input_schema: { type: "object", required: ["businessId", "theme"] },
+    output_schema: { type: "object" },
+    steps: [
+      {
+        step_id: "plan_1",
+        name: "Plan 5-day content calendar",
+        agent_key: "marketing_automation",
+        action: "plan_micro_calendar", 
+        input_map: {
+          theme: "$.theme",
+          post_count: 5,
+          cadence: "daily"
+        },
+        output_map: { content_plan: "$.steps.plan_1.output" }
+      },
+      {
+        step_id: "create_1",
+        name: "Generate micro-posts",
+        agent_key: "content_creation",
+        action: "create_micro_posts",
+        input_map: {
+          plan: "$.steps.plan_1.output",
+          hooks: ["question", "tip", "story", "insight", "cta"]
+        },
+        output_map: { micro_posts: "$.steps.create_1.output" }
+      },
+      {
+        step_id: "schedule_1",
+        name: "Schedule with balanced cadence", 
+        agent_key: "marketing_automation",
+        action: "schedule_balanced_posts",
+        input_map: {
+          posts: "$.steps.create_1.output",
+          optimal_times: ["9am", "2pm", "6pm"]
+        },
+        output_map: { scheduled_posts: "$.steps.schedule_1.output" }
+      }
+    ],
+    metadata: { owner_role: "solopreneur", human_in_loop: false, auto_execute: true, audit: true },
+    active: true
+  }
+];
+
+export const DEFAULT_PLAYBOOKS_EXTENDED = [...DEFAULT_PLAYBOOKS, ...SOLOPRENEUR_PLAYBOOKS];

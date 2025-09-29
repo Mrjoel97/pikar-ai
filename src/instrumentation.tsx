@@ -16,6 +16,7 @@ import React, { useEffect, useState } from "react";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { toast } from "sonner";
+import { useAuth } from "@/hooks/use-auth";
 
 type SyncError = {
   error: string;
@@ -170,11 +171,12 @@ class ErrorBoundary extends React.Component<
   }
 }
 
-function FullInstrumentationProvider({
+export function InstrumentationProvider({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const { isAuthenticated } = useAuth();
   const [hasShownEnvToast, setHasShownEnvToast] = useState(false);
   const [hasShownQueueToast, setHasShownQueueToast] = useState(false);
 
@@ -229,6 +231,7 @@ function FullInstrumentationProvider({
 
       if (!hasResend) {
         console.warn("[ENV] RESEND_API_KEY is missing. Email delivery is disabled.");
+        // Use generic toast to avoid any type/version issues
         toast("Email delivery is disabled (missing RESEND_API_KEY). Enable it or set DEV_SAFE_EMAILS=true to stub.");
       }
       if (!hasSalesInbox) {
@@ -311,80 +314,4 @@ function FullInstrumentationProvider({
       {error && <ErrorDialog error={error} setError={setError} />}
     </>
   );
-}
-
-function LiteInstrumentation({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  const [error, setError] = useState<GenericError | null>(null);
-
-  useEffect(() => {
-    const handleError = async (event: ErrorEvent) => {
-      try {
-        event.preventDefault();
-        setError({
-          error: event.message,
-          stack: event.error?.stack || "",
-          filename: event.filename || "",
-          lineno: event.lineno,
-          colno: event.colno,
-        });
-
-        if (import.meta.env.VITE_VLY_APP_ID) {
-          await reportErrorToVly({
-            error: event.message,
-            stackTrace: event.error?.stack,
-            filename: event.filename,
-            lineno: event.lineno,
-            colno: event.colno,
-          });
-        }
-      } catch (err) {
-        console.error("Error in public handleError:", err);
-      }
-    };
-
-    const handleRejection = async (event: PromiseRejectionEvent) => {
-      try {
-        if (import.meta.env.VITE_VLY_APP_ID) {
-          await reportErrorToVly({
-            error: event.reason?.message ?? "Unhandled rejection",
-            stackTrace: event.reason?.stack,
-          });
-        }
-        setError({
-          error: event.reason?.message ?? "Unhandled rejection",
-          stack: event.reason?.stack,
-        });
-      } catch (err) {
-        console.error("Error in public handleRejection:", err);
-      }
-    };
-
-    window.addEventListener("error", handleError);
-    window.addEventListener("unhandledrejection", handleRejection);
-    return () => {
-      window.removeEventListener("error", handleError);
-      window.removeEventListener("unhandledrejection", handleRejection);
-    };
-  }, []);
-
-  return (
-    <>
-      <ErrorBoundary>{children}</ErrorBoundary>
-      {error && <ErrorDialog error={error} setError={setError} />}
-    </>
-  );
-}
-
-export function InstrumentationProvider({ children }: { children: React.ReactNode }) {
-  const path = window.location.pathname;
-  const isPublicLanding = path === "/";
-
-  if (isPublicLanding) {
-    return <LiteInstrumentation>{children}</LiteInstrumentation>;
-  }
-  return <FullInstrumentationProvider>{children}</FullInstrumentationProvider>;
 }

@@ -2,8 +2,6 @@ import { query, mutation, action, internalMutation } from "./_generated/server";
 import { v } from "convex/values";
 import { api, internal } from "./_generated/api";
 import { DEFAULT_PLAYBOOKS } from "./data/playbooksSeed";
-import { INDUSTRIES, INDUSTRY_PLAYBOOKS, generateIndustryPlaybooks } from "./data/playbooksSeed";
-import { Id } from "./_generated/dataModel";
 
 // Query: list playbooks (optionally active only)
 export const list = query({
@@ -203,32 +201,26 @@ export const adminUpsertPlaybook = mutation({
       active: doc.active,
     };
 
-    // Fix the type of playbookId to Convex Id<"playbooks">
-    let playbookId: Id<"playbooks">;
+    let playbookId: string;
     if (existing) {
       await ctx.db.patch(existing._id, playbookData);
-      playbookId = existing._id as Id<"playbooks">;
+      playbookId = existing._id;
     } else {
       playbookId = await ctx.db.insert("playbooks", playbookData);
     }
 
-    // Audit log (safe for admin-wide ops without tenant)
-    try {
-      await ctx.runMutation(api.audit.write as any, {
-        action: existing ? "admin_update_playbook" : "admin_create_playbook",
-        entityType: "playbooks",
-        entityId: playbookId,
-        details: {
-          playbook_key: args.playbook_key,
-          version: args.version,
-          display_name: args.display_name,
-          active: args.active,
-          correlationId: `playbook-admin-${args.playbook_key}-${Date.now()}`,
-        },
-      });
-    } catch (_) {
-      // Swallow audit errors when no business context exists
-    }
+    await ctx.runMutation(api.audit.write as any, {
+      action: existing ? "admin_update_playbook" : "admin_create_playbook",
+      entityType: "playbooks",
+      entityId: playbookId,
+      details: {
+        playbook_key: args.playbook_key,
+        version: args.version,
+        display_name: args.display_name,
+        active: args.active,
+        correlationId: `playbook-admin-${args.playbook_key}-${Date.now()}`,
+      },
+    });
 
     return { playbookId, created: !existing };
   },
@@ -256,21 +248,19 @@ export const adminTogglePlaybook = mutation({
 
     await ctx.db.patch(playbook._id, { active: args.active });
 
-    // Audit log (safe-guarded)
-    try {
-      await ctx.runMutation(api.audit.write as any, {
-        action: "admin_toggle_playbook",
-        entityType: "playbooks",
-        entityId: playbook._id,
-        details: {
-          playbook_key: args.playbook_key,
-          version: args.version,
-          active: args.active,
-          previous_active: playbook.active,
-          correlationId: `playbook-toggle-${args.playbook_key}-${Date.now()}`,
-        },
-      });
-    } catch (_) {}
+    // Audit log
+    await ctx.runMutation(api.audit.write as any, {
+      action: "admin_toggle_playbook",
+      entityType: "playbooks",
+      entityId: playbook._id,
+      details: {
+        playbook_key: args.playbook_key,
+        version: args.version,
+        active: args.active,
+        previous_active: playbook.active,
+        correlationId: `playbook-toggle-${args.playbook_key}-${Date.now()}`,
+      },
+    });
 
     return { success: true };
   },
@@ -396,19 +386,16 @@ export const adminRollbackPlaybookToVersion = mutation({
       active: s.active,
     });
 
-    // Audit log (safe-guarded)
-    try {
-      await ctx.runMutation(api.audit.write as any, {
-        action: "admin_rollback_playbook_to_version",
-        entityType: "playbooks",
-        entityId: pb._id,
-        details: {
-          playbook_key: args.playbook_key,
-          versionId: String(args.versionId),
-          correlationId: `playbook-rollback-to-version-${args.playbook_key}-${Date.now()}`,
-        },
-      });
-    } catch (_) {}
+    await ctx.runMutation(api.audit.write as any, {
+      action: "admin_rollback_playbook_to_version",
+      entityType: "playbooks",
+      entityId: pb._id,
+      details: {
+        playbook_key: args.playbook_key,
+        versionId: String(args.versionId),
+        correlationId: `playbook-rollback-to-version-${args.playbook_key}-${Date.now()}`,
+      },
+    });
 
     return { success: true };
   },
@@ -449,20 +436,18 @@ export const adminPublishPlaybook = mutation({
       note: `Published by admin on ${new Date().toISOString()}`,
     });
 
-    // Audit log (safe-guarded)
-    try {
-      await ctx.runMutation(api.audit.write as any, {
-        action: "admin_publish_playbook",
-        entityType: "playbooks",
-        entityId: playbook._id,
-        details: {
-          playbook_key: args.playbook_key,
-          version: args.version,
-          previous_active: playbook.active,
-          correlationId: `playbook-publish-${args.playbook_key}-${Date.now()}`,
-        },
-      });
-    } catch (_) {}
+    // Audit log
+    await ctx.runMutation(api.audit.write as any, {
+      action: "admin_publish_playbook",
+      entityType: "playbooks",
+      entityId: playbook._id,
+      details: {
+        playbook_key: args.playbook_key,
+        version: args.version,
+        previous_active: playbook.active,
+        correlationId: `playbook-publish-${args.playbook_key}-${Date.now()}`,
+      },
+    });
 
     return { success: true, alreadyPublished: false };
   },
@@ -490,210 +475,19 @@ export const adminRollbackPlaybook = mutation({
 
     await ctx.db.patch(playbook._id, { active: false });
 
-    // Audit log (safe-guarded)
-    try {
-      await ctx.runMutation(api.audit.write as any, {
-        action: "admin_rollback_playbook",
-        entityType: "playbooks",
-        entityId: playbook._id,
-        details: {
-          playbook_key: args.playbook_key,
-          version: args.version,
-          previous_active: playbook.active,
-          correlationId: `playbook-rollback-${args.playbook_key}-${Date.now()}`,
-        },
-      });
-    } catch (_) {}
+    // Audit log
+    await ctx.runMutation(api.audit.write as any, {
+      action: "admin_rollback_playbook",
+      entityType: "playbooks",
+      entityId: playbook._id,
+      details: {
+        playbook_key: args.playbook_key,
+        version: args.version,
+        previous_active: playbook.active,
+        correlationId: `playbook-rollback-${args.playbook_key}-${Date.now()}`,
+      },
+    });
 
     return { success: true, alreadyRolledBack: false };
-  },
-});
-
-// Action: seed industry playbooks (idempotent)
-export const seedIndustryPlaybooks = action({
-  args: { industry: v.string() },
-  handler: async (ctx, args) => {
-    const industryPlaybooks = INDUSTRY_PLAYBOOKS.filter(p => p.metadata.industry === args.industry);
-    
-    let inserted = 0;
-    let updated = 0;
-    
-    for (const playbook of industryPlaybooks) {
-      const res = await ctx.runMutation(internal.playbooks.upsertOneInternal, {
-        playbook_key: playbook.playbook_key,
-        display_name: playbook.display_name,
-        version: playbook.version,
-        triggers: playbook.triggers,
-        input_schema: playbook.input_schema,
-        output_schema: playbook.output_schema,
-        steps: playbook.steps,
-        metadata: playbook.metadata,
-        active: playbook.active
-      });
-      
-      if (res.inserted) inserted += 1;
-      if (res.updated) updated += 1;
-    }
-    
-    return { industry: args.industry, inserted, updated, total: industryPlaybooks.length };
-  },
-});
-
-// Action: seed all industries playbooks
-export const seedAllIndustriesPlaybooks = action({
-  args: {},
-  handler: async (ctx) => {
-    const results: Array<{ industry: string; inserted: number; updated: number; total: number }> = [];
-
-    for (const { key } of INDUSTRIES) {
-      const industryPlaybooks = INDUSTRY_PLAYBOOKS.filter(
-        (p: any) => (p.metadata as any)?.industry === key
-      );
-
-      let inserted = 0;
-      let updated = 0;
-
-      for (const playbook of industryPlaybooks) {
-        const res = await ctx.runMutation(internal.playbooks.upsertOneInternal, {
-          playbook_key: playbook.playbook_key,
-          display_name: playbook.display_name,
-          version: playbook.version,
-          triggers: playbook.triggers,
-          input_schema: playbook.input_schema,
-          output_schema: playbook.output_schema,
-          steps: playbook.steps,
-          metadata: playbook.metadata,
-          active: playbook.active,
-        });
-        if ((res as any).inserted) inserted += 1;
-        if ((res as any).updated) updated += 1;
-      }
-
-      results.push({ industry: key, inserted, updated, total: industryPlaybooks.length });
-    }
-
-    const totals = results.reduce(
-      (acc, r) => ({
-        inserted: acc.inserted + r.inserted,
-        updated: acc.updated + r.updated,
-        total: acc.total + r.total,
-      }),
-      { inserted: 0, updated: 0, total: 0 }
-    );
-
-    return { results, totals };
-  },
-});
-
-// Admin query: list playbooks by industry
-export const adminListPlaybooksByIndustry = query({
-  args: { 
-    industry: v.string(),
-    tier: v.optional(v.string()),
-    limit: v.optional(v.number())
-  },
-  handler: async (ctx, args) => {
-    const isAdmin = await ctx.runQuery(api.admin.getIsAdmin, {});
-    if (!isAdmin) return [];
-
-    const limit = Math.max(1, Math.min(args.limit ?? 100, 500));
-    
-    // Get all playbooks and filter by industry (and optionally tier)
-    const allPlaybooks = await ctx.db.query("playbooks").order("desc").take(limit * 2);
-    
-    return allPlaybooks.filter(p => {
-      const metadata = p.metadata as any;
-      if (metadata?.industry !== args.industry) return false;
-      if (args.tier && metadata?.tier !== args.tier) return false;
-      return true;
-    }).slice(0, limit);
-  },
-});
-
-// Admin mutation: publish all playbooks in an industry
-export const adminPublishIndustry = mutation({
-  args: { industry: v.string() },
-  handler: async (ctx, args) => {
-    const isAdmin = await ctx.runQuery(api.admin.getIsAdmin, {});
-    if (!isAdmin) throw new Error("Admin access required");
-
-    // Check evaluation gate
-    const evalSummary = await ctx.runQuery(api.evals.latestSummary, {});
-    if (!(evalSummary as any)?.allPassing) {
-      throw new Error("Evaluations gate failed: not all passing. Fix failures before publish.");
-    }
-
-    // Directly query and filter by metadata.industry to avoid self-reference
-    const allPlaybooks = await ctx.db.query("playbooks").order("desc").collect();
-    const playbooks = allPlaybooks.filter(
-      (p: any) => (p.metadata as any)?.industry === args.industry
-    );
-
-    let published = 0;
-    let failed = 0;
-    const errors: string[] = [];
-
-    for (const playbook of playbooks) {
-      try {
-        if (!playbook.active) {
-          await ctx.db.patch(playbook._id, { active: true });
-
-          // Save version snapshot
-          await ctx.runMutation(internal.playbooks.savePlaybookVersionInternal, {
-            playbook_key: playbook.playbook_key,
-            version: playbook.version,
-            note: `Published via industry batch on ${new Date().toISOString()}`,
-          });
-
-          published += 1;
-        }
-      } catch (error: any) {
-        failed += 1;
-        errors.push(`${playbook.playbook_key}: ${String(error)}`);
-      }
-    }
-
-    // Remove audit write to avoid requiring a businessId in platform-wide admin ops
-    // Previously attempted to log via api.audit.write which requires a tenant businessId.
-    // Intentionally omitted to keep admin industry publish guest-safe and non-tenant scoped.
-
-    return { industry: args.industry, published, failed, total: playbooks.length, errors };
-  },
-});
-
-// Admin mutation: rollback all playbooks in an industry
-export const adminRollbackIndustry = mutation({
-  args: { industry: v.string() },
-  handler: async (ctx, args) => {
-    const isAdmin = await ctx.runQuery(api.admin.getIsAdmin, {});
-    if (!isAdmin) throw new Error("Admin access required");
-
-    // Directly query and filter by metadata.industry to avoid self-reference
-    const allPlaybooks = await ctx.db.query("playbooks").order("desc").collect();
-    const playbooks = allPlaybooks.filter(
-      (p: any) => (p.metadata as any)?.industry === args.industry
-    );
-
-    let rolledBack = 0;
-    let failed = 0;
-    const errors: string[] = [];
-
-    for (const playbook of playbooks) {
-      try {
-        if (playbook.active) {
-          await ctx.db.patch(playbook._id, { active: false });
-          rolledBack += 1;
-        }
-      } catch (error: any) {
-        failed += 1;
-        errors.push(`${playbook.playbook_key}: ${String(error)}`);
-      }
-    }
-
-    // Remove audit write to avoid requiring a businessId in platform-wide admin ops
-    // Previously attempted to log via api.audit.write which requires a tenant businessId.
-    // Intentionally omitted to keep admin industry rollback guest-safe and non-tenant scoped.
-
-    return { industry: args.industry, rolledBack, failed, total: playbooks.length, errors };
   },
 });
