@@ -19,7 +19,8 @@ export default function MyAgentsTab({
   userId,
 }: {
   userId?: Id<"users">;
-  selectedTier: string;
+  // Make selectedTier optional to avoid prop mismatch warnings/errors
+  selectedTier?: string;
 }) {
   // Fetch current user to derive businessId
   const currentUser = useQuery(api.users.currentUser, {});
