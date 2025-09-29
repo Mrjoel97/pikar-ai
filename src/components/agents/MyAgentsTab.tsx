@@ -28,7 +28,7 @@ export default function MyAgentsTab({
 
   const agents = useQuery(
     api.aiAgents.listCustomAgents,
-    userId ? { userId } : ({} as any),
+    businessId ? ({ businessId } as any) : undefined,
   );
 
   // Fetch Pikar AI App Agents for the user's business

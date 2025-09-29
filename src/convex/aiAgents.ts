@@ -307,15 +307,14 @@ export const adminActivateAll = mutation({
 });
 
 // Add a guest-safe public query to list custom (user-trained) agents for a business.
-// Narrow businessId before use to satisfy TS in the withIndex callback.
 export const listCustomAgents = query({
   args: { businessId: v.optional(v.id("businesses")) },
   handler: async (ctx, args) => {
     // Guest-safe: if no business scope provided, return empty list
     if (!args.businessId) return [];
 
-    // Narrow before use in the closure to avoid TS2345
-    const businessId = args.businessId as Id<"businesses">;
+    // Narrow before use in the closure to avoid TS complaints
+    const businessId = args.businessId as any;
 
     const profiles = await ctx.db
       .query("agentProfiles")
