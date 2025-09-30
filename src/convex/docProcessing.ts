@@ -2,14 +2,14 @@
 import { action } from "./_generated/server";
 import { v } from "convex/values";
 import { api } from "./_generated/api";
-import { chunkDocument, type ChunkingOptions, type Chunk } from "./chunking";
+import { chunkDocument, type ChunkingOptions } from "./chunking";
 
-// Add a safe, deterministic embedding fallback (no external API dependency)
+// Deterministic local embedding helpers (no external APIs)
 function simpleHash(str: string): number {
   let hash = 0;
   for (let i = 0; i < str.length; i++) {
     hash = ((hash << 5) - hash) + str.charCodeAt(i);
-    hash |= 0; // 32-bit
+    hash |= 0;
   }
   return Math.abs(hash);
 }
@@ -23,21 +23,17 @@ function embedText(text: string, dim = 256): number[] {
   return vec;
 }
 
-// Helper to embed an array of texts using a local deterministic fallback
 async function embedBatch(texts: string[]): Promise<number[][]> {
   const out: number[][] = [];
-  for (const t of texts) {
-    out.push(embedText(t));
-  }
+  for (const t of texts) out.push(embedText(t));
   return out;
 }
 
 export const generateEmbedding = action({
   args: { text: v.string(), model: v.optional(v.string()) },
-  handler: async (ctx, args) => {
-    // Use deterministic local embedding to avoid external dependency
-    const vector = embedText(args.text);
-    return { embedding: vector };
+  handler: async (_ctx, args) => {
+    const embedding = embedText(args.text);
+    return { embedding };
   },
 });
 
@@ -58,14 +54,11 @@ export const processDocument = action({
   },
   handler: async (ctx, args) => {
     const chunks = chunkDocument(args.content, {
-      chunkSize: args.opts?.chunkSize ?? 1200,
-      overlap: args.opts?.overlap ?? 200,
-      strategy: (args.opts?.strategy as any) ?? "auto",
-      documentType: (args.opts?.documentType as any) ?? "TEXT",
+      targetLen: args.opts?.chunkSize ?? 300,
+      overlap: args.opts?.overlap ?? 50,
     } as ChunkingOptions);
 
     const embeddings = await embedBatch(chunks.map((c) => c.text));
-
     const payload = chunks.map((c, i) => ({
       content: c.text,
       embedding: embeddings[i],
@@ -98,15 +91,15 @@ export const batchProcessDocuments = action({
     })),
   },
   handler: async (ctx, args) => {
-    let total = 0;
+    let processed = 0;
     for (const d of args.documents) {
       const res = await ctx.runAction(api.docProcessing.processDocument, {
         documentId: d.documentId,
         content: d.content,
         opts: d.opts as any,
       });
-      if (res?.ok) total += 1;
+      if (res?.ok) processed += 1;
     }
-    return { ok: true, processed: total };
+    return { ok: true, processed };
   },
 });

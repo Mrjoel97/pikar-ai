@@ -14,7 +14,6 @@ export const createDocument = mutation({
   },
   handler: async (ctx, args): Promise<any> => {
     const now = Date.now();
-    // Reuse docsPages table to avoid new schema
     const slug = args.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
     const id = await ctx.db.insert("docsPages", {
       title: args.title,
@@ -30,7 +29,7 @@ export const createDocument = mutation({
 });
 
 // Text semantic search: embed text then query vectors
-export const semanticSearch: any = action({
+export const semanticSearch = action({
   args: {
     text: v.string(),
     matchThreshold: v.optional(v.number()),
@@ -39,7 +38,7 @@ export const semanticSearch: any = action({
     businessId: v.optional(v.id("businesses")),
     datasetId: v.optional(v.id("agentDatasets")),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<any> => {
     const emb: any = await ctx.runAction(api.docProcessing.generateEmbedding, { text: args.text });
     const results: any = await ctx.runQuery(api.vectors.semanticSearch, {
       queryEmbedding: emb.embedding,
@@ -62,8 +61,7 @@ export const addAgentKnowledgeSource = mutation({
     contextInstructions: v.optional(v.string()),
   },
   handler: async (_ctx, _args) => {
-    // Association is realized when processing/storing embeddings by setting agentKeys in docProcessing opts.
-    // We keep this as a no-op to track API usage and leave UI to pass agentKeys during processing.
+    // Association is realized when embeddings are stored using agentKeys; keep as no-op for API surface.
     return { ok: true };
   },
 });
