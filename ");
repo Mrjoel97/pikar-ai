@@ -1,0 +1,46 @@
+    if (isFence) {
+      if (inFence) {
+        // closing fence
+        flushFence();
+        inFence = false;
+      } else {
+        // opening fence
+        flushText();
+        inFence = true;
+        // skip the opening fence line itself
+      }
+      continue;
+    }
+    if (inFence) {
+      fenceBuffer.push(line);
+    } else {
+      textBuffer.push(line);
+    }
+  }
+  // flush leftovers
+  if (inFence) {
+    // unclosed fence; treat remaining as code to be safe
+    flushFence();
+  } else {
+    flushText();
+  }
+
+  return out;
+}
+
+// Simple rolling window utility for semantic chunking
+function rollingWindow(tokens: string[], windowSize: number, step: number): string[] {
+  const chunks: string[] = [];
+  const n = tokens.length;
+  if (windowSize <= 0 || step <= 0) return tokens.join(" ").trim() ? [tokens.join(" ")] : [];
+  for (let i = 0; i < n; i += step) {
+    const slice = tokens.slice(i, Math.min(i + windowSize, n)).join(" ").trim();
+    if (slice) chunks.push(slice);
+    if (i + windowSize >= n) break;
+  }
+  return chunks;
+}
+
+// Basic heuristic to choose strategy without regex
+function detectBestStrategy(text: string): "code" | "markdown" | "plain" {
+  if (text.includes("

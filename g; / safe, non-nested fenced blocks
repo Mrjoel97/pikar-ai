@@ -1,0 +1,17 @@
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+  while ((match = re.exec(text)) !== null) {
+    const before = text.slice(lastIndex, match.index).trim();
+    if (before) blocks.push(before);
+    blocks.push(match[0].trim());
+    lastIndex = match.index + match[0].length;
+  }
+  const tail = text.slice(lastIndex).trim();
+  if (tail) blocks.push(tail);
+  return blocks.length ? blocks : [text];
+}
+
+// Fix strategy detection to avoid complex regex literals
+function detectBestStrategy(text: string, _docType: DocumentType): ChunkStrategy {
+  const t = text || "";
+  if (t.includes("

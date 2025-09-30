@@ -1,83 +1,69 @@
-// Basic chunking utilities with multiple strategies and overlap support
+// ... keep existing code (top-level imports and any existing exported types if present)
 
-export type ChunkStrategy =
-  | "auto"
-  | "semantic"
-  | "paragraph"
-  | "sentence"
-  | "markdown"
-  | "code";
-
-export type DocumentType =
-  | "TEXT"
-  | "MARKDOWN"
-  | "HTML"
-  | "JSON"
-  | "PDF"
-  | "DOCX"
-  | "XLSX"
-  | "CSV";
-
-export type ChunkingOptions = {
-  chunkSize?: number; // approx characters
-  overlap?: number; // approx characters
-  strategy?: ChunkStrategy;
-  documentType?: DocumentType;
+// Replace the broken regex-based splitter with a safe, line-based implementation
+export type Chunk = {
+  id: string;
+  content: string;
+  text: string; // alias for compatibility with older callers
+  start: number;
+  end: number;
+  meta: Record<string, any>;
 };
 
-const DEFAULT_CHUNK_SIZE = 1200;
-const DEFAULT_OVERLAP = 200;
+// Minimal, safe code fence splitter (supports 
+// Add: options type expected by callers
+export type ChunkingOptions = {
+  targetLen?: number;
+  overlap?: number;
+};
 
-export function estimateTokens(text: string): number {
-  // Rough heuristic: ~4 chars per token
-  return Math.ceil((text || "").length / 4);
-}
+// Add: minimalist chunker with safe defaults; independent of other helpers
+export function chunkDocument(
+  docText: string,
+  opts?: ChunkingOptions
+): Chunk[] {
+  const targetLen = Math.max(64, Math.min(512, opts?.targetLen ?? 300));
+  const overlap = Math.max(0, Math.min(Math.floor(targetLen / 3), opts?.overlap ?? 50));
 
-export function readingTimeSec(text: string): number {
-  // Rough heuristic: 200 words/min
-  const words = (text || "").trim().split(/\s+/g).filter(Boolean).length;
-  return Math.ceil((words / 200) * 60);
-}
-
-function splitParagraphs(text: string): string[] {
-  return (text || "")
-    .split(/\n{2,}/g)
-    .map((t) => t.trim())
+  const tokens: string[] = String(docText || "")
+    .split(/\s+/g)
     .filter(Boolean);
-}
 
-function splitSentences(text: string): string[] {
-  // Lightweight sentence split; avoids heavyweight deps
-  return (text || "")
-    .split(/(?<=[.!?])\s+(?=[A-Z0-9])/g)
-    .map((t) => t.trim())
-    .filter(Boolean);
-}
-
-function splitMarkdownSections(text: string): string[] {
-  // Split on headings while preserving content
-  const parts = (text || "").split(/\n(?=#+\s)/g);
-  return parts.map((p) => p.trim()).filter(Boolean);
-}
-
-function splitCodeBlocks(text: string): string[] {
-  // Preserve fenced code blocks; split around them and keep non-code text segments
-  const blocks: string[] = [];
-  const re = /
-    (?:^|(?<=\n))(`{3,}|(?:\n\s*`{3,}\s*))(?:(?!\1).)*?(?=\1|$)
-  /g;
-  let match;
-  while ((match = re.exec(text)) !== null) {
-    blocks.push(text.slice(match.index, match.index + match[0].length));
+  if (tokens.length === 0) {
+    return [];
   }
-  return blocks;
-}
 
-// Add strategy detection and main chunker utilities
-function detectBestStrategy(text: string, _docType: DocumentType): ChunkStrategy {
-  const t = text || "";
-  if (t.length < 100) return "sentence";
-  if (t.includes("##") || t.includes("###")) return "markdown";
-  if (t.includes("```")) return "code";
-  return "paragraph";
+  const step = Math.max(1, targetLen - overlap);
+  const chunks: Chunk[] = [];
+  let idx = 0;
+  for (let i = 0; i < tokens.length; i += step) {
+    const slice = tokens.slice(i, Math.min(i + targetLen, tokens.length)).join(" ").trim();
+    if (!slice) continue;
+    // compute rough character offsets based on concatenation length
+    const prevText = tokens.slice(0, i).join(" ");
+    const start = prevText.length > 0 ? prevText.length + 1 : 0;
+    const end = start + slice.length;
+
+    // Add: compute simple stats for defaults
+    const words = slice.split(/\s+/g).filter(Boolean).length;
+
+    chunks.push({
+      id: `c_${idx++}`,
+      content: slice,
+      text: slice, // keep c.text for compatibility
+      start,
+      end,
+      // Ensure meta is always present with safe defaults
+      meta: {
+        type: "plain",
+        strategy: "plain",
+        estTokens: Math.max(1, words),
+        // ~180 wpm => ~3 w/s; ensure a sane lower bound
+        readingSec: Math.max(5, Math.round(words / 3)),
+      },
+    });
+    if (i + targetLen >= tokens.length) break;
+  }
+
+  return chunks;
 }

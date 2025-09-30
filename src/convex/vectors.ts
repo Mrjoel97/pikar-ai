@@ -372,37 +372,38 @@ export const findSimilarDocuments = query({
     agentType: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const sourceChunks = await ctx.runQuery(api.vectors.getDocumentEmbeddings, { documentId: args.documentId });
+    const sourceChunks: any[] = await ctx.runQuery(api.vectors.getDocumentEmbeddings, { documentId: args.documentId });
     if (!sourceChunks.length) return [];
     // Use centroid of source embeddings
-    const dim = (sourceChunks[0]?.embedding || []).length;
-    const centroid = new Array(dim).fill(0);
+    const dim: number = (sourceChunks[0]?.embedding || []).length;
+    const centroid: number[] = new Array(dim).fill(0);
     for (const ch of sourceChunks) {
-      for (let i = 0; i < dim; i++) centroid[i] += ch.embedding[i] || 0;
+      for (let i = 0; i < dim; i++) centroid[i] += (ch.embedding?.[i] ?? 0);
     }
     for (let i = 0; i < dim; i++) centroid[i] /= sourceChunks.length;
 
-    const pool = await ctx.db.query("vectorChunks").collect();
-    const scores = pool
+    const pool: any[] = await ctx.db.query("vectorChunks").collect();
+    type Score = { id: Id<"vectorChunks">; documentId?: string; score: number; preview: string; agentKeys: string[] };
+    const scores: Score[] = pool
       .map((p: any) => ({
-        id: p._id,
-        documentId: p?.meta?.documentId,
+        id: p._id as Id<"vectorChunks">,
+        documentId: p?.meta?.documentId as string | undefined,
         score: cosineSim(centroid, p.embedding || []),
         preview: (p.content || "").slice(0, 240),
-        agentKeys: p.agentKeys || [],
+        agentKeys: (p.agentKeys || []) as string[],
       }))
-      .filter((s) => s.documentId !== args.documentId);
+      .filter((s: Score) => s.documentId !== args.documentId);
 
     const threshold = args.matchThreshold ?? 0.7;
-    let filtered = scores.filter((s) => s.score >= threshold);
+    let filtered: Score[] = scores.filter((s: Score) => s.score >= threshold);
     if (args.agentType) {
       const t = String(args.agentType).toLowerCase();
-      filtered = filtered.filter((s) =>
+      filtered = filtered.filter((s: Score) =>
         (s.agentKeys || []).some((k: string) => String(k).toLowerCase().includes(t))
       );
     }
     const limit = Math.max(1, Math.min(100, args.matchCount ?? 10));
-    return filtered.sort((a, b) => b.score - a.score).slice(0, limit);
+    return filtered.sort((a: Score, b: Score) => b.score - a.score).slice(0, limit);
   },
 });
 
@@ -417,36 +418,45 @@ export const semanticSearch = query({
     datasetId: v.optional(v.id("agentDatasets")),
   },
   handler: async (ctx, args) => {
-    let q = ctx.db.query("vectorChunks");
-    if (args.businessId) {
-      q = q.withIndex("by_business", qi => qi.eq("businessId", args.businessId as Id<"businesses">));
-    }
+    let pool: any[] = [];
     if (args.datasetId) {
-      q = q.withIndex("by_dataset", qi => qi.eq("datasetId", args.datasetId as Id<"agentDatasets">));
+      pool = await ctx.db
+        .query("vectorChunks")
+        .withIndex("by_dataset", (qi) => qi.eq("datasetId", args.datasetId as Id<"agentDatasets">))
+        .collect();
+    } else if (args.businessId) {
+      pool = await ctx.db
+        .query("vectorChunks")
+        .withIndex("by_business", (qi) => qi.eq("businessId", args.businessId as Id<"businesses">))
+        .collect();
+    } else {
+      pool = await ctx.db
+        .query("vectorChunks")
+        .withIndex("by_scope", (qi) => qi.eq("scope", "global"))
+        .collect();
     }
-    const pool = await q.collect();
 
-    let items = pool.map((p: any) => ({
-      id: p._id,
-      documentId: p?.meta?.documentId,
+    let items: any[] = pool.map((p: any) => ({
+      id: p._id as Id<"vectorChunks">,
+      documentId: p?.meta?.documentId as string | undefined,
       score: cosineSim(args.queryEmbedding, p.embedding || []),
       preview: (p.content || "").slice(0, 240),
-      agentKeys: p.agentKeys || [],
+      agentKeys: (p.agentKeys || []) as string[],
       businessId: p.businessId,
       datasetId: p.datasetId,
     }));
 
     const threshold = args.matchThreshold ?? 0.7;
-    items = items.filter((i) => i.score >= threshold);
+    items = items.filter((i: any) => i.score >= threshold);
 
     if (args.agentType) {
       const t = String(args.agentType).toLowerCase();
-      items = items.filter((i) =>
+      items = items.filter((i: any) =>
         (i.agentKeys || []).some((k: string) => String(k).toLowerCase().includes(t))
       );
     }
 
     const limit = Math.max(1, Math.min(100, args.matchCount ?? 10));
-    return items.sort((a, b) => b.score - a.score).slice(0, limit);
+    return items.sort((a: any, b: any) => b.score - a.score).slice(0, limit);
   },
 });

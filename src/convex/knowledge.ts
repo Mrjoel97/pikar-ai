@@ -12,7 +12,7 @@ export const createDocument = mutation({
     tags: v.optional(v.array(v.string())),
     createdBy: v.optional(v.id("users")),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<any> => {
     const now = Date.now();
     // Reuse docsPages table to avoid new schema
     const slug = args.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
@@ -30,7 +30,7 @@ export const createDocument = mutation({
 });
 
 // Text semantic search: embed text then query vectors
-export const semanticSearch = action({
+export const semanticSearch: any = action({
   args: {
     text: v.string(),
     matchThreshold: v.optional(v.number()),
@@ -40,8 +40,8 @@ export const semanticSearch = action({
     datasetId: v.optional(v.id("agentDatasets")),
   },
   handler: async (ctx, args) => {
-    const emb = await ctx.runAction(api.docProcessing.generateEmbedding, { text: args.text });
-    const results = await ctx.runQuery(api.vectors.semanticSearch, {
+    const emb: any = await ctx.runAction(api.docProcessing.generateEmbedding, { text: args.text });
+    const results: any = await ctx.runQuery(api.vectors.semanticSearch, {
       queryEmbedding: emb.embedding,
       matchThreshold: args.matchThreshold,
       matchCount: args.matchCount,

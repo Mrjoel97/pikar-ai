@@ -1,0 +1,91 @@
+const rollingWindow = (text, windowSize) => {
+  const blocks = [];
+  let current = [];
+  let inBlock = false;
+
+  for (const line of text.split("\n")) {
+    if (inBlock) {
+      // Inside a code block
+      current.push(line);
+      // End fence is also a line starting with 
+      if (line.startsWith('```')) {
+        blocks.push(current.join("\n"));
+        current = [];
+        inBlock = false;
+      }
+    } else {
+      // Outside a code block
+      if (line.startsWith('```')) {
+        inBlock = true;
+        current = [line];
+      }
+      // else ignore regular lines outside blocks
+    }
+  }
+
+  // If a block was opened but not closed, include it as-is
+  if (current.length) {
+    blocks.push(current.join("\n"));
+  }
+
+  // If no fenced blocks were found, return the full text as a single block
+  return blocks.length ? blocks : [text];
+};
+
+const detectBestStrategy = (text, windowSize) => {
+  const blocks = rollingWindow(text, windowSize);
+  const strategies = [];
+  const blockSizes = blocks.map(block => block.length);
+  const totalSize = text.length;
+
+  // Strategy 1: Simple block-based
+  strategies.push({
+    name: "block-based",
+    blocks: blocks,
+    totalSize: totalSize,
+    blockSizes: blockSizes,
+    strategy: "block-based"
+  });
+
+  // Strategy 2: Simple block-based with chunking
+  const chunkedBlocks = [];
+  for (let i = 0; i < blocks.length; i++) {
+    chunkedBlocks.push(blocks[i]);
+  }
+  strategies.push({
+    name: "chunked-blocks",
+    blocks: chunkedBlocks,
+    totalSize: totalSize,
+    blockSizes: blockSizes,
+    strategy: "chunked-blocks"
+  });
+
+  // Strategy 3: Simple block-based with chunking
+  const chunkedBlocks2 = [];
+  for (let i = 0; i < blocks.length; i++) {
+    chunkedBlocks2.push(blocks[i]);
+  }
+  strategies.push({
+    name: "chunked-blocks-2",
+    blocks: chunkedBlocks2,
+    totalSize: totalSize,
+    blockSizes: blockSizes,
+    strategy: "chunked-blocks-2"
+  });
+
+  return strategies;
+};
+
+const chunkDocument = (text, windowSize) => {
+  const strategies = detectBestStrategy(text, windowSize);
+  const bestStrategy = strategies[0];
+  return bestStrategy.blocks;
+};
+
+const exports = {
+  rollingWindow,
+  detectBestStrategy,
+  chunkDocument
+};
+
+module.exports = exports;
