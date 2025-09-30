@@ -10,3 +10,71 @@ const tail = text.slice(lastIndex).trim();
 if (tail) blocks.push(tail);
 return blocks.length ? blocks : [text];
 }
+
+// ... keep existing code (detectBestStrategy function if present)
+
+// Add rolling window packing, Chunk type, and chunkDocument export used by docProcessing
+function rollingWindow(parts: string[], chunkSize: number, overlap: number): string[] {
+  const out: string[] = [];
+  let buffer = "";
+
+  const flush = () => {
+    const t = buffer.trim();
+    if (t) out.push(t);
+  };
+
+  for (const part of parts) {
+    const sep = buffer ? "\n\n" : "";
+    const candidate = buffer + sep + part;
+    if (candidate.length <= (chunkSize || 1200)) {
+      buffer = candidate;
+      continue;
+    }
+
+    // flush current
+    flush();
+
+    // carry overlap from end of previous buffer
+    const carryLen = Math.max(0, Math.min(overlap || 0, buffer.length));
+    const carry = carryLen ? buffer.slice(buffer.length - carryLen) : "";
+    buffer = carry + (carry ? "\n\n" : "") + part;
+
+    // if still too big (single huge part), hard split with overlap
+    if (buffer.length > (chunkSize || 1200)) {
+      let start = 0;
+      while (start < buffer.length) {
+        const end = Math.min(start + (chunkSize || 1200), buffer.length);
+        const slice = buffer.slice(start, end).trim();
+        if (slice) out.push(slice);
+        if (end >= buffer.length) break;
+        start = Math.max(0, end - (overlap || 0));
+      }
+      buffer = "";
+    }
+  }
+
+  flush();
+  return out;
+}
+
+export type Chunk = {
+  text: string;
+  meta: {
+    strategy: ChunkStrategy;
+    estTokens: number;
+    readingSec: number;
+  };
+};
+
+export function chunkDocument(content: string, opts: ChunkingOptions = {}): Chunk[] {
+  const chunkSize = Math.max(200, Math.min(8000, opts.chunkSize ?? 1200));
+  const overlap = Math.max(0, Math.min(2000, opts.overlap ?? 200));
+  const strategy = (opts.strategy ?? "auto") as ChunkStrategy;
+  const docType = (opts.documentType ?? "TEXT") as DocumentType;
+
+  // Use existing detectBestStrategy if present; fallback simple detection
+  const chosen =
+    strategy === "auto"
+      ? (typeof detectBestStrategy === "function"
+          ? (detectBestStrategy as (t: string, d: DocumentType) => ChunkStrategy)(content, docType)
+          : (/

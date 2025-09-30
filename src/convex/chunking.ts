@@ -1,6 +1,5 @@
-import type { Value } from "convex/values";
-
 // Basic chunking utilities with multiple strategies and overlap support
+
 export type ChunkStrategy =
   | "auto"
   | "semantic"
@@ -72,4 +71,13 @@ function splitCodeBlocks(text: string): string[] {
     blocks.push(text.slice(match.index, match.index + match[0].length));
   }
   return blocks;
+}
+
+// Add strategy detection and main chunker utilities
+function detectBestStrategy(text: string, _docType: DocumentType): ChunkStrategy {
+  const t = text || "";
+  if (t.length < 100) return "sentence";
+  if (t.includes("##") || t.includes("###")) return "markdown";
+  if (t.includes("```")) return "code";
+  return "paragraph";
 }
