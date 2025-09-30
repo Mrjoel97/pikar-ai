@@ -1,0 +1,53 @@
+if (/^<([a-z]+)([^<]+)*(?:>(.*)<\/\1>|\s+\/>)$/im.test(text)) return "paragraph";
+if (text.split("\n").length > 40) return "paragraph";
+if (text.length < 800) return "sentence";
+return "paragraph";
+}
+
+export type Chunk = {
+  text: string;
+  meta: {
+    strategy: ChunkStrategy;
+    estTokens: number;
+    readingSec: number;
+  };
+};
+
+export function chunkDocument(content: string, opts: ChunkingOptions = {}): Chunk[] {
+  const chunkSize = Math.max(200, Math.min(8000, opts.chunkSize ?? 1200));
+  const overlap = Math.max(0, Math.min(2000, opts.overlap ?? 200));
+  const strategy = (opts.strategy ?? "auto") as ChunkStrategy;
+  const docType = (opts.documentType ?? "TEXT") as DocumentType;
+
+  const chosen = strategy === "auto" ? detectBestStrategy(content, docType) : strategy;
+
+  let baseParts: string[];
+  switch (chosen) {
+    case "markdown":
+      baseParts = splitMarkdownSections(content);
+      break;
+    case "code":
+      baseParts = splitCodeBlocks(content);
+      break;
+    case "sentence":
+      baseParts = splitSentences(content);
+      break;
+    case "semantic":
+      // For now, semantic behaves like paragraph with a note; can be upgraded later
+      baseParts = splitParagraphs(content);
+      break;
+    case "paragraph":
+    default:
+      baseParts = splitParagraphs(content);
+      break;
+  }
+
+  const windowed = rollingWindow(baseParts, chunkSize, overlap);
+  return windowed.map((t) => ({
+    text: t,
+    meta: { strategy: chosen, estTokens: Math.ceil((t || "").length / 4), readingSec: (() => {
+      const words = (t || "").trim().split(/\s+/g).filter(Boolean).length;
+      return Math.ceil((words / 200) * 60);
+    })() },
+  }));
+}

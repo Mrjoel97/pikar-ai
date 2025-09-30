@@ -1,6 +1,7 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import { api, internal } from "./_generated/api";
+import type { Id } from "./_generated/dataModel";
 
 // Admin-gated mutation to ingest chunks with deterministic pseudo-embeddings (no external action calls)
 export const adminIngestChunks: any = mutation({
@@ -305,5 +306,147 @@ export const ingestFromInitiatives = internalMutation({
       embedding,
       createdAt: Date.now(),
     } as any);
+  },
+});
+
+// Lightweight cosine similarity
+function cosineSim(a: number[], b: number[]): number {
+  if (!a.length || !b.length || a.length !== b.length) return 0;
+  let dot = 0, na = 0, nb = 0;
+  for (let i = 0; i < a.length; i++) {
+    dot += a[i] * b[i];
+    na += a[i] * a[i];
+    nb += b[i] * b[i];
+  }
+  if (!na || !nb) return 0;
+  return dot / (Math.sqrt(na) * Math.sqrt(nb));
+}
+
+// Store embeddings for chunks with metadata
+export const storeDocumentEmbeddings = mutation({
+  args: {
+    documentId: v.string(),
+    chunks: v.array(v.object({
+      content: v.string(),
+      embedding: v.array(v.number()),
+      meta: v.optional(v.any()),
+      scope: v.optional(v.union(v.literal("global"), v.literal("dataset"), v.literal("business"))),
+      businessId: v.optional(v.id("businesses")),
+      datasetId: v.optional(v.id("agentDatasets")),
+      agentKeys: v.optional(v.array(v.string())),
+    })),
+  },
+  handler: async (ctx, args) => {
+    const now = Date.now();
+    for (const c of args.chunks) {
+      await ctx.db.insert("vectorChunks", {
+        scope: c.scope ?? "business",
+        businessId: c.businessId,
+        datasetId: c.datasetId,
+        agentKeys: c.agentKeys ?? [],
+        content: c.content,
+        meta: { ...(c.meta ?? {}), documentId: args.documentId },
+        embedding: c.embedding,
+        createdAt: now,
+      } as any);
+    }
+    return { ok: true, added: args.chunks.length };
+  },
+});
+
+// Get embeddings (chunks) by documentId
+export const getDocumentEmbeddings = query({
+  args: { documentId: v.string() },
+  handler: async (ctx, args) => {
+    const all = await ctx.db.query("vectorChunks").withIndex("by_scope", q => q.eq("scope", "business")).collect();
+    return all.filter((r: any) => r?.meta?.documentId === args.documentId);
+  },
+});
+
+// Find similar documents given a documentId (aggregate chunk matches)
+export const findSimilarDocuments = query({
+  args: {
+    documentId: v.string(),
+    matchThreshold: v.optional(v.number()),
+    matchCount: v.optional(v.number()),
+    agentType: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const sourceChunks = await ctx.runQuery(api.vectors.getDocumentEmbeddings, { documentId: args.documentId });
+    if (!sourceChunks.length) return [];
+    // Use centroid of source embeddings
+    const dim = (sourceChunks[0]?.embedding || []).length;
+    const centroid = new Array(dim).fill(0);
+    for (const ch of sourceChunks) {
+      for (let i = 0; i < dim; i++) centroid[i] += ch.embedding[i] || 0;
+    }
+    for (let i = 0; i < dim; i++) centroid[i] /= sourceChunks.length;
+
+    const pool = await ctx.db.query("vectorChunks").collect();
+    const scores = pool
+      .map((p: any) => ({
+        id: p._id,
+        documentId: p?.meta?.documentId,
+        score: cosineSim(centroid, p.embedding || []),
+        preview: (p.content || "").slice(0, 240),
+        agentKeys: p.agentKeys || [],
+      }))
+      .filter((s) => s.documentId !== args.documentId);
+
+    const threshold = args.matchThreshold ?? 0.7;
+    let filtered = scores.filter((s) => s.score >= threshold);
+    if (args.agentType) {
+      const t = String(args.agentType).toLowerCase();
+      filtered = filtered.filter((s) =>
+        (s.agentKeys || []).some((k: string) => String(k).toLowerCase().includes(t))
+      );
+    }
+    const limit = Math.max(1, Math.min(100, args.matchCount ?? 10));
+    return filtered.sort((a, b) => b.score - a.score).slice(0, limit);
+  },
+});
+
+// Semantic search by embedding vector
+export const semanticSearch = query({
+  args: {
+    queryEmbedding: v.array(v.number()),
+    matchThreshold: v.optional(v.number()),
+    matchCount: v.optional(v.number()),
+    agentType: v.optional(v.string()),
+    businessId: v.optional(v.id("businesses")),
+    datasetId: v.optional(v.id("agentDatasets")),
+  },
+  handler: async (ctx, args) => {
+    let q = ctx.db.query("vectorChunks");
+    if (args.businessId) {
+      q = q.withIndex("by_business", qi => qi.eq("businessId", args.businessId as Id<"businesses">));
+    }
+    if (args.datasetId) {
+      q = q.withIndex("by_dataset", qi => qi.eq("datasetId", args.datasetId as Id<"agentDatasets">));
+    }
+    const pool = await q.collect();
+
+    let items = pool.map((p: any) => ({
+      id: p._id,
+      documentId: p?.meta?.documentId,
+      score: cosineSim(args.queryEmbedding, p.embedding || []),
+      preview: (p.content || "").slice(0, 240),
+      agentKeys: p.agentKeys || [],
+      businessId: p.businessId,
+      datasetId: p.datasetId,
+    }));
+
+    const threshold = args.matchThreshold ?? 0.7;
+    items = items.filter((i) => i.score >= threshold);
+
+    if (args.agentType) {
+      const t = String(args.agentType).toLowerCase();
+      items = items.filter((i) =>
+        (i.agentKeys || []).some((k: string) => String(k).toLowerCase().includes(t))
+      );
+    }
+
+    const limit = Math.max(1, Math.min(100, args.matchCount ?? 10));
+    return items.sort((a, b) => b.score - a.score).slice(0, limit);
   },
 });
