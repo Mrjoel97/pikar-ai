@@ -1962,7 +1962,6 @@ Renamed to avoid duplicate identifier collisions elsewhere in the file */
 
   // Add invoice state
   const [showInvoiceComposer, setShowInvoiceComposer] = useState(false);
-  const generateInvoicePdf = useAction(api.invoicesActions.generateInvoicePdf);
 
   // Add: One-Click Setup for Invoices
   const handleOneClickInvoice = async () => {
