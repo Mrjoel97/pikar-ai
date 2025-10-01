@@ -14,6 +14,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useNavigate } from "react-router";
 import { ExperimentDashboard } from "@/components/experiments/ExperimentDashboard";
 import { ExperimentCreator } from "@/components/experiments/ExperimentCreator";
+import type { Id } from "@/convex/_generated/dataModel";
 
 interface StartupDashboardProps {
   business: any;
@@ -521,7 +522,7 @@ const pendingApprovals = useQuery(
       {/* A/B Testing Experiments Dashboard */}
       {!isGuest && business?._id && (
         <section className="mb-6">
-          <ExperimentDashboard businessId={business._id} />
+          <ExperimentDashboard businessId={business._id as Id<"businesses">} />
         </section>
       )}
 
@@ -741,21 +742,23 @@ const pendingApprovals = useQuery(
       </Dialog>
 
       {/* Experiment Creator Modal */}
-      <Dialog open={showExperimentCreator} onOpenChange={setShowExperimentCreator}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Create A/B Test Experiment</DialogTitle>
-          </DialogHeader>
-          <ExperimentCreator
-            businessId={business._id}
-            onComplete={() => {
-              setShowExperimentCreator(false);
-              toast.success("Experiment created successfully!");
-            }}
-            onCancel={() => setShowExperimentCreator(false)}
-          />
-        </DialogContent>
-      </Dialog>
+      {business?._id && (
+        <Dialog open={showExperimentCreator} onOpenChange={setShowExperimentCreator}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Create A/B Test Experiment</DialogTitle>
+            </DialogHeader>
+            <ExperimentCreator
+              businessId={business._id as Id<"businesses">}
+              onComplete={() => {
+                setShowExperimentCreator(false);
+                toast.success("Experiment created successfully!");
+              }}
+              onCancel={() => setShowExperimentCreator(false)}
+            />
+          </DialogContent>
+        </Dialog>
+      )}
 
       {!isGuest && business?._id ? (
         <BrainDumpSection businessId={String(business._id)} />
