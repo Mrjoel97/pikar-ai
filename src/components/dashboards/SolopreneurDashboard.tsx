@@ -1033,8 +1033,7 @@ Renamed to avoid duplicate identifier collisions elsewhere in the file */
   const [savingQuickIdea, setSavingQuickIdea] = useState<boolean>(false);
   const addDumpTop = useMutation(api.initiatives.addBrainDump as any);
 
-  // Add invoice state
-  const [showInvoiceComposer, setShowInvoiceComposer] = useState(false);
+  // Invoice state already declared above - removed duplicate
   const generateInvoicePdf = useAction(api.invoicesActions.generateInvoicePdf);
 
   // Local loading state
