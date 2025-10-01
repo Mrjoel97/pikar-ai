@@ -1400,6 +1400,67 @@ const schema = defineSchema({
     .index("by_user", ["userId"])
     .index("by_timestamp", ["timestamp"]),
 
+  experiments: defineTable({
+    businessId: v.id("businesses"),
+    name: v.string(),
+    hypothesis: v.string(),
+    goal: v.union(v.literal("opens"), v.literal("clicks"), v.literal("conversions")),
+    status: v.union(
+      v.literal("draft"),
+      v.literal("running"),
+      v.literal("paused"),
+      v.literal("completed")
+    ),
+    createdBy: v.id("users"),
+    startedAt: v.optional(v.number()),
+    completedAt: v.optional(v.number()),
+    winnerVariantId: v.optional(v.id("experimentVariants")),
+    configuration: v.object({
+      confidenceLevel: v.number(),
+      minimumSampleSize: v.number(),
+      durationDays: v.number(),
+      autoDeclareWinner: v.boolean(),
+    }),
+    createdAt: v.number(),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_status", ["status"])
+    .index("by_business_and_status", ["businessId", "status"]),
+
+  experimentVariants: defineTable({
+    experimentId: v.id("experiments"),
+    variantKey: v.string(),
+    name: v.string(),
+    subject: v.string(),
+    body: v.string(),
+    buttons: v.optional(v.array(v.object({ text: v.string(), url: v.string() }))),
+    trafficSplit: v.number(),
+    metrics: v.object({
+      sent: v.number(),
+      opened: v.number(),
+      clicked: v.number(),
+      converted: v.number(),
+      revenue: v.number(),
+    }),
+  })
+    .index("by_experiment", ["experimentId"]),
+
+  experimentResults: defineTable({
+    experimentId: v.id("experiments"),
+    variantId: v.id("experimentVariants"),
+    recipientEmail: v.string(),
+    event: v.union(
+      v.literal("sent"),
+      v.literal("opened"),
+      v.literal("clicked"),
+      v.literal("converted")
+    ),
+    timestamp: v.number(),
+    metadata: v.optional(v.any()),
+  })
+    .index("by_experiment", ["experimentId"])
+    .index("by_variant", ["variantId"])
+    .index("by_experiment_and_event", ["experimentId", "event"]),
 });
 
 export default schema;

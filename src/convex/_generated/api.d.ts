@@ -48,6 +48,7 @@ import type * as emailsActions from "../emailsActions.js";
 import type * as entitlements from "../entitlements.js";
 import type * as evals from "../evals.js";
 import type * as evalsInternal from "../evalsInternal.js";
+import type * as experiments from "../experiments.js";
 import type * as featureFlags from "../featureFlags.js";
 import type * as files from "../files.js";
 import type * as governance from "../governance.js";
@@ -138,6 +139,7 @@ declare const fullApi: ApiFromModules<{
   entitlements: typeof entitlements;
   evals: typeof evals;
   evalsInternal: typeof evalsInternal;
+  experiments: typeof experiments;
   featureFlags: typeof featureFlags;
   files: typeof files;
   governance: typeof governance;

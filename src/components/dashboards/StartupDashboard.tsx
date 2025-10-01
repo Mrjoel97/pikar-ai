@@ -12,6 +12,8 @@ import CampaignComposer from "@/components/email/CampaignComposer";
 import { Suspense } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useNavigate } from "react-router";
+import { ExperimentDashboard } from "@/components/experiments/ExperimentDashboard";
+import { ExperimentCreator } from "@/components/experiments/ExperimentCreator";
 
 interface StartupDashboardProps {
   business: any;
@@ -133,6 +135,7 @@ const pendingApprovals = useQuery(
 
   // Add: composer modal state
   const [showComposer, setShowComposer] = useState(false);
+  const [showExperimentCreator, setShowExperimentCreator] = useState(false);
 
   function BrainDumpSection({ businessId }: { businessId: string }) {
     const initiatives = useQuery(
@@ -501,14 +504,26 @@ const pendingApprovals = useQuery(
             </CardContent>
           </Card>
         </div>
-        {(!campaigns || campaigns === "skip" || campaigns.length === 0) && !isGuest && (
-          <div className="mt-2">
-            <Button asChild variant="outline" size="sm">
-              <a href="/analytics">Start a test</a>
+        <div className="mt-4 flex gap-2">
+          {!isGuest && business?._id && (
+            <Button onClick={() => setShowExperimentCreator(true)}>
+              Create A/B Test
             </Button>
-          </div>
-        )}
+          )}
+          {(!campaigns || campaigns === "skip" || campaigns.length === 0) && !isGuest && (
+            <Button asChild variant="outline" size="sm">
+              <a href="/analytics">View Analytics</a>
+            </Button>
+          )}
+        </div>
       </section>
+
+      {/* A/B Testing Experiments Dashboard */}
+      {!isGuest && business?._id && (
+        <section className="mb-6">
+          <ExperimentDashboard businessId={business._id} />
+        </section>
+      )}
 
       {/* Email Campaigns section with skeleton loading */}
       <Card>
@@ -725,7 +740,23 @@ const pendingApprovals = useQuery(
         </DialogContent>
       </Dialog>
 
-      {/* Brain Dump */}
+      {/* Experiment Creator Modal */}
+      <Dialog open={showExperimentCreator} onOpenChange={setShowExperimentCreator}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Create A/B Test Experiment</DialogTitle>
+          </DialogHeader>
+          <ExperimentCreator
+            businessId={business._id}
+            onComplete={() => {
+              setShowExperimentCreator(false);
+              toast.success("Experiment created successfully!");
+            }}
+            onCancel={() => setShowExperimentCreator(false)}
+          />
+        </DialogContent>
+      </Dialog>
+
       {!isGuest && business?._id ? (
         <BrainDumpSection businessId={String(business._id)} />
       ) : null}

@@ -74,6 +74,8 @@ export const createCampaign = mutation({
       text: v.string(),
       url: v.string(),
     }))),
+    experimentId: v.optional(v.id("experiments")),
+    variantId: v.optional(v.id("experimentVariants")),
     scheduledAt: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
