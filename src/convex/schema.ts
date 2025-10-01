@@ -1338,6 +1338,53 @@ const schema = defineSchema({
     .index("by_business_and_status", ["businessId", "status"])
     .index("by_user", ["createdBy"]),
 
+  // Social media integrations
+  socialAccounts: defineTable({
+    businessId: v.id("businesses"),
+    userId: v.id("users"),
+    platform: v.union(v.literal("twitter"), v.literal("linkedin"), v.literal("facebook")),
+    accountName: v.string(),
+    accountId: v.string(), // Platform-specific user/page ID
+    accessToken: v.string(), // Should be encrypted in production
+    refreshToken: v.optional(v.string()),
+    tokenExpiresAt: v.optional(v.number()),
+    isActive: v.boolean(),
+    connectedAt: v.number(),
+    lastUsedAt: v.optional(v.number()),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_business_and_platform", ["businessId", "platform"])
+    .index("by_user", ["userId"]),
+
+  socialPosts: defineTable({
+    businessId: v.id("businesses"),
+    createdBy: v.id("users"),
+    platforms: v.array(v.union(v.literal("twitter"), v.literal("linkedin"), v.literal("facebook"))),
+    content: v.string(),
+    mediaUrls: v.optional(v.array(v.id("_storage"))),
+    characterCount: v.number(),
+    scheduledAt: v.optional(v.number()),
+    postedAt: v.optional(v.number()),
+    status: v.union(
+      v.literal("draft"),
+      v.literal("scheduled"),
+      v.literal("posting"),
+      v.literal("posted"),
+      v.literal("failed")
+    ),
+    errorMessage: v.optional(v.string()),
+    postIds: v.optional(v.object({
+      twitter: v.optional(v.string()),
+      linkedin: v.optional(v.string()),
+      facebook: v.optional(v.string()),
+    })),
+    metadata: v.optional(v.any()),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_business_and_status", ["businessId", "status"])
+    .index("by_scheduled_at", ["scheduledAt"])
+    .index("by_status_and_scheduled", ["status", "scheduledAt"]),
+
 });
 
 export default schema;

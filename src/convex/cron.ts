@@ -11,6 +11,14 @@ crons.interval(
   {}
 );
 
+// Process scheduled social posts every 5 minutes
+crons.interval(
+  "process social posts",
+  { minutes: 5 },
+  internal.socialPostsCron.processSocialPosts,
+  {}
+);
+
 // Add SLA sweep cron
 crons.interval("approval SLA sweep", { minutes: 10 }, internal.approvals.sweepOverdueApprovals, {});
 
