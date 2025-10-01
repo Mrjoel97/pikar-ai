@@ -52,6 +52,8 @@ import type * as http from "../http.js";
 import type * as init from "../init.js";
 import type * as initiatives from "../initiatives.js";
 import type * as inspector from "../inspector.js";
+import type * as invoices from "../invoices.js";
+import type * as invoicesActions from "../invoicesActions.js";
 import type * as kgraph from "../kgraph.js";
 import type * as knowledge from "../knowledge.js";
 import type * as kpis from "../kpis.js";
@@ -131,6 +133,8 @@ declare const fullApi: ApiFromModules<{
   init: typeof init;
   initiatives: typeof initiatives;
   inspector: typeof inspector;
+  invoices: typeof invoices;
+  invoicesActions: typeof invoicesActions;
   kgraph: typeof kgraph;
   knowledge: typeof knowledge;
   kpis: typeof kpis;

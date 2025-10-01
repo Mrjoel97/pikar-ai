@@ -1261,6 +1261,64 @@ const schema = defineSchema({
   })
     .index("by_agent_key", ["agent_key"]),
 
+  // Invoice system tables
+  invoiceTemplates: defineTable({
+    businessId: v.id("businesses"),
+    name: v.string(),
+    logoUrl: v.optional(v.string()),
+    fromName: v.string(),
+    fromAddress: v.string(),
+    fromEmail: v.string(),
+    fromPhone: v.optional(v.string()),
+    taxRate: v.number(),
+    currency: v.string(),
+    notes: v.optional(v.string()),
+    terms: v.optional(v.string()),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_business", ["businessId"]),
+
+  invoices: defineTable({
+    businessId: v.id("businesses"),
+    templateId: v.optional(v.id("invoiceTemplates")),
+    invoiceNumber: v.string(),
+    clientName: v.string(),
+    clientEmail: v.string(),
+    clientAddress: v.optional(v.string()),
+    items: v.array(
+      v.object({
+        description: v.string(),
+        quantity: v.number(),
+        unitPrice: v.number(),
+        amount: v.number(),
+      })
+    ),
+    subtotal: v.number(),
+    taxRate: v.number(),
+    taxAmount: v.number(),
+    total: v.number(),
+    currency: v.string(),
+    status: v.union(
+      v.literal("draft"),
+      v.literal("sent"),
+      v.literal("paid"),
+      v.literal("overdue")
+    ),
+    issueDate: v.number(),
+    dueDate: v.number(),
+    paidAt: v.optional(v.number()),
+    notes: v.optional(v.string()),
+    terms: v.optional(v.string()),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_status", ["status"])
+    .index("by_invoice_number", ["invoiceNumber"]),
+
 });
 
 export default schema;

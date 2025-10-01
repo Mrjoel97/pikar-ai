@@ -21,6 +21,8 @@ import {
 import { useAuth } from "@/hooks/use-auth";
 import CampaignComposer from "@/components/email/CampaignComposer";
 import { motion } from "framer-motion";
+import { FileText } from "lucide-react";
+import { InvoiceComposer } from "@/components/invoices/InvoiceComposer";
 /* removed unused Alert imports */
 
 interface SolopreneurDashboardProps {
@@ -1031,6 +1033,10 @@ Renamed to avoid duplicate identifier collisions elsewhere in the file */
   const [savingQuickIdea, setSavingQuickIdea] = useState<boolean>(false);
   const addDumpTop = useMutation(api.initiatives.addBrainDump as any);
 
+  // Add invoice state
+  const [showInvoiceComposer, setShowInvoiceComposer] = useState(false);
+  const generateInvoicePdf = useAction(api.invoicesActions.generateInvoicePdf);
+
   // Local loading state
   const [settingUp, setSettingUp] = useState(false);
 
@@ -1954,6 +1960,55 @@ Renamed to avoid duplicate identifier collisions elsewhere in the file */
   const solAgents = useQuery(api.aiAgents.listRecommendedByTier, { tier: solTier, limit: 3 });
   const solAgentsEnabled = !!solFlags?.find(f => f.flagName === "solopreneur_quick_actions")?.isEnabled;
   const nav = useNavigate();
+
+  // Add invoice state
+  const [showInvoiceComposer, setShowInvoiceComposer] = useState(false);
+  const generateInvoicePdf = useAction(api.invoicesActions.generateInvoicePdf);
+
+  // Add: One-Click Setup for Invoices
+  const handleOneClickInvoice = async () => {
+    try {
+      // First create a demo invoice
+      const demoInvoiceId = await createInvoice({
+        businessId: business._id,
+        invoiceNumber: `INV-${Date.now()}`,
+        clientName: "Demo Client",
+        clientEmail: "demo@example.com",
+        items: [
+          {
+            description: "Consulting Services",
+            quantity: 1,
+            unitPrice: 1000,
+            amount: 1000,
+          },
+        ],
+        subtotal: 1000,
+        taxRate: 10,
+        taxAmount: 100,
+        total: 1100,
+        currency: "USD",
+        issueDate: Date.now(),
+        dueDate: Date.now() + 30 * 24 * 60 * 60 * 1000,
+      });
+
+      // Generate PDF
+      const result = await generateInvoicePdf({ invoiceId: demoInvoiceId });
+      
+      toast.success("Invoice generated successfully!", {
+        description: "Your demo invoice is ready to download.",
+      });
+
+      // Log win
+      await logWin({
+        businessId: business._id,
+        winType: "invoice_generated",
+        timeSavedMinutes: 15,
+      });
+    } catch (error) {
+      toast.error("Failed to generate invoice");
+      console.error(error);
+    }
+  };
 
   return (
     <motion.div
@@ -3253,6 +3308,15 @@ Renamed to avoid duplicate identifier collisions elsewhere in the file */
             Seed Demo Data
           </Button>
         </div>
+      )}
+
+      {/* Add Invoice Composer Modal */}
+      {showInvoiceComposer && (
+        <InvoiceComposer
+          open={showInvoiceComposer}
+          onOpenChange={setShowInvoiceComposer}
+          businessId={business._id}
+        />
       )}
     </motion.div>
   );
