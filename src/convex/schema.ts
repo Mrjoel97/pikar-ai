@@ -1319,6 +1319,25 @@ const schema = defineSchema({
     .index("by_status", ["status"])
     .index("by_invoice_number", ["invoiceNumber"]),
 
+  emailDrafts: defineTable({
+    businessId: v.id("businesses"),
+    createdBy: v.id("users"),
+    recipientEmail: v.string(),
+    subject: v.string(),
+    body: v.string(),
+    status: v.union(v.literal("draft"), v.literal("sent"), v.literal("archived")),
+    tone: v.optional(v.union(v.literal("concise"), v.literal("friendly"), v.literal("premium"))),
+    metadata: v.optional(v.object({
+      intent: v.optional(v.string()),
+      aiGenerated: v.optional(v.boolean()),
+    })),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_business_and_status", ["businessId", "status"])
+    .index("by_user", ["createdBy"]),
+
 });
 
 export default schema;

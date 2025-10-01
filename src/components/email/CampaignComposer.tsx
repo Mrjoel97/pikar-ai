@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from "react";
+import React, { useState, useCallback, useMemo, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -17,6 +17,7 @@ import type { Id } from "@/convex/_generated/dataModel";
 import { Switch } from "@/components/ui/switch";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useNavigate } from "react-router";
+import { DraftsList } from "./DraftsList";
 
 type AgentTone = "concise" | "friendly" | "premium";
 type AgentPersona = "maker" | "coach" | "executive";
@@ -67,6 +68,16 @@ export function CampaignComposer({ businessId, onClose, onCreated, defaultSchedu
   const [csvListName, setCsvListName] = useState("");
   const [csvPreview, setCsvPreview] = useState<CsvContact[]>([]);
 
+  // Add draft dialog state
+  const [draftDialogOpen, setDraftDialogOpen] = useState(false);
+  const [selectedDraftId, setSelectedDraftId] = useState<Id<"emailDrafts"> | null>(null);
+
+  // Add query for selected draft
+  const selectedDraft = useQuery(
+    api.emailDrafts.getDraft,
+    selectedDraftId ? { draftId: selectedDraftId } : "skip"
+  );
+
   // Queries and mutations
   const contactLists = useQuery(api.contacts.listLists, { businessId });
   const createCampaign = useMutation(api.emails.createCampaign);
@@ -82,6 +93,26 @@ export function CampaignComposer({ businessId, onClose, onCreated, defaultSchedu
 
   const selectedList = contactLists?.find((list: any) => list._id === selectedListId);
   const recipientCount = selectedList ? "Loading..." : directRecipients.split(",").filter(Boolean).length;
+
+  // Add handler to load draft
+  const handleLoadDraft = (draftId: Id<"emailDrafts">) => {
+    setSelectedDraftId(draftId);
+    setDraftDialogOpen(false);
+  };
+
+  // Effect to populate form from selected draft
+  useEffect(() => {
+    if (selectedDraft) {
+      setFormData(prev => ({
+        ...prev,
+        subject: selectedDraft.subject,
+        body: selectedDraft.body,
+      }));
+      setDirectRecipients(selectedDraft.recipientEmail);
+      setAudienceType("direct");
+      toast.success("Draft loaded!");
+    }
+  }, [selectedDraft]);
 
   // Add: expanded compliance checks including consent/unsub language with docs link
   const preflightWarnings = React.useMemo(() => {
@@ -294,6 +325,27 @@ export function CampaignComposer({ businessId, onClose, onCreated, defaultSchedu
 
   return (
     <div className="space-y-6 max-w-2xl mx-auto">
+      {/* Add Load from Draft button at the top */}
+      <div className="flex justify-between items-center">
+        <Dialog open={draftDialogOpen} onOpenChange={setDraftDialogOpen}>
+          <DialogTrigger asChild>
+            <Button variant="outline" size="sm">
+              <FileText className="h-4 w-4 mr-2" />
+              Load from Draft
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Select a Draft</DialogTitle>
+            </DialogHeader>
+            <DraftsList
+              businessId={businessId}
+              onSelectDraft={handleLoadDraft}
+            />
+          </DialogContent>
+        </Dialog>
+      </div>
+
       {typeof defaultScheduledAt === "number" && (
         <div className="flex items-center gap-2">
           <Badge variant="secondary">
