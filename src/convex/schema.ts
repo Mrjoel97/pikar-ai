@@ -892,6 +892,7 @@ const schema = defineSchema({
     timezone: v.optional(v.string()),
     preferences: v.optional(
       v.object({
+        hourlyRate: v.optional(v.number()),
         automations: v.object({
           invoicing: v.optional(v.boolean()),
           emailDrafts: v.optional(v.boolean()),
@@ -1384,6 +1385,20 @@ const schema = defineSchema({
     .index("by_business_and_status", ["businessId", "status"])
     .index("by_scheduled_at", ["scheduledAt"])
     .index("by_status_and_scheduled", ["status", "scheduledAt"]),
+
+  // Revenue Events for ROI tracking
+  revenueEvents: defineTable({
+    businessId: v.id("businesses"),
+    userId: v.id("users"),
+    amount: v.number(),
+    source: v.string(),
+    description: v.optional(v.string()),
+    metadata: v.optional(v.any()),
+    timestamp: v.number(),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_user", ["userId"])
+    .index("by_timestamp", ["timestamp"]),
 
 });
 
