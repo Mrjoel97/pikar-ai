@@ -23,6 +23,7 @@ import CampaignComposer from "@/components/email/CampaignComposer";
 import { motion } from "framer-motion";
 import { FileText } from "lucide-react";
 import { InvoiceComposer } from "@/components/invoices/InvoiceComposer";
+import { ContentCalendar } from "@/components/calendar/ContentCalendar";
 /* removed unused Alert imports */
 
 interface SolopreneurDashboardProps {
@@ -2008,6 +2009,9 @@ Renamed to avoid duplicate identifier collisions elsewhere in the file */
     }
   };
 
+  // Add state for showing the calendar
+  const [showCalendar, setShowCalendar] = useState(false);
+
   return (
     <motion.div
       className="space-y-4"
@@ -3061,6 +3065,15 @@ Renamed to avoid duplicate identifier collisions elsewhere in the file */
               Close
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Calendar Dialog */}
+      <Dialog open={showCalendar} onOpenChange={setShowCalendar}>
+        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+          {business?._id && user?._id && (
+            <ContentCalendar businessId={business._id} userId={user._id} />
+          )}
         </DialogContent>
       </Dialog>
 
