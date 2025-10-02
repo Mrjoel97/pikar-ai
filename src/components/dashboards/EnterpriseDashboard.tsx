@@ -11,6 +11,10 @@ import { toast } from "sonner";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { useNavigate } from "react-router";
+import { RoiDashboard } from "./RoiDashboard";
+import { ExperimentDashboard } from "@/components/experiments/ExperimentDashboard";
+import { ExperimentCreator } from "@/components/experiments/ExperimentCreator";
+import { Id } from "@/convex/_generated/dataModel";
 
 interface EnterpriseDashboardProps {
   business: any;
@@ -268,6 +272,22 @@ export function EnterpriseDashboard({
   const entAgents = useQuery(api.aiAgents.listRecommendedByTier, { tier: entTier, limit: 3 });
   const entAgentsEnabled = !!entFlags?.find((f: any) => f.flagName === "enterprise_governance")?.isEnabled;
   const nav = useNavigate();
+
+  // CRM Integration Status
+  const crmConnections = useQuery(
+    api.crmIntegrations.listConnections,
+    isGuest || !businessId ? undefined : { businessId }
+  );
+  const crmConflicts = useQuery(
+    api.crmIntegrations.listConflicts,
+    isGuest || !businessId ? undefined : { businessId, limit: 10 }
+  );
+
+  // A/B Testing State
+  const [showExperimentCreator, setShowExperimentCreator] = useState(false);
+
+  // ROI Dashboard State
+  const [showRoiDashboard, setShowRoiDashboard] = useState(false);
 
   return (
     <div className="space-y-6">
@@ -808,10 +828,132 @@ export function EnterpriseDashboard({
         </Card>
       </div>
 
+      {/* Advanced Analytics & Testing */}
+      <section>
+        <h2 className="text-xl font-semibold mb-4">Advanced Analytics</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle>CRM Integration</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {isGuest ? (
+                <div className="text-sm text-muted-foreground">
+                  Demo: Enterprise CRM integration available.
+                </div>
+              ) : !crmConnections ? (
+                <div className="text-sm text-muted-foreground">Loading…</div>
+              ) : (
+                <>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm">Connected</span>
+                    <Badge variant="outline">{crmConnections?.length || 0}</Badge>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm">Conflicts</span>
+                    <Badge variant={crmConflicts && crmConflicts.length > 0 ? "destructive" : "outline"}>
+                      {crmConflicts?.length || 0}
+                    </Badge>
+                  </div>
+                  <Button size="sm" className="w-full" onClick={() => nav("/crm")}>
+                    Manage CRM
+                  </Button>
+                </>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle>A/B Testing</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {!isGuest && business?._id ? (
+                <>
+                  <div className="text-sm text-muted-foreground mb-3">
+                    Run experiments across campaigns
+                  </div>
+                  <Button 
+                    size="sm" 
+                    className="w-full"
+                    onClick={() => setShowExperimentCreator(true)}
+                  >
+                    Create Experiment
+                  </Button>
+                </>
+              ) : (
+                <div className="text-sm text-muted-foreground">
+                  Sign in to manage experiments.
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle>ROI Tracking</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-sm text-muted-foreground mb-3">
+                Time-to-revenue analytics
+              </div>
+              <Button 
+                size="sm" 
+                className="w-full"
+                onClick={() => setShowRoiDashboard(true)}
+              >
+                View ROI Dashboard
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </section>
+
+      {/* A/B Testing Dashboard */}
+      {!isGuest && business?._id && (
+        <section>
+          <h2 className="text-xl font-semibold mb-4">Experiment Dashboard</h2>
+          <Card>
+            <CardContent className="p-4">
+              <ExperimentDashboard businessId={business._id as Id<"businesses">} />
+            </CardContent>
+          </Card>
+        </section>
+      )}
+
       {/* Brain Dump */}
       {!isGuest && business?._id ? (
         <BrainDumpSection businessId={String(business._id)} />
       ) : null}
+
+      {/* Experiment Creator Modal */}
+      {showExperimentCreator && !isGuest && business?._id && (
+        <ExperimentCreator
+          businessId={business._id as Id<"businesses">}
+          onComplete={() => setShowExperimentCreator(false)}
+          onCancel={() => setShowExperimentCreator(false)}
+        />
+      )}
+
+      {/* ROI Dashboard Modal */}
+      {showRoiDashboard && !isGuest && business?._id && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-auto">
+            <div className="p-4 border-b flex items-center justify-between">
+              <h2 className="text-xl font-semibold">ROI Dashboard</h2>
+              <Button size="sm" variant="ghost" onClick={() => setShowRoiDashboard(false)}>
+                Close
+              </Button>
+            </div>
+            <div className="p-4">
+              <RoiDashboard 
+                businessId={business._id}
+                userId={business.ownerId}
+              />
+            </div>
+          </div>
+        </div>
+      )}
 
       {entAgentsEnabled && Array.isArray(entAgents) && entAgents.length > 0 && (
         <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3">

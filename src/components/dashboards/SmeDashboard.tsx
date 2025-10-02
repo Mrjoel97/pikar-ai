@@ -7,6 +7,10 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import * as React from "react";
 import { useNavigate } from "react-router";
+import { RoiDashboard } from "./RoiDashboard";
+import { ExperimentDashboard } from "@/components/experiments/ExperimentDashboard";
+import { ExperimentCreator } from "@/components/experiments/ExperimentCreator";
+import { Id } from "@/convex/_generated/dataModel";
 
 interface SmeDashboardProps {
   business: any;
@@ -124,6 +128,22 @@ export function SmeDashboard({
   const smeAgents = useQuery(api.aiAgents.listRecommendedByTier, { tier: smeTier, limit: 3 });
   const smeAgentsEnabled = !!smeFlags?.find((f: any) => f.flagName === "sme_insights")?.isEnabled;
   const nav = useNavigate();
+
+  // CRM Integration Status
+  const crmConnections = useQuery(
+    api.crmIntegrations.listConnections,
+    isGuest || !businessId ? undefined : { businessId }
+  );
+  const crmConflicts = useQuery(
+    api.crmIntegrations.listConflicts,
+    isGuest || !businessId ? undefined : { businessId, limit: 10 }
+  );
+
+  // A/B Testing State
+  const [showExperimentCreator, setShowExperimentCreator] = React.useState(false);
+
+  // ROI Dashboard State
+  const [showRoiDashboard, setShowRoiDashboard] = React.useState(false);
 
   function BrainDumpSection({ businessId }: { businessId: string }) {
     const initiatives = useQuery(
@@ -656,10 +676,140 @@ export function SmeDashboard({
         </div>
       </section>
 
+      {/* CRM Integration Status */}
+      <section>
+        <h2 className="text-xl font-semibold mb-4">CRM Integration</h2>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle>CRM Sync Status</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {isGuest ? (
+              <div className="text-sm text-muted-foreground">
+                Demo: CRM integration available for authenticated users.
+              </div>
+            ) : !crmConnections ? (
+              <div className="text-sm text-muted-foreground">Loading CRM status…</div>
+            ) : (
+              <>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm">Connected Platforms</span>
+                  <Badge variant="outline">{crmConnections?.length || 0}</Badge>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm">Pending Conflicts</span>
+                  <Badge variant={crmConflicts && crmConflicts.length > 0 ? "destructive" : "outline"}>
+                    {crmConflicts?.length || 0}
+                  </Badge>
+                </div>
+                <Button 
+                  size="sm" 
+                  className="w-full"
+                  onClick={() => nav("/crm")}
+                >
+                  Manage CRM
+                </Button>
+              </>
+            )}
+          </CardContent>
+        </Card>
+      </section>
+
+      {/* A/B Testing Summary */}
+      <section>
+        <h2 className="text-xl font-semibold mb-4">A/B Testing</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle>Experiment Dashboard</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {!isGuest && business?._id ? (
+                <>
+                  <ExperimentDashboard businessId={business._id as Id<"businesses">} />
+                  <Button 
+                    size="sm" 
+                    className="w-full mt-3"
+                    onClick={() => setShowExperimentCreator(true)}
+                  >
+                    Create New Experiment
+                  </Button>
+                </>
+              ) : (
+                <div className="text-sm text-muted-foreground">
+                  Sign in to create and manage A/B tests for your campaigns.
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="border-dashed">
+            <CardHeader className="pb-2">
+              <CardTitle>Quick Actions</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <Button 
+                size="sm" 
+                variant="outline" 
+                className="w-full"
+                onClick={() => nav("/workflows")}
+              >
+                Create Campaign
+              </Button>
+              <Button 
+                size="sm" 
+                variant="outline" 
+                className="w-full"
+                onClick={() => nav("/invoices")}
+              >
+                Manage Invoices
+              </Button>
+              <Button 
+                size="sm" 
+                variant="outline" 
+                className="w-full"
+                onClick={() => setShowRoiDashboard(true)}
+              >
+                View ROI Dashboard
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </section>
+
       {/* Brain Dump */}
       {!isGuest && business?._id ? (
         <BrainDumpSection businessId={String(business._id)} />
       ) : null}
+
+      {/* Experiment Creator Modal */}
+      {showExperimentCreator && !isGuest && business?._id && (
+        <ExperimentCreator
+          businessId={business._id as Id<"businesses">}
+          onComplete={() => setShowExperimentCreator(false)}
+          onCancel={() => setShowExperimentCreator(false)}
+        />
+      )}
+
+      {/* ROI Dashboard Modal */}
+      {showRoiDashboard && !isGuest && business?._id && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-auto">
+            <div className="p-4 border-b flex items-center justify-between">
+              <h2 className="text-xl font-semibold">ROI Dashboard</h2>
+              <Button size="sm" variant="ghost" onClick={() => setShowRoiDashboard(false)}>
+                Close
+              </Button>
+            </div>
+            <div className="p-4">
+              <RoiDashboard 
+                businessId={business._id}
+                userId={business.ownerId}
+              />
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="mt-6">
         <Card className="border-dashed">
