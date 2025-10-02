@@ -415,4 +415,177 @@ http.route({
   }),
 });
 
+/**
+ * SCIM 2.0 Protocol Endpoints
+ * Handles user and group provisioning from IdPs
+ */
+
+// Helper to verify SCIM bearer token
+async function verifyScimToken(ctx: any, authHeader: string | null): Promise<boolean> {
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return false;
+  }
+  
+  const token = authHeader.substring(7);
+  
+  // In production, verify token against stored hash
+  // For now, simple check
+  const apiKey = await ctx.runQuery(internal.admin.listApiKeys, { tenantId: undefined });
+  return apiKey?.some((key: any) => key.keyHash === token && key.scopes.includes("scim:read"));
+}
+
+// SCIM Users endpoint - List users
+http.route({
+  path: "/scim/v2/Users",
+  method: "GET",
+  handler: httpAction(async (ctx, req) => {
+    const authHeader = req.headers.get("authorization");
+    const isAuthorized = await verifyScimToken(ctx, authHeader);
+    
+    if (!isAuthorized) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), { 
+        status: 401,
+        headers: { "Content-Type": "application/scim+json" }
+      });
+    }
+
+    // Return SCIM-formatted user list
+    return new Response(JSON.stringify({
+      schemas: ["urn:ietf:params:scim:api:messages:2.0:ListResponse"],
+      totalResults: 0,
+      Resources: []
+    }), {
+      status: 200,
+      headers: { "Content-Type": "application/scim+json" }
+    });
+  }),
+});
+
+// SCIM Users endpoint - Create user
+http.route({
+  path: "/scim/v2/Users",
+  method: "POST",
+  handler: httpAction(async (ctx, req) => {
+    const authHeader = req.headers.get("authorization");
+    const isAuthorized = await verifyScimToken(ctx, authHeader);
+    
+    if (!isAuthorized) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), { 
+        status: 401,
+        headers: { "Content-Type": "application/scim+json" }
+      });
+    }
+
+    try {
+      const body = await req.json();
+      const email = body.emails?.[0]?.value || body.userName;
+      
+      await ctx.runMutation(internal.scim.syncUserFromIdP, {
+        scimId: body.id || `scim-${Date.now()}`,
+        userName: body.userName,
+        email,
+        givenName: body.name?.givenName,
+        familyName: body.name?.familyName,
+        active: body.active ?? true,
+        externalId: body.externalId,
+      });
+
+      return new Response(JSON.stringify({
+        schemas: ["urn:ietf:params:scim:schemas:core:2.0:User"],
+        id: body.id || `scim-${Date.now()}`,
+        userName: body.userName,
+        active: body.active ?? true,
+        meta: {
+          resourceType: "User",
+          created: new Date().toISOString(),
+          lastModified: new Date().toISOString(),
+        }
+      }), {
+        status: 201,
+        headers: { "Content-Type": "application/scim+json" }
+      });
+    } catch (error: any) {
+      return new Response(JSON.stringify({ error: error.message }), {
+        status: 500,
+        headers: { "Content-Type": "application/scim+json" }
+      });
+    }
+  }),
+});
+
+// SCIM Groups endpoint - List groups
+http.route({
+  path: "/scim/v2/Groups",
+  method: "GET",
+  handler: httpAction(async (ctx, req) => {
+    const authHeader = req.headers.get("authorization");
+    const isAuthorized = await verifyScimToken(ctx, authHeader);
+    
+    if (!isAuthorized) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), { 
+        status: 401,
+        headers: { "Content-Type": "application/scim+json" }
+      });
+    }
+
+    return new Response(JSON.stringify({
+      schemas: ["urn:ietf:params:scim:api:messages:2.0:ListResponse"],
+      totalResults: 0,
+      Resources: []
+    }), {
+      status: 200,
+      headers: { "Content-Type": "application/scim+json" }
+    });
+  }),
+});
+
+// SCIM Groups endpoint - Create group
+http.route({
+  path: "/scim/v2/Groups",
+  method: "POST",
+  handler: httpAction(async (ctx, req) => {
+    const authHeader = req.headers.get("authorization");
+    const isAuthorized = await verifyScimToken(ctx, authHeader);
+    
+    if (!isAuthorized) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), { 
+        status: 401,
+        headers: { "Content-Type": "application/scim+json" }
+      });
+    }
+
+    try {
+      const body = await req.json();
+      const memberIds = body.members?.map((m: any) => m.value) || [];
+      
+      await ctx.runMutation(internal.scim.syncGroupFromIdP, {
+        scimId: body.id || `scim-group-${Date.now()}`,
+        displayName: body.displayName,
+        memberIds,
+        externalId: body.externalId,
+      });
+
+      return new Response(JSON.stringify({
+        schemas: ["urn:ietf:params:scim:schemas:core:2.0:Group"],
+        id: body.id || `scim-group-${Date.now()}`,
+        displayName: body.displayName,
+        members: body.members || [],
+        meta: {
+          resourceType: "Group",
+          created: new Date().toISOString(),
+          lastModified: new Date().toISOString(),
+        }
+      }), {
+        status: 201,
+        headers: { "Content-Type": "application/scim+json" }
+      });
+    } catch (error: any) {
+      return new Response(JSON.stringify({ error: error.message }), {
+        status: 500,
+        headers: { "Content-Type": "application/scim+json" }
+      });
+    }
+  }),
+});
+
 export default http;

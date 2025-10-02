@@ -1625,6 +1625,20 @@ const schema = defineSchema({
     .index("by_business", ["businessId"])
     .index("by_active", ["active"]),
 
+  // SCIM Sync Log
+  scimSyncLog: defineTable({
+    entityType: v.union(v.literal("user"), v.literal("group"), v.literal("system")),
+    entityId: v.string(),
+    action: v.string(),
+    status: v.union(v.literal("success"), v.literal("error")),
+    timestamp: v.number(),
+    details: v.optional(v.any()),
+    errorMessage: v.optional(v.string()),
+  })
+    .index("by_timestamp", ["timestamp"])
+    .index("by_entity_type", ["entityType"])
+    .index("by_status", ["status"]),
+
   webhookDeliveries: defineTable({
     webhookId: v.id("webhooks"),
     businessId: v.id("businesses"),

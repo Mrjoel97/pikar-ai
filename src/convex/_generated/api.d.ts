@@ -86,6 +86,7 @@ import type * as playbooks from "../playbooks.js";
 import type * as riskAnalytics from "../riskAnalytics.js";
 import type * as roiCalculations from "../roiCalculations.js";
 import type * as schedule from "../schedule.js";
+import type * as scim from "../scim.js";
 import type * as seed from "../seed.js";
 import type * as socialIntegrations from "../socialIntegrations.js";
 import type * as socialIntegrationsActions from "../socialIntegrationsActions.js";
@@ -188,6 +189,7 @@ declare const fullApi: ApiFromModules<{
   riskAnalytics: typeof riskAnalytics;
   roiCalculations: typeof roiCalculations;
   schedule: typeof schedule;
+  scim: typeof scim;
   seed: typeof seed;
   socialIntegrations: typeof socialIntegrations;
   socialIntegrationsActions: typeof socialIntegrationsActions;
