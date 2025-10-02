@@ -81,6 +81,7 @@ import type * as passwordAuth from "../passwordAuth.js";
 import type * as passwordAuthData from "../passwordAuthData.js";
 import type * as playbookVersions from "../playbookVersions.js";
 import type * as playbooks from "../playbooks.js";
+import type * as riskAnalytics from "../riskAnalytics.js";
 import type * as roiCalculations from "../roiCalculations.js";
 import type * as schedule from "../schedule.js";
 import type * as seed from "../seed.js";
@@ -178,6 +179,7 @@ declare const fullApi: ApiFromModules<{
   passwordAuthData: typeof passwordAuthData;
   playbookVersions: typeof playbookVersions;
   playbooks: typeof playbooks;
+  riskAnalytics: typeof riskAnalytics;
   roiCalculations: typeof roiCalculations;
   schedule: typeof schedule;
   seed: typeof seed;

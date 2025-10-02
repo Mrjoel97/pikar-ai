@@ -21,6 +21,8 @@ import { GovernanceAutomationSettings } from "@/components/governance/Governance
 import { Shield, AlertTriangle } from "lucide-react";
 import { ComplianceReportGenerator } from "@/components/compliance/ComplianceReportGenerator";
 import { ReportLibrary } from "@/components/compliance/ReportLibrary";
+import { RiskHeatmap } from "@/components/risk/RiskHeatmap";
+import { RiskTrendChart } from "@/components/risk/RiskTrendChart";
 
 interface SmeDashboardProps {
   business: any;
@@ -160,6 +162,22 @@ export function SmeDashboard({
   // ROI Dashboard State
   const [showRoiDashboard, setShowRoiDashboard] = React.useState(false);
 
+  // Add: Risk Analytics queries
+  const riskMatrix = useQuery(
+    api.riskAnalytics.getRiskMatrix,
+    isGuest || !businessId ? undefined : { businessId }
+  );
+
+  const riskTrend30d = useQuery(
+    api.riskAnalytics.getRiskTrend,
+    isGuest || !businessId ? undefined : { businessId, days: 30 }
+  );
+
+  const riskTrend90d = useQuery(
+    api.riskAnalytics.getRiskTrend,
+    isGuest || !businessId ? undefined : { businessId, days: 90 }
+  );
+
   function BrainDumpSection({ businessId }: { businessId: string }) {
     const initiatives = useQuery(
       api.initiatives.getByBusiness as any,
@@ -286,8 +304,10 @@ export function SmeDashboard({
           </Card>
           <Card>
             <CardContent className="p-4">
-              <div className="text-sm text-muted-foreground">Risk Alerts</div>
-              <div className="text-2xl font-bold">{slaSummary ? (slaSummary.overdue + slaSummary.dueSoon) : (isGuest ? 3 : 0)}</div>
+              <div className="text-sm text-muted-foreground">High Risks</div>
+              <div className="text-2xl font-bold text-red-600">
+                {riskMatrix?.highRisks ?? (isGuest ? 3 : 0)}
+              </div>
             </CardContent>
           </Card>
         </div>
@@ -418,6 +438,28 @@ export function SmeDashboard({
           ))}
         </div>
       </section>
+
+      {/* Risk Analytics Section */}
+      {!isGuest && riskMatrix && riskTrend30d && (
+        <section>
+          <h2 className="text-xl font-semibold mb-4">Risk Analytics</h2>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <RiskHeatmap 
+              matrix={riskMatrix.matrix}
+              totalRisks={riskMatrix.totalRisks}
+              highRisks={riskMatrix.highRisks}
+            />
+            <RiskTrendChart 
+              trendData={riskTrend30d.trendData}
+              byCategory={riskTrend30d.byCategory}
+              newRisks={riskTrend30d.newRisks}
+              mitigatedRisks={riskTrend30d.mitigatedRisks}
+              avgRiskScore={riskTrend30d.avgRiskScore}
+              period={riskTrend30d.period}
+            />
+          </div>
+        </section>
+      )}
 
       {/* Governance & Audit data hooks */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
