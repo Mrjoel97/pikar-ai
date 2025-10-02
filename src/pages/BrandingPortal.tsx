@@ -51,6 +51,15 @@ export default function BrandingPortal() {
         secondaryColor: secondaryColor || undefined,
         customDomain: customDomain || undefined,
       });
+      
+      // Apply branding globally via CSS variables
+      if (primaryColor) {
+        document.documentElement.style.setProperty('--brand-primary', primaryColor);
+      }
+      if (secondaryColor) {
+        document.documentElement.style.setProperty('--brand-secondary', secondaryColor);
+      }
+      
       toast.success("Branding updated successfully");
     } catch (error) {
       console.error("Failed to update branding:", error);

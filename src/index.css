@@ -134,3 +134,27 @@
     font-family: Menlo, "Courier New", monospace;
   }
 }
+
+/* White-Label Branding Variables */
+:root {
+  --brand-primary: var(--primary);
+  --brand-secondary: var(--secondary);
+  --brand-logo-url: none;
+}
+
+/* Apply brand colors to key UI elements */
+.brand-primary-bg {
+  background-color: var(--brand-primary) !important;
+}
+
+.brand-secondary-bg {
+  background-color: var(--brand-secondary) !important;
+}
+
+.brand-primary-text {
+  color: var(--brand-primary) !important;
+}
+
+.brand-secondary-text {
+  color: var(--brand-secondary) !important;
+}
