@@ -63,10 +63,16 @@ export const listTeamOnboarding = query({
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) return [];
 
-    return await ctx.db
-      .query("onboardingChecklists")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
-      .collect();
+    // Check if the table exists by trying to query it
+    try {
+      return await ctx.db
+        .query("onboardingChecklists")
+        .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+        .collect();
+    } catch (error) {
+      console.error("Error querying onboardingChecklists:", error);
+      return [];
+    }
   },
 });
 
