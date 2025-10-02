@@ -15,6 +15,7 @@ import { RoiDashboard } from "./RoiDashboard";
 import { ExperimentDashboard } from "@/components/experiments/ExperimentDashboard";
 import { ExperimentCreator } from "@/components/experiments/ExperimentCreator";
 import { Id } from "@/convex/_generated/dataModel";
+import { Palette, Code, Webhook } from "lucide-react";
 
 interface EnterpriseDashboardProps {
   business: any;

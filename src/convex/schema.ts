@@ -1611,6 +1611,42 @@ const schema = defineSchema({
     updatedAt: v.number(),
   }).index("by_business", ["businessId"]),
 
+  // Webhook Management System
+  webhooks: defineTable({
+    businessId: v.id("businesses"),
+    url: v.string(),
+    events: v.array(v.string()),
+    secret: v.string(),
+    active: v.boolean(),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_active", ["active"]),
+
+  webhookDeliveries: defineTable({
+    webhookId: v.id("webhooks"),
+    businessId: v.id("businesses"),
+    event: v.string(),
+    payload: v.any(),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("success"),
+      v.literal("failed")
+    ),
+    attempts: v.number(),
+    lastAttemptAt: v.optional(v.number()),
+    nextRetryAt: v.optional(v.number()),
+    errorMessage: v.optional(v.string()),
+    responseStatus: v.optional(v.number()),
+    createdAt: v.number(),
+  })
+    .index("by_webhook", ["webhookId"])
+    .index("by_business", ["businessId"])
+    .index("by_status", ["status"])
+    .index("by_next_retry", ["nextRetryAt"]),
+
   reportTemplates: defineTable({
     name: v.string(),
     framework: v.string(),
