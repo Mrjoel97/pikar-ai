@@ -18,6 +18,7 @@ import WorkflowsPage from "@/pages/Workflows.tsx";
 import WorkflowTemplatesPage from "@/pages/WorkflowTemplates.tsx";
 import BusinessPage from "@/pages/Business.tsx";
 import AnalyticsPage from "@/pages/Analytics.tsx";
+import ApprovalAnalyticsPage from "@/pages/ApprovalAnalytics";
 import PricingPage from "./pages/Pricing.tsx";
 import SettingsPage from "@/pages/Settings.tsx";
 import AdminPage from "@/pages/Admin.tsx";
@@ -123,10 +124,11 @@ createRoot(document.getElementById("root")!).render(
               <Route path="/initiatives" element={<InitiativesPage />} />
               <Route path="/agents" element={<AgentsPage />} />
               <Route path="/ai-agents" element={<AgentsPage />} />
+              <Route path="/analytics" element={<AnalyticsPage />} />
+              <Route path="/approval-analytics" element={<ApprovalAnalyticsPage />} />
               <Route path="/workflows" element={<WorkflowsPage />} />
               <Route path="/workflows/templates" element={<WorkflowTemplatesPage />} />
               <Route path="/business" element={<BusinessPage />} />
-              <Route path="/analytics" element={<AnalyticsPage />} />
               <Route path="/settings" element={<SettingsPage />} />
               <Route path="/admin" element={<AdminPage />} />
               <Route path="/admin-auth" element={<AdminAuthPage />} />

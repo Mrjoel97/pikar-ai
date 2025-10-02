@@ -1510,6 +1510,62 @@ const schema = defineSchema({
     .index("by_experiment", ["experimentId"])
     .index("by_variant", ["variantId"])
     .index("by_experiment_and_event", ["experimentId", "event"]),
+
+  // Team Onboarding tables
+  onboardingChecklists: defineTable({
+    userId: v.id("users"),
+    businessId: v.id("businesses"),
+    role: v.string(),
+    steps: v.array(v.object({
+      id: v.string(),
+      title: v.string(),
+      description: v.string(),
+      completed: v.boolean(),
+      completedAt: v.optional(v.number()),
+    })),
+    currentStepIndex: v.number(),
+    startedAt: v.number(),
+    completedAt: v.optional(v.number()),
+  })
+    .index("by_user", ["userId"])
+    .index("by_business", ["businessId"])
+    .index("by_user_and_business", ["userId", "businessId"]),
+
+  userRoles: defineTable({
+    userId: v.id("users"),
+    businessId: v.id("businesses"),
+    role: v.union(
+      v.literal("admin"),
+      v.literal("editor"),
+      v.literal("viewer"),
+      v.literal("custom")
+    ),
+    permissions: v.object({
+      canApprove: v.boolean(),
+      canEdit: v.boolean(),
+      canView: v.boolean(),
+      canManageTeam: v.boolean(),
+      canManageSettings: v.boolean(),
+    }),
+    assignedBy: v.id("users"),
+    assignedAt: v.number(),
+  })
+    .index("by_user_and_business", ["userId", "businessId"])
+    .index("by_business", ["businessId"])
+    .index("by_role", ["role"]),
+
+  onboardingTemplates: defineTable({
+    role: v.string(),
+    steps: v.array(v.object({
+      id: v.string(),
+      title: v.string(),
+      description: v.string(),
+      estimatedMinutes: v.number(),
+    })),
+    totalEstimatedTime: v.number(),
+    createdAt: v.number(),
+  })
+    .index("by_role", ["role"]),
 });
 
 export default schema;

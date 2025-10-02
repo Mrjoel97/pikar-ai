@@ -18,6 +18,8 @@ import { ContentCalendar } from "@/components/calendar/ContentCalendar";
 import { RoiDashboard } from "@/components/dashboards/RoiDashboard";
 import type { Id } from "@/convex/_generated/dataModel";
 import { Link as LinkIcon } from "lucide-react";
+import { TeamOnboardingWizard } from "@/components/onboarding/TeamOnboardingWizard";
+import { AlertTriangle, TrendingUp } from "lucide-react";
 
 interface StartupDashboardProps {
   business: any;
@@ -141,6 +143,19 @@ const pendingApprovals = useQuery(
   const [showComposer, setShowComposer] = useState(false);
   const [showExperimentCreator, setShowExperimentCreator] = useState(false);
 
+  // Add queries for team onboarding and approval health
+  const teamOnboarding = useQuery(
+    api.teamOnboarding.listTeamOnboarding,
+    isGuest || !business?._id ? undefined : { businessId: business._id }
+  );
+
+  const approvalMetrics = useQuery(
+    api.approvalAnalytics.getApprovalMetrics,
+    isGuest || !business?._id ? undefined : { businessId: business._id, timeRange: 7 }
+  );
+
+  const incompleteOnboarding = teamOnboarding?.filter((t: any) => !t.completedAt).length || 0;
+
   function BrainDumpSection({ businessId }: { businessId: string }) {
     const initiatives = useQuery(
       api.initiatives.getByBusiness as any,
@@ -228,6 +243,22 @@ const pendingApprovals = useQuery(
 
   return (
     <div className="space-y-6">
+      {/* Pending Team Onboarding Alert */}
+      {!isGuest && incompleteOnboarding > 0 && (
+        <div className="rounded-md border border-amber-300 bg-amber-50 p-3 flex items-center gap-3">
+          <AlertTriangle className="h-5 w-5 text-amber-600" />
+          <div className="flex-1">
+            <p className="text-sm font-medium">
+              {incompleteOnboarding} team member{incompleteOnboarding > 1 ? "s" : ""} pending onboarding
+            </p>
+            <p className="text-xs text-muted-foreground">Help them get started to improve team productivity</p>
+          </div>
+          <Button size="sm" variant="outline" onClick={() => nav("/team")}>
+            Manage Team
+          </Button>
+        </div>
+      )}
+
       {/* Add: Upgrade nudge banner */}
       {!isGuest && upgradeNudges && upgradeNudges.showBanner && (
         <div className="rounded-md border p-3 bg-amber-50 flex items-center gap-3">
@@ -298,6 +329,44 @@ const pendingApprovals = useQuery(
           </Card>
         </div>
       </section>
+
+      {/* Approval Health Card - Add after Team Performance section */}
+      {!isGuest && approvalMetrics && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <TrendingUp className="h-5 w-5" />
+                  Approval Health
+                </CardTitle>
+                <CardDescription>Key approval metrics for the past 7 days</CardDescription>
+              </div>
+              <Button size="sm" variant="outline" onClick={() => nav("/approval-analytics")}>
+                View Details
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <div className="text-sm text-muted-foreground">Avg Time</div>
+                <div className="text-2xl font-bold">{approvalMetrics.avgTimeHours}h</div>
+              </div>
+              <div>
+                <div className="text-sm text-muted-foreground">Overdue</div>
+                <div className={`text-2xl font-bold ${approvalMetrics.overdueCount > 0 ? "text-amber-600" : ""}`}>
+                  {approvalMetrics.overdueCount}
+                </div>
+              </div>
+              <div>
+                <div className="text-sm text-muted-foreground">Total</div>
+                <div className="text-2xl font-bold">{approvalMetrics.totalApprovals}</div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* KPI Trends */}
       <section>
