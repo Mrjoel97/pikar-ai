@@ -1700,6 +1700,28 @@ const schema = defineSchema({
     .index("by_business", ["businessId"])
     .index("by_framework", ["framework"])
     .index("by_generated_at", ["generatedAt"]),
+
+  // SSO Configuration tables
+  samlConfigs: defineTable({
+    businessId: v.id("businesses"),
+    idpEntityId: v.string(),
+    ssoUrl: v.string(),
+    certificate: v.string(),
+    active: v.boolean(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_business", ["businessId"]),
+
+  oidcConfigs: defineTable({
+    businessId: v.id("businesses"),
+    issuer: v.string(),
+    clientId: v.string(),
+    clientSecret: v.string(),
+    redirectUri: v.string(),
+    active: v.boolean(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_business", ["businessId"]),
 });
 
 export default schema;

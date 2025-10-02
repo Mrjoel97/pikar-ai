@@ -808,13 +808,20 @@ export function EnterpriseDashboard({
               )}
             </CardContent>
           </Card>
-          <Card>
-            <CardContent className="p-4 flex items-center justify-between">
-              <div>
-                <div className="text-sm font-medium">SCIM Provisioning</div>
-                <div className="text-xs text-muted-foreground">Automate user provisioning</div>
-              </div>
-              <Button size="sm" variant="outline" onClick={() => nav("/scim")}>
+          <Card className="neu-raised hover:neu-pressed transition-all cursor-pointer" onClick={() => nav("/scim-provisioning")}>
+            <CardContent className="p-6">
+              <div className="text-sm font-medium">SCIM Provisioning</div>
+              <div className="text-xs text-muted-foreground mt-1">User sync from IdP</div>
+              <Button size="sm" className="mt-4 w-full">
+                Configure
+              </Button>
+            </CardContent>
+          </Card>
+          <Card className="neu-raised hover:neu-pressed transition-all cursor-pointer" onClick={() => nav("/sso-configuration")}>
+            <CardContent className="p-6">
+              <div className="text-sm font-medium">SSO Configuration</div>
+              <div className="text-xs text-muted-foreground mt-1">SAML & OIDC setup</div>
+              <Button size="sm" className="mt-4 w-full">
                 Configure
               </Button>
             </CardContent>

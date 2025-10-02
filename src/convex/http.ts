@@ -588,4 +588,84 @@ http.route({
   }),
 });
 
+// SAML Assertion Consumer Service
+http.route({
+  path: "/auth/saml/acs",
+  method: "POST",
+  handler: httpAction(async (ctx, req) => {
+    try {
+      const formData = await req.formData();
+      const samlResponse = formData.get("SAMLResponse") as string;
+      const relayState = formData.get("RelayState") as string;
+
+      if (!samlResponse) {
+        return new Response("Missing SAML response", { status: 400 });
+      }
+
+      // Extract businessId from relay state
+      const businessId = relayState as any;
+
+      // Validate SAML assertion
+      const result = await ctx.runAction(api.saml.validateSAMLAssertion, {
+        samlResponse,
+        businessId,
+      });
+
+      if (result.success) {
+        // Create or update user session
+        // Redirect to dashboard with success
+        return new Response(
+          `<html><body><script>window.location.href='/dashboard?sso=success&email=${encodeURIComponent(result.email)}';</script></body></html>`,
+          { status: 200, headers: { "Content-Type": "text/html" } }
+        );
+      }
+
+      return new Response("SAML validation failed", { status: 401 });
+    } catch (error: any) {
+      console.error("SAML ACS error:", error);
+      return new Response(`SAML error: ${error.message}`, { status: 500 });
+    }
+  }),
+});
+
+// OIDC Callback
+http.route({
+  path: "/auth/oidc/callback",
+  method: "GET",
+  handler: httpAction(async (ctx, req) => {
+    try {
+      const url = new URL(req.url);
+      const code = url.searchParams.get("code");
+      const state = url.searchParams.get("state");
+
+      if (!code) {
+        return new Response("Missing authorization code", { status: 400 });
+      }
+
+      // Extract businessId from state
+      const businessId = state as any;
+
+      // Exchange code for tokens
+      const result = await ctx.runAction(api.oidc.exchangeOIDCCode, {
+        code,
+        businessId,
+      });
+
+      if (result.success) {
+        // Create or update user session
+        // Redirect to dashboard with success
+        return new Response(
+          `<html><body><script>window.location.href='/dashboard?sso=success&email=${encodeURIComponent(result.email)}';</script></body></html>`,
+          { status: 200, headers: { "Content-Type": "text/html" } }
+        );
+      }
+
+      return new Response("OIDC validation failed", { status: 401 });
+    } catch (error: any) {
+      console.error("OIDC callback error:", error);
+      return new Response(`OIDC error: ${error.message}`, { status: 500 });
+    }
+  }),
+});
+
 export default http;
