@@ -17,12 +17,14 @@ export default function BrandingPortal() {
     business?._id ? { businessId: business._id } : "skip"
   );
   const updateBranding = useMutation(api.branding.updateBrandingConfig);
+  const verifyDomain = useMutation(api.branding.verifyCustomDomain);
 
   const [logoUrl, setLogoUrl] = useState("");
   const [primaryColor, setPrimaryColor] = useState("#10b981");
   const [secondaryColor, setSecondaryColor] = useState("#059669");
   const [customDomain, setCustomDomain] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(false);
 
   // Load existing config
   useState(() => {
@@ -55,6 +57,27 @@ export default function BrandingPortal() {
       toast.error("Failed to update branding");
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleVerifyDomain = async () => {
+    if (!business?._id || !customDomain) {
+      toast.error("Please enter a custom domain first");
+      return;
+    }
+
+    setIsVerifying(true);
+    try {
+      const result = await verifyDomain({
+        businessId: business._id,
+        customDomain: customDomain,
+      });
+      toast.info(result.message);
+    } catch (error) {
+      console.error("Failed to verify domain:", error);
+      toast.error("Failed to verify domain");
+    } finally {
+      setIsVerifying(false);
     }
   };
 
@@ -149,7 +172,7 @@ export default function BrandingPortal() {
                 </CardTitle>
                 <CardDescription>Configure your custom domain</CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="space-y-4">
                 <div>
                   <Label htmlFor="customDomain">Domain</Label>
                   <Input
@@ -159,6 +182,14 @@ export default function BrandingPortal() {
                     onChange={(e) => setCustomDomain(e.target.value)}
                   />
                 </div>
+                <Button
+                  variant="outline"
+                  onClick={handleVerifyDomain}
+                  disabled={isVerifying || !customDomain}
+                  className="w-full"
+                >
+                  {isVerifying ? "Verifying..." : "Verify Domain"}
+                </Button>
               </CardContent>
             </Card>
 

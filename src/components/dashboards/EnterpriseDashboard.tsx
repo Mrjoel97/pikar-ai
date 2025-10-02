@@ -775,6 +775,17 @@ export function EnterpriseDashboard({
           <Card>
             <CardContent className="p-4 flex items-center justify-between">
               <div>
+                <div className="text-sm font-medium">Branding</div>
+                <div className="text-xs text-muted-foreground">White-label customization</div>
+              </div>
+              <Button size="sm" variant="outline" onClick={() => nav("/branding")}>
+                Customize
+              </Button>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4 flex items-center justify-between">
+              <div>
                 <div className="text-sm font-medium">Feature Flags</div>
                 <div className="text-xs text-muted-foreground">Manage rollout</div>
               </div>
@@ -794,15 +805,6 @@ export function EnterpriseDashboard({
               ) : (
                 <Button size="sm" variant="outline" disabled>Download</Button>
               )}
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4 flex items-center justify-between">
-              <div>
-                <div className="text-sm font-medium">Integrations</div>
-                <div className="text-xs text-muted-foreground">CRMs, Analytics, Billing</div>
-              </div>
-              <Button size="sm" variant="outline" disabled>Open</Button>
             </CardContent>
           </Card>
         </div>

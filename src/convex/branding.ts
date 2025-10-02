@@ -72,3 +72,40 @@ export const getBrandingConfig = query({
     return config;
   },
 });
+
+/**
+ * Verify custom domain configuration (placeholder for DNS verification)
+ */
+export const verifyCustomDomain = mutation({
+  args: {
+    businessId: v.id("businesses"),
+    customDomain: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("email", (q) => q.eq("email", identity.email!))
+      .unique();
+    if (!user) throw new Error("User not found");
+
+    // Placeholder: In production, this would verify DNS records
+    // For now, we'll just log the verification attempt
+    await ctx.db.insert("audit_logs", {
+      businessId: args.businessId,
+      userId: user._id,
+      action: "domain_verification_attempted",
+      entityType: "branding",
+      entityId: args.businessId,
+      details: { customDomain: args.customDomain },
+      createdAt: Date.now(),
+    });
+
+    return {
+      verified: false,
+      message: "Domain verification requires DNS configuration. Please contact support.",
+    };
+  },
+});
