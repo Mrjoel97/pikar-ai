@@ -808,6 +808,17 @@ export function EnterpriseDashboard({
               )}
             </CardContent>
           </Card>
+          <Card>
+            <CardContent className="p-4 flex items-center justify-between">
+              <div>
+                <div className="text-sm font-medium">SCIM Provisioning</div>
+                <div className="text-xs text-muted-foreground">Automate user provisioning</div>
+              </div>
+              <Button size="sm" variant="outline" onClick={() => nav("/scim")}>
+                Configure
+              </Button>
+            </CardContent>
+          </Card>
         </div>
       </section>
 
