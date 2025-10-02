@@ -1,10 +1,11 @@
 declare module 'jstat' {
-  const jstat: {
-    jStat: {
-      chisquare: {
-        test: (observed: number[][], df: number) => number;
-      };
-    };
-  };
-  export = jstat;
+  export interface JStatChiSquare {
+    test: (observed: number[][], df: number) => number;
+  }
+
+  export interface JStat {
+    chisquare: JStatChiSquare;
+  }
+
+  export const jStat: JStat;
 }
