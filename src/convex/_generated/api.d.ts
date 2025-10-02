@@ -99,6 +99,7 @@ import type * as users from "../users.js";
 import type * as utils from "../utils.js";
 import type * as vectors from "../vectors.js";
 import type * as workflowAssignments from "../workflowAssignments.js";
+import type * as workflowHandoffs from "../workflowHandoffs.js";
 import type * as workflowTemplates from "../workflowTemplates.js";
 import type * as workflows from "../workflows.js";
 
@@ -197,6 +198,7 @@ declare const fullApi: ApiFromModules<{
   utils: typeof utils;
   vectors: typeof vectors;
   workflowAssignments: typeof workflowAssignments;
+  workflowHandoffs: typeof workflowHandoffs;
   workflowTemplates: typeof workflowTemplates;
   workflows: typeof workflows;
 }>;

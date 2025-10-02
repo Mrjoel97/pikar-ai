@@ -1582,6 +1582,24 @@ const schema = defineSchema({
     updatedAt: v.number(),
   }).index("by_business", ["businessId"]),
 
+  // Cross-Department Workflow Handoffs
+  workflowHandoffs: defineTable({
+    workflowRunId: v.id("workflowRuns"),
+    businessId: v.id("businesses"),
+    workflowId: v.id("workflows"),
+    fromDept: v.string(),
+    toDept: v.string(),
+    handoffAt: v.number(),
+    acceptedAt: v.optional(v.number()),
+    acceptedBy: v.optional(v.id("users")),
+    status: v.union(v.literal("pending"), v.literal("accepted"), v.literal("rejected")),
+    notes: v.optional(v.string()),
+  })
+    .index("by_workflow_run", ["workflowRunId"])
+    .index("by_business", ["businessId"])
+    .index("by_to_dept_and_status", ["toDept", "status"])
+    .index("by_business_and_status", ["businessId", "status"]),
+
   // Compliance Report Templates
   reportTemplates: defineTable({
     name: v.string(),

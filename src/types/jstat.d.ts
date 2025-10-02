@@ -1,11 +1,10 @@
 declare module 'jstat' {
-  export interface JStatChiSquare {
+  interface JStatChiSquare {
     test: (observed: number[][], df: number) => number;
   }
-
-  export interface JStat {
+  interface JStat {
     chisquare: JStatChiSquare;
   }
-
-  export const jStat: JStat;
+  const jStat: JStat;
+  export = jStat;
 }

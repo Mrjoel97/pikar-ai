@@ -23,6 +23,8 @@ import { ComplianceReportGenerator } from "@/components/compliance/ComplianceRep
 import { ReportLibrary } from "@/components/compliance/ReportLibrary";
 import { RiskHeatmap } from "@/components/risk/RiskHeatmap";
 import { RiskTrendChart } from "@/components/risk/RiskTrendChart";
+import { HandoffQueue } from "@/components/workflows/HandoffQueue";
+import { CrossDepartmentMetrics } from "@/components/workflows/CrossDepartmentMetrics";
 
 interface SmeDashboardProps {
   business: any;
