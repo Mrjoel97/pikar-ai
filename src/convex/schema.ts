@@ -1722,6 +1722,21 @@ const schema = defineSchema({
     createdAt: v.number(),
     updatedAt: v.number(),
   }).index("by_business", ["businessId"]),
+
+  kmsConfigs: defineTable({
+    businessId: v.id("businesses"),
+    provider: v.union(v.literal("aws"), v.literal("azure"), v.literal("google")),
+    keyId: v.string(),
+    region: v.optional(v.string()),
+    keyVaultUrl: v.optional(v.string()),
+    projectId: v.optional(v.string()),
+    location: v.optional(v.string()),
+    keyRing: v.optional(v.string()),
+    credentials: v.optional(v.string()),
+    active: v.boolean(),
+    createdAt: v.number(),
+    updatedAt: v.optional(v.number()),
+  }).index("by_business", ["businessId"]),
 });
 
 export default schema;

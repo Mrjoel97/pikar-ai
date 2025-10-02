@@ -66,6 +66,7 @@ import type * as inspector from "../inspector.js";
 import type * as invoices from "../invoices.js";
 import type * as invoicesActions from "../invoicesActions.js";
 import type * as kgraph from "../kgraph.js";
+import type * as kms from "../kms.js";
 import type * as knowledge from "../knowledge.js";
 import type * as kpis from "../kpis.js";
 import type * as lib_aiAgents_admin from "../lib/aiAgents/admin.js";
@@ -171,6 +172,7 @@ declare const fullApi: ApiFromModules<{
   invoices: typeof invoices;
   invoicesActions: typeof invoicesActions;
   kgraph: typeof kgraph;
+  kms: typeof kms;
   knowledge: typeof knowledge;
   kpis: typeof kpis;
   "lib/aiAgents/admin": typeof lib_aiAgents_admin;

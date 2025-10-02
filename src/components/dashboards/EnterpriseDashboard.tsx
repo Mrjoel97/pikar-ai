@@ -826,6 +826,15 @@ export function EnterpriseDashboard({
               </Button>
             </CardContent>
           </Card>
+          <Card className="neu-raised hover:neu-pressed transition-all cursor-pointer" onClick={() => nav("/kms-configuration")}>
+            <CardContent className="p-6">
+              <div className="text-sm font-medium">Encryption (KMS)</div>
+              <div className="text-xs text-muted-foreground mt-1">Secure key management</div>
+              <Button size="sm" className="mt-4 w-full">
+                Configure
+              </Button>
+            </CardContent>
+          </Card>
         </div>
       </section>
 

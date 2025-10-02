@@ -30,6 +30,7 @@ import ApiDocsPage from "./pages/ApiDocs";
 import WebhookManagementPage from "./pages/WebhookManagement";
 import ScimProvisioningPage from "./pages/ScimProvisioning";
 import SsoConfigurationPage from "./pages/SsoConfiguration";
+import KmsConfigurationPage from "./pages/KmsConfiguration";
 
 class ErrorBoundary extends Component<
   { children: React.ReactNode },
@@ -144,6 +145,7 @@ createRoot(document.getElementById("root")!).render(
               <Route path="/scim" element={<ScimProvisioningPage />} />
               <Route path="/scim-provisioning" element={<ScimProvisioningPage />} />
               <Route path="/sso-configuration" element={<SsoConfigurationPage />} />
+              <Route path="/kms-configuration" element={<KmsConfigurationPage />} />
               <Route
                 path="/src/components/dashboards/SolopreneurDashboard.tsx"
                 element={<Navigate to="/dashboard" replace />}
