@@ -11,6 +11,10 @@ import { RoiDashboard } from "./RoiDashboard";
 import { ExperimentDashboard } from "@/components/experiments/ExperimentDashboard";
 import { ExperimentCreator } from "@/components/experiments/ExperimentCreator";
 import { Id } from "@/convex/_generated/dataModel";
+import { MarketingDashboard } from "@/components/departments/MarketingDashboard";
+import { SalesDashboard } from "@/components/departments/SalesDashboard";
+import { OpsDashboard } from "@/components/departments/OpsDashboard";
+import { FinanceDashboard } from "@/components/departments/FinanceDashboard";
 
 interface SmeDashboardProps {
   business: any;
@@ -229,6 +233,9 @@ export function SmeDashboard({
       </section>
     );
   }
+
+  // Add: Department Tabs
+  const [activeTab, setActiveTab] = React.useState("marketing");
 
   return (
     <div className="space-y-6">
@@ -541,6 +548,40 @@ export function SmeDashboard({
           </Tabs>
         </section>
       </section>
+
+      {/* Department Tabs */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Department Dashboards</CardTitle>
+          <CardDescription>Deep dive into each department's metrics</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <TabsList className="grid w-full grid-cols-4">
+              <TabsTrigger value="marketing">Marketing</TabsTrigger>
+              <TabsTrigger value="sales">Sales</TabsTrigger>
+              <TabsTrigger value="ops">Ops</TabsTrigger>
+              <TabsTrigger value="finance">Finance</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="marketing" className="mt-6">
+              <MarketingDashboard businessId={business?._id} isGuest={isGuest} />
+            </TabsContent>
+            
+            <TabsContent value="sales" className="mt-6">
+              <SalesDashboard businessId={business?._id} isGuest={isGuest} />
+            </TabsContent>
+            
+            <TabsContent value="ops" className="mt-6">
+              <OpsDashboard businessId={business?._id} isGuest={isGuest} />
+            </TabsContent>
+            
+            <TabsContent value="finance" className="mt-6">
+              <FinanceDashboard businessId={business?._id} isGuest={isGuest} />
+            </TabsContent>
+          </Tabs>
+        </CardContent>
+      </Card>
 
       {/* Department Performance */}
       <section>

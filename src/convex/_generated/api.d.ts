@@ -37,6 +37,7 @@ import type * as contacts from "../contacts.js";
 import type * as crmIntegrations from "../crmIntegrations.js";
 import type * as cron from "../cron.js";
 import type * as data_playbooksSeed from "../data/playbooksSeed.js";
+import type * as departmentKpis from "../departmentKpis.js";
 import type * as diagnostics from "../diagnostics.js";
 import type * as docProcessing from "../docProcessing.js";
 import type * as docs from "../docs.js";
@@ -131,6 +132,7 @@ declare const fullApi: ApiFromModules<{
   crmIntegrations: typeof crmIntegrations;
   cron: typeof cron;
   "data/playbooksSeed": typeof data_playbooksSeed;
+  departmentKpis: typeof departmentKpis;
   diagnostics: typeof diagnostics;
   docProcessing: typeof docProcessing;
   docs: typeof docs;
