@@ -55,6 +55,7 @@ import type * as experiments from "../experiments.js";
 import type * as featureFlags from "../featureFlags.js";
 import type * as files from "../files.js";
 import type * as governance from "../governance.js";
+import type * as governanceAutomation from "../governanceAutomation.js";
 import type * as health from "../health.js";
 import type * as http from "../http.js";
 import type * as init from "../init.js";
@@ -150,6 +151,7 @@ declare const fullApi: ApiFromModules<{
   featureFlags: typeof featureFlags;
   files: typeof files;
   governance: typeof governance;
+  governanceAutomation: typeof governanceAutomation;
   health: typeof health;
   http: typeof http;
   init: typeof init;

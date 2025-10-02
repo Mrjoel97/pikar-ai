@@ -1566,6 +1566,40 @@ const schema = defineSchema({
     createdAt: v.number(),
   })
     .index("by_role", ["role"]),
+
+  // Governance Escalations
+  governanceEscalations: defineTable({
+    businessId: v.id("businesses"),
+    workflowId: v.id("workflows"),
+    violationType: v.string(),
+    count: v.number(),
+    escalatedTo: v.string(),
+    status: v.union(v.literal("pending"), v.literal("resolved")),
+    notes: v.optional(v.string()),
+    resolution: v.optional(v.string()),
+    createdAt: v.number(),
+    resolvedAt: v.optional(v.number()),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_workflow", ["workflowId"])
+    .index("by_status", ["status"]),
+
+  // Governance Automation Settings
+  governanceAutomationSettings: defineTable({
+    businessId: v.id("businesses"),
+    autoRemediate: v.object({
+      missing_approval: v.boolean(),
+      insufficient_sla: v.boolean(),
+      insufficient_approvals: v.boolean(),
+      role_diversity: v.boolean(),
+    }),
+    escalationRules: v.object({
+      threshold: v.number(),
+      escalateTo: v.string(),
+    }),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_business", ["businessId"]),
 });
 
 export default schema;

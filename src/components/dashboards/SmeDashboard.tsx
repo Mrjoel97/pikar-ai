@@ -15,6 +15,10 @@ import { MarketingDashboard } from "@/components/departments/MarketingDashboard"
 import { SalesDashboard } from "@/components/departments/SalesDashboard";
 import { OpsDashboard } from "@/components/departments/OpsDashboard";
 import { FinanceDashboard } from "@/components/departments/FinanceDashboard";
+import { GovernanceScoreCard } from "@/components/governance/GovernanceScoreCard";
+import { EscalationQueue } from "@/components/governance/EscalationQueue";
+import { GovernanceAutomationSettings } from "@/components/governance/GovernanceAutomationSettings";
+import { Shield, AlertTriangle } from "lucide-react";
 
 interface SmeDashboardProps {
   business: any;
@@ -71,6 +75,11 @@ export function SmeDashboard({
   // Fetch SLA summary (skip in guest / when no business)
   const slaSummary = !isGuest && business?._id ? useQuery(api.approvals.getSlaSummary, { businessId: business._id }) : undefined;
   const auditLatest = !isGuest && business?._id ? useQuery(api.audit.listForBusiness, { businessId: business._id, limit: 10 }) : undefined;
+
+  const pendingEscalations = useQuery(
+    api.governanceAutomation.getEscalations,
+    business?._id ? { businessId: business._id, status: "pending" as const } : undefined
+  );
 
   const UpgradeCTA = ({ feature }: { feature: string }) => (
     <Card className="border-dashed border-2 border-gray-300">
@@ -281,6 +290,46 @@ export function SmeDashboard({
           </Card>
         </div>
       </section>
+
+      {/* Governance Score Card */}
+      {business && (
+        <div className="grid gap-6 md:grid-cols-2">
+          <GovernanceScoreCard businessId={business._id} days={30} />
+          
+          {/* Escalations Alert */}
+          {pendingEscalations && pendingEscalations.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <AlertTriangle className="h-5 w-5 text-yellow-600" />
+                  Governance Alerts
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  <p className="text-2xl font-bold text-yellow-600">
+                    {pendingEscalations.length}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    Escalation{pendingEscalations.length !== 1 ? "s" : ""} pending review
+                  </p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      // Scroll to governance section or open modal
+                      const governanceSection = document.getElementById("governance-panel");
+                      governanceSection?.scrollIntoView({ behavior: "smooth" });
+                    }}
+                  >
+                    View Details
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      )}
 
       {/* Governance Panel */}
       <section>
