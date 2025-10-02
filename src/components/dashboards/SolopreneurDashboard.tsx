@@ -24,7 +24,7 @@ import { motion } from "framer-motion";
 import { FileText } from "lucide-react";
 import { InvoiceComposer } from "@/components/invoices/InvoiceComposer";
 import { ContentCalendar } from "@/components/calendar/ContentCalendar";
-import { RoiDashboard } from "./RoiDashboard";
+import { RoiDashboard } from "@/components/dashboards/RoiDashboard";
 /* removed unused Alert imports */
 
 interface SolopreneurDashboardProps {
@@ -3114,6 +3114,76 @@ Renamed to avoid duplicate identifier collisions elsewhere in the file */
           onOpenChange={setShowInvoiceComposer}
           businessId={business._id}
         />
+      )}
+
+      {/* ROI Dashboard Section */}
+      {!isGuest && business?._id && user?._id && (
+        <section className="mb-6">
+          <RoiDashboard 
+            businessId={business._id} 
+            userId={user._id}
+          />
+        </section>
+      )}
+
+      {/* Content Calendar Section */}
+      {!isGuest && business?._id && user?._id && (
+        <section className="mb-6">
+          <ContentCalendar 
+            businessId={business._id} 
+            userId={user._id}
+          />
+        </section>
+      )}
+
+      {/* A/B Testing Upgrade Prompt */}
+      {!isGuest && (
+        <Card className="border-dashed border-2 border-amber-300 bg-amber-50/50 mb-6">
+          <CardContent className="p-6">
+            <div className="flex items-start gap-4">
+              <div className="flex-1">
+                <h3 className="font-semibold text-lg mb-2">🧪 A/B Testing Engine</h3>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Test email variants, measure performance, and automatically determine winners with statistical significance.
+                </p>
+                <ul className="text-sm space-y-1 text-muted-foreground mb-4">
+                  <li>• Create experiments with 2-4 variants</li>
+                  <li>• Track opens, clicks, and conversions</li>
+                  <li>• Chi-square statistical analysis</li>
+                  <li>• Auto-declare winners</li>
+                </ul>
+              </div>
+              <Button onClick={onUpgrade} size="sm">
+                Upgrade to Startup
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* CRM Integration Upgrade Prompt */}
+      {!isGuest && (
+        <Card className="border-dashed border-2 border-amber-300 bg-amber-50/50 mb-6">
+          <CardContent className="p-6">
+            <div className="flex items-start gap-4">
+              <div className="flex-1">
+                <h3 className="font-semibold text-lg mb-2">🔗 CRM Bidirectional Sync</h3>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Connect Salesforce, HubSpot, or Pipedrive for seamless contact and deal synchronization.
+                </p>
+                <ul className="text-sm space-y-1 text-muted-foreground mb-4">
+                  <li>• Automatic contact sync</li>
+                  <li>• Deal pipeline management</li>
+                  <li>• Conflict resolution</li>
+                  <li>• Real-time updates</li>
+                </ul>
+              </div>
+              <Button onClick={onUpgrade} size="sm">
+                Upgrade to Startup
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       )}
     </motion.div>
   );

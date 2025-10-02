@@ -14,6 +14,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useNavigate } from "react-router";
 import { ExperimentDashboard } from "@/components/experiments/ExperimentDashboard";
 import { ExperimentCreator } from "@/components/experiments/ExperimentCreator";
+import { ContentCalendar } from "@/components/calendar/ContentCalendar";
+import { RoiDashboard } from "@/components/dashboards/RoiDashboard";
 import type { Id } from "@/convex/_generated/dataModel";
 import { Link as LinkIcon } from "lucide-react";
 
@@ -646,6 +648,26 @@ const pendingApprovals = useQuery(
               </Suspense>
             </CardContent>
           </Card>
+        </section>
+      )}
+
+      {/* ROI Dashboard Section */}
+      {!isGuest && business?._id && (
+        <section className="mb-6">
+          <RoiDashboard 
+            businessId={business._id} 
+            userId={business._id}
+          />
+        </section>
+      )}
+
+      {/* Content Calendar Section */}
+      {!isGuest && business?._id && (
+        <section className="mb-6">
+          <ContentCalendar 
+            businessId={business._id} 
+            userId={business._id}
+          />
         </section>
       )}
 
