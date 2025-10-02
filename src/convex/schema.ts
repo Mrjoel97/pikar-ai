@@ -567,25 +567,6 @@ const schema = defineSchema({
     .index("by_created_by", ["createdBy"])
     .index("by_created_at", ["createdAt"]),
 
-  scheduledReports: defineTable({
-    businessId: v.id("businesses"),
-    name: v.string(),
-    dashboardId: v.id("dashboards"),
-    schedule: v.string(), // cron expression
-    recipients: v.array(v.string()),
-    format: v.union(v.literal("pdf"), v.literal("csv")),
-    isActive: v.boolean(),
-    createdBy: v.id("users"),
-    createdAt: v.number(),
-    updatedAt: v.number(),
-    lastRun: v.optional(v.number()),
-    nextRun: v.optional(v.number()),
-  })
-    .index("by_business", ["businessId"])
-    .index("by_dashboard", ["dashboardId"])
-    .index("by_next_run", ["nextRun"])
-    .index("by_active", ["isActive"]),
-
   // Compliance QMS Tables
   capaItems: defineTable({
     businessId: v.id("businesses"),
@@ -1600,6 +1581,55 @@ const schema = defineSchema({
     createdAt: v.number(),
     updatedAt: v.number(),
   }).index("by_business", ["businessId"]),
+
+  // Compliance Report Templates
+  reportTemplates: defineTable({
+    name: v.string(),
+    framework: v.union(
+      v.literal("GDPR"),
+      v.literal("SOC2"),
+      v.literal("HIPAA"),
+      v.literal("ISO27001")
+    ),
+    sections: v.array(
+      v.object({
+        title: v.string(),
+        queryType: v.string(),
+        description: v.optional(v.string()),
+      })
+    ),
+    createdAt: v.number(),
+    updatedAt: v.optional(v.number()),
+  }).index("by_framework", ["framework"]),
+
+  // Scheduled Compliance Reports
+  scheduledReports: defineTable({
+    businessId: v.id("businesses"),
+    templateId: v.id("reportTemplates"),
+    frequency: v.union(v.literal("daily"), v.literal("weekly"), v.literal("monthly")),
+    recipients: v.array(v.string()),
+    isActive: v.boolean(),
+    createdAt: v.number(),
+    lastRunAt: v.optional(v.number()),
+    nextRunAt: v.optional(v.number()),
+  }).index("by_business", ["businessId"]),
+
+  // Generated Compliance Reports
+  generatedReports: defineTable({
+    businessId: v.id("businesses"),
+    templateId: v.id("reportTemplates"),
+    framework: v.string(),
+    reportData: v.string(), // JSON string
+    dateRange: v.object({
+      start: v.number(),
+      end: v.number(),
+    }),
+    generatedAt: v.number(),
+    downloadUrl: v.optional(v.string()),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_generated_at", ["generatedAt"]),
+
 });
 
 export default schema;

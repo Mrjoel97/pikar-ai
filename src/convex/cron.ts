@@ -22,4 +22,12 @@ crons.interval(
 // Add SLA sweep cron
 crons.interval("approval SLA sweep", { minutes: 10 }, internal.approvals.sweepOverdueApprovals, {});
 
+// Generate scheduled compliance reports daily
+crons.interval(
+  "generate scheduled compliance reports",
+  { hours: 24 },
+  internal.complianceReports.generateScheduledReports,
+  {}
+);
+
 export default crons;

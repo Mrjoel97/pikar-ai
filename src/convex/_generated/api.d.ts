@@ -33,6 +33,7 @@ import type * as billingInternal from "../billingInternal.js";
 import type * as businesses from "../businesses.js";
 import type * as calendar from "../calendar.js";
 import type * as chunking from "../chunking.js";
+import type * as complianceReports from "../complianceReports.js";
 import type * as contacts from "../contacts.js";
 import type * as crmIntegrations from "../crmIntegrations.js";
 import type * as cron from "../cron.js";
@@ -129,6 +130,7 @@ declare const fullApi: ApiFromModules<{
   businesses: typeof businesses;
   calendar: typeof calendar;
   chunking: typeof chunking;
+  complianceReports: typeof complianceReports;
   contacts: typeof contacts;
   crmIntegrations: typeof crmIntegrations;
   cron: typeof cron;

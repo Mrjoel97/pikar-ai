@@ -19,6 +19,8 @@ import { GovernanceScoreCard } from "@/components/governance/GovernanceScoreCard
 import { EscalationQueue } from "@/components/governance/EscalationQueue";
 import { GovernanceAutomationSettings } from "@/components/governance/GovernanceAutomationSettings";
 import { Shield, AlertTriangle } from "lucide-react";
+import { ComplianceReportGenerator } from "@/components/compliance/ComplianceReportGenerator";
+import { ReportLibrary } from "@/components/compliance/ReportLibrary";
 
 interface SmeDashboardProps {
   business: any;
@@ -559,39 +561,110 @@ export function SmeDashboard({
             <h2 className="text-lg font-semibold">Departments</h2>
             <Button asChild size="sm" variant="outline"><a href="/analytics">Open Analytics</a></Button>
           </div>
-          <Tabs defaultValue="marketing" className="w-full">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
             <TabsList>
+              <TabsTrigger value="overview">Overview</TabsTrigger>
               <TabsTrigger value="marketing">Marketing</TabsTrigger>
               <TabsTrigger value="sales">Sales</TabsTrigger>
-              <TabsTrigger value="ops">Ops</TabsTrigger>
+              <TabsTrigger value="operations">Operations</TabsTrigger>
               <TabsTrigger value="finance">Finance</TabsTrigger>
+              <TabsTrigger value="compliance">Compliance</TabsTrigger>
             </TabsList>
-            <TabsContent value="marketing">
+
+            <TabsContent value="overview" className="space-y-4">
+              <div className="grid gap-4 md:grid-cols-2">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Marketing</CardTitle>
+                    <CardDescription>Marketing performance and leads</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <div className="text-sm text-muted-foreground">Leads</div>
+                        <div className="text-2xl font-bold">{isGuest ? 312 : ((kpiDoc as any)?.marketingLeads ?? "—")}</div>
+                      </div>
+                      <div>
+                        <div className="text-sm text-muted-foreground">CTR</div>
+                        <div className="text-2xl font-bold">{isGuest ? "3.2%" : (((kpiDoc as any)?.ctr ?? 0) + "%")}</div>
+                      </div>
+                      <div>
+                        <div className="text-sm text-muted-foreground">Subs</div>
+                        <div className="text-2xl font-bold">{isGuest ? 124 : ((kpiDoc as any)?.subscribers ?? "—")}</div>
+                      </div>
+                      <div>
+                        <div className="text-sm text-muted-foreground">Revenue</div>
+                        <div className="text-2xl font-bold">${(kpiDoc as any)?.revenue?.toLocaleString?.() ?? (isGuest ? "120,400" : "—")}</div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Sales</CardTitle>
+                    <CardDescription>Sales pipeline and performance</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <div className="text-sm text-muted-foreground">Pipeline</div>
+                        <div className="text-2xl font-bold">${isGuest ? "540k" : ((kpiDoc as any)?.pipeline ?? "—")}</div>
+                      </div>
+                      <div>
+                        <div className="text-sm text-muted-foreground">Win Rate</div>
+                        <div className="text-2xl font-bold">{isGuest ? "27%" : (((kpiDoc as any)?.winRate ?? 0) + "%")}</div>
+                      </div>
+                      <div>
+                        <div className="text-sm text-muted-foreground">Cycle</div>
+                        <div className="text-2xl font-bold">{isGuest ? "18d" : (((kpiDoc as any)?.cycleDays ?? 0) + "d")}</div>
+                      </div>
+                      <div>
+                        <div className="text-sm text-muted-foreground">Revenue</div>
+                        <div className="text-2xl font-bold">${(kpiDoc as any)?.revenue?.toLocaleString?.() ?? (isGuest ? "120,400" : "—")}</div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="marketing" className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <Card><CardContent className="p-4"><div className="text-sm text-muted-foreground">Leads</div><div className="text-2xl font-bold">{isGuest ? 312 : ((kpiDoc as any)?.marketingLeads ?? "—")}</div></CardContent></Card>
                 <Card><CardContent className="p-4"><div className="text-sm text-muted-foreground">CTR</div><div className="text-2xl font-bold">{isGuest ? "3.2%" : (((kpiDoc as any)?.ctr ?? 0) + "%")}</div></CardContent></Card>
                 <Card><CardContent className="p-4"><div className="text-sm text-muted-foreground">Subs</div><div className="text-2xl font-bold">{isGuest ? 124 : ((kpiDoc as any)?.subscribers ?? "—")}</div></CardContent></Card>
               </div>
             </TabsContent>
-            <TabsContent value="sales">
+
+            <TabsContent value="sales" className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <Card><CardContent className="p-4"><div className="text-sm text-muted-foreground">Pipeline</div><div className="text-2xl font-bold">${isGuest ? "540k" : ((kpiDoc as any)?.pipeline ?? "—")}</div></CardContent></Card>
                 <Card><CardContent className="p-4"><div className="text-sm text-muted-foreground">Win Rate</div><div className="text-2xl font-bold">{isGuest ? "27%" : (((kpiDoc as any)?.winRate ?? 0) + "%")}</div></CardContent></Card>
                 <Card><CardContent className="p-4"><div className="text-sm text-muted-foreground">Cycle</div><div className="text-2xl font-bold">{isGuest ? "18d" : (((kpiDoc as any)?.cycleDays ?? 0) + "d")}</div></CardContent></Card>
               </div>
             </TabsContent>
-            <TabsContent value="ops">
+
+            <TabsContent value="operations" className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <Card><CardContent className="p-4"><div className="text-sm text-muted-foreground">On-time</div><div className="text-2xl font-bold">{isGuest ? "96%" : (((kpiDoc as any)?.onTime ?? 0) + "%")}</div></CardContent></Card>
                 <Card><CardContent className="p-4"><div className="text-sm text-muted-foreground">Tickets</div><div className="text-2xl font-bold">{isGuest ? 42 : ((kpiDoc as any)?.tickets ?? "—")}</div></CardContent></Card>
                 <Card><CardContent className="p-4"><div className="text-sm text-muted-foreground">MTTR</div><div className="text-2xl font-bold">{isGuest ? "2.4h" : (((kpiDoc as any)?.mttrHrs ?? 0) + "h")}</div></CardContent></Card>
               </div>
             </TabsContent>
-            <TabsContent value="finance">
+
+            <TabsContent value="finance" className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <Card><CardContent className="p-4"><div className="text-sm text-muted-foreground">MRR</div><div className="text-2xl font-bold">${isGuest ? "80,200" : ((kpiDoc as any)?.mrr ?? "—")}</div></CardContent></Card>
                 <Card><CardContent className="p-4"><div className="text-sm text-muted-foreground">Gross Margin</div><div className="text-2xl font-bold">{isGuest ? "72%" : (((kpiDoc as any)?.gm ?? 0) + "%")}</div></CardContent></Card>
                 <Card><CardContent className="p-4"><div className="text-sm text-muted-foreground">Runway</div><div className="text-2xl font-bold">{isGuest ? "14m" : (((kpiDoc as any)?.runwayMonths ?? 0) + "m")}</div></CardContent></Card>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="compliance" className="space-y-4">
+              <div className="grid gap-4 md:grid-cols-2">
+                <ComplianceReportGenerator businessId={business._id} />
+                <ReportLibrary businessId={business._id} />
               </div>
             </TabsContent>
           </Tabs>
