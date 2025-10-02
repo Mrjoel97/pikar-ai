@@ -1088,6 +1088,55 @@ const schema = defineSchema({
   // Append Convex Auth required tables inside the schema (excluding users to avoid conflicts)
   ...authWithoutUsers,
 
+  crmConnections: defineTable({
+    businessId: v.id("businesses"),
+    userId: v.id("users"),
+    platform: v.union(v.literal("salesforce"), v.literal("hubspot"), v.literal("pipedrive")),
+    accountName: v.string(),
+    accessToken: v.string(),
+    refreshToken: v.optional(v.string()),
+    tokenExpiresAt: v.optional(v.number()),
+    isActive: v.boolean(),
+    connectedAt: v.number(),
+    lastSyncAt: v.optional(v.number()),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_user", ["userId"])
+    .index("by_business_and_platform", ["businessId", "platform"]),
+
+  crmSyncConflicts: defineTable({
+    businessId: v.id("businesses"),
+    connectionId: v.id("crmConnections"),
+    contactEmail: v.string(),
+    conflictType: v.string(),
+    localData: v.any(),
+    remoteData: v.any(),
+    status: v.union(v.literal("pending"), v.literal("resolved")),
+    resolution: v.optional(v.union(v.literal("keep_local"), v.literal("keep_remote"), v.literal("merge"))),
+    createdAt: v.number(),
+    resolvedAt: v.optional(v.number()),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_connection", ["connectionId"])
+    .index("by_status", ["status"]),
+
+  crmDeals: defineTable({
+    businessId: v.id("businesses"),
+    connectionId: v.id("crmConnections"),
+    name: v.string(),
+    value: v.optional(v.number()),
+    stage: v.string(),
+    contactName: v.optional(v.string()),
+    contactEmail: v.optional(v.string()),
+    closeDate: v.optional(v.number()),
+    probability: v.optional(v.number()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_connection", ["connectionId"])
+    .index("by_stage", ["stage"]),
+
   evalSets: defineTable({
     name: v.string(),
     description: v.optional(v.string()),

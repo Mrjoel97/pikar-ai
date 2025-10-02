@@ -15,6 +15,7 @@ import { useNavigate } from "react-router";
 import { ExperimentDashboard } from "@/components/experiments/ExperimentDashboard";
 import { ExperimentCreator } from "@/components/experiments/ExperimentCreator";
 import type { Id } from "@/convex/_generated/dataModel";
+import { Link as LinkIcon } from "lucide-react";
 
 interface StartupDashboardProps {
   business: any;
@@ -634,6 +635,20 @@ const pendingApprovals = useQuery(
         </div>
       </section>
 
+      {/* CRM Sync Status */}
+      {!isGuest && business?._id && (
+        <section className="mb-6">
+          <h2 className="text-lg font-semibold mb-3">CRM Integration</h2>
+          <Card>
+            <CardContent className="p-4">
+              <Suspense fallback={<Skeleton className="h-20 w-full" />}>
+                <CRMSyncCard businessId={business._id} />
+              </Suspense>
+            </CardContent>
+          </Card>
+        </section>
+      )}
+
       {/* Pending Approvals */}
       <section>
         <h2 className="text-xl font-semibold mb-4">Pending Approvals</h2>
@@ -812,6 +827,45 @@ const pendingApprovals = useQuery(
           </CardContent>
         </Card>
       )}
+    </div>
+  );
+}
+
+function CRMSyncCard({ businessId }: { businessId: string }) {
+  const syncStatus = useQuery(
+    api.crmIntegrations.getSyncStatus,
+    { businessId: businessId as Id<"businesses"> }
+  );
+
+  if (!syncStatus) {
+    return <div className="text-sm text-muted-foreground">Loading sync status...</div>;
+  }
+
+  return (
+    <div className="flex items-center justify-between">
+      <div className="flex items-center gap-3">
+        <LinkIcon className="h-5 w-5 text-muted-foreground" />
+        <div>
+          <div className="font-medium">
+            {syncStatus.connections > 0 ? `${syncStatus.connections} CRM Connected` : "No CRM Connected"}
+          </div>
+          {syncStatus.lastSync && (
+            <div className="text-xs text-muted-foreground">
+              Last sync: {new Date(syncStatus.lastSync).toLocaleString()}
+            </div>
+          )}
+        </div>
+      </div>
+      <div className="flex items-center gap-2">
+        {syncStatus.pendingConflicts > 0 && (
+          <Badge variant="destructive">
+            {syncStatus.pendingConflicts} Conflicts
+          </Badge>
+        )}
+        <Button size="sm" variant="outline" asChild>
+          <a href="/crm">Manage</a>
+        </Button>
+      </div>
     </div>
   );
 }

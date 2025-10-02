@@ -33,6 +33,7 @@ import type * as businesses from "../businesses.js";
 import type * as calendar from "../calendar.js";
 import type * as chunking from "../chunking.js";
 import type * as contacts from "../contacts.js";
+import type * as crmIntegrations from "../crmIntegrations.js";
 import type * as cron from "../cron.js";
 import type * as data_playbooksSeed from "../data/playbooksSeed.js";
 import type * as diagnostics from "../diagnostics.js";
@@ -124,6 +125,7 @@ declare const fullApi: ApiFromModules<{
   calendar: typeof calendar;
   chunking: typeof chunking;
   contacts: typeof contacts;
+  crmIntegrations: typeof crmIntegrations;
   cron: typeof cron;
   "data/playbooksSeed": typeof data_playbooksSeed;
   diagnostics: typeof diagnostics;
