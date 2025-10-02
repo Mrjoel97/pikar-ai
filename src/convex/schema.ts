@@ -1584,60 +1584,62 @@ const schema = defineSchema({
 
   // Cross-Department Workflow Handoffs
   workflowHandoffs: defineTable({
-    workflowRunId: v.id("workflowRuns"),
     businessId: v.id("businesses"),
     workflowId: v.id("workflows"),
-    fromDept: v.string(),
-    toDept: v.string(),
-    handoffAt: v.number(),
-    acceptedAt: v.optional(v.number()),
-    acceptedBy: v.optional(v.id("users")),
-    status: v.union(v.literal("pending"), v.literal("accepted"), v.literal("rejected")),
+    stepId: v.id("workflowRunSteps"),
+    fromDepartment: v.string(),
+    toDepartment: v.string(),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("accepted"),
+      v.literal("rejected")
+    ),
+    initiatedBy: v.id("users"),
+    initiatedAt: v.number(),
+    resolvedBy: v.optional(v.id("users")),
+    resolvedAt: v.optional(v.number()),
     notes: v.optional(v.string()),
-  })
-    .index("by_workflow_run", ["workflowRunId"])
-    .index("by_business", ["businessId"])
-    .index("by_to_dept_and_status", ["toDept", "status"])
-    .index("by_business_and_status", ["businessId", "status"]),
+  }),
 
-  // Compliance Report Templates
+  brandingConfigs: defineTable({
+    businessId: v.id("businesses"),
+    logoUrl: v.optional(v.string()),
+    primaryColor: v.optional(v.string()),
+    secondaryColor: v.optional(v.string()),
+    customDomain: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_business", ["businessId"]),
+
   reportTemplates: defineTable({
     name: v.string(),
-    framework: v.union(
-      v.literal("GDPR"),
-      v.literal("SOC2"),
-      v.literal("HIPAA"),
-      v.literal("ISO27001")
-    ),
-    sections: v.array(
-      v.object({
-        title: v.string(),
-        queryType: v.string(),
-        description: v.optional(v.string()),
-      })
-    ),
+    framework: v.string(),
+    sections: v.array(v.object({
+      title: v.string(),
+      queryType: v.string(),
+      description: v.string(),
+    })),
     createdAt: v.number(),
-    updatedAt: v.optional(v.number()),
   }).index("by_framework", ["framework"]),
 
-  // Scheduled Compliance Reports
   scheduledReports: defineTable({
     businessId: v.id("businesses"),
     templateId: v.id("reportTemplates"),
     frequency: v.union(v.literal("daily"), v.literal("weekly"), v.literal("monthly")),
     recipients: v.array(v.string()),
     isActive: v.boolean(),
-    createdAt: v.number(),
     lastRunAt: v.optional(v.number()),
-    nextRunAt: v.optional(v.number()),
-  }).index("by_business", ["businessId"]),
+    nextRunAt: v.number(),
+    createdAt: v.number(),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_next_run", ["nextRunAt"]),
 
-  // Generated Compliance Reports
   generatedReports: defineTable({
     businessId: v.id("businesses"),
     templateId: v.id("reportTemplates"),
     framework: v.string(),
-    reportData: v.string(), // JSON string
+    reportData: v.string(),
     dateRange: v.object({
       start: v.number(),
       end: v.number(),
@@ -1646,8 +1648,8 @@ const schema = defineSchema({
     downloadUrl: v.optional(v.string()),
   })
     .index("by_business", ["businessId"])
+    .index("by_framework", ["framework"])
     .index("by_generated_at", ["generatedAt"]),
-
 });
 
 export default schema;

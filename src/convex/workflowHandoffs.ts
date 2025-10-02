@@ -7,47 +7,24 @@ import { Id } from "./_generated/dataModel";
  */
 export const recordHandoff = mutation({
   args: {
-    workflowRunId: v.id("workflowRuns"),
+    businessId: v.id("businesses"),
     workflowId: v.id("workflows"),
-    fromDept: v.string(),
-    toDept: v.string(),
-    notes: v.optional(v.string()),
+    stepId: v.id("workflowRunSteps"),
+    fromDepartment: v.string(),
+    toDepartment: v.string(),
+    initiatedBy: v.id("users"),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Unauthorized");
-
-    // Get workflow run to extract businessId
-    const workflowRun = await ctx.db.get(args.workflowRunId);
-    if (!workflowRun) throw new Error("Workflow run not found");
-
-    const handoffId = await ctx.db.insert("workflowHandoffs", {
-      workflowRunId: args.workflowRunId,
-      businessId: workflowRun.businessId,
+    return await ctx.db.insert("workflowHandoffs", {
+      businessId: args.businessId,
       workflowId: args.workflowId,
-      fromDept: args.fromDept,
-      toDept: args.toDept,
-      handoffAt: Date.now(),
+      stepId: args.stepId,
+      fromDepartment: args.fromDepartment,
+      toDepartment: args.toDepartment,
       status: "pending",
-      notes: args.notes,
+      initiatedBy: args.initiatedBy,
+      initiatedAt: Date.now(),
     });
-
-    // Log audit event
-    await ctx.db.insert("audit_logs", {
-      businessId: workflowRun.businessId,
-      userId: identity.subject as Id<"users">,
-      action: "workflow_handoff_created",
-      entityType: "workflowHandoff",
-      entityId: handoffId,
-      details: {
-        fromDept: args.fromDept,
-        toDept: args.toDept,
-        workflowRunId: args.workflowRunId,
-      },
-      createdAt: Date.now(),
-    });
-
-    return handoffId;
   },
 });
 
@@ -57,38 +34,30 @@ export const recordHandoff = mutation({
 export const acceptHandoff = mutation({
   args: {
     handoffId: v.id("workflowHandoffs"),
-    notes: v.optional(v.string()),
+    userId: v.id("users"),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Unauthorized");
+    await ctx.db.patch(args.handoffId, {
+      status: "accepted",
+      resolvedBy: args.userId,
+      resolvedAt: Date.now(),
+    });
 
     const handoff = await ctx.db.get(args.handoffId);
     if (!handoff) throw new Error("Handoff not found");
-    if (handoff.status !== "pending") throw new Error("Handoff already processed");
 
-    await ctx.db.patch(args.handoffId, {
-      status: "accepted",
-      acceptedAt: Date.now(),
-      acceptedBy: identity.subject as Id<"users">,
-      notes: args.notes || handoff.notes,
-    });
-
-    // Log audit event
     await ctx.db.insert("audit_logs", {
       businessId: handoff.businessId,
-      userId: identity.subject as Id<"users">,
-      action: "workflow_handoff_accepted",
-      entityType: "workflowHandoff",
+      userId: args.userId,
+      action: "handoff_accepted",
+      entityType: "workflow_handoff",
       entityId: args.handoffId,
       details: {
-        fromDept: handoff.fromDept,
-        toDept: handoff.toDept,
+        fromDepartment: handoff.fromDepartment,
+        toDepartment: handoff.toDepartment,
       },
       createdAt: Date.now(),
     });
-
-    return { success: true };
   },
 });
 
@@ -98,38 +67,33 @@ export const acceptHandoff = mutation({
 export const rejectHandoff = mutation({
   args: {
     handoffId: v.id("workflowHandoffs"),
-    notes: v.optional(v.string()),
+    userId: v.id("users"),
+    reason: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Unauthorized");
+    await ctx.db.patch(args.handoffId, {
+      status: "rejected",
+      resolvedBy: args.userId,
+      resolvedAt: Date.now(),
+      notes: args.reason,
+    });
 
     const handoff = await ctx.db.get(args.handoffId);
     if (!handoff) throw new Error("Handoff not found");
-    if (handoff.status !== "pending") throw new Error("Handoff already processed");
 
-    await ctx.db.patch(args.handoffId, {
-      status: "rejected",
-      acceptedAt: Date.now(),
-      acceptedBy: identity.subject as Id<"users">,
-      notes: args.notes || handoff.notes,
-    });
-
-    // Log audit event
     await ctx.db.insert("audit_logs", {
       businessId: handoff.businessId,
-      userId: identity.subject as Id<"users">,
-      action: "workflow_handoff_rejected",
-      entityType: "workflowHandoff",
+      userId: args.userId,
+      action: "handoff_rejected",
+      entityType: "workflow_handoff",
       entityId: args.handoffId,
       details: {
-        fromDept: handoff.fromDept,
-        toDept: handoff.toDept,
+        fromDepartment: handoff.fromDepartment,
+        toDepartment: handoff.toDepartment,
+        reason: args.reason,
       },
       createdAt: Date.now(),
     });
-
-    return { success: true };
   },
 });
 
@@ -144,37 +108,22 @@ export const getPendingHandoffs = query({
   handler: async (ctx, args) => {
     if (!args.businessId) return [];
 
-    let handoffs;
+    let handoffsQuery = ctx.db
+      .query("workflowHandoffs")
+      .filter((q) => 
+        q.and(
+          q.eq(q.field("businessId"), args.businessId as Id<"businesses">),
+          q.eq(q.field("status"), "pending")
+        )
+      );
+
+    const handoffs = await handoffsQuery.collect();
+
     if (args.department) {
-      const dept = args.department; // Type narrowing
-      handoffs = await ctx.db
-        .query("workflowHandoffs")
-        .withIndex("by_to_dept_and_status", (q) =>
-          q.eq("toDept", dept).eq("status", "pending")
-        )
-        .filter((q) => q.eq(q.field("businessId"), args.businessId))
-        .collect();
-    } else {
-      handoffs = await ctx.db
-        .query("workflowHandoffs")
-        .withIndex("by_business_and_status", (q) =>
-          q.eq("businessId", args.businessId as Id<"businesses">).eq("status", "pending")
-        )
-        .collect();
+      return handoffs.filter((h) => h.toDepartment === args.department);
     }
 
-    // Enrich with workflow details
-    const enriched = await Promise.all(
-      handoffs.map(async (handoff) => {
-        const workflow = await ctx.db.get(handoff.workflowId);
-        return {
-          ...handoff,
-          workflowName: workflow?.name || "Unknown Workflow",
-        };
-      })
-    );
-
-    return enriched;
+    return handoffs;
   },
 });
 
@@ -190,76 +139,69 @@ export const getCrossDepartmentMetrics = query({
     if (!args.businessId) {
       return {
         totalHandoffs: 0,
+        pendingHandoffs: 0,
         avgHandoffTime: 0,
-        failureRate: 0,
-        departmentStats: [],
-        flowData: [],
+        departmentBreakdown: [],
+        topRoutes: [],
       };
     }
 
-    const days = args.days || 30;
-    const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
+    const daysBack = args.days || 30;
+    const cutoff = Date.now() - daysBack * 24 * 60 * 60 * 1000;
 
-    const allHandoffs = await ctx.db
+    const handoffs = await ctx.db
       .query("workflowHandoffs")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId as Id<"businesses">))
-      .filter((q) => q.gte(q.field("handoffAt"), cutoff))
+      .filter((q) => 
+        q.and(
+          q.eq(q.field("businessId"), args.businessId as Id<"businesses">),
+          q.gte(q.field("initiatedAt"), cutoff)
+        )
+      )
       .collect();
 
-    const totalHandoffs = allHandoffs.length;
-    const acceptedHandoffs = allHandoffs.filter((h) => h.status === "accepted");
-    const rejectedHandoffs = allHandoffs.filter((h) => h.status === "rejected");
+    const totalHandoffs = handoffs.length;
+    const pendingHandoffs = handoffs.filter((h) => h.status === "pending").length;
 
-    // Calculate average handoff time (time from handoff to acceptance)
-    const handoffTimes = acceptedHandoffs
-      .filter((h) => h.acceptedAt)
-      .map((h) => (h.acceptedAt! - h.handoffAt) / (1000 * 60 * 60)); // hours
-
+    const completedHandoffs = handoffs.filter((h) => h.status === "accepted" && h.resolvedAt);
     const avgHandoffTime =
-      handoffTimes.length > 0
-        ? handoffTimes.reduce((a, b) => a + b, 0) / handoffTimes.length
+      completedHandoffs.length > 0
+        ? completedHandoffs.reduce((sum, h) => sum + (h.resolvedAt! - h.initiatedAt), 0) /
+          completedHandoffs.length / (1000 * 60 * 60)
         : 0;
 
-    const failureRate = totalHandoffs > 0 ? (rejectedHandoffs.length / totalHandoffs) * 100 : 0;
-
-    // Department statistics
     const deptMap = new Map<string, { sent: number; received: number; avgTime: number }>();
+    handoffs.forEach((h) => {
+      const fromStats = deptMap.get(h.fromDepartment) || { sent: 0, received: 0, avgTime: 0 };
+      fromStats.sent += 1;
+      deptMap.set(h.fromDepartment, fromStats);
 
-    allHandoffs.forEach((h) => {
-      // From department
-      const fromStats = deptMap.get(h.fromDept) || { sent: 0, received: 0, avgTime: 0 };
-      fromStats.sent++;
-      deptMap.set(h.fromDept, fromStats);
-
-      // To department
-      const toStats = deptMap.get(h.toDept) || { sent: 0, received: 0, avgTime: 0 };
-      toStats.received++;
-      deptMap.set(h.toDept, toStats);
+      const toStats = deptMap.get(h.toDepartment) || { sent: 0, received: 0, avgTime: 0 };
+      toStats.received += 1;
+      deptMap.set(h.toDepartment, toStats);
     });
 
-    const departmentStats = Array.from(deptMap.entries()).map(([dept, stats]) => ({
+    const departmentBreakdown = Array.from(deptMap.entries()).map(([dept, stats]) => ({
       department: dept,
       ...stats,
     }));
 
-    // Flow data for Sankey chart (from -> to with count)
-    const flowMap = new Map<string, number>();
-    allHandoffs.forEach((h) => {
-      const key = `${h.fromDept}->${h.toDept}`;
-      flowMap.set(key, (flowMap.get(key) || 0) + 1);
+    const routeMap = new Map<string, number>();
+    handoffs.forEach((h) => {
+      const key = `${h.fromDepartment}->${h.toDepartment}`;
+      routeMap.set(key, (routeMap.get(key) || 0) + 1);
     });
 
-    const flowData = Array.from(flowMap.entries()).map(([key, count]) => {
-      const [from, to] = key.split("->");
-      return { from, to, count };
-    });
+    const topRoutes = Array.from(routeMap.entries())
+      .map(([route, count]) => ({ route, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5);
 
     return {
       totalHandoffs,
-      avgHandoffTime: Math.round(avgHandoffTime * 10) / 10,
-      failureRate: Math.round(failureRate * 10) / 10,
-      departmentStats,
-      flowData,
+      pendingHandoffs,
+      avgHandoffTime,
+      departmentBreakdown,
+      topRoutes,
     };
   },
 });
@@ -269,14 +211,14 @@ export const getCrossDepartmentMetrics = query({
  */
 export const getHandoffHistory = query({
   args: {
-    workflowRunId: v.id("workflowRuns"),
+    workflowId: v.id("workflows"),
   },
   handler: async (ctx, args) => {
     const handoffs = await ctx.db
       .query("workflowHandoffs")
-      .withIndex("by_workflow_run", (q) => q.eq("workflowRunId", args.workflowRunId))
+      .filter((q) => q.eq(q.field("workflowId"), args.workflowId))
       .collect();
 
-    return handoffs.sort((a, b) => a.handoffAt - b.handoffAt);
+    return handoffs.sort((a, b) => a.initiatedAt - b.initiatedAt);
   },
 });

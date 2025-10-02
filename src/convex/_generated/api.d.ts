@@ -30,6 +30,7 @@ import type * as auth_emailOtp from "../auth/emailOtp.js";
 import type * as auth from "../auth.js";
 import type * as billing from "../billing.js";
 import type * as billingInternal from "../billingInternal.js";
+import type * as branding from "../branding.js";
 import type * as businesses from "../businesses.js";
 import type * as calendar from "../calendar.js";
 import type * as chunking from "../chunking.js";
@@ -129,6 +130,7 @@ declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   billing: typeof billing;
   billingInternal: typeof billingInternal;
+  branding: typeof branding;
   businesses: typeof businesses;
   calendar: typeof calendar;
   chunking: typeof chunking;

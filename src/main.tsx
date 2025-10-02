@@ -25,6 +25,7 @@ import AdminPage from "@/pages/Admin.tsx";
 import AdminAuthPage from "./pages/AdminAuth.tsx";
 import LearningHubPage from "@/pages/LearningHub.tsx";
 import SystemAgentsPage from "@/pages/SystemAgents";
+import BrandingPortal from "./pages/BrandingPortal.tsx";
 
 class ErrorBoundary extends Component<
   { children: React.ReactNode },
@@ -110,7 +111,6 @@ createRoot(document.getElementById("root")!).render(
       <AppProviders>
         <InstrumentationProvider>
           <MemoryRouter
-            // Initialize MemoryRouter with the actual current URL so deep links like /admin work
             initialEntries={[
               `${window.location.pathname}${window.location.search}${window.location.hash}`,
             ]}
@@ -134,6 +134,7 @@ createRoot(document.getElementById("root")!).render(
               <Route path="/admin-auth" element={<AdminAuthPage />} />
               <Route path="/learning-hub" element={<LearningHubPage />} />
               <Route path="/admin/system-agents" element={<SystemAgentsPage />} />
+              <Route path="/branding" element={<BrandingPortal />} />
               <Route
                 path="/src/components/dashboards/SolopreneurDashboard.tsx"
                 element={<Navigate to="/dashboard" replace />}
