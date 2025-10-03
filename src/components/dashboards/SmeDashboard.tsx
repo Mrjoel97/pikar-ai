@@ -84,7 +84,7 @@ export function SmeDashboard({
 
   const pendingEscalations = useQuery(
     api.governanceAutomation.getEscalations,
-    business?._id ? { businessId: business._id, status: "pending" as const } : undefined
+    !isGuest && business?._id ? { businessId: business._id, status: "pending" as const } : undefined
   );
 
   const UpgradeCTA = ({ feature }: { feature: string }) => (
