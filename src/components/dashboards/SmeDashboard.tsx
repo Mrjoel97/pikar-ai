@@ -144,7 +144,10 @@ export function SmeDashboard({
   );
 
   const smeTier = "sme";
-  const smeFlags = useQuery(api.featureFlags.getFeatureFlags, {});
+  const smeFlags = useQuery(
+    api.featureFlags.getFeatureFlags,
+    !isGuest && businessId ? { businessId } : undefined
+  );
   const smeAgents = useQuery(api.aiAgents.listRecommendedByTier, { tier: smeTier, limit: 3 });
   const smeAgentsEnabled = !!smeFlags?.find((f: any) => f.flagName === "sme_insights")?.isEnabled;
   const nav = useNavigate();
