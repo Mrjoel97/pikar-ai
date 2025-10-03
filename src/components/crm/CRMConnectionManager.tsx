@@ -9,16 +9,23 @@ import { Link, Unlink, RefreshCw, CheckCircle, XCircle } from "lucide-react";
 import type { Id } from "@/convex/_generated/dataModel";
 
 interface CRMConnectionManagerProps {
-  businessId: Id<"businesses">;
+  businessId: Id<"businesses"> | null | undefined;
 }
 
 export function CRMConnectionManager({ businessId }: CRMConnectionManagerProps) {
-  const connections = useQuery(api.crmIntegrations.listConnections, { businessId });
+  const connections = useQuery(
+    api.crmIntegrations.listConnections,
+    businessId ? { businessId } : undefined
+  );
   const disconnectCRM = useMutation(api.crmIntegrations.disconnectCRM);
   const triggerSync = useMutation(api.crmIntegrations.triggerSync);
   const [syncing, setSyncing] = useState<string | null>(null);
 
   const handleConnect = (platform: "salesforce" | "hubspot" | "pipedrive") => {
+    if (!businessId) {
+      toast.error("Please sign in to connect a CRM");
+      return;
+    }
     toast.info(`OAuth flow for ${platform} would open here`);
     // In production, this would redirect to OAuth provider
   };
@@ -49,6 +56,28 @@ export function CRMConnectionManager({ businessId }: CRMConnectionManagerProps) 
     { id: "hubspot", name: "HubSpot", color: "bg-orange-500" },
     { id: "pipedrive", name: "Pipedrive", color: "bg-green-500" },
   ];
+
+  // Show a message if no businessId is available
+  if (!businessId) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Link className="h-5 w-5" />
+            CRM Connections
+          </CardTitle>
+          <CardDescription>
+            Sign in to connect your CRM and sync contacts, deals, and activities
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground">
+            Please sign in to manage CRM connections.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card>
