@@ -69,9 +69,10 @@ export function EnterpriseDashboard({
   const [region, setRegion] = useState<string>("global");
   const [unit, setUnit] = useState<string>("all");
 
-  const kpiDoc = !isGuest && business?._id
-    ? useQuery(api.kpis.getSnapshot, { businessId: business._id })
-    : undefined;
+  const kpiDoc = useQuery(
+    api.kpis.getSnapshot,
+    !isGuest && business?._id ? { businessId: business._id } : undefined
+  );
 
   const businessId = !isGuest ? business?._id : null;
 
