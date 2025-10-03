@@ -42,9 +42,10 @@ export function SmeDashboard({
   onUpgrade 
 }: SmeDashboardProps) {
   // Fetch latest KPI snapshot when authenticated
-  const kpiDoc = !isGuest && business?._id
-    ? useQuery(api.kpis.getSnapshot, { businessId: business._id })
-    : undefined;
+  const kpiDoc = useQuery(
+    api.kpis.getSnapshot,
+    !isGuest && business?._id ? { businessId: business._id } : undefined
+  );
 
   const agents = isGuest ? demoData?.agents || [] : [];
   const workflows = isGuest ? demoData?.workflows || [] : [];
@@ -73,7 +74,7 @@ export function SmeDashboard({
 
   const featureFlags = useQuery(
     api.featureFlags.getFeatureFlags,
-    isGuest || !businessId ? "skip" : { businessId }
+    isGuest || !businessId ? undefined : { businessId }
   );
   const toggleFlag = useMutation(api.featureFlags.toggleFeatureFlag);
 
@@ -318,7 +319,7 @@ export function SmeDashboard({
       {/* Governance Score Card */}
       {business?._id && (
         <div className="grid gap-6 md:grid-cols-2">
-          <GovernanceScoreCard businessId={business._id} days={30} />
+          <GovernanceScoreCard businessId={business?._id} days={30} />
           
           {/* Escalations Alert */}
           {pendingEscalations && pendingEscalations.length > 0 && (
@@ -589,7 +590,7 @@ export function SmeDashboard({
             onClick={async () => {
               if (!business?._id) return;
               try {
-                const res = await enforceGovernanceForBiz({ businessId: business._id });
+                const res = await enforceGovernanceForBiz({ businessId: business?._id });
                 toast.success(`Governance updated for ${res.count ?? 0} workflows`);
               } catch (e: any) {
                 toast.error(e?.message || "Failed to enforce governance");
