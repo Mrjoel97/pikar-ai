@@ -1,4 +1,4 @@
-declare module 'jstat' {
+declare module "jstat" {
   const jstat: any;
-  export = jstat;
+  export default jstat;
 }
