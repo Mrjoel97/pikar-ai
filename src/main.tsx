@@ -1,6 +1,5 @@
 import { Toaster } from "sonner";
 import { InstrumentationProvider } from "@/instrumentation.tsx";
-import AuthPage from "@/pages/Auth.tsx";
 import { ConvexAuthProvider } from "@convex-dev/auth/react";
 import { ConvexReactClient } from "convex/react";
 import React, { StrictMode, useEffect, Component } from "react";
@@ -9,28 +8,31 @@ import { MemoryRouter, Route, Routes, useLocation, Navigate, useNavigate } from 
 import "./index.css";
 import Landing from "./pages/Landing.tsx";
 import NotFound from "./pages/NotFound.tsx";
-import Dashboard from "./pages/Dashboard.tsx";
-import Onboarding from "./pages/Onboarding.tsx";
 import "./types/global.d.ts";
-import InitiativesPage from "@/pages/Initiatives.tsx";
-import AgentsPage from "@/pages/Agents.tsx";
-import WorkflowsPage from "@/pages/Workflows.tsx";
-import WorkflowTemplatesPage from "@/pages/WorkflowTemplates.tsx";
-import BusinessPage from "@/pages/Business.tsx";
-import AnalyticsPage from "@/pages/Analytics.tsx";
-import ApprovalAnalyticsPage from "@/pages/ApprovalAnalytics";
-import PricingPage from "./pages/Pricing.tsx";
-import SettingsPage from "@/pages/Settings.tsx";
-import AdminPage from "@/pages/Admin.tsx";
-import AdminAuthPage from "./pages/AdminAuth.tsx";
-import LearningHubPage from "@/pages/LearningHub.tsx";
-import SystemAgentsPage from "@/pages/SystemAgents";
-import BrandingPortal from "./pages/BrandingPortal.tsx";
-import ApiDocsPage from "./pages/ApiDocs";
-import WebhookManagementPage from "./pages/WebhookManagement";
-import ScimProvisioningPage from "./pages/ScimProvisioning";
-import SsoConfigurationPage from "./pages/SsoConfiguration";
-import KmsConfigurationPage from "./pages/KmsConfiguration";
+
+// Lazy-loaded pages for code splitting
+const AuthPage = React.lazy(() => import("@/pages/Auth.tsx"));
+const Dashboard = React.lazy(() => import("./pages/Dashboard.tsx"));
+const Onboarding = React.lazy(() => import("./pages/Onboarding.tsx"));
+const InitiativesPage = React.lazy(() => import("@/pages/Initiatives.tsx"));
+const AgentsPage = React.lazy(() => import("@/pages/Agents.tsx"));
+const WorkflowsPage = React.lazy(() => import("@/pages/Workflows.tsx"));
+const WorkflowTemplatesPage = React.lazy(() => import("@/pages/WorkflowTemplates.tsx"));
+const BusinessPage = React.lazy(() => import("@/pages/Business.tsx"));
+const AnalyticsPage = React.lazy(() => import("@/pages/Analytics.tsx"));
+const ApprovalAnalyticsPage = React.lazy(() => import("@/pages/ApprovalAnalytics"));
+const PricingPage = React.lazy(() => import("./pages/Pricing.tsx"));
+const SettingsPage = React.lazy(() => import("@/pages/Settings.tsx"));
+const AdminPage = React.lazy(() => import("@/pages/Admin.tsx"));
+const AdminAuthPage = React.lazy(() => import("./pages/AdminAuth.tsx"));
+const LearningHubPage = React.lazy(() => import("@/pages/LearningHub.tsx"));
+const SystemAgentsPage = React.lazy(() => import("@/pages/SystemAgents"));
+const BrandingPortal = React.lazy(() => import("./pages/BrandingPortal.tsx"));
+const ApiDocsPage = React.lazy(() => import("./pages/ApiDocs"));
+const WebhookManagementPage = React.lazy(() => import("./pages/WebhookManagement"));
+const ScimProvisioningPage = React.lazy(() => import("./pages/ScimProvisioning"));
+const SsoConfigurationPage = React.lazy(() => import("./pages/SsoConfiguration"));
+const KmsConfigurationPage = React.lazy(() => import("./pages/KmsConfiguration"));
 
 class ErrorBoundary extends Component<
   { children: React.ReactNode },
@@ -123,29 +125,190 @@ createRoot(document.getElementById("root")!).render(
             <RouteSyncer />
             <Routes>
               <Route path="/" element={<Landing />} />
-              <Route path="/auth" element={<AuthPage redirectAfterAuth="/dashboard" />} />
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/onboarding" element={<Onboarding />} />
-              <Route path="/initiatives" element={<InitiativesPage />} />
-              <Route path="/agents" element={<AgentsPage />} />
-              <Route path="/ai-agents" element={<AgentsPage />} />
-              <Route path="/analytics" element={<AnalyticsPage />} />
-              <Route path="/approval-analytics" element={<ApprovalAnalyticsPage />} />
-              <Route path="/workflows" element={<WorkflowsPage />} />
-              <Route path="/workflows/templates" element={<WorkflowTemplatesPage />} />
-              <Route path="/business" element={<BusinessPage />} />
-              <Route path="/settings" element={<SettingsPage />} />
-              <Route path="/admin" element={<AdminPage />} />
-              <Route path="/admin-auth" element={<AdminAuthPage />} />
-              <Route path="/learning-hub" element={<LearningHubPage />} />
-              <Route path="/admin/system-agents" element={<SystemAgentsPage />} />
-              <Route path="/branding" element={<BrandingPortal />} />
-              <Route path="/api-docs" element={<ApiDocsPage />} />
-              <Route path="/webhooks" element={<WebhookManagementPage />} />
-              <Route path="/scim" element={<ScimProvisioningPage />} />
-              <Route path="/scim-provisioning" element={<ScimProvisioningPage />} />
-              <Route path="/sso-configuration" element={<SsoConfigurationPage />} />
-              <Route path="/kms-configuration" element={<KmsConfigurationPage />} />
+              <Route
+                path="/auth"
+                element={
+                  <React.Suspense fallback={<div className="p-6 text-sm">Loading…</div>}>
+                    <AuthPage redirectAfterAuth="/dashboard" />
+                  </React.Suspense>
+                }
+              />
+              <Route
+                path="/dashboard"
+                element={
+                  <React.Suspense fallback={<div className="p-6 text-sm">Loading…</div>}>
+                    <Dashboard />
+                  </React.Suspense>
+                }
+              />
+              <Route
+                path="/onboarding"
+                element={
+                  <React.Suspense fallback={<div className="p-6 text-sm">Loading…</div>}>
+                    <Onboarding />
+                  </React.Suspense>
+                }
+              />
+              <Route
+                path="/initiatives"
+                element={
+                  <React.Suspense fallback={<div className="p-6 text-sm">Loading…</div>}>
+                    <InitiativesPage />
+                  </React.Suspense>
+                }
+              />
+              <Route
+                path="/agents"
+                element={
+                  <React.Suspense fallback={<div className="p-6 text-sm">Loading…</div>}>
+                    <AgentsPage />
+                  </React.Suspense>
+                }
+              />
+              <Route
+                path="/ai-agents"
+                element={
+                  <React.Suspense fallback={<div className="p-6 text-sm">Loading…</div>}>
+                    <AgentsPage />
+                  </React.Suspense>
+                }
+              />
+              <Route
+                path="/analytics"
+                element={
+                  <React.Suspense fallback={<div className="p-6 text-sm">Loading…</div>}>
+                    <AnalyticsPage />
+                  </React.Suspense>
+                }
+              />
+              <Route
+                path="/approval-analytics"
+                element={
+                  <React.Suspense fallback={<div className="p-6 text-sm">Loading…</div>}>
+                    <ApprovalAnalyticsPage />
+                  </React.Suspense>
+                }
+              />
+              <Route
+                path="/workflows"
+                element={
+                  <React.Suspense fallback={<div className="p-6 text-sm">Loading…</div>}>
+                    <WorkflowsPage />
+                  </React.Suspense>
+                }
+              />
+              <Route
+                path="/workflows/templates"
+                element={
+                  <React.Suspense fallback={<div className="p-6 text-sm">Loading…</div>}>
+                    <WorkflowTemplatesPage />
+                  </React.Suspense>
+                }
+              />
+              <Route
+                path="/business"
+                element={
+                  <React.Suspense fallback={<div className="p-6 text-sm">Loading…</div>}>
+                    <BusinessPage />
+                  </React.Suspense>
+                }
+              />
+              <Route
+                path="/settings"
+                element={
+                  <React.Suspense fallback={<div className="p-6 text-sm">Loading…</div>}>
+                    <SettingsPage />
+                  </React.Suspense>
+                }
+              />
+              <Route
+                path="/admin"
+                element={
+                  <React.Suspense fallback={<div className="p-6 text-sm">Loading…</div>}>
+                    <AdminPage />
+                  </React.Suspense>
+                }
+              />
+              <Route
+                path="/admin-auth"
+                element={
+                  <React.Suspense fallback={<div className="p-6 text-sm">Loading…</div>}>
+                    <AdminAuthPage />
+                  </React.Suspense>
+                }
+              />
+              <Route
+                path="/learning-hub"
+                element={
+                  <React.Suspense fallback={<div className="p-6 text-sm">Loading…</div>}>
+                    <LearningHubPage />
+                  </React.Suspense>
+                }
+              />
+              <Route
+                path="/admin/system-agents"
+                element={
+                  <React.Suspense fallback={<div className="p-6 text-sm">Loading…</div>}>
+                    <SystemAgentsPage />
+                  </React.Suspense>
+                }
+              />
+              <Route
+                path="/branding"
+                element={
+                  <React.Suspense fallback={<div className="p-6 text-sm">Loading…</div>}>
+                    <BrandingPortal />
+                  </React.Suspense>
+                }
+              />
+              <Route
+                path="/api-docs"
+                element={
+                  <React.Suspense fallback={<div className="p-6 text-sm">Loading…</div>}>
+                    <ApiDocsPage />
+                  </React.Suspense>
+                }
+              />
+              <Route
+                path="/webhooks"
+                element={
+                  <React.Suspense fallback={<div className="p-6 text-sm">Loading…</div>}>
+                    <WebhookManagementPage />
+                  </React.Suspense>
+                }
+              />
+              <Route
+                path="/scim"
+                element={
+                  <React.Suspense fallback={<div className="p-6 text-sm">Loading…</div>}>
+                    <ScimProvisioningPage />
+                  </React.Suspense>
+                }
+              />
+              <Route
+                path="/scim-provisioning"
+                element={
+                  <React.Suspense fallback={<div className="p-6 text-sm">Loading…</div>}>
+                    <ScimProvisioningPage />
+                  </React.Suspense>
+                }
+              />
+              <Route
+                path="/sso-configuration"
+                element={
+                  <React.Suspense fallback={<div className="p-6 text-sm">Loading…</div>}>
+                    <SsoConfigurationPage />
+                  </React.Suspense>
+                }
+              />
+              <Route
+                path="/kms-configuration"
+                element={
+                  <React.Suspense fallback={<div className="p-6 text-sm">Loading…</div>}>
+                    <KmsConfigurationPage />
+                  </React.Suspense>
+                }
+              />
               <Route
                 path="/src/components/dashboards/SolopreneurDashboard.tsx"
                 element={<Navigate to="/dashboard" replace />}
