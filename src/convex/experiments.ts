@@ -1,5 +1,3 @@
-"use node";
-
 import { v } from "convex/values";
 import { internalMutation, mutation, query, action } from "./_generated/server";
 import { internal } from "./_generated/api";
@@ -232,87 +230,6 @@ export const calculateResults = query({
       clickRate: v.metrics.sent > 0 ? (v.metrics.clicked / v.metrics.sent) * 100 : 0,
       conversionRate: v.metrics.sent > 0 ? (v.metrics.converted / v.metrics.sent) * 100 : 0,
     }));
-  },
-});
-
-// Determine winner using statistical analysis
-export const determineWinner = action({
-  args: { experimentId: v.id("experiments") },
-  handler: async (ctx, args): Promise<{
-    winnerId: Id<"experimentVariants"> | null;
-    isSignificant: boolean;
-    bestVariantKey: string;
-    conversionRate: number;
-    confidenceLevel: number | null;
-  }> => {
-    // Import jstat dynamically (type will be inferred as any, which is acceptable for dynamic imports)
-    const jstat = await import("jstat") as any;
-
-    const experiment: any = await ctx.runQuery(internal.experiments.getExperimentById, {
-      experimentId: args.experimentId,
-    });
-
-    if (!experiment || !experiment.variants) {
-      throw new Error("Experiment not found");
-    }
-
-    const variants: any[] = experiment.variants;
-    const confidenceLevel = experiment.configuration.confidenceLevel / 100;
-
-    // Find variant with highest conversion rate
-    let bestVariant: any = variants[0];
-    let bestRate = 0;
-
-    for (const variant of variants) {
-      const rate = variant.metrics.sent > 0
-        ? variant.metrics.converted / variant.metrics.sent
-        : 0;
-      if (rate > bestRate) {
-        bestRate = rate;
-        bestVariant = variant;
-      }
-    }
-
-    // Perform chi-square test for statistical significance
-    // Compare best variant against others
-    let isSignificant = true;
-    const minSampleSize = experiment.configuration.minimumSampleSize;
-
-    for (const variant of variants) {
-      if (variant._id === bestVariant._id) continue;
-
-      // Check minimum sample size
-      if (variant.metrics.sent < minSampleSize || bestVariant.metrics.sent < minSampleSize) {
-        isSignificant = false;
-        break;
-      }
-
-      // Chi-square test
-      const observed = [
-        [bestVariant.metrics.converted, bestVariant.metrics.sent - bestVariant.metrics.converted],
-        [variant.metrics.converted, variant.metrics.sent - variant.metrics.converted],
-      ];
-
-      try {
-        const chiSquare = jstat.jStat.chisquare.test(observed, 1);
-        if (chiSquare > (1 - confidenceLevel)) {
-          isSignificant = false;
-          break;
-        }
-      } catch (e) {
-        console.error("Chi-square test failed:", e);
-        isSignificant = false;
-        break;
-      }
-    }
-
-    return {
-      winnerId: isSignificant ? bestVariant._id : null,
-      isSignificant,
-      bestVariantKey: bestVariant.variantKey,
-      conversionRate: bestRate * 100,
-      confidenceLevel: isSignificant ? experiment.configuration.confidenceLevel : null,
-    };
   },
 });
 
