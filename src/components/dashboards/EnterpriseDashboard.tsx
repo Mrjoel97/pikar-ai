@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, lazy, Suspense } from "react";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Badge } from "@/components/ui/badge";
@@ -11,17 +11,45 @@ import { toast } from "sonner";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { useNavigate } from "react-router";
-import { RoiDashboard } from "./RoiDashboard";
-import { ExperimentDashboard } from "@/components/experiments/ExperimentDashboard";
-import { ExperimentCreator } from "@/components/experiments/ExperimentCreator";
 import { Id } from "@/convex/_generated/dataModel";
 
-// Add new subcomponents
-import { GlobalOverview } from "./enterprise/GlobalOverview";
-import { WidgetGrid } from "./enterprise/WidgetGrid";
-import { ApprovalsAudit } from "./enterprise/ApprovalsAudit";
-import { AdvancedPanels } from "./enterprise/AdvancedPanels";
-import { BrainDumpSection } from "./enterprise/BrainDumpSection";
+// Lazy-load heavy components to reduce initial bundle
+const RoiDashboard = lazy(() =>
+  import("./RoiDashboard").then((m) => ({ default: m.RoiDashboard })),
+);
+const ExperimentDashboard = lazy(() =>
+  import("@/components/experiments/ExperimentDashboard").then((m) => ({
+    default: m.ExperimentDashboard,
+  })),
+);
+const ExperimentCreator = lazy(() =>
+  import("@/components/experiments/ExperimentCreator").then((m) => ({
+    default: m.ExperimentCreator,
+  })),
+);
+const GlobalOverview = lazy(() =>
+  import("./enterprise/GlobalOverview").then((m) => ({
+    default: m.GlobalOverview,
+  })),
+);
+const WidgetGrid = lazy(() =>
+  import("./enterprise/WidgetGrid").then((m) => ({ default: m.WidgetGrid })),
+);
+const ApprovalsAudit = lazy(() =>
+  import("./enterprise/ApprovalsAudit").then((m) => ({
+    default: m.ApprovalsAudit,
+  })),
+);
+const AdvancedPanels = lazy(() =>
+  import("./enterprise/AdvancedPanels").then((m) => ({
+    default: m.AdvancedPanels,
+  })),
+);
+const BrainDumpSection = lazy(() =>
+  import("./enterprise/BrainDumpSection").then((m) => ({
+    default: m.BrainDumpSection,
+  })),
+);
 
 interface EnterpriseDashboardProps {
   business: any;
@@ -221,27 +249,31 @@ export function EnterpriseDashboard({
         </div>
       )}
 
-      <GlobalOverview
-        region={region}
-        setRegion={setRegion}
-        unit={unit}
-        setUnit={setUnit}
-        unifiedRevenue={unifiedRevenue}
-        unifiedGlobalEfficiency={unifiedGlobalEfficiency}
-        revenueTrend={revenueTrend}
-        efficiencyTrend={efficiencyTrend}
-        onRunDiagnostics={handleRunDiagnostics}
-        onEnforceGovernance={handleEnforceGovernance}
-        slaSummaryText={slaSummaryText}
-      />
+      <Suspense fallback={<div className="rounded-md border p-4 text-sm text-muted-foreground">Loading overview…</div>}>
+        <GlobalOverview
+          region={region}
+          setRegion={setRegion}
+          unit={unit}
+          setUnit={setUnit}
+          unifiedRevenue={unifiedRevenue}
+          unifiedGlobalEfficiency={unifiedGlobalEfficiency}
+          revenueTrend={revenueTrend}
+          efficiencyTrend={efficiencyTrend}
+          onRunDiagnostics={handleRunDiagnostics}
+          onEnforceGovernance={handleEnforceGovernance}
+          slaSummaryText={slaSummaryText}
+        />
+      </Suspense>
 
-      <WidgetGrid
-        hasEnterprise={hasTier("enterprise")}
-        widgetOrder={widgetOrder}
-        setWidgetOrder={setWidgetOrder}
-        widgetsByKey={widgetsByKey}
-        onUpgrade={onUpgrade}
-      />
+      <Suspense fallback={<div className="rounded-md border p-4 text-sm text-muted-foreground">Loading widgets…</div>}>
+        <WidgetGrid
+          hasEnterprise={hasTier("enterprise")}
+          widgetOrder={widgetOrder}
+          setWidgetOrder={setWidgetOrder}
+          widgetsByKey={widgetsByKey}
+          onUpgrade={onUpgrade}
+        />
+      </Suspense>
 
       <section>
         <h2 className="text-xl font-semibold mb-4">Strategic Initiatives</h2>
@@ -372,13 +404,15 @@ export function EnterpriseDashboard({
               <CardTitle>Approvals & Audit</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <ApprovalsAudit
-                isGuest={isGuest}
-                approvals={approvals}
-                auditLatest={auditLatest}
-                onApprove={handleApprove}
-                onReject={handleReject}
-              />
+              <Suspense fallback={<div className="text-sm text-muted-foreground">Loading approvals…</div>}>
+                <ApprovalsAudit
+                  isGuest={isGuest}
+                  approvals={approvals}
+                  auditLatest={auditLatest}
+                  onApprove={handleApprove}
+                  onReject={handleReject}
+                />
+              </Suspense>
             </CardContent>
           </Card>
         </div>
@@ -457,32 +491,40 @@ export function EnterpriseDashboard({
           <h2 className="text-xl font-semibold mb-4">Experiment Dashboard</h2>
           <Card>
             <CardContent className="p-4">
-              <ExperimentDashboard businessId={business._id as Id<"businesses">} />
+              <Suspense fallback={<div className="text-sm text-muted-foreground">Loading experiment dashboard…</div>}>
+                <ExperimentDashboard businessId={business._id as Id<"businesses">} />
+              </Suspense>
             </CardContent>
           </Card>
         </section>
       )}
 
       {!isGuest && business?._id ? (
-        <BrainDumpSection businessId={String(business._id)} />
+        <Suspense fallback={<div className="text-sm text-muted-foreground">Loading Brain Dump…</div>}>
+          <BrainDumpSection businessId={String(business._id)} />
+        </Suspense>
       ) : null}
 
-      <AdvancedPanels
-        isGuest={isGuest}
-        businessId={businessId ? String(businessId) : null}
-        crmConnections={crmConnections}
-        crmConflicts={crmConflicts}
-        onOpenExperiments={() => setShowExperimentCreator(true)}
-        onOpenRoi={() => setShowRoiDashboard(true)}
-        onOpenCrm={() => nav("/crm")}
-      />
+      <Suspense fallback={<div className="text-sm text-muted-foreground">Loading panels…</div>}>
+        <AdvancedPanels
+          isGuest={isGuest}
+          businessId={businessId ? String(businessId) : null}
+          crmConnections={crmConnections}
+          crmConflicts={crmConflicts}
+          onOpenExperiments={() => setShowExperimentCreator(true)}
+          onOpenRoi={() => setShowRoiDashboard(true)}
+          onOpenCrm={() => nav("/crm")}
+        />
+      </Suspense>
 
       {showExperimentCreator && !isGuest && business?._id && (
-        <ExperimentCreator
-          businessId={business._id as Id<"businesses">}
-          onComplete={() => setShowExperimentCreator(false)}
-          onCancel={() => setShowExperimentCreator(false)}
-        />
+        <Suspense fallback={<div className="text-sm text-muted-foreground p-4">Loading experiment creator…</div>}>
+          <ExperimentCreator
+            businessId={business._id as Id<"businesses">}
+            onComplete={() => setShowExperimentCreator(false)}
+            onCancel={() => setShowExperimentCreator(false)}
+          />
+        </Suspense>
       )}
 
       {showRoiDashboard && !isGuest && business?._id && (
@@ -495,10 +537,9 @@ export function EnterpriseDashboard({
               </Button>
             </div>
             <div className="p-4">
-              <RoiDashboard
-                businessId={business._id}
-                userId={business.ownerId}
-              />
+              <Suspense fallback={<div className="text-sm text-muted-foreground">Loading ROI analytics…</div>}>
+                <RoiDashboard businessId={business._id} userId={business.ownerId} />
+              </Suspense>
             </div>
           </div>
         </div>
