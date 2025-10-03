@@ -316,7 +316,7 @@ export function SmeDashboard({
         </section>
 
       {/* Governance Score Card */}
-      {business && (
+      {business?._id && (
         <div className="grid gap-6 md:grid-cols-2">
           <GovernanceScoreCard businessId={business._id} days={30} />
           
@@ -707,8 +707,8 @@ export function SmeDashboard({
 
             <TabsContent value="compliance" className="space-y-4">
               <div className="grid gap-4 md:grid-cols-2">
-                <ComplianceReportGenerator businessId={business._id} />
-                <ReportLibrary businessId={business._id} />
+                <ComplianceReportGenerator businessId={business?._id} />
+                <ReportLibrary businessId={business?._id} />
               </div>
             </TabsContent>
           </Tabs>
@@ -930,7 +930,7 @@ export function SmeDashboard({
                 <CardTitle>Experiment Dashboard</CardTitle>
               </CardHeader>
               <CardContent>
-                <ExperimentDashboard businessId={business._id as Id<"businesses">} />
+                <ExperimentDashboard businessId={business?._id as Id<"businesses">} />
                 <Button 
                   size="sm" 
                   className="w-full mt-3"
@@ -978,13 +978,13 @@ export function SmeDashboard({
 
       {/* Brain Dump */}
       {!isGuest && business?._id ? (
-        <BrainDumpSection businessId={String(business._id)} />
+        <BrainDumpSection businessId={String(business?._id)} />
       ) : null}
 
       {/* Experiment Creator Modal */}
       {showExperimentCreator && !isGuest && business?._id && (
         <ExperimentCreator
-          businessId={business._id as Id<"businesses">}
+          businessId={business?._id as Id<"businesses">}
           onComplete={() => setShowExperimentCreator(false)}
           onCancel={() => setShowExperimentCreator(false)}
         />
@@ -1002,8 +1002,8 @@ export function SmeDashboard({
             </div>
             <div className="p-4">
               <RoiDashboard 
-                businessId={business._id}
-                userId={business.ownerId}
+                businessId={business?._id}
+                userId={business?.ownerId}
               />
             </div>
           </div>
