@@ -20,10 +20,6 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Menu } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-import TrustedLogosMarquee from "@/components/landing/TrustedLogosMarquee";
-import FeaturesSection from "@/components/landing/FeaturesSection";
-import KpiTrendsCard from "@/components/landing/KpiTrendsCard";
-import ContextualTipsStrip from "@/components/landing/ContextualTipsStrip";
 import { Input } from "@/components/ui/input";
 import { Mail } from "lucide-react";
 import { useMemo } from "react";
@@ -39,11 +35,11 @@ const trendData: Array<{ month: string; revenue: number; leads: number; efficien
   { month: "Jun", revenue: 19000, leads: 360, efficiency: 89 },
 ];
 
-// Memoize presentational sections to prevent unnecessary re-renders
-const MemoTrustedLogosMarquee = React.memo(TrustedLogosMarquee);
-const MemoFeaturesSection = React.memo(FeaturesSection);
-const MemoKpiTrendsCard = React.memo(KpiTrendsCard);
-const MemoContextualTipsStrip = React.memo(ContextualTipsStrip);
+// Lazy-load presentational sections for code-splitting
+const TrustedLogosMarquee = React.lazy(() => import("@/components/landing/TrustedLogosMarquee"));
+const FeaturesSection = React.lazy(() => import("@/components/landing/FeaturesSection"));
+const KpiTrendsCard = React.lazy(() => import("@/components/landing/KpiTrendsCard"));
+const ContextualTipsStrip = React.lazy(() => import("@/components/landing/ContextualTipsStrip"));
 
 export default function Landing() {
   const { isLoading, isAuthenticated } = useAuth();
@@ -533,11 +529,17 @@ export default function Landing() {
         </div>
       </section>
 
-      <MemoTrustedLogosMarquee logos={trustedLogos} />
+      <React.Suspense fallback={<div className="px-4 sm:px-6 lg:px-8 pb-12 sm:pb-16 text-sm text-muted-foreground">Loading partners…</div>}>
+        <TrustedLogosMarquee logos={trustedLogos} />
+      </React.Suspense>
 
-      <MemoFeaturesSection features={features} />
+      <React.Suspense fallback={<div className="px-4 sm:px-6 lg:px-8 py-14 sm:py-20 text-sm text-muted-foreground">Loading features…</div>}>
+        <FeaturesSection features={features} />
+      </React.Suspense>
 
-      <MemoKpiTrendsCard data={trendData} />
+      <React.Suspense fallback={<div className="px-4 sm:px-6 lg:px-8 py-14 sm:py-20 text-sm text-muted-foreground">Loading KPI trends…</div>}>
+        <KpiTrendsCard data={trendData} />
+      </React.Suspense>
 
       {/* Pricing Section */}
       <section id="pricing" className="py-14 sm:py-20 px-4 sm:px-6 lg:px-8">
