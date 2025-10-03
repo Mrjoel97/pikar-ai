@@ -151,11 +151,11 @@ export function SmeDashboard({
   // CRM Integration Status
   const crmConnections = useQuery(
     api.crmIntegrations.listConnections,
-    isGuest || !businessId ? undefined : { businessId }
+    isGuest || !businessId ? undefined : { businessId: businessId as Id<"businesses"> }
   );
   const crmConflicts = useQuery(
     api.crmIntegrations.listConflicts,
-    isGuest || !businessId ? undefined : { businessId, limit: 10 }
+    isGuest || !businessId ? undefined : { businessId: businessId as Id<"businesses">, limit: 10 }
   );
 
   // A/B Testing State
@@ -884,43 +884,41 @@ export function SmeDashboard({
       </section>
 
       {/* CRM Integration Status */}
-      <section>
-        <h2 className="text-xl font-semibold mb-4">CRM Integration</h2>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle>CRM Sync Status</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {isGuest ? (
-              <div className="text-sm text-muted-foreground">
-                Demo: CRM integration available for authenticated users.
-              </div>
-            ) : !crmConnections ? (
-              <div className="text-sm text-muted-foreground">Loading CRM status…</div>
-            ) : (
-              <>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm">Connected Platforms</span>
-                  <Badge variant="outline">{crmConnections?.length || 0}</Badge>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm">Pending Conflicts</span>
-                  <Badge variant={crmConflicts && crmConflicts.length > 0 ? "destructive" : "outline"}>
-                    {crmConflicts?.length || 0}
-                  </Badge>
-                </div>
-                <Button 
-                  size="sm" 
-                  className="w-full"
-                  onClick={() => nav("/crm")}
-                >
-                  Manage CRM
-                </Button>
-              </>
-            )}
-          </CardContent>
-        </Card>
-      </section>
+      {!isGuest && businessId && (
+        <section>
+          <h2 className="text-xl font-semibold mb-4">CRM Integration</h2>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle>CRM Sync Status</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {!crmConnections ? (
+                <div className="text-sm text-muted-foreground">Loading CRM status…</div>
+              ) : (
+                <>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm">Connected Platforms</span>
+                    <Badge variant="outline">{crmConnections?.length || 0}</Badge>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm">Pending Conflicts</span>
+                    <Badge variant={crmConflicts && crmConflicts.length > 0 ? "destructive" : "outline"}>
+                      {crmConflicts?.length || 0}
+                    </Badge>
+                  </div>
+                  <Button 
+                    size="sm" 
+                    className="w-full"
+                    onClick={() => nav("/crm")}
+                  >
+                    Manage CRM
+                  </Button>
+                </>
+              )}
+            </CardContent>
+          </Card>
+        </section>
+      )}
 
       {/* A/B Testing Summary */}
       <section>
