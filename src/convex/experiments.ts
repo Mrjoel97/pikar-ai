@@ -246,7 +246,7 @@ export const determineWinner = action({
     confidenceLevel: number | null;
   }> => {
     // Import jstat dynamically (type will be inferred as any, which is acceptable for dynamic imports)
-    const jstat: any = await import("jstat");
+    const jstat = await import("jstat") as any;
 
     const experiment: any = await ctx.runQuery(internal.experiments.getExperimentById, {
       experimentId: args.experimentId,

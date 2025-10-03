@@ -11,7 +11,4 @@ declare global {
   var webkitSpeechRecognition: any;
 }
 
-/// <reference path="./jstat.d.ts" />
-declare module "jstat";
-
 export {};
