@@ -105,15 +105,22 @@ export const refreshCRMToken = mutation({
   },
 });
 
-// List CRM connections for a business
+// List CRM connections for a business (guest-safe)
 export const listConnections = query({
   args: {
-    businessId: v.id("businesses"),
+    businessId: v.optional(v.id("businesses")),
   },
   handler: async (ctx, args) => {
+    // Return empty list if no businessId provided (guest/public views)
+    if (!args.businessId) {
+      return [];
+    }
+
+    const businessId = args.businessId as Id<"businesses">;
+
     const connections = await ctx.db
       .query("crmConnections")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .withIndex("by_business", (q) => q.eq("businessId", businessId))
       .collect();
 
     return connections;
@@ -123,18 +130,29 @@ export const listConnections = query({
 // Get sync status for a business
 export const getSyncStatus = query({
   args: {
-    businessId: v.id("businesses"),
+    businessId: v.optional(v.id("businesses")),
   },
   handler: async (ctx, args) => {
+    // Return empty status if no businessId provided (guest/public views)
+    if (!args.businessId) {
+      return {
+        connections: 0,
+        lastSync: undefined,
+        pendingConflicts: 0,
+      };
+    }
+
+    const businessId = args.businessId as Id<"businesses">;
+
     const connections = await ctx.db
       .query("crmConnections")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .withIndex("by_business", (q) => q.eq("businessId", businessId))
       .filter((q) => q.eq(q.field("isActive"), true))
       .collect();
 
     const conflicts = await ctx.db
       .query("crmSyncConflicts")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .withIndex("by_business", (q) => q.eq("businessId", businessId))
       .filter((q) => q.eq(q.field("status"), "pending"))
       .collect();
 
@@ -199,15 +217,23 @@ export const resolveConflict = mutation({
   },
 });
 
-// List sync conflicts
+// List sync conflicts (guest-safe)
 export const listConflicts = query({
   args: {
-    businessId: v.id("businesses"),
+    businessId: v.optional(v.id("businesses")),
+    limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
+    // Return empty list if no businessId provided (guest/public views)
+    if (!args.businessId) {
+      return [];
+    }
+
+    const businessId = args.businessId as Id<"businesses">;
+
     const conflicts = await ctx.db
       .query("crmSyncConflicts")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .withIndex("by_business", (q) => q.eq("businessId", businessId))
       .filter((q) => q.eq(q.field("status"), "pending"))
       .collect();
 
@@ -218,12 +244,19 @@ export const listConflicts = query({
 // List deals for pipeline view
 export const listDeals = query({
   args: {
-    businessId: v.id("businesses"),
+    businessId: v.optional(v.id("businesses")),
   },
   handler: async (ctx, args) => {
+    // Return empty list if no businessId provided (guest/public views)
+    if (!args.businessId) {
+      return [];
+    }
+
+    const businessId = args.businessId as Id<"businesses">;
+
     const deals = await ctx.db
       .query("crmDeals")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .withIndex("by_business", (q) => q.eq("businessId", businessId))
       .collect();
 
     return deals;
