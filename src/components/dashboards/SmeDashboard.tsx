@@ -311,9 +311,9 @@ export function SmeDashboard({
                 {riskMatrix?.highRisks ?? (isGuest ? 3 : 0)}
               </div>
             </CardContent>
-          </Card>
-        </div>
-      </section>
+            </Card>
+          </div>
+        </section>
 
       {/* Governance Score Card */}
       {business && (
@@ -921,34 +921,27 @@ export function SmeDashboard({
       )}
 
       {/* A/B Testing Summary */}
-      <section>
-        <h2 className="text-xl font-semibold mb-4">A/B Testing</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle>Experiment Dashboard</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {!isGuest && business?._id ? (
-                <>
-                  <ExperimentDashboard businessId={business._id as Id<"businesses">} />
-                  <Button 
-                    size="sm" 
-                    className="w-full mt-3"
-                    onClick={() => setShowExperimentCreator(true)}
-                  >
-                    Create New Experiment
-                  </Button>
-                </>
-              ) : (
-                <div className="text-sm text-muted-foreground">
-                  Sign in to create and manage A/B tests for your campaigns.
-                </div>
-              )}
-            </CardContent>
-          </Card>
+      {!isGuest && business?._id && (
+        <section>
+          <h2 className="text-xl font-semibold mb-4">A/B Testing</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle>Experiment Dashboard</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ExperimentDashboard businessId={business._id as Id<"businesses">} />
+                <Button 
+                  size="sm" 
+                  className="w-full mt-3"
+                  onClick={() => setShowExperimentCreator(true)}
+                >
+                  Create New Experiment
+                </Button>
+              </CardContent>
+            </Card>
 
-          <Card className="border-dashed">
+            <Card className="border-dashed">
             <CardHeader className="pb-2">
               <CardTitle>Quick Actions</CardTitle>
             </CardHeader>
@@ -981,6 +974,7 @@ export function SmeDashboard({
           </Card>
         </div>
       </section>
+      )}
 
       {/* Brain Dump */}
       {!isGuest && business?._id ? (
