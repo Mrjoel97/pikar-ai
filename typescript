@@ -1,1 +1,12 @@
-import type { Id } from "@/convex/_generated/dataModel";
+socialPosts: {
+  solopreneur: 30,
+  startup: 100,
+  sme: 500,
+  enterprise: -1 // unlimited
+},
+connectedPlatforms: {
+  solopreneur: 2,
+  startup: 3,
+  sme: 5,
+  enterprise: -1
+}
