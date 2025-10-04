@@ -15,11 +15,11 @@ interface FinanceDashboardProps {
 
 export function FinanceDashboard({ businessId, isGuest }: FinanceDashboardProps) {
   const [timeRange, setTimeRange] = useState<"7d" | "30d" | "90d" | "1y">("30d");
-  
-  const kpis = useQuery(api.departmentKpis.getFinanceKpis, {
-    businessId,
-    timeRange,
-  });
+
+  const kpis = useQuery(
+    api.departmentKpis.getFinanceKpis,
+    businessId ? { businessId, timeRange } : undefined
+  );
 
   if (!kpis) {
     return (

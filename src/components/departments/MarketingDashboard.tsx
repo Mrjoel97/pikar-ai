@@ -15,11 +15,11 @@ interface MarketingDashboardProps {
 
 export function MarketingDashboard({ businessId, isGuest }: MarketingDashboardProps) {
   const [timeRange, setTimeRange] = useState<"7d" | "30d" | "90d" | "1y">("30d");
-  
-  const kpis = useQuery(api.departmentKpis.getMarketingKpis, {
-    businessId,
-    timeRange,
-  });
+
+  const kpis = useQuery(
+    api.departmentKpis.getMarketingKpis,
+    businessId ? { businessId, timeRange } : undefined
+  );
 
   if (!kpis) {
     return (

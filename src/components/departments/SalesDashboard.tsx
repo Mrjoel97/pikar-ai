@@ -15,11 +15,11 @@ interface SalesDashboardProps {
 
 export function SalesDashboard({ businessId, isGuest }: SalesDashboardProps) {
   const [timeRange, setTimeRange] = useState<"7d" | "30d" | "90d" | "1y">("30d");
-  
-  const kpis = useQuery(api.departmentKpis.getSalesKpis, {
-    businessId,
-    timeRange,
-  });
+
+  const kpis = useQuery(
+    api.departmentKpis.getSalesKpis,
+    businessId ? { businessId, timeRange } : undefined
+  );
 
   if (!kpis) {
     return (

@@ -15,11 +15,11 @@ interface OpsDashboardProps {
 
 export function OpsDashboard({ businessId, isGuest }: OpsDashboardProps) {
   const [timeRange, setTimeRange] = useState<"7d" | "30d" | "90d" | "1y">("30d");
-  
-  const kpis = useQuery(api.departmentKpis.getOpsKpis, {
-    businessId,
-    timeRange,
-  });
+
+  const kpis = useQuery(
+    api.departmentKpis.getOpsKpis,
+    businessId ? { businessId, timeRange } : undefined
+  );
 
   if (!kpis) {
     return (
