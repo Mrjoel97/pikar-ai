@@ -1,12 +1,4 @@
-socialPosts: {
-  solopreneur: 30,
-  startup: 100,
-  sme: 500,
-  enterprise: -1 // unlimited
-},
-connectedPlatforms: {
-  solopreneur: 2,
-  startup: 3,
-  sme: 5,
-  enterprise: -1
-}
+const kpiDoc =
+  !isGuest && business?._id
+    ? useQuery(api.kpis.getSnapshot, { businessId: business._id })
+    : undefined;
