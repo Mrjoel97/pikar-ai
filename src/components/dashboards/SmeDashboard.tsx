@@ -41,19 +41,19 @@ export function SmeDashboard({
   tier, 
   onUpgrade 
 }: SmeDashboardProps) {
+  // Fix: derive businessId from current props first
+  const businessId = !isGuest ? business?._id : null;
+
   // Fetch latest KPI snapshot when authenticated
   const kpiDoc = useQuery(
     api.kpis.getSnapshot,
-    !isGuest && business?._id ? { businessId: business._id } : undefined
+    !isGuest && businessId ? { businessId } : undefined
   );
 
   const agents = isGuest ? demoData?.agents || [] : [];
   const workflows = isGuest ? demoData?.workflows || [] : [];
   const kpis = isGuest ? (demoData?.kpis || {}) : (kpiDoc || {});
   const tasks = isGuest ? demoData?.tasks || [] : [];
-
-  // Fix: derive businessId from current props (not `props`)
-  const businessId = !isGuest ? business?._id : null;
 
   const pendingApprovals = useQuery(
     api.approvals.getApprovalQueue,
@@ -80,12 +80,12 @@ export function SmeDashboard({
 
   const enforceGovernanceForBiz = useMutation(api.governance.enforceGovernanceForBusiness);
   // Fetch SLA summary (skip in guest / when no business)
-  const slaSummary = !isGuest && business?._id ? useQuery(api.approvals.getSlaSummary, { businessId: business._id }) : undefined;
-  const auditLatest = !isGuest && business?._id ? useQuery(api.audit.listForBusiness, { businessId: business._id, limit: 10 }) : undefined;
+  const slaSummary = !isGuest && businessId ? useQuery(api.approvals.getSlaSummary, { businessId }) : undefined;
+  const auditLatest = !isGuest && businessId ? useQuery(api.audit.listForBusiness, { businessId, limit: 10 }) : undefined;
 
   const pendingEscalations = useQuery(
     api.governanceAutomation.getEscalations,
-    !isGuest && business?._id ? { businessId: business._id, status: "pending" as const } : undefined
+    !isGuest && businessId ? { businessId, status: "pending" as const } : undefined
   );
 
   const UpgradeCTA = ({ feature }: { feature: string }) => (
@@ -140,7 +140,7 @@ export function SmeDashboard({
   // Add: telemetry-driven nudges banner
   const upgradeNudges = useQuery(
     api.telemetry.getUpgradeNudges,
-    isGuest || !business?._id ? undefined : { businessId: business._id }
+    isGuest || !businessId ? undefined : { businessId }
   );
 
   const smeTier = "sme";
