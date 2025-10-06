@@ -71,8 +71,8 @@ export const ensureAdminRole = internalMutation({
   },
 });
 
-// Public query (NON-Node file)
-export const validateSession = query({
+// Internal query for session validation (used by Node actions)
+export const validateSession = internalQuery({
   args: { token: v.optional(v.string()) },
   handler: async (ctx, args) => {
     if (!args.token) {

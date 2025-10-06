@@ -1949,7 +1949,13 @@ Renamed to avoid duplicate identifier collisions elsewhere in the file */
       ? { channel: "post", businessId, from: Date.now() }
       : ("skip" as any),
   );
-
+  
+  // Query for next scheduled social post
+  const nextSocialPost = useQuery(
+    api.socialPosts.getUpcomingPosts,
+    businessId ? { businessId, limit: 1 } : ("skip" as any),
+  );
+  
   // Add: per-batch basic cap to avoid runaway adds; server can enforce stricter limits
   const BATCH_ADD_CAP = 10;
 

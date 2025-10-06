@@ -85,13 +85,16 @@ export const sendMessage = action({
     let allowed = false;
     try {
       if (args.adminToken) {
-        const res = await ctx.runQuery(api.adminAuthData.validateSession as any, { token: args.adminToken } as any);
-        allowed = !!(res && (res as any).valid);
+        const res: any = await ctx.runQuery(
+          internal.adminAuthData.validateSession as any,
+          { token: args.adminToken } as any
+        );
+        allowed = !!(res && res.valid);
       }
     } catch {}
     if (!allowed) {
       try {
-        const isAdmin = await ctx.runQuery(api.admin.getIsAdmin as any, {} as any);
+        const isAdmin: any = await ctx.runQuery(api.admin.getIsAdmin, {});
         allowed = !!isAdmin;
       } catch {}
     }

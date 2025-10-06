@@ -24,9 +24,10 @@ export const signUp = action({
     const normalizedEmail = email.toLowerCase().trim();
 
     // Check if admin auth already exists
-    const existing = await ctx.runQuery(internal.adminAuthData.getAdminAuthByEmail, {
-      email: normalizedEmail,
-    });
+    const existing = await ctx.runQuery(
+      internal.adminAuthData.getAdminAuthByEmail as any,
+      { email: normalizedEmail } as any
+    ) as any;
     if (existing) {
       throw new Error("Admin account already exists with this email");
     }
@@ -44,9 +45,10 @@ export const signUp = action({
     });
 
     // Ensure admin role exists
-    const adminRole = await ctx.runQuery(internal.adminAuthData.getAdminByEmail, {
-      email: normalizedEmail,
-    });
+    const adminRole = await ctx.runQuery(
+      internal.adminAuthData.getAdminByEmail as any,
+      { email: normalizedEmail } as any
+    ) as any;
     if (!adminRole) {
       await ctx.runMutation(internal.adminAuthData.ensureAdminRole, {
         email: normalizedEmail,
@@ -69,9 +71,10 @@ export const login = action({
     const normalizedEmail = email.toLowerCase().trim();
 
     // Load admin auth
-    const adminAuth = await ctx.runQuery(internal.adminAuthData.getAdminAuthByEmail, {
-      email: normalizedEmail,
-    });
+    const adminAuth = await ctx.runQuery(
+      internal.adminAuthData.getAdminAuthByEmail as any,
+      { email: normalizedEmail } as any
+    ) as any;
 
     if (!adminAuth) {
       throw new Error("Invalid email or password");
