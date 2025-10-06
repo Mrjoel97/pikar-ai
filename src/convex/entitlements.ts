@@ -12,7 +12,9 @@ const CAPS = {
     emailsPerDay: 1000,
     perCampaignRecipients: 500,
     socialPostsPerMonth: 30,
-    socialPlatforms: 3,
+    socialPlatforms: 2,
+    scheduledPostsLimit: 10,
+    aiGenerationsPerMonth: 20,
   },
   startup: {
     workflows: 15,
@@ -22,7 +24,9 @@ const CAPS = {
     emailsPerDay: 5000,
     perCampaignRecipients: 2000,
     socialPostsPerMonth: 100,
-    socialPlatforms: 5,
+    socialPlatforms: 3,
+    scheduledPostsLimit: 50,
+    aiGenerationsPerMonth: 100,
   },
   sme: {
     workflows: 50,
@@ -32,7 +36,9 @@ const CAPS = {
     emailsPerDay: 25000,
     perCampaignRecipients: 10000,
     socialPostsPerMonth: 500,
-    socialPlatforms: 999,
+    socialPlatforms: 5,
+    scheduledPostsLimit: 200,
+    aiGenerationsPerMonth: 500,
   },
   enterprise: {
     workflows: 200,
@@ -43,6 +49,8 @@ const CAPS = {
     perCampaignRecipients: 50000,
     socialPostsPerMonth: 9999,
     socialPlatforms: 999,
+    scheduledPostsLimit: 9999,
+    aiGenerationsPerMonth: 9999,
   },
 } as const;
 
