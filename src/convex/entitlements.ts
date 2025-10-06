@@ -80,6 +80,127 @@ export const getUsageLimits = query({
   },
 });
 
+export const canCreateSocialPost = mutation({
+  args: { businessId: v.id("businesses") },
+  handler: async (ctx, args) => {
+    const business = await ctx.db.get(args.businessId);
+    const tier = resolveTier(business?.tier);
+    const caps = CAPS[tier];
+    
+    // Count posts created this month
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+    
+    const postsThisMonth = await ctx.db
+      .query("socialPosts")
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .filter((q) => q.gte(q.field("_creationTime"), monthStart))
+      .collect()
+      .then((r) => r.length);
+    
+    const allowed = postsThisMonth < caps.socialPostsPerMonth;
+    const reason = allowed ? "" : `Monthly post limit reached (${caps.socialPostsPerMonth} for ${tier})`;
+    
+    return {
+      allowed,
+      reason,
+      current: postsThisMonth,
+      limit: caps.socialPostsPerMonth,
+      tier,
+    };
+  },
+});
+
+export const canConnectPlatform = mutation({
+  args: { businessId: v.id("businesses") },
+  handler: async (ctx, args) => {
+    const business = await ctx.db.get(args.businessId);
+    const tier = resolveTier(business?.tier);
+    const caps = CAPS[tier];
+    
+    // Count currently connected platforms
+    const connectedPlatforms = await ctx.db
+      .query("socialAccounts")
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .filter((q) => q.eq(q.field("isActive"), true))
+      .collect()
+      .then((r) => r.length);
+    
+    const allowed = connectedPlatforms < caps.socialPlatforms;
+    const reason = allowed ? "" : `Platform connection limit reached (${caps.socialPlatforms} for ${tier})`;
+    
+    return {
+      allowed,
+      reason,
+      current: connectedPlatforms,
+      limit: caps.socialPlatforms,
+      tier,
+    };
+  },
+});
+
+export const canSchedulePost = mutation({
+  args: { businessId: v.id("businesses") },
+  handler: async (ctx, args) => {
+    const business = await ctx.db.get(args.businessId);
+    const tier = resolveTier(business?.tier);
+    const caps = CAPS[tier];
+    
+    // Count currently scheduled posts (not yet posted)
+    const scheduledPosts = await ctx.db
+      .query("socialPosts")
+      .withIndex("by_business_and_status", (q) => 
+        q.eq("businessId", args.businessId).eq("status", "scheduled")
+      )
+      .collect()
+      .then((r) => r.length);
+    
+    const allowed = scheduledPosts < caps.scheduledPostsLimit;
+    const reason = allowed ? "" : `Scheduled posts limit reached (${caps.scheduledPostsLimit} for ${tier})`;
+    
+    return {
+      allowed,
+      reason,
+      current: scheduledPosts,
+      limit: caps.scheduledPostsLimit,
+      tier,
+    };
+  },
+});
+
+export const canUseAIGeneration = mutation({
+  args: { businessId: v.id("businesses") },
+  handler: async (ctx, args) => {
+    const business = await ctx.db.get(args.businessId);
+    const tier = resolveTier(business?.tier);
+    const caps = CAPS[tier];
+    
+    // Count AI generations this month (tracked via telemetry events)
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+    
+    const aiGenerationsThisMonth = await ctx.db
+      .query("telemetryEvents")
+      .withIndex("by_business_and_event", (q) => 
+        q.eq("businessId", args.businessId).eq("eventName", "ai_generation_used")
+      )
+      .filter((q) => q.gte(q.field("timestamp"), monthStart))
+      .collect()
+      .then((r) => r.length);
+    
+    const allowed = aiGenerationsThisMonth < caps.aiGenerationsPerMonth;
+    const reason = allowed ? "" : `Monthly AI generation limit reached (${caps.aiGenerationsPerMonth} for ${tier})`;
+    
+    return {
+      allowed,
+      reason,
+      current: aiGenerationsThisMonth,
+      limit: caps.aiGenerationsPerMonth,
+      tier,
+    };
+  },
+});
+
 export const checkEntitlement = mutation({
   args: {
     businessId: v.id("businesses"),
