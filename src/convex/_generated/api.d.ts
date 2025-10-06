@@ -95,6 +95,7 @@ import type * as samlActions from "../samlActions.js";
 import type * as schedule from "../schedule.js";
 import type * as scim from "../scim.js";
 import type * as seed from "../seed.js";
+import type * as socialContentAgent from "../socialContentAgent.js";
 import type * as socialIntegrations from "../socialIntegrations.js";
 import type * as socialIntegrationsActions from "../socialIntegrationsActions.js";
 import type * as socialPosts from "../socialPosts.js";
@@ -206,6 +207,7 @@ declare const fullApi: ApiFromModules<{
   schedule: typeof schedule;
   scim: typeof scim;
   seed: typeof seed;
+  socialContentAgent: typeof socialContentAgent;
   socialIntegrations: typeof socialIntegrations;
   socialIntegrationsActions: typeof socialIntegrationsActions;
   socialPosts: typeof socialPosts;
