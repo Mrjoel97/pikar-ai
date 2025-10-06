@@ -1956,6 +1956,12 @@ Renamed to avoid duplicate identifier collisions elsewhere in the file */
     businessId ? { businessId, limit: 1 } : ("skip" as any),
   );
   
+  // Query for social analytics (last 30 days of posts)
+  const socialAnalytics = useQuery(
+    api.socialPosts.listScheduledPosts,
+    businessId ? { businessId, limit: 100 } : ("skip" as any),
+  );
+  
   // Add: per-batch basic cap to avoid runaway adds; server can enforce stricter limits
   const BATCH_ADD_CAP = 10;
 

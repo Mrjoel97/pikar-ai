@@ -85,10 +85,9 @@ export const sendMessage = action({
     let allowed = false;
     try {
       if (args.adminToken) {
-        const res: any = await ctx.runQuery(
-          internal.adminAuthData.validateSession as any,
-          { token: args.adminToken } as any
-        );
+        // Break type inference chain by storing function reference
+        const validateFn: any = internal.adminAuthData.validateSession;
+        const res: any = await ctx.runQuery(validateFn, { token: args.adminToken });
         allowed = !!(res && res.valid);
       }
     } catch {}
