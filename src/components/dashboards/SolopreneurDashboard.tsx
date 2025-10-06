@@ -1037,6 +1037,7 @@ Renamed to avoid duplicate identifier collisions elsewhere in the file */
 
   // Invoice state already declared above - removed duplicate
   const generateInvoicePdf = useAction(api.invoicesActions.generateInvoicePdf);
+  const generateSocialContent = useAction(api.socialContentAgent.generateSocialContent);
 
   // Local loading state
   const [settingUp, setSettingUp] = useState(false);
@@ -1161,8 +1162,78 @@ Renamed to avoid duplicate identifier collisions elsewhere in the file */
       onUpgrade?.();
       return;
     }
+    
+    if (action === "Social Media") {
+      setShowSocialModal(true);
+      return;
+    }
+    
     // Future: route to real features
     alert(`${action} coming soon`);
+  };
+
+  const handleGenerateSocialContent = async () => {
+    if (!business?._id || !userId) {
+      toast.error("Please sign in to generate content");
+      return;
+    }
+
+    if (!socialContent.trim()) {
+      toast.error("Please enter a topic or idea");
+      return;
+    }
+
+    try {
+      setGeneratingSocial(true);
+      const result = await generateSocialContent({
+        businessId: business._id,
+        userId,
+        topic: socialContent,
+        platforms: socialPlatforms.length > 0 ? socialPlatforms : ["twitter"],
+        tone: "professional",
+      });
+
+      if (result.success && result.content) {
+        setSocialContent(result.content);
+        toast.success("Content generated successfully!");
+      } else {
+        toast.error("Failed to generate content");
+      }
+    } catch (error: any) {
+      toast.error(error?.message || "Failed to generate content");
+    } finally {
+      setGeneratingSocial(false);
+    }
+  };
+
+  const handleRepurposeBlogToSocial = async () => {
+    if (!business?._id || !userId) {
+      toast.error("Please sign in to repurpose content");
+      return;
+    }
+
+    try {
+      setGeneratingSocial(true);
+      const result = await generateSocialContent({
+        businessId: business._id,
+        userId,
+        topic: "Repurpose my latest blog post into social media content",
+        platforms: ["twitter", "linkedin"],
+        tone: "professional",
+      });
+
+      if (result.success && result.content) {
+        setSocialContent(result.content);
+        setShowSocialModal(true);
+        toast.success("Blog repurposed to social content!");
+      } else {
+        toast.error("Failed to repurpose content");
+      }
+    } catch (error: any) {
+      toast.error(error?.message || "Failed to repurpose content");
+    } finally {
+      setGeneratingSocial(false);
+    }
   };
 
   const handleSuggestReplies = async () => {
@@ -1964,6 +2035,10 @@ Renamed to avoid duplicate identifier collisions elsewhere in the file */
 
   // Add invoice state
   const [showInvoiceComposer, setShowInvoiceComposer] = useState(false);
+  const [showSocialModal, setShowSocialModal] = useState(false);
+  const [socialContent, setSocialContent] = useState("");
+  const [socialPlatforms, setSocialPlatforms] = useState<string[]>([]);
+  const [generatingSocial, setGeneratingSocial] = useState(false);
 
   // Add: One-Click Setup for Invoices
   const handleOneClickInvoice = async () => {
@@ -2030,6 +2105,88 @@ Renamed to avoid duplicate identifier collisions elsewhere in the file */
           Send Newsletter
         </Button>
       </div>
+
+      {/* Social Media AI Content Generator Modal */}
+      <Dialog open={showSocialModal} onOpenChange={setShowSocialModal}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>AI Social Content Generator</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium mb-2 block">
+                Topic or Idea
+              </label>
+              <Textarea
+                placeholder="Enter a topic, idea, or paste blog content to repurpose..."
+                value={socialContent}
+                onChange={(e) => setSocialContent(e.target.value)}
+                rows={4}
+              />
+            </div>
+
+            <div>
+              <label className="text-sm font-medium mb-2 block">
+                Target Platforms
+              </label>
+              <div className="flex gap-2">
+                {["twitter", "linkedin", "facebook"].map((platform) => (
+                  <Button
+                    key={platform}
+                    size="sm"
+                    variant={socialPlatforms.includes(platform) ? "default" : "outline"}
+                    onClick={() => {
+                      setSocialPlatforms((prev) =>
+                        prev.includes(platform)
+                          ? prev.filter((p) => p !== platform)
+                          : [...prev, platform]
+                      );
+                    }}
+                  >
+                    {platform.charAt(0).toUpperCase() + platform.slice(1)}
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            {nextSocialPost && nextSocialPost.length > 0 && (
+              <div className="p-3 bg-blue-50 rounded-lg">
+                <div className="text-sm font-medium mb-1">Next Scheduled Post</div>
+                <div className="text-xs text-muted-foreground">
+                  {nextSocialPost[0].scheduledAt && 
+                    new Date(nextSocialPost[0].scheduledAt).toLocaleString()}
+                </div>
+              </div>
+            )}
+
+            <div className="flex gap-2 pt-4">
+              <Button
+                onClick={handleGenerateSocialContent}
+                disabled={generatingSocial || !socialContent.trim()}
+              >
+                {generatingSocial ? "Generating..." : "Generate Content"}
+              </Button>
+              <Button
+                variant="outline"
+                onClick={handleRepurposeBlogToSocial}
+                disabled={generatingSocial}
+              >
+                Repurpose Blog
+              </Button>
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  setShowSocialModal(false);
+                  setSocialContent("");
+                  setSocialPlatforms([]);
+                }}
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Newsletter Composer Modal */}
       <Dialog open={composerOpen} onOpenChange={setComposerOpen}>
@@ -2677,7 +2834,84 @@ Renamed to avoid duplicate identifier collisions elsewhere in the file */
               </Button>
             </CardContent>
           </Card>
+
+          {/* Social Media Card */}
+          <Card>
+            <CardContent className="p-4">
+              <h3 className="font-medium mb-2">Social Media</h3>
+              <p className="text-sm text-muted-foreground mb-3">
+                Create and schedule social posts with AI assistance.
+              </p>
+              {nextSocialPost && nextSocialPost.length > 0 && (
+                <div className="mb-3 p-2 bg-emerald-50 rounded text-xs">
+                  <div className="font-medium">Next Post:</div>
+                  <div className="text-muted-foreground truncate">
+                    {nextSocialPost[0].content.substring(0, 50)}...
+                  </div>
+                  <div className="text-xs text-emerald-600 mt-1">
+                    {nextSocialPost[0].scheduledAt && 
+                      new Date(nextSocialPost[0].scheduledAt).toLocaleString()}
+                  </div>
+                </div>
+              )}
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleQuickAction("Social Media")}
+                >
+                  Create Post
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={handleRepurposeBlogToSocial}
+                  disabled={generatingSocial}
+                >
+                  Repurpose Blog
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         </div>
+
+        {/* Simple Social Analytics Widget (Last 7 Days) */}
+        {socialAnalytics && socialAnalytics.length > 0 && (
+          <Card className="mt-4">
+            <CardHeader>
+              <CardTitle className="text-sm">Social Performance (Last 7 Days)</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-3 gap-4 text-center">
+                <div>
+                  <div className="text-2xl font-bold text-emerald-600">
+                    {socialAnalytics.filter((p: any) => {
+                      const postDate = new Date(p.scheduledAt || 0);
+                      const sevenDaysAgo = new Date();
+                      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+                      return postDate >= sevenDaysAgo;
+                    }).length}
+                  </div>
+                  <div className="text-xs text-muted-foreground">Posts</div>
+                </div>
+                <div>
+                  <div className="text-2xl font-bold text-blue-600">
+                    {socialAnalytics.reduce((acc: number, p: any) => 
+                      acc + (p.platforms?.length || 0), 0
+                    )}
+                  </div>
+                  <div className="text-xs text-muted-foreground">Platforms</div>
+                </div>
+                <div>
+                  <div className="text-2xl font-bold text-purple-600">
+                    {Math.round(socialAnalytics.length / 7 * 10) / 10}
+                  </div>
+                  <div className="text-xs text-muted-foreground">Avg/Day</div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </section>
 
       {/* Support Triage (beta) */}

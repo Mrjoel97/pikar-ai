@@ -49,7 +49,7 @@ export const generateSocialContent = action({
     includeEmojis: v.optional(v.boolean()),
     targetAudience: v.optional(v.string()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<Record<string, { content: string; hashtags: string[]; characterCount: number }>> => {
     const { platforms, topic, tone = "professional", includeHashtags = true, includeEmojis = true, targetAudience } = args;
 
     // Get business context for personalization
@@ -111,13 +111,13 @@ Format:
         const generatedText = (response as any)?.text || "";
         
         // Parse content and hashtags
-        const lines = generatedText.split("\n").filter(l => l.trim());
-        const hashtagLine = lines.find(l => l.includes("#"));
-        const contentLines = lines.filter(l => !l.includes("#") || l.indexOf("#") > 10);
+        const lines = generatedText.split("\n").filter((l: string) => l.trim());
+        const hashtagLine = lines.find((l: string) => l.includes("#"));
+        const contentLines = lines.filter((l: string) => !l.includes("#") || l.indexOf("#") > 10);
         
         const content = contentLines.join("\n").trim();
         const hashtags = hashtagLine 
-          ? hashtagLine.match(/#\w+/g)?.map(h => h.slice(1)) || []
+          ? hashtagLine.match(/#\w+/g)?.map((h: string) => h.slice(1)) || []
           : [];
 
         results[platform] = {
@@ -159,7 +159,7 @@ export const generateHashtags = action({
     platform: v.union(v.literal("twitter"), v.literal("linkedin"), v.literal("facebook")),
     count: v.optional(v.number()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<{ hashtags: string[]; error?: string }> => {
     const { topic, platform, count = 5 } = args;
     const spec = PLATFORM_SPECS[platform as Platform];
     const maxHashtags = Math.min(count, spec.hashtagLimit);
@@ -177,17 +177,17 @@ Return ONLY the hashtags, one per line, without the # symbol.
 `.trim();
 
     try {
-      const response = await ctx.runAction(api.openai.generate, {
+      const response: any = await ctx.runAction(api.openai.generate, {
         prompt,
         model: "gpt-4o-mini",
         maxTokens: 150,
       });
 
-      const text = (response as any)?.text || "";
-      const hashtags = text
+      const text: string = (response as any)?.text || "";
+      const hashtags: string[] = text
         .split("\n")
-        .map(line => line.trim().replace(/^#/, ""))
-        .filter(tag => tag.length > 0)
+        .map((line: string) => line.trim().replace(/^#/, ""))
+        .filter((tag: string) => tag.length > 0)
         .slice(0, maxHashtags);
 
       return { hashtags };
@@ -209,7 +209,7 @@ export const suggestEmojis = action({
     platform: v.union(v.literal("twitter"), v.literal("linkedin"), v.literal("facebook")),
     count: v.optional(v.number()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<{ emojis: string[]; error?: string }> => {
     const { content, platform, count = 3 } = args;
     const spec = PLATFORM_SPECS[platform as Platform];
 
@@ -225,16 +225,30 @@ Consider the tone and context of the message.
 `.trim();
 
     try {
-      const response = await ctx.runAction(api.openai.generate, {
+      const response: any = await ctx.runAction(api.openai.generate, {
         prompt,
         model: "gpt-4o-mini",
         maxTokens: 50,
       });
 
-      const text = (response as any)?.text || "";
-      const emojis = text
+      const text: string = (response as any)?.text || "";
+      // Extract emojis using a more compatible approach
+      const emojis: string[] = text
         .split(/\s+/)
-        .filter(char => /\p{Emoji}/u.test(char))
+        .filter((char: string) => {
+          // Check if character is in emoji range (basic emoji detection)
+          const code = char.codePointAt(0);
+          return code && (
+            (code >= 0x1F600 && code <= 0x1F64F) || // Emoticons
+            (code >= 0x1F300 && code <= 0x1F5FF) || // Misc Symbols and Pictographs
+            (code >= 0x1F680 && code <= 0x1F6FF) || // Transport and Map
+            (code >= 0x2600 && code <= 0x26FF) ||   // Misc symbols
+            (code >= 0x2700 && code <= 0x27BF) ||   // Dingbats
+            (code >= 0xFE00 && code <= 0xFE0F) ||   // Variation Selectors
+            (code >= 0x1F900 && code <= 0x1F9FF) || // Supplemental Symbols and Pictographs
+            (code >= 0x1FA70 && code <= 0x1FAFF)    // Symbols and Pictographs Extended-A
+          );
+        })
         .slice(0, count);
 
       return { emojis };
@@ -256,7 +270,7 @@ export const optimizeForPlatform = action({
     sourcePlatform: v.union(v.literal("twitter"), v.literal("linkedin"), v.literal("facebook")),
     targetPlatform: v.union(v.literal("twitter"), v.literal("linkedin"), v.literal("facebook")),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<{ optimizedContent: string; changes: string[]; error?: string }> => {
     const { content, sourcePlatform, targetPlatform } = args;
     
     if (sourcePlatform === targetPlatform) {
@@ -286,13 +300,13 @@ Return ONLY the optimized content.
 `.trim();
 
     try {
-      const response = await ctx.runAction(api.openai.generate, {
+      const response: any = await ctx.runAction(api.openai.generate, {
         prompt,
         model: "gpt-4o-mini",
         maxTokens: 500,
       });
 
-      const optimizedContent = (response as any)?.text || content;
+      const optimizedContent: string = (response as any)?.text || content;
 
       return {
         optimizedContent,
