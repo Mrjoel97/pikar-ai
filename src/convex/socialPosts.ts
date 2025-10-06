@@ -316,6 +316,107 @@ export const getPostById = query({
 });
 
 /**
+ * Get monthly post count for a business
+ */
+export const getMonthlyPostCount = query({
+  args: {
+    businessId: v.optional(v.id("businesses")),
+  },
+  handler: async (ctx, args) => {
+    // Guest-safe: return 0 if no businessId
+    if (!args.businessId) {
+      return 0;
+    }
+
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+
+    const posts = await ctx.db
+      .query("socialPosts")
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId!))
+      .filter((q) => q.gte(q.field("_creationTime"), monthStart))
+      .collect();
+
+    return posts.length;
+  },
+});
+
+/**
+ * Get connected platforms count for a business
+ */
+export const getConnectedPlatformsCount = query({
+  args: {
+    businessId: v.optional(v.id("businesses")),
+  },
+  handler: async (ctx, args) => {
+    // Guest-safe: return 0 if no businessId
+    if (!args.businessId) {
+      return 0;
+    }
+
+    const connectedAccounts = await ctx.db
+      .query("socialAccounts")
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId!))
+      .filter((q) => q.eq(q.field("isActive"), true))
+      .collect();
+
+    return connectedAccounts.length;
+  },
+});
+
+/**
+ * Get scheduled posts count for a business
+ */
+export const getScheduledPostsCount = query({
+  args: {
+    businessId: v.optional(v.id("businesses")),
+  },
+  handler: async (ctx, args) => {
+    // Guest-safe: return 0 if no businessId
+    if (!args.businessId) {
+      return 0;
+    }
+
+    const scheduledPosts = await ctx.db
+      .query("socialPosts")
+      .withIndex("by_business_and_status", (q) =>
+        q.eq("businessId", args.businessId!).eq("status", "scheduled")
+      )
+      .collect();
+
+    return scheduledPosts.length;
+  },
+});
+
+/**
+ * Get AI generations count for current month
+ */
+export const getAIGenerationsCount = query({
+  args: {
+    businessId: v.optional(v.id("businesses")),
+  },
+  handler: async (ctx, args) => {
+    // Guest-safe: return 0 if no businessId
+    if (!args.businessId) {
+      return 0;
+    }
+
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+
+    const aiGenerations = await ctx.db
+      .query("telemetryEvents")
+      .withIndex("by_business_and_event", (q) =>
+        q.eq("businessId", args.businessId!).eq("eventName", "ai_generation_used")
+      )
+      .filter((q) => q.gte(q.field("timestamp"), monthStart))
+      .collect();
+
+    return aiGenerations.length;
+  },
+});
+
+/**
  * List due posts for cron processing (internal)
  */
 export const listDuePosts = internalQuery({
