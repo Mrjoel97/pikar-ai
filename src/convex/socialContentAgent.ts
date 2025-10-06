@@ -310,3 +310,327 @@ Return ONLY the optimized content.
     }
   },
 });
+
+/**
+ * Recommend optimal posting times based on platform and audience
+ */
+export const recommendPostingTimes = action({
+  args: {
+    businessId: v.id("businesses"),
+    platform: v.union(v.literal("twitter"), v.literal("linkedin"), v.literal("facebook")),
+    timezone: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const { platform, timezone = "UTC" } = args;
+
+    // Platform-specific optimal time windows
+    const optimalTimes: Record<string, string[]> = {
+      twitter: ["9:00 AM", "12:00 PM", "3:00 PM", "6:00 PM"],
+      linkedin: ["7:00 AM", "8:00 AM", "12:00 PM", "5:00 PM", "6:00 PM"],
+      facebook: ["1:00 PM", "3:00 PM", "7:00 PM", "9:00 PM"],
+    };
+
+    const prompt = `
+Based on ${platform} best practices and the timezone ${timezone}, recommend the top 3 optimal posting times for maximum engagement.
+
+Consider:
+- Platform-specific peak activity hours
+- Day of week patterns
+- Audience behavior trends
+- Time zone: ${timezone}
+
+Return a JSON array of recommendations with time, day, and reasoning.
+Format: [{"time": "9:00 AM", "day": "Tuesday", "reason": "Peak morning engagement"}]
+`.trim();
+
+    try {
+      const response = await ctx.runAction(api.openai.generate, {
+        prompt,
+        model: "gpt-4o-mini",
+        maxTokens: 300,
+      });
+
+      const text = (response as any)?.text || "";
+      
+      // Try to parse JSON response, fallback to default times
+      let recommendations;
+      try {
+        recommendations = JSON.parse(text);
+      } catch {
+        recommendations = optimalTimes[platform].map((time, i) => ({
+          time,
+          day: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"][i % 5],
+          reason: "Platform best practice",
+        }));
+      }
+
+      return {
+        platform,
+        timezone,
+        recommendations: recommendations.slice(0, 3),
+        defaultTimes: optimalTimes[platform],
+      };
+    } catch (error) {
+      return {
+        platform,
+        timezone,
+        recommendations: [],
+        defaultTimes: optimalTimes[platform],
+        error: String(error).slice(0, 200),
+      };
+    }
+  },
+});
+
+/**
+ * Generate A/B testing suggestions for social content
+ */
+export const suggestABTests = action({
+  args: {
+    businessId: v.id("businesses"),
+    content: v.string(),
+    platform: v.union(v.literal("twitter"), v.literal("linkedin"), v.literal("facebook")),
+    testType: v.optional(v.union(v.literal("headline"), v.literal("cta"), v.literal("tone"), v.literal("format"))),
+  },
+  handler: async (ctx, args) => {
+    const { content, platform, testType = "headline" } = args;
+
+    const prompt = `
+Create 2 A/B test variations for this ${platform} post, focusing on ${testType}:
+
+Original: "${content}"
+
+Generate variations that test different approaches while maintaining the core message.
+For ${testType} testing, create meaningful differences that could impact engagement.
+
+Return JSON format:
+{
+  "variantA": {"content": "...", "hypothesis": "..."},
+  "variantB": {"content": "...", "hypothesis": "..."}
+}
+`.trim();
+
+    try {
+      const response = await ctx.runAction(api.openai.generate, {
+        prompt,
+        model: "gpt-4o-mini",
+        maxTokens: 400,
+      });
+
+      const text = (response as any)?.text || "";
+      
+      let variants;
+      try {
+        variants = JSON.parse(text);
+      } catch {
+        // Fallback variants
+        variants = {
+          variantA: {
+            content: content,
+            hypothesis: "Original version performs best",
+          },
+          variantB: {
+            content: content.split(".")[0] + "! 🚀",
+            hypothesis: "Emoji and excitement increase engagement",
+          },
+        };
+      }
+
+      return {
+        testType,
+        platform,
+        original: content,
+        variants,
+        metrics: ["clicks", "likes", "shares", "comments"],
+      };
+    } catch (error) {
+      return {
+        testType,
+        platform,
+        original: content,
+        variants: null,
+        error: String(error).slice(0, 200),
+      };
+    }
+  },
+});
+
+/**
+ * Predict engagement potential for content
+ */
+export const predictEngagement = action({
+  args: {
+    businessId: v.id("businesses"),
+    content: v.string(),
+    platform: v.union(v.literal("twitter"), v.literal("linkedin"), v.literal("facebook")),
+    includeHashtags: v.optional(v.boolean()),
+    includeEmojis: v.optional(v.boolean()),
+  },
+  handler: async (ctx, args) => {
+    const { content, platform, includeHashtags = false, includeEmojis = false } = args;
+    const spec = PLATFORM_SPECS[platform as Platform];
+
+    const prompt = `
+Analyze this ${platform} post and predict its engagement potential:
+
+Content: "${content}"
+Has hashtags: ${includeHashtags}
+Has emojis: ${includeEmojis}
+Character count: ${content.length}/${spec.maxLength}
+
+Rate the following on a scale of 1-10 and provide reasoning:
+1. Engagement potential (likes, shares, comments)
+2. Click-through likelihood
+3. Virality potential
+4. Audience relevance
+
+Return JSON format:
+{
+  "engagementScore": 7,
+  "clickScore": 6,
+  "viralityScore": 5,
+  "relevanceScore": 8,
+  "overallScore": 6.5,
+  "strengths": ["clear message", "good length"],
+  "improvements": ["add call-to-action", "include visual"],
+  "predictedMetrics": {"likes": "50-100", "shares": "10-20", "comments": "5-15"}
+}
+`.trim();
+
+    try {
+      const response = await ctx.runAction(api.openai.generate, {
+        prompt,
+        model: "gpt-4o-mini",
+        maxTokens: 400,
+      });
+
+      const text = (response as any)?.text || "";
+      
+      let prediction;
+      try {
+        prediction = JSON.parse(text);
+      } catch {
+        // Fallback prediction
+        prediction = {
+          engagementScore: 5,
+          clickScore: 5,
+          viralityScore: 4,
+          relevanceScore: 6,
+          overallScore: 5,
+          strengths: ["Clear message"],
+          improvements: ["Add call-to-action"],
+          predictedMetrics: { likes: "20-50", shares: "5-10", comments: "2-5" },
+        };
+      }
+
+      return {
+        platform,
+        content,
+        prediction,
+        characterCount: content.length,
+        maxLength: spec.maxLength,
+      };
+    } catch (error) {
+      return {
+        platform,
+        content,
+        prediction: null,
+        error: String(error).slice(0, 200),
+      };
+    }
+  },
+});
+
+/**
+ * Repurpose long-form content (blog, article) into social posts
+ */
+export const repurposeContent = action({
+  args: {
+    businessId: v.id("businesses"),
+    sourceContent: v.string(),
+    sourceType: v.union(v.literal("blog"), v.literal("article"), v.literal("newsletter"), v.literal("video")),
+    targetPlatforms: v.array(v.union(v.literal("twitter"), v.literal("linkedin"), v.literal("facebook"))),
+    numberOfVariations: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const { sourceContent, sourceType, targetPlatforms, numberOfVariations = 1 } = args;
+
+    const results: Record<string, any[]> = {};
+
+    for (const platform of targetPlatforms) {
+      const spec = PLATFORM_SPECS[platform as Platform];
+      
+      const prompt = `
+Repurpose this ${sourceType} content into ${numberOfVariations} engaging ${platform} post(s):
+
+Source content (excerpt):
+"${sourceContent.slice(0, 1000)}..."
+
+Requirements for ${platform}:
+- Max length: ${spec.maxLength} characters
+- Tone: ${spec.tone}
+- Best practices: ${spec.bestPractices}
+- Extract key insights and make them shareable
+- Include a hook to drive engagement
+
+${numberOfVariations > 1 ? `Create ${numberOfVariations} different variations, each with a unique angle.` : ""}
+
+Return JSON array format:
+[{"content": "...", "angle": "...", "hashtags": ["tag1", "tag2"]}]
+`.trim();
+
+      try {
+        const response = await ctx.runAction(api.openai.generate, {
+          prompt,
+          model: "gpt-4o-mini",
+          maxTokens: 600,
+        });
+
+        const text = (response as any)?.text || "";
+        
+        let variations;
+        try {
+          variations = JSON.parse(text);
+          if (!Array.isArray(variations)) {
+            variations = [variations];
+          }
+        } catch {
+          // Fallback variation
+          const excerpt = sourceContent.slice(0, spec.maxLength - 50);
+          variations = [{
+            content: `${excerpt}... Read more!`,
+            angle: "Direct excerpt",
+            hashtags: [],
+          }];
+        }
+
+        results[platform] = variations.slice(0, numberOfVariations);
+
+        // Track usage
+        await ctx.runMutation(api.telemetry.logEvent, {
+          businessId: args.businessId,
+          eventName: "content_repurposed",
+          metadata: {
+            sourceType,
+            targetPlatform: platform,
+            variationsCount: variations.length,
+          },
+        });
+      } catch (error) {
+        results[platform] = [{
+          content: `Error repurposing for ${platform}`,
+          angle: "error",
+          hashtags: [],
+          error: String(error).slice(0, 100),
+        }];
+      }
+    }
+
+    return {
+      sourceType,
+      targetPlatforms,
+      results,
+      totalVariations: Object.values(results).reduce((sum, arr) => sum + arr.length, 0),
+    };
+  },
+});
