@@ -1,4 +1,2 @@
-const kpiDoc =
-  !isGuest && business?._id
-    ? useQuery(api.kpis.getSnapshot, { businessId: business._id })
-    : undefined;
+const validateFn: any = internal.adminAuthData.validateSession;
+const res: any = await ctx.runQuery(validateFn, { token: args.adminToken });
