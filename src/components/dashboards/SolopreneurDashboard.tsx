@@ -46,6 +46,10 @@ export function SolopreneurDashboard({
   const CampaignComposerAny = CampaignComposer as any;
   // Use auth status early to guard queries when not authenticated
   const { isAuthenticated: isAuthed } = useAuth();
+  
+  // Fetch current user data
+  const user = useQuery(api.users.currentUser, isAuthed ? {} : "skip");
+  
   // Add local BrainDumpSection component
   function BrainDumpSection({ businessId }: { businessId: string }) {
     // Get or create an initiative for the business (we'll read the first one)

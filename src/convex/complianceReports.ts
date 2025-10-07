@@ -93,7 +93,7 @@ export const generateComplianceReport = action({
     departments: v.optional(v.array(v.string())),
   },
   handler: async (ctx, args): Promise<Id<"generatedReports">> => {
-    const template = await ctx.runQuery(api.complianceReports.getTemplate, {
+    const template = await (ctx as any).runQuery("complianceReports:getTemplate" as any, {
       templateId: args.templateId,
     });
 
@@ -110,7 +110,7 @@ export const generateComplianceReport = action({
     }
 
     // Store the generated report
-    const reportId = await ctx.runMutation(internal.complianceReports.storeGeneratedReport, {
+    const reportId = await (ctx as any).runMutation("complianceReports:storeGeneratedReport" as any, {
       businessId: args.businessId,
       templateId: args.templateId,
       framework: template.framework,
@@ -245,7 +245,7 @@ export const generateScheduledReports = internalMutation({
 
     for (const report of dueReports) {
       // Schedule the generation action
-      await ctx.scheduler.runAfter(0, internal.complianceReports.generateAndEmailReport, {
+      await ctx.scheduler.runAfter(0, internal.complianceReports.generateAndEmailReport as any, {
         scheduledReportId: report._id,
       });
 
@@ -294,18 +294,18 @@ async function aggregateSectionData(ctx: any, section: any, args: any): Promise<
   
   switch (section.queryType) {
     case "audit_logs":
-      return await ctx.runQuery(api.complianceReports.getAuditLogs, {
+      return await (ctx as any).runQuery("complianceReports:getAuditLogs" as any, {
         businessId: args.businessId,
         dateRange: args.dateRange,
       });
     
     case "access_controls":
-      return await ctx.runQuery(api.complianceReports.getAccessControls, {
+      return await (ctx as any).runQuery("complianceReports:getAccessControls" as any, {
         businessId: args.businessId,
       });
     
     case "data_processing":
-      return await ctx.runQuery(api.complianceReports.getDataProcessing, {
+      return await (ctx as any).runQuery("complianceReports:getDataProcessing" as any, {
         businessId: args.businessId,
         dateRange: args.dateRange,
       });
