@@ -437,3 +437,221 @@ export const listDuePosts = internalQuery({
     return duePosts;
   },
 });
+
+/**
+ * Bulk update post status
+ */
+export const bulkUpdateStatus = mutation({
+  args: {
+    postIds: v.array(v.id("socialPosts")),
+    status: v.union(
+      v.literal("draft"),
+      v.literal("scheduled"),
+      v.literal("posting"),
+      v.literal("posted"),
+      v.literal("failed")
+    ),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("[ERR_NOT_AUTHENTICATED] You must be signed in.");
+    }
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("email", (q) => q.eq("email", identity.email!))
+      .first();
+    if (!user) {
+      throw new Error("[ERR_USER_NOT_FOUND] User not found.");
+    }
+
+    // Verify access to all posts
+    for (const postId of args.postIds) {
+      const post = await ctx.db.get(postId);
+      if (!post) continue;
+
+      const business = await ctx.db.get(post.businessId);
+      if (!business) continue;
+      if (business.ownerId !== user._id && !business.teamMembers.includes(user._id)) {
+        throw new Error("[ERR_FORBIDDEN] Not authorized for post: " + postId);
+      }
+
+      await ctx.db.patch(postId, { status: args.status });
+    }
+
+    return { updated: args.postIds.length };
+  },
+});
+
+/**
+ * Bulk delete posts
+ */
+export const bulkDeletePosts = mutation({
+  args: {
+    postIds: v.array(v.id("socialPosts")),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("[ERR_NOT_AUTHENTICATED] You must be signed in.");
+    }
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("email", (q) => q.eq("email", identity.email!))
+      .first();
+    if (!user) {
+      throw new Error("[ERR_USER_NOT_FOUND] User not found.");
+    }
+
+    let deleted = 0;
+    for (const postId of args.postIds) {
+      const post = await ctx.db.get(postId);
+      if (!post) continue;
+
+      const business = await ctx.db.get(post.businessId);
+      if (!business) continue;
+      if (business.ownerId !== user._id && !business.teamMembers.includes(user._id)) {
+        continue; // Skip unauthorized posts
+      }
+
+      await ctx.db.delete(postId);
+      deleted++;
+    }
+
+    return { deleted };
+  },
+});
+
+/**
+ * Update performance metrics for a post
+ */
+export const updatePerformanceMetrics = mutation({
+  args: {
+    postId: v.id("socialPosts"),
+    metrics: v.object({
+      impressions: v.number(),
+      engagements: v.number(),
+      clicks: v.number(),
+      shares: v.number(),
+      comments: v.number(),
+      likes: v.number(),
+    }),
+  },
+  handler: async (ctx, args) => {
+    const post = await ctx.db.get(args.postId);
+    if (!post) {
+      throw new Error("[ERR_POST_NOT_FOUND] Post not found.");
+    }
+
+    await ctx.db.patch(args.postId, {
+      performanceMetrics: {
+        ...args.metrics,
+        lastUpdated: Date.now(),
+      },
+    });
+
+    return true;
+  },
+});
+
+/**
+ * Update approval status
+ */
+export const updateApprovalStatus = mutation({
+  args: {
+    postId: v.id("socialPosts"),
+    approvalStatus: v.union(
+      v.literal("pending"),
+      v.literal("approved"),
+      v.literal("rejected"),
+      v.literal("not_required")
+    ),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("[ERR_NOT_AUTHENTICATED] You must be signed in.");
+    }
+
+    const post = await ctx.db.get(args.postId);
+    if (!post) {
+      throw new Error("[ERR_POST_NOT_FOUND] Post not found.");
+    }
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("email", (q) => q.eq("email", identity.email!))
+      .first();
+    if (!user) {
+      throw new Error("[ERR_USER_NOT_FOUND] User not found.");
+    }
+
+    const business = await ctx.db.get(post.businessId);
+    if (!business) {
+      throw new Error("[ERR_BUSINESS_NOT_FOUND] Business not found.");
+    }
+    if (business.ownerId !== user._id && !business.teamMembers.includes(user._id)) {
+      throw new Error("[ERR_FORBIDDEN] Not authorized.");
+    }
+
+    await ctx.db.patch(args.postId, {
+      approvalStatus: args.approvalStatus,
+    });
+
+    await ctx.runMutation(internal.audit.write, {
+      businessId: post.businessId,
+      action: "social_post_approval_updated",
+      entityType: "social_post",
+      entityId: args.postId,
+      details: { approvalStatus: args.approvalStatus },
+    });
+
+    return true;
+  },
+});
+
+/**
+ * Bulk schedule posts
+ */
+export const bulkSchedulePosts = mutation({
+  args: {
+    postIds: v.array(v.id("socialPosts")),
+    scheduledAt: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("[ERR_NOT_AUTHENTICATED] You must be signed in.");
+    }
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("email", (q) => q.eq("email", identity.email!))
+      .first();
+    if (!user) {
+      throw new Error("[ERR_USER_NOT_FOUND] User not found.");
+    }
+
+    let scheduled = 0;
+    for (const postId of args.postIds) {
+      const post = await ctx.db.get(postId);
+      if (!post) continue;
+
+      const business = await ctx.db.get(post.businessId);
+      if (!business) continue;
+      if (business.ownerId !== user._id && !business.teamMembers.includes(user._id)) {
+        continue;
+      }
+
+      await ctx.db.patch(postId, {
+        scheduledAt: args.scheduledAt,
+        status: "scheduled",
+      });
+      scheduled++;
+    }
+
+    return { scheduled };
+  },
+});

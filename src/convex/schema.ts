@@ -1410,6 +1410,23 @@ const schema = defineSchema({
       facebook: v.optional(v.string()),
     })),
     metadata: v.optional(v.any()),
+    // New fields for enhanced functionality
+    aiGenerated: v.optional(v.boolean()),
+    approvalStatus: v.optional(v.union(
+      v.literal("pending"),
+      v.literal("approved"),
+      v.literal("rejected"),
+      v.literal("not_required")
+    )),
+    performanceMetrics: v.optional(v.object({
+      impressions: v.number(),
+      engagements: v.number(),
+      clicks: v.number(),
+      shares: v.number(),
+      comments: v.number(),
+      likes: v.number(),
+      lastUpdated: v.number(),
+    })),
   })
     .index("by_business", ["businessId"])
     .index("by_business_and_status", ["businessId", "status"])
