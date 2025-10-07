@@ -2,7 +2,6 @@
 
 import { v } from "convex/values";
 import { action } from "./_generated/server";
-import { internal } from "./_generated/api";
 import { generateText } from "ai";
 import { openai } from "@ai-sdk/openai";
 
@@ -15,7 +14,7 @@ export const generateEmailDraft = action({
   },
   handler: async (ctx, args) => {
     // Get customer context
-    const customerContext = await ctx.runQuery(internal.emailDraftAgentData.getCustomerContext, {
+    const customerContext = await ctx.runQuery("emailDraftAgentData:getCustomerContext" as any, {
       businessId: args.businessId,
       recipientEmail: args.recipientEmail,
     });

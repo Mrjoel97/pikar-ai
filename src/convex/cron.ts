@@ -1,5 +1,4 @@
 import { cronJobs } from "convex/server";
-import { internal } from "./_generated/api";
 
 const crons = cronJobs();
 
@@ -7,7 +6,7 @@ const crons = cronJobs();
 crons.interval(
   "process scheduled campaigns",
   { minutes: 2 },
-  internal.emails.processDueScheduledCampaigns,
+  "emails:processDueScheduledCampaigns" as any,
   {}
 );
 
@@ -15,18 +14,18 @@ crons.interval(
 crons.interval(
   "process social posts",
   { minutes: 5 },
-  internal.socialPostsCron.processSocialPosts,
+  "socialPostsCron:processSocialPosts" as any,
   {}
 );
 
-// Add SLA sweep cron
-crons.interval("approval SLA sweep", { minutes: 10 }, internal.approvals.sweepOverdueApprovals, {});
+// Sweep overdue approvals every 10 minutes
+crons.interval("approval SLA sweep", { minutes: 10 }, "approvals:sweepOverdueApprovals" as any, {});
 
-// Generate scheduled compliance reports daily
+// Generate scheduled compliance reports daily at 2 AM
 crons.interval(
-  "generate scheduled compliance reports",
+  "generate scheduled reports",
   { hours: 24 },
-  internal.complianceReports.generateScheduledReports,
+  "complianceReports:generateScheduledReports" as any,
   {}
 );
 

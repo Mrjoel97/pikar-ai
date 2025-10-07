@@ -139,7 +139,7 @@ export const addContactsToList = internalMutation({
       if (!email || seen.has(email)) continue;
       seen.add(email);
 
-      const contactId = await ctx.runMutation((internal as any).contacts.upsertContact, {
+      const contactId = await (ctx as any).runMutation("contacts:upsertContact" as any, {
         businessId: args.businessId,
         email,
         createdBy: args.createdBy,
@@ -388,7 +388,7 @@ export const importCsvToList = action({
 
     for (const email of uniq) {
       try {
-        await ctx.runMutation((internal as any).contacts.upsertContact, {
+        await (ctx as any).runMutation("contacts:upsertContact" as any, {
           businessId: args.businessId,
           email,
           name: namesByEmail[email],
@@ -403,7 +403,7 @@ export const importCsvToList = action({
       }
     }
 
-    await ctx.runMutation((internal as any).contacts.addContactsToList, {
+    await (ctx as any).runMutation("contacts:addContactsToList" as any, {
       businessId: args.businessId,
       listId: args.listId,
       emails: uniq,
@@ -433,13 +433,13 @@ export const seedContacts: any = action({
       emails.push(`${name.toLowerCase()}${i}@example.com`);
     }
 
-    const listId: any = await ctx.runMutation((api as any).contacts.createList, {
+    const listId: any = await (ctx as any).runMutation("contacts:createList" as any, {
       businessId: args.businessId,
       name: "Sample Contacts",
     });
 
     for (const email of emails) {
-      await ctx.runMutation((internal as any).contacts.upsertContact, {
+      await (ctx as any).runMutation("contacts:upsertContact" as any, {
         businessId: args.businessId,
         email,
         name: email.split("@")[0],
@@ -449,7 +449,7 @@ export const seedContacts: any = action({
       });
     }
 
-    await ctx.runMutation((internal as any).contacts.addContactsToList, {
+    await (ctx as any).runMutation("contacts:addContactsToList" as any, {
       businessId: args.businessId,
       listId,
       emails,

@@ -1,6 +1,5 @@
 import { query, mutation, action } from "./_generated/server";
 import { v } from "convex/values";
-import { internal } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
 
 // Helper to make a slug from a title
@@ -66,7 +65,7 @@ export const generateFromUrl = action({
       `+ Adds page imported from external URL\n`;
 
     const proposalId: Id<"docsProposals"> = await ctx.runMutation(
-      internal.docsInternal.createProposal,
+      "docsInternal:createProposal" as any,
       {
         title,
         slug,
@@ -106,7 +105,7 @@ export const generateFromSeed = action({
       "+ Adds initial overview page generated from seed\n";
 
     const proposalId: Id<"docsProposals"> = await ctx.runMutation(
-      internal.docsInternal.createProposal,
+      "docsInternal:createProposal" as any,
       {
         title,
         slug,
@@ -163,7 +162,7 @@ export const approveAndPublish = mutation({
 
     // Best-effort audit log; ignore failures
     try {
-      await ctx.runMutation(internal.audit.write, {
+      await (ctx as any).runMutation("audit:write" as any, {
         action: "docs_published",
         entityType: "docs",
         entityId: pageId,

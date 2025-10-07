@@ -1,6 +1,6 @@
 import { v } from "convex/values";
-import { mutation, query, action, internalMutation } from "./_generated/server";
-import { api, internal } from "./_generated/api";
+import { query, mutation, action, internalMutation } from "./_generated/server";
+import { internal } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
 
 // Query: Get report templates
@@ -245,7 +245,7 @@ export const generateScheduledReports = internalMutation({
 
     for (const report of dueReports) {
       // Schedule the generation action
-      await ctx.scheduler.runAfter(0, internal.complianceReports.generateAndEmailReport as any, {
+      await (ctx.scheduler as any).runAfter(0, "complianceReports:generateAndEmailReport" as any, {
         scheduledReportId: report._id,
       });
 

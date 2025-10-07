@@ -1,5 +1,4 @@
 import { query, mutation, internalQuery } from "./_generated/server";
-import { api } from "./_generated/api";
 import { v } from "convex/values";
 
 /**
@@ -44,7 +43,7 @@ export const getForBusinessSummary = query({
   args: {},
   handler: async (ctx): Promise<WorkspaceEmailSummary | null> => {
     // Derive business from the signed-in user; guest-safe (returns null if none)
-    const business: any = await ctx.runQuery(api.businesses.currentUserBusiness, {});
+    const business: any = await ctx.runQuery("businesses:currentUserBusiness" as any, {});
     const businessId: any = business?._id;
     if (!businessId) return null;
 

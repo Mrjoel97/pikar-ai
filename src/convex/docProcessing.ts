@@ -1,7 +1,6 @@
 "use node";
 import { action } from "./_generated/server";
 import { v } from "convex/values";
-import { api } from "./_generated/api";
 import { chunkDocument, type ChunkingOptions } from "./chunking";
 
 // Deterministic local embedding helpers (no external APIs)
@@ -73,7 +72,7 @@ export const processDocument = action({
       agentKeys: args.opts?.agentKeys ?? [],
     }));
 
-    await ctx.runMutation(api.vectors.storeDocumentEmbeddings, {
+    await ctx.runMutation("vectors:storeDocumentEmbeddings" as any, {
       documentId: args.documentId,
       chunks: payload as any,
     });
@@ -93,7 +92,7 @@ export const batchProcessDocuments = action({
   handler: async (ctx, args) => {
     let processed = 0;
     for (const d of args.documents) {
-      const res = await ctx.runAction(api.docProcessing.processDocument, {
+      const res = await ctx.runAction("docProcessing:processDocument" as any, {
         documentId: d.documentId,
         content: d.content,
         opts: d.opts as any,
