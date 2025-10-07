@@ -846,6 +846,28 @@ const pendingApprovals = useQuery(
                   </div>
                 </div>
               </div>
+
+              {/* 30-Day Social Media Analytics */}
+              <div className="border-t pt-4">
+                <h3 className="font-medium mb-3">Analytics (Last 30 Days)</h3>
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="border rounded-lg p-3">
+                    <div className="text-xs text-muted-foreground">Total Posts</div>
+                    <div className="text-xl font-bold">{isGuest ? 24 : upcomingPosts?.length || 0}</div>
+                    <div className="text-xs text-emerald-600">+12% vs prev</div>
+                  </div>
+                  <div className="border rounded-lg p-3">
+                    <div className="text-xs text-muted-foreground">Engagement</div>
+                    <div className="text-xl font-bold">{isGuest ? "3.2k" : "0"}</div>
+                    <div className="text-xs text-emerald-600">+8% vs prev</div>
+                  </div>
+                  <div className="border rounded-lg p-3">
+                    <div className="text-xs text-muted-foreground">Reach</div>
+                    <div className="text-xl font-bold">{isGuest ? "12.5k" : "0"}</div>
+                    <div className="text-xs text-emerald-600">+15% vs prev</div>
+                  </div>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </section>
