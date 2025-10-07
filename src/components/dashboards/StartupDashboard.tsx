@@ -19,7 +19,17 @@ import { RoiDashboard } from "@/components/dashboards/RoiDashboard";
 import type { Id } from "@/convex/_generated/dataModel";
 import { Link as LinkIcon } from "lucide-react";
 import { TeamOnboardingWizard } from "@/components/onboarding/TeamOnboardingWizard";
-import { AlertTriangle, TrendingUp } from "lucide-react";
+import {
+  Twitter,
+  Linkedin,
+  Facebook,
+  Sparkles,
+  AlertCircle,
+  Check,
+  X,
+} from "lucide-react";
+import { SocialMediaManager } from "@/components/social/SocialMediaManager";
+import { PostComposer } from "@/components/social/PostComposer";
 
 interface StartupDashboardProps {
   business: any;
@@ -156,6 +166,17 @@ const pendingApprovals = useQuery(
 
   const incompleteOnboarding = teamOnboarding?.filter((t: any) => !t.completedAt).length || 0;
 
+  // Add queries for social media data
+  const connectedAccounts = useQuery(
+    api.socialIntegrations.listConnectedAccounts,
+    isGuest || !business?._id ? undefined : { businessId: business._id }
+  );
+
+  const upcomingPosts = useQuery(
+    api.socialPosts.getUpcomingPosts,
+    isGuest || !business?._id ? undefined : { businessId: business._id, limit: 5 }
+  );
+
   function BrainDumpSection({ businessId }: { businessId: string }) {
     const initiatives = useQuery(
       api.initiatives.getByBusiness as any,
@@ -246,7 +267,7 @@ const pendingApprovals = useQuery(
       {/* Pending Team Onboarding Alert */}
       {!isGuest && incompleteOnboarding > 0 && (
         <div className="rounded-md border border-amber-300 bg-amber-50 p-3 flex items-center gap-3">
-          <AlertTriangle className="h-5 w-5 text-amber-600" />
+          <AlertCircle className="h-5 w-5 text-amber-600" />
           <div className="flex-1">
             <p className="text-sm font-medium">
               {incompleteOnboarding} team member{incompleteOnboarding > 1 ? "s" : ""} pending onboarding
@@ -337,7 +358,7 @@ const pendingApprovals = useQuery(
             <div className="flex items-center justify-between">
               <div>
                 <CardTitle className="flex items-center gap-2">
-                  <TrendingUp className="h-5 w-5" />
+                  <Check className="h-5 w-5" />
                   Approval Health
                 </CardTitle>
                 <CardDescription>Key approval metrics for the past 7 days</CardDescription>
@@ -720,16 +741,6 @@ const pendingApprovals = useQuery(
         </section>
       )}
 
-      {/* ROI Dashboard Section */}
-      {!isGuest && business?._id && (
-        <section className="mb-6">
-          <RoiDashboard 
-            businessId={business._id} 
-            userId={business._id}
-          />
-        </section>
-      )}
-
       {/* Content Calendar Section */}
       {!isGuest && business?._id && (
         <section className="mb-6">
@@ -737,6 +748,106 @@ const pendingApprovals = useQuery(
             businessId={business._id} 
             userId={business._id}
           />
+        </section>
+      )}
+
+      {/* Social Media Hub Section - NEW */}
+      {!isGuest && business?._id && (
+        <section className="mb-6">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <Twitter className="h-5 w-5" />
+                    Social Media Hub
+                  </CardTitle>
+                  <CardDescription>
+                    Multi-platform scheduler with AI-powered content suggestions
+                  </CardDescription>
+                </div>
+                <Button size="sm" onClick={() => nav("/social")}>
+                  Open Full Manager
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Quick Stats */}
+              <div className="grid grid-cols-3 gap-4">
+                <div className="border rounded-lg p-3">
+                  <div className="text-sm text-muted-foreground">Scheduled Posts</div>
+                  <div className="text-2xl font-bold">
+                    {upcomingPosts?.length || 0}
+                  </div>
+                </div>
+                <div className="border rounded-lg p-3">
+                  <div className="text-sm text-muted-foreground">Connected Platforms</div>
+                  <div className="text-2xl font-bold">
+                    {connectedAccounts?.length || 0}/3
+                  </div>
+                </div>
+                <div className="border rounded-lg p-3">
+                  <div className="text-sm text-muted-foreground">Posts This Month</div>
+                  <div className="text-2xl font-bold">
+                    {isGuest ? 12 : 0}
+                  </div>
+                </div>
+              </div>
+
+              {/* Quick Post Composer */}
+              <div className="border-t pt-4">
+                <h3 className="font-medium mb-3">Quick Post</h3>
+                <PostComposer
+                  businessId={business._id as Id<"businesses">}
+                  userId={business._id as Id<"users">}
+                  onPostCreated={() => {
+                    toast.success("Post created successfully!");
+                  }}
+                />
+              </div>
+
+              {/* Upcoming Posts Preview */}
+              {upcomingPosts && upcomingPosts.length > 0 && (
+                <div className="border-t pt-4">
+                  <h3 className="font-medium mb-3">Upcoming Posts</h3>
+                  <div className="space-y-2">
+                    {upcomingPosts.slice(0, 3).map((post: any) => (
+                      <div key={post._id} className="flex items-center justify-between p-2 border rounded">
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-medium truncate">{post.content}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {new Date(post.scheduledAt!).toLocaleString()}
+                          </div>
+                        </div>
+                        <div className="flex gap-1 ml-2">
+                          {post.platforms.map((platform: string) => {
+                            const Icon = platform === "twitter" ? Twitter : 
+                                       platform === "linkedin" ? Linkedin : Facebook;
+                            return <Icon key={platform} className="h-4 w-4 text-muted-foreground" />;
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* AI Features Badge */}
+              <div className="border-t pt-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="h-4 w-4 text-emerald-600" />
+                    <span className="text-sm font-medium">AI Features Available</span>
+                  </div>
+                  <div className="flex gap-2">
+                    <Badge variant="secondary">Content Generation</Badge>
+                    <Badge variant="secondary">Hashtag Suggestions</Badge>
+                    <Badge variant="secondary">Optimal Timing</Badge>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </section>
       )}
 
