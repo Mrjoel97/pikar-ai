@@ -947,7 +947,7 @@ Renamed to avoid duplicate identifier collisions elsewhere in the file */
   // Use Convex KPI snapshot when authenticated; fallback to demo data for guests
   const kpiDoc = useQuery(
     api.kpis.getSnapshot,
-    !isGuest && business?._id ? { businessId: business._id } : undefined
+    !isGuest && business?._id ? { businessId: business?._id } : undefined
   );
 
   // Use demo data when in guest mode
@@ -962,7 +962,7 @@ Renamed to avoid duplicate identifier collisions elsewhere in the file */
   const quickAnalytics =
     !isGuest && business?._id
       ? (useQuery as any)(api.solopreneur.runQuickAnalytics, {
-          businessId: business._id,
+          businessId: business?._id,
         })
       : {
           revenue90d: 0,
@@ -1007,7 +1007,7 @@ Renamed to avoid duplicate identifier collisions elsewhere in the file */
   const initiativesTop =
     !isGuest && business?._id
       ? (useQuery as any)(api.initiatives.getByBusiness, {
-          businessId: business._id,
+          businessId: business?._id,
         })
       : undefined;
   const currentInitiative =
@@ -1086,7 +1086,7 @@ Renamed to avoid duplicate identifier collisions elsewhere in the file */
   // Add: load Agent Profile v2 to wire tone/persona/cadence into composer
   const agentProfile = useQuery(
     api.agentProfile.getMyAgentProfile,
-    business ? { businessId: business._id } : ("skip" as any),
+    business ? { businessId: business?._id } : ("skip" as any),
   );
   const upsertAgent = useMutation(api.agentProfile.upsertMyAgentProfile as any);
   const saveAgentProfile = async (partial: {
@@ -1099,7 +1099,7 @@ Renamed to avoid duplicate identifier collisions elsewhere in the file */
       return;
     }
     try {
-      await upsertAgent({ businessId: business._id, ...partial });
+      await upsertAgent({ businessId: business?._id, ...partial });
       toast.success("Agent profile updated");
     } catch (e: any) {
       toast.error(e?.message ?? "Failed to save agent profile");
@@ -1186,7 +1186,7 @@ Renamed to avoid duplicate identifier collisions elsewhere in the file */
     try {
       setGeneratingSocial(true);
       const result = await generateSocialContent({
-        businessId: business._id,
+        businessId: business?._id,
         userId,
         topic: socialContent,
         platforms: socialPlatforms.length > 0 ? socialPlatforms : ["twitter"],
@@ -1215,7 +1215,7 @@ Renamed to avoid duplicate identifier collisions elsewhere in the file */
     try {
       setGeneratingSocial(true);
       const result = await generateSocialContent({
-        businessId: business._id,
+        businessId: business?._id,
         userId,
         topic: "Repurpose my latest blog post into social media content",
         platforms: ["twitter", "linkedin"],
@@ -1288,13 +1288,13 @@ Renamed to avoid duplicate identifier collisions elsewhere in the file */
         return;
       }
       const id = await createFromIdea({
-        businessId: business._id,
+        businessId: business?._id,
         idea: ideaText,
         initiativeId: currentInitiative?._id,
       });
       // Log a win: estimate 20 minutes saved for skipping setup
       await logWin({
-        businessId: business._id,
+        businessId: business?._id,
         winType: "workflow_created_from_idea",
         timeSavedMinutes: 20,
         details: { workflowId: String(id) },
@@ -1494,7 +1494,7 @@ Renamed to avoid duplicate identifier collisions elsewhere in the file */
   // Schedule slots persistence
   const listSlots =
     !isGuest && business?._id
-      ? (useQuery as any)(api.schedule.listSlots, { businessId: business._id })
+      ? (useQuery as any)(api.schedule.listSlots, { businessId: business?._id })
       : [];
   const deleteSlot = useMutation(api.schedule.deleteSlot as any);
 
@@ -1522,7 +1522,7 @@ Renamed to avoid duplicate identifier collisions elsewhere in the file */
           }
         } catch {}
         await addSlot({
-          businessId: business._id,
+          businessId: business?._id,
           label: slot.label,
           channel: (slot.channel === "Email" ? "email" : "post") as any,
           scheduledAt: whenDate.getTime(),
@@ -1621,7 +1621,7 @@ Renamed to avoid duplicate identifier collisions elsewhere in the file */
       });
       if (business?._id) {
         await logWin({
-          businessId: business._id,
+          businessId: business?._id,
           winType: "template_used",
           timeSavedMinutes: 5,
           details: {
@@ -1780,7 +1780,7 @@ Renamed to avoid duplicate identifier collisions elsewhere in the file */
     if (business?._id) {
       try {
         await logWin({
-          businessId: business._id,
+          businessId: business?._id,
           winType: "content_capsule_generated",
           timeSavedMinutes: 12,
           details: { cadence: agentProfile?.cadence },
@@ -1996,7 +1996,7 @@ Renamed to avoid duplicate identifier collisions elsewhere in the file */
       for (const s of toAdd) {
         // Assume suggestion object has channel, label, scheduledAt
         const res = await addSlot({
-          businessId: business._id,
+          businessId: business?._id,
           channel: s.channel,
           label: s.label ?? `${s.channel} slot`,
           scheduledAt: s.scheduledAt,
@@ -2035,7 +2035,7 @@ Renamed to avoid duplicate identifier collisions elsewhere in the file */
   // Replace any existing upgradeNudges declaration with a guarded version
   const upgradeNudges = useQuery(
     api.telemetry.getUpgradeNudges,
-    isGuest || !business?._id ? undefined : { businessId: business._id }
+    isGuest || !business?._id ? undefined : { businessId: business?._id }
   );
 
   // Add near other hooks/state inside component:
@@ -2057,7 +2057,7 @@ Renamed to avoid duplicate identifier collisions elsewhere in the file */
     try {
       // First create a demo invoice
       const demoInvoiceId = await createInvoice({
-        businessId: business._id,
+        businessId: business?._id,
         invoiceNumber: `INV-${Date.now()}`,
         clientName: "Demo Client",
         clientEmail: "demo@example.com",
@@ -2087,7 +2087,7 @@ Renamed to avoid duplicate identifier collisions elsewhere in the file */
 
       // Log win
       await logWin({
-        businessId: business._id,
+        businessId: business?._id,
         winType: "invoice_generated",
         timeSavedMinutes: 15,
       });
@@ -3097,14 +3097,14 @@ Renamed to avoid duplicate identifier collisions elsewhere in the file */
 
       {/* ROI Dashboard - replaces Micro-Analytics */}
       <div className="col-span-full">
-        <RoiDashboard businessId={business._id} userId={user._id} />
+        <RoiDashboard businessId={business?._id} userId={user?._id} />
       </div>
 
       {/* Add Calendar Dialog */}
       <Dialog open={showCalendar} onOpenChange={setShowCalendar}>
         <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
           {business?._id && user?._id && (
-            <ContentCalendar businessId={business._id} userId={user._id} />
+            <ContentCalendar businessId={business?._id} userId={user?._id} />
           )}
         </DialogContent>
       </Dialog>
@@ -3165,7 +3165,7 @@ Renamed to avoid duplicate identifier collisions elsewhere in the file */
 
       {/* Brain Dump */}
       {!isGuest && business ? (
-        <BrainDumpSection businessId={String(business._id)} />
+        <BrainDumpSection businessId={String(business?._id || '')} />
       ) : null}
 
       {/* Help Coach */}
@@ -3358,7 +3358,7 @@ Renamed to avoid duplicate identifier collisions elsewhere in the file */
         <InvoiceComposer
           open={showInvoiceComposer}
           onOpenChange={setShowInvoiceComposer}
-          businessId={business._id}
+          businessId={business?._id}
         />
       )}
 
@@ -3366,8 +3366,8 @@ Renamed to avoid duplicate identifier collisions elsewhere in the file */
       {!isGuest && business?._id && user?._id && (
         <section className="mb-6">
           <RoiDashboard 
-            businessId={business._id} 
-            userId={user._id}
+            businessId={business?._id} 
+            userId={user?._id}
           />
         </section>
       )}
@@ -3376,8 +3376,8 @@ Renamed to avoid duplicate identifier collisions elsewhere in the file */
       {!isGuest && business?._id && user?._id && (
         <section className="mb-6">
           <ContentCalendar 
-            businessId={business._id} 
-            userId={user._id}
+            businessId={business?._id} 
+            userId={user?._id}
           />
         </section>
       )}
