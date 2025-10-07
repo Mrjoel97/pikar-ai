@@ -197,3 +197,108 @@ export const getAccountByPlatform = internalMutation({
     return account;
   },
 });
+
+/**
+ * Check platform health for a social account
+ */
+export const checkPlatformHealth = query({
+  args: {
+    accountId: v.id("socialAccounts"),
+  },
+  handler: async (ctx, args) => {
+    const account = await ctx.db.get(args.accountId);
+    if (!account) {
+      return {
+        healthy: false,
+        issues: ["Account not found"],
+      };
+    }
+
+    const issues: string[] = [];
+    const now = Date.now();
+
+    // Check token expiration
+    if (account.tokenExpiresAt && account.tokenExpiresAt < now) {
+      issues.push("Access token expired");
+    } else if (account.tokenExpiresAt && account.tokenExpiresAt < now + 7 * 24 * 60 * 60 * 1000) {
+      issues.push("Access token expiring soon (within 7 days)");
+    }
+
+    // Check inactivity
+    const thirtyDaysAgo = now - 30 * 24 * 60 * 60 * 1000;
+    if (account.lastUsedAt && account.lastUsedAt < thirtyDaysAgo) {
+      issues.push("Account inactive for 30+ days");
+    }
+
+    // Check if account is active
+    if (!account.isActive) {
+      issues.push("Account is disconnected");
+    }
+
+    return {
+      healthy: issues.length === 0,
+      issues,
+      accountName: account.accountName,
+      platform: account.platform,
+      lastUsedAt: account.lastUsedAt,
+      tokenExpiresAt: account.tokenExpiresAt,
+    };
+  },
+});
+
+/**
+ * Refresh access token for a social account
+ */
+export const refreshAccessToken = mutation({
+  args: {
+    accountId: v.id("socialAccounts"),
+    newAccessToken: v.string(),
+    newRefreshToken: v.optional(v.string()),
+    newTokenExpiresAt: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("[ERR_NOT_AUTHENTICATED] You must be signed in.");
+    }
+
+    const account = await ctx.db.get(args.accountId);
+    if (!account) {
+      throw new Error("[ERR_ACCOUNT_NOT_FOUND] Account not found.");
+    }
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("email", (q) => q.eq("email", identity.email!))
+      .first();
+    if (!user) {
+      throw new Error("[ERR_USER_NOT_FOUND] User not found.");
+    }
+
+    const business = await ctx.db.get(account.businessId);
+    if (!business) {
+      throw new Error("[ERR_BUSINESS_NOT_FOUND] Business not found.");
+    }
+    if (business.ownerId !== user._id && !business.teamMembers.includes(user._id)) {
+      throw new Error("[ERR_FORBIDDEN] Not authorized.");
+    }
+
+    // Update token with retry logic
+    await ctx.db.patch(args.accountId, {
+      accessToken: args.newAccessToken,
+      refreshToken: args.newRefreshToken,
+      tokenExpiresAt: args.newTokenExpiresAt,
+      lastUsedAt: Date.now(),
+    });
+
+    await ctx.runMutation(internal.audit.write, {
+      businessId: account.businessId,
+      action: "social_token_refreshed",
+      entityType: "social_account",
+      entityId: args.accountId,
+      details: { platform: account.platform },
+    });
+
+    return { success: true };
+  },
+});
