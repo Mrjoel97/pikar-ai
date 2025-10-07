@@ -12,40 +12,11 @@ export const route = action({
   },
   handler: async (ctx, args): Promise<{ response: string; sources?: any[] }> => {
     try {
-      let contextBlocks: string[] = [];
-      let sources: Array<{ type: string; preview: string; score?: number }> = [];
+      const contextBlocks: string[] = [];
+      const sources: any[] = [];
 
-      // Get agent configuration if specified
-      if (args.agentKey) {
-        try {
-          // Skip config retrieval to avoid type instantiation issues
-          const config = { useRag: false, useKgraph: false };
-
-          // RAG retrieval if enabled
-          if (config.useRag) {
-            try {
-              // Skip RAG to avoid type instantiation issues
-              contextBlocks.push(`## RAG: Skipped (type safety)`);
-            } catch (ragError) {
-              // Continue without RAG on error
-              contextBlocks.push(`## RAG Error: ${String(ragError).slice(0, 100)}`);
-            }
-          }
-
-          // Knowledge Graph retrieval if enabled
-          if (config.useKgraph && args.businessId) {
-            try {
-              // Skip KG to avoid type instantiation issues
-              contextBlocks.push(`## Knowledge Graph: Skipped (type safety)`);
-            } catch (kgError) {
-              // Continue without KG on error
-              contextBlocks.push(`## KG Error: ${String(kgError).slice(0, 100)}`);
-            }
-          }
-        } catch (configError) {
-          // Continue without enhanced context on config error
-        }
-      }
+      // Skip agent configuration and context retrieval to avoid type instantiation issues
+      // This is a simplified version that focuses on direct response generation
 
       // Prepare enhanced prompt with context
       const enhancedMessage = contextBlocks.length > 0 
@@ -53,14 +24,18 @@ export const route = action({
         : args.message;
 
       // Generate response using existing OpenAI integration
-      const response = await ctx.runAction(api.openai.generate, {
-        prompt: enhancedMessage,
-        maxTokens: 500,
-      });
+      // Use direct action call to avoid deep type instantiation
+      const response: any = await (ctx as any).runAction(
+        "openai:generate" as any,
+        {
+          prompt: enhancedMessage,
+          maxTokens: 500,
+        }
+      );
 
       // Audit the context usage
       if (args.businessId && (contextBlocks.length > 0 || sources.length > 0)) {
-        await ctx.runMutation(internal.audit.write, {
+        await (ctx as any).runMutation(internal.audit.write as any, {
           businessId: args.businessId,
           action: "agent_context_used",
           entityType: "agent",
@@ -69,8 +44,8 @@ export const route = action({
             agentKey: args.agentKey,
             contextBlocksCount: contextBlocks.length,
             sourcesCount: sources.length,
-            ragUsed: sources.some((s) => s.type === 'vector'),
-            kgUsed: sources.some((s) => s.type === 'kgraph'),
+            ragUsed: false,
+            kgUsed: false,
           },
         });
       }
@@ -147,13 +122,16 @@ export const execRouter: any = action({
         const prompt: string =
           `Based on these recent ideas: ${JSON.stringify(ideas)}, provide a concise summary of key themes and actionable opportunities.`;
 
-        const response = await ctx.runAction(api.openai.generate, {
-          prompt,
-          model: "gpt-4o-mini",
-        });
+        const response: any = await (ctx as any).runAction(
+          "openai:generate" as any,
+          {
+            prompt,
+            model: "gpt-4o-mini",
+          }
+        );
 
         return {
-          summary: (response as any)?.text,
+          summary: response?.text,
           keyThemes: ideas.flatMap((i: { tags?: string[] }) => i.tags || []).slice(0, 5),
           actionableCount: ideas.length,
         };
@@ -177,13 +155,16 @@ export const execRouter: any = action({
           ", "
         )}, suggest the single most impactful next action.`;
 
-        const response = await ctx.runAction(api.openai.generate, {
-          prompt,
-          model: "gpt-4o-mini",
-        });
+        const response: any = await (ctx as any).runAction(
+          "openai:generate" as any,
+          {
+            prompt,
+            model: "gpt-4o-mini",
+          }
+        );
 
         return {
-          action: (response as any)?.text,
+          action: response?.text,
           priority: "high",
           estimatedTime: "15-30 min",
           category: recentTags[0] || "general",
@@ -194,13 +175,16 @@ export const execRouter: any = action({
         const goals: string = profile?.businessSummary || "grow business";
         const prompt: string = `Create a focused weekly plan for: "${goals}". Include 3 key priorities, suggested content themes, and optimal posting schedule.`;
 
-        const response = await ctx.runAction(api.openai.generate, {
-          prompt,
-          model: "gpt-4o-mini",
-        });
+        const response: any = await (ctx as any).runAction(
+          "openai:generate" as any,
+          {
+            prompt,
+            model: "gpt-4o-mini",
+          }
+        );
 
         return {
-          weeklyPlan: (response as any)?.text,
+          weeklyPlan: response?.text,
           priorities: ["Content creation", "Audience engagement", "Business development"],
           suggestedSlots: 3,
         };
@@ -245,7 +229,7 @@ export const execRouter: any = action({
             throw new Error(`Playbook failed: ${response.status}`);
           }
 
-          await ctx.runMutation(internal.audit.write, {
+          await (ctx as any).runMutation(internal.audit.write as any, {
             businessId,
             action: "win",
             entityType: "productivity",
