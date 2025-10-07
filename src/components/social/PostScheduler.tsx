@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Calendar, ChevronLeft, ChevronRight, Clock, Sparkles, Trash2, Edit, CalendarPlus } from "lucide-react";
+import { Calendar, ChevronLeft, ChevronRight, Clock, Sparkles, Trash2, Edit, CalendarPlus, Twitter, Linkedin, Facebook } from "lucide-react";
 import { toast } from "sonner";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, addMonths, subMonths, startOfWeek, endOfWeek } from "date-fns";
 import { Id } from "@/convex/_generated/dataModel";
@@ -28,6 +28,13 @@ const TIME_ZONES = [
   { value: "Asia/Tokyo", label: "Tokyo (JST)" },
   { value: "Australia/Sydney", label: "Sydney (AEST)" },
 ];
+
+// Platform icons mapping
+const platformIcons = {
+  twitter: Twitter,
+  linkedin: Linkedin,
+  facebook: Facebook,
+};
 
 // Optimal posting times by platform (based on industry research)
 const OPTIMAL_TIMES = {
@@ -55,6 +62,7 @@ export function PostScheduler({ businessId, userId, onEditPost }: PostSchedulerP
   const [showBulkScheduler, setShowBulkScheduler] = React.useState(false);
   const [showOptimalTimes, setShowOptimalTimes] = React.useState(false);
   const [draggedPost, setDraggedPost] = React.useState<any>(null);
+  const [viewMode, setViewMode] = React.useState<"calendar" | "list">("calendar");
 
   const startDate = React.useMemo(() => {
     return startOfWeek(startOfMonth(currentDate)).getTime();
@@ -167,17 +175,37 @@ export function PostScheduler({ businessId, userId, onEditPost }: PostSchedulerP
 
   return (
     <Card className="w-full">
-      <CardHeader>
-        <div className="flex items-center justify-between">
+      <CardHeader className="pb-3 sm:pb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
-            <CardTitle className="flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
               <Calendar className="h-5 w-5" />
               Post Scheduler
             </CardTitle>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+            {/* View Mode Toggle - Mobile Only */}
+            <div className="flex sm:hidden gap-1 p-1 bg-muted rounded-lg">
+              <Button
+                variant={viewMode === "calendar" ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setViewMode("calendar")}
+                className="flex-1 min-h-[40px]"
+              >
+                <Calendar className="h-4 w-4" />
+              </Button>
+              <Button
+                variant={viewMode === "list" ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setViewMode("list")}
+                className="flex-1 min-h-[40px]"
+              >
+                List
+              </Button>
+            </div>
+            
             <Select value={selectedTimeZone} onValueChange={setSelectedTimeZone}>
-              <SelectTrigger className="w-[200px]">
+              <SelectTrigger className="w-full sm:w-[200px] min-h-[44px]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -192,30 +220,42 @@ export function PostScheduler({ businessId, userId, onEditPost }: PostSchedulerP
               variant="outline"
               size="sm"
               onClick={() => setShowBulkScheduler(true)}
+              className="min-h-[44px] touch-manipulation"
             >
               <CalendarPlus className="h-4 w-4 mr-2" />
-              Bulk Schedule
+              <span className="hidden sm:inline">Bulk Schedule</span>
+              <span className="sm:hidden">Bulk</span>
             </Button>
           </div>
         </div>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
-          {/* Navigation */}
+          {/* Navigation - Touch Optimized */}
           <div className="flex items-center justify-between">
-            <Button variant="outline" size="sm" onClick={handlePrevious}>
-              <ChevronLeft className="h-4 w-4" />
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={handlePrevious}
+              className="min-h-[44px] min-w-[44px] touch-manipulation"
+            >
+              <ChevronLeft className="h-5 w-5" />
             </Button>
-            <h3 className="text-lg font-semibold">
+            <h3 className="text-base sm:text-lg font-semibold">
               {format(currentDate, "MMMM yyyy")}
             </h3>
-            <Button variant="outline" size="sm" onClick={handleNext}>
-              <ChevronRight className="h-4 w-4" />
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={handleNext}
+              className="min-h-[44px] min-w-[44px] touch-manipulation"
+            >
+              <ChevronRight className="h-5 w-5" />
             </Button>
           </div>
 
-          {/* Calendar Grid */}
-          <div className="grid grid-cols-7 gap-2">
+          {/* Calendar Grid - Desktop Only */}
+          <div className={`${viewMode === "calendar" ? "hidden sm:grid" : "hidden"} grid-cols-7 gap-2`}>
             {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
               <div key={day} className="text-center text-sm font-medium text-muted-foreground p-2">
                 {day}
@@ -267,8 +307,47 @@ export function PostScheduler({ businessId, userId, onEditPost }: PostSchedulerP
             })}
           </div>
 
-          {/* Legend */}
-          <div className="flex items-center gap-4 pt-4 border-t">
+          {/* List View - Mobile Optimized */}
+          <div className={`${viewMode === "list" ? "block sm:hidden" : "hidden"} space-y-2`}>
+            {scheduledPosts && scheduledPosts.length > 0 ? (
+              scheduledPosts.slice(0, 10).map((post: any) => (
+                <Card 
+                  key={post._id} 
+                  className="border-l-4 border-l-emerald-500 cursor-pointer active:bg-muted touch-manipulation"
+                  onClick={() => setSelectedPost(post)}
+                >
+                  <CardContent className="p-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-medium mb-1">
+                          {post.scheduledAt && format(new Date(post.scheduledAt), "MMM d, h:mm a")}
+                        </div>
+                        <div className="text-sm text-muted-foreground line-clamp-2 mb-2">
+                          {post.content}
+                        </div>
+                        <div className="flex gap-2">
+                          {post.platforms.map((platform: any) => {
+                            const Icon = platformIcons[platform as keyof typeof platformIcons];
+                            return Icon ? (
+                              <Icon key={platform} className="h-4 w-4 text-muted-foreground" />
+                            ) : null;
+                          })}
+                        </div>
+                      </div>
+                      <Badge variant="outline" className="flex-shrink-0">{post.status}</Badge>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                No scheduled posts yet
+              </div>
+            )}
+          </div>
+
+          {/* Legend - Desktop Only */}
+          <div className="hidden sm:flex items-center gap-4 pt-4 border-t">
             <span className="text-sm font-medium">Tip:</span>
             <span className="text-sm text-muted-foreground">
               Drag and drop posts to reschedule them
@@ -277,29 +356,29 @@ export function PostScheduler({ businessId, userId, onEditPost }: PostSchedulerP
         </div>
       </CardContent>
 
-      {/* Post Details Dialog */}
+      {/* Post Details Dialog - Touch Optimized */}
       <Dialog open={!!selectedPost} onOpenChange={() => setSelectedPost(null)}>
-        <DialogContent>
+        <DialogContent className="max-w-[95vw] sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
+            <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
               <Clock className="h-5 w-5" />
               Scheduled Post Details
             </DialogTitle>
-            <DialogDescription>
+            <DialogDescription className="text-sm">
               {selectedPost && selectedPost.scheduledAt && format(new Date(selectedPost.scheduledAt), "PPpp")}
             </DialogDescription>
           </DialogHeader>
           {selectedPost && (
-            <div className="space-y-4">
+            <div className="space-y-4 max-h-[60vh] overflow-y-auto">
               <div>
-                <h4 className="font-medium mb-1">Content</h4>
+                <h4 className="font-medium mb-1 text-sm">Content</h4>
                 <p className="text-sm text-muted-foreground whitespace-pre-wrap">
                   {selectedPost.content}
                 </p>
               </div>
               <div>
-                <h4 className="font-medium mb-1">Platforms</h4>
-                <div className="flex gap-2">
+                <h4 className="font-medium mb-1 text-sm">Platforms</h4>
+                <div className="flex flex-wrap gap-2">
                   {selectedPost.platforms.map((platform: string) => (
                     <Badge key={platform} variant="secondary">
                       {platform}
@@ -308,11 +387,11 @@ export function PostScheduler({ businessId, userId, onEditPost }: PostSchedulerP
                 </div>
               </div>
               <div>
-                <h4 className="font-medium mb-1">Status</h4>
+                <h4 className="font-medium mb-1 text-sm">Status</h4>
                 <Badge variant="outline">{selectedPost.status}</Badge>
               </div>
               <div>
-                <h4 className="font-medium mb-2 flex items-center gap-2">
+                <h4 className="font-medium mb-2 flex items-center gap-2 text-sm">
                   <Sparkles className="h-4 w-4" />
                   Optimal Posting Times
                 </h4>
@@ -322,7 +401,7 @@ export function PostScheduler({ businessId, userId, onEditPost }: PostSchedulerP
                       key={time.hour}
                       variant="outline"
                       size="sm"
-                      className="w-full justify-start"
+                      className="w-full justify-start min-h-[44px] touch-manipulation"
                       onClick={() => scheduleAtOptimalTime(selectedPost, time.hour)}
                     >
                       <Clock className="h-4 w-4 mr-2" />
@@ -331,7 +410,7 @@ export function PostScheduler({ businessId, userId, onEditPost }: PostSchedulerP
                   ))}
                 </div>
               </div>
-              <div className="flex gap-2 pt-4 border-t">
+              <div className="flex flex-col sm:flex-row gap-2 pt-4 border-t">
                 {onEditPost && (
                   <Button
                     variant="outline"
@@ -340,6 +419,7 @@ export function PostScheduler({ businessId, userId, onEditPost }: PostSchedulerP
                       onEditPost(selectedPost._id);
                       setSelectedPost(null);
                     }}
+                    className="flex-1 min-h-[44px] touch-manipulation"
                   >
                     <Edit className="h-4 w-4 mr-1" />
                     Edit
@@ -349,6 +429,7 @@ export function PostScheduler({ businessId, userId, onEditPost }: PostSchedulerP
                   variant="destructive"
                   size="sm"
                   onClick={() => handleDeletePost(selectedPost._id)}
+                  className="flex-1 min-h-[44px] touch-manipulation"
                 >
                   <Trash2 className="h-4 w-4 mr-1" />
                   Delete
@@ -361,14 +442,14 @@ export function PostScheduler({ businessId, userId, onEditPost }: PostSchedulerP
 
       {/* Bulk Scheduler Dialog */}
       <Dialog open={showBulkScheduler} onOpenChange={setShowBulkScheduler}>
-        <DialogContent>
+        <DialogContent className="max-w-[95vw] sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Bulk Schedule Posts</DialogTitle>
             <DialogDescription>
               Schedule multiple posts at optimal times
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
+          <div className="space-y-4 max-h-[60vh] overflow-y-auto">
             <p className="text-sm text-muted-foreground">
               This feature allows you to schedule multiple posts across different platforms
               at AI-recommended optimal times for maximum engagement.
@@ -389,7 +470,10 @@ export function PostScheduler({ businessId, userId, onEditPost }: PostSchedulerP
                 </div>
               ))}
             </div>
-            <Button className="w-full" onClick={() => setShowBulkScheduler(false)}>
+            <Button 
+              className="w-full min-h-[44px] touch-manipulation" 
+              onClick={() => setShowBulkScheduler(false)}
+            >
               Close
             </Button>
           </div>

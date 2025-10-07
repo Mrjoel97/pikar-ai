@@ -1,9 +1,15 @@
-    let allowed = false;
+import { api, internal } from "./_generated/api";
+
+async function validateAdminAccess(ctx: any, args: any) {
+  if (args.adminToken) {
     try {
-      if (args.adminToken) {
-        // Use require to completely bypass type inference
-        const internalAny = require("./_generated/api").internal;
-        const res: any = await ctx.runQuery(internalAny.adminAuthData.validateSession, { token: args.adminToken } as any);
-        allowed = !!(res && res.valid);
+      const internalAny = internal as any;
+      const res: any = await ctx.runQuery(internalAny.adminAuthData.validateSession, { token: args.adminToken } as any);
+      if (res?.valid && res?.adminId) {
+        return { isAdmin: true, adminId: res.adminId };
       }
-    } catch {}
+    } catch (err) {
+      console.error("Admin token validation failed:", err);
+    }
+  }
+}

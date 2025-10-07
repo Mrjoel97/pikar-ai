@@ -1,3 +1,4 @@
+import { query } from "../../_generated/server";
 import { api } from "../../_generated/api";
 // Avoid deep type inference by importing as any
 const internal = require("../../_generated/api").internal as any;
@@ -73,3 +74,13 @@ export async function adminUnlinkDatasetFromAgent(ctx: any, args: any) {
 
   return { success: true };
 }
+
+export const listDatasets = query({
+  args: {},
+  handler: async (ctx) => {
+    const isAdmin = await ctx.runQuery(api.admin.getIsAdmin as any, {});
+    if (!isAdmin) return [];
+    const rows = await ctx.db.query("agentDatasets").order("desc").take(100);
+    return rows;
+  },
+});

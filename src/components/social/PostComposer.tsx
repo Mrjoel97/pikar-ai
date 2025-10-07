@@ -63,6 +63,7 @@ export function PostComposer({
   const [isGenerating, setIsGenerating] = React.useState(false);
   const [isSaving, setIsSaving] = React.useState(false);
   const [previewPlatform, setPreviewPlatform] = React.useState<PlatformId>("twitter");
+  const [showPreview, setShowPreview] = React.useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const createPost = useMutation(api.socialPosts.createSocialPost);
@@ -237,18 +238,18 @@ export function PostComposer({
 
   return (
     <Card className="w-full">
-      <CardHeader>
-        <CardTitle className="flex items-center justify-between">
+      <CardHeader className="pb-3 sm:pb-6">
+        <CardTitle className="flex items-center justify-between text-lg sm:text-xl">
           <span>Create Social Post</span>
           {onClose && (
-            <Button variant="ghost" size="sm" onClick={onClose}>
+            <Button variant="ghost" size="sm" onClick={onClose} className="h-8 w-8 p-0">
               <X className="h-4 w-4" />
             </Button>
           )}
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
-        {/* Platform Selection */}
+      <CardContent className="space-y-3 sm:space-y-4">
+        {/* Platform Selection - Mobile Optimized */}
         <div>
           <label className="text-sm font-medium mb-2 block">Select Platforms</label>
           <div className="flex flex-wrap gap-2">
@@ -263,10 +264,10 @@ export function PostComposer({
                   variant={isSelected ? "default" : "outline"}
                   size="sm"
                   onClick={() => togglePlatform(platform.id)}
-                  className="flex items-center gap-2"
+                  className="flex items-center gap-2 min-h-[44px] touch-manipulation"
                 >
                   <Icon className={`h-4 w-4 ${platform.color}`} />
-                  {platform.name}
+                  <span className="hidden xs:inline">{platform.name}</span>
                   {isSelected && (
                     <Badge
                       variant={isOver ? "destructive" : "secondary"}
@@ -281,16 +282,16 @@ export function PostComposer({
           </div>
         </div>
 
-        {/* Content Editor */}
+        {/* Content Editor - Mobile Optimized */}
         <div>
-          <div className="flex items-center justify-between mb-2">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2">
             <label className="text-sm font-medium">Content</label>
             <Button
               variant="outline"
               size="sm"
               onClick={handleAIGenerate}
               disabled={isGenerating}
-              className="flex items-center gap-2"
+              className="flex items-center gap-2 w-full sm:w-auto min-h-[44px] touch-manipulation"
             >
               <Sparkles className="h-4 w-4" />
               {isGenerating ? "Generating..." : "AI Generate"}
@@ -300,11 +301,11 @@ export function PostComposer({
             value={content}
             onChange={(e) => setContent(e.target.value)}
             placeholder="What's on your mind?"
-            className="min-h-[150px] resize-none"
+            className="min-h-[120px] sm:min-h-[150px] resize-none text-base"
             disabled={isGenerating || isSaving}
           />
           
-          {/* Character count indicators */}
+          {/* Character count indicators - Collapsible on mobile */}
           {selectedPlatforms.length > 0 && content && (
             <div className="mt-2 space-y-1">
               {selectedPlatforms.map((platform) => {
@@ -317,10 +318,10 @@ export function PostComposer({
                     <div className="flex items-center justify-between text-xs">
                       <span className="flex items-center gap-1">
                         {platformInfo && <platformInfo.icon className="h-3 w-3" />}
-                        {platformInfo?.name}
+                        <span className="hidden xs:inline">{platformInfo?.name}</span>
                       </span>
                       <span className={isOver ? "text-destructive font-medium" : "text-muted-foreground"}>
-                        {remaining} characters remaining
+                        {remaining} left
                       </span>
                     </div>
                     <Progress
@@ -334,7 +335,7 @@ export function PostComposer({
           )}
         </div>
 
-        {/* Media Upload */}
+        {/* Media Upload - Mobile Optimized */}
         <div>
           <label className="text-sm font-medium mb-2 block">Media</label>
           <div className="space-y-2">
@@ -343,7 +344,7 @@ export function PostComposer({
               size="sm"
               onClick={() => fileInputRef.current?.click()}
               disabled={isSaving}
-              className="w-full"
+              className="w-full min-h-[44px] touch-manipulation"
             >
               <ImageIcon className="h-4 w-4 mr-2" />
               Add Images/Videos
@@ -358,7 +359,7 @@ export function PostComposer({
             />
             
             {mediaFiles.length > 0 && (
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                 {mediaFiles.map((file, index) => (
                   <div key={index} className="relative group">
                     <div className="aspect-square rounded border bg-muted flex items-center justify-center">
@@ -367,7 +368,7 @@ export function PostComposer({
                     <Button
                       variant="destructive"
                       size="sm"
-                      className="absolute top-1 right-1 h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                      className="absolute top-1 right-1 h-8 w-8 p-0 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity touch-manipulation"
                       onClick={() => removeMedia(index)}
                     >
                       <X className="h-3 w-3" />
@@ -380,77 +381,86 @@ export function PostComposer({
           </div>
         </div>
 
-        {/* Preview */}
+        {/* Preview - Collapsible on Mobile */}
         <div>
-          <label className="text-sm font-medium mb-2 block">Preview</label>
-          <Tabs value={previewPlatform} onValueChange={(v) => setPreviewPlatform(v as PlatformId)}>
-            <TabsList className="grid w-full grid-cols-3">
-              {PLATFORMS.map((platform) => {
-                const Icon = platform.icon;
-                return (
-                  <TabsTrigger
-                    key={platform.id}
-                    value={platform.id}
-                    disabled={!selectedPlatforms.includes(platform.id)}
-                  >
-                    <Icon className="h-4 w-4 mr-2" />
-                    {platform.name}
-                  </TabsTrigger>
-                );
-              })}
-            </TabsList>
-            
-            {PLATFORMS.map((platform) => (
-              <TabsContent key={platform.id} value={platform.id} className="mt-4">
-                <Card className="border-2">
-                  <CardContent className="p-4">
-                    <div className="flex items-start gap-3">
-                      <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center">
-                        <platform.icon className="h-5 w-5" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="font-medium text-sm mb-1">Your Business</div>
-                        <div className="text-sm whitespace-pre-wrap break-words">
-                          {content || "Your post content will appear here..."}
+          <button
+            onClick={() => setShowPreview(!showPreview)}
+            className="flex items-center justify-between w-full text-sm font-medium mb-2 sm:cursor-default touch-manipulation min-h-[44px] sm:min-h-0"
+          >
+            <span>Preview</span>
+            <span className="sm:hidden">{showPreview ? "▼" : "▶"}</span>
+          </button>
+          <div className={`${showPreview ? "block" : "hidden"} sm:block`}>
+            <Tabs value={previewPlatform} onValueChange={(v) => setPreviewPlatform(v as PlatformId)}>
+              <TabsList className="grid w-full grid-cols-3">
+                {PLATFORMS.map((platform) => {
+                  const Icon = platform.icon;
+                  return (
+                    <TabsTrigger
+                      key={platform.id}
+                      value={platform.id}
+                      disabled={!selectedPlatforms.includes(platform.id)}
+                      className="min-h-[44px] touch-manipulation"
+                    >
+                      <Icon className="h-4 w-4 sm:mr-2" />
+                      <span className="hidden sm:inline">{platform.name}</span>
+                    </TabsTrigger>
+                  );
+                })}
+              </TabsList>
+              
+              {PLATFORMS.map((platform) => (
+                <TabsContent key={platform.id} value={platform.id} className="mt-4">
+                  <Card className="border-2">
+                    <CardContent className="p-3 sm:p-4">
+                      <div className="flex items-start gap-3">
+                        <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
+                          <platform.icon className="h-5 w-5" />
                         </div>
-                        {mediaFiles.length > 0 && (
-                          <div className="mt-2 grid grid-cols-2 gap-2">
-                            {mediaFiles.slice(0, 4).map((_, index) => (
-                              <div
-                                key={index}
-                                className="aspect-video rounded bg-muted flex items-center justify-center"
-                              >
-                                <ImageIcon className="h-8 w-8 text-muted-foreground" />
-                              </div>
-                            ))}
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium text-sm mb-1">Your Business</div>
+                          <div className="text-sm whitespace-pre-wrap break-words">
+                            {content || "Your post content will appear here..."}
                           </div>
-                        )}
+                          {mediaFiles.length > 0 && (
+                            <div className="mt-2 grid grid-cols-2 gap-2">
+                              {mediaFiles.slice(0, 4).map((_, index) => (
+                                <div
+                                  key={index}
+                                  className="aspect-video rounded bg-muted flex items-center justify-center"
+                                >
+                                  <ImageIcon className="h-8 w-8 text-muted-foreground" />
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </TabsContent>
-            ))}
-          </Tabs>
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+              ))}
+            </Tabs>
+          </div>
         </div>
 
         {/* Validation Alerts */}
         {selectedPlatforms.some((p) => getCharacterCount(p).isOver) && (
           <Alert variant="destructive">
             <AlertCircle className="h-4 w-4" />
-            <AlertDescription>
+            <AlertDescription className="text-sm">
               Content exceeds character limit for some platforms. Please shorten your post.
             </AlertDescription>
           </Alert>
         )}
 
-        {/* Action Buttons */}
-        <div className="flex items-center gap-2 pt-4 border-t">
+        {/* Action Buttons - Mobile Optimized */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 pt-4 border-t">
           <Button
             variant="outline"
             onClick={handleSaveDraft}
             disabled={isSaving || isGenerating || !content.trim()}
-            className="flex-1"
+            className="flex-1 min-h-[48px] touch-manipulation"
           >
             <Save className="h-4 w-4 mr-2" />
             Save Draft
@@ -464,7 +474,7 @@ export function PostComposer({
               selectedPlatforms.length === 0 ||
               selectedPlatforms.some((p) => getCharacterCount(p).isOver)
             }
-            className="flex-1"
+            className="flex-1 min-h-[48px] touch-manipulation"
           >
             <Send className="h-4 w-4 mr-2" />
             Publish Now
