@@ -1,0 +1,411 @@
+import { v } from "convex/values";
+import { query } from "./_generated/server";
+import { Id } from "./_generated/dataModel";
+
+/**
+ * Aggregate engagement metrics across all posts for a business
+ */
+export const getEngagementMetrics = query({
+  args: {
+    businessId: v.id("businesses"),
+    timeRange: v.optional(v.union(v.literal("7d"), v.literal("30d"), v.literal("90d"), v.literal("1y"))),
+  },
+  handler: async (ctx, args) => {
+    const now = Date.now();
+    const timeRangeMs: Record<string, number> = {
+      "7d": 7 * 24 * 60 * 60 * 1000,
+      "30d": 30 * 24 * 60 * 60 * 1000,
+      "90d": 90 * 24 * 60 * 60 * 1000,
+      "1y": 365 * 24 * 60 * 60 * 1000,
+    };
+    const cutoff = now - (timeRangeMs[args.timeRange || "30d"] || timeRangeMs["30d"]);
+
+    const posts = await ctx.db
+      .query("socialPosts")
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .filter((q) => q.gte(q.field("_creationTime"), cutoff))
+      .collect();
+
+    let totalImpressions = 0;
+    let totalEngagements = 0;
+    let totalClicks = 0;
+    let totalShares = 0;
+    let totalComments = 0;
+    let totalLikes = 0;
+    let postsWithMetrics = 0;
+
+    for (const post of posts) {
+      if (post.performanceMetrics) {
+        totalImpressions += post.performanceMetrics.impressions || 0;
+        totalEngagements += post.performanceMetrics.engagements || 0;
+        totalClicks += post.performanceMetrics.clicks || 0;
+        totalShares += post.performanceMetrics.shares || 0;
+        totalComments += post.performanceMetrics.comments || 0;
+        totalLikes += post.performanceMetrics.likes || 0;
+        postsWithMetrics++;
+      }
+    }
+
+    const engagementRate = totalImpressions > 0 ? (totalEngagements / totalImpressions) * 100 : 0;
+
+    return {
+      totalPosts: posts.length,
+      postsWithMetrics,
+      totalImpressions,
+      totalEngagements,
+      totalClicks,
+      totalShares,
+      totalComments,
+      totalLikes,
+      engagementRate: parseFloat(engagementRate.toFixed(2)),
+      avgImpressions: postsWithMetrics > 0 ? Math.round(totalImpressions / postsWithMetrics) : 0,
+      avgEngagements: postsWithMetrics > 0 ? Math.round(totalEngagements / postsWithMetrics) : 0,
+    };
+  },
+});
+
+/**
+ * Calculate ROI per post based on performance metrics and revenue attribution
+ */
+export const getPostROI = query({
+  args: {
+    businessId: v.id("businesses"),
+    timeRange: v.optional(v.union(v.literal("7d"), v.literal("30d"), v.literal("90d"), v.literal("1y"))),
+  },
+  handler: async (ctx, args) => {
+    const now = Date.now();
+    const timeRangeMs: Record<string, number> = {
+      "7d": 7 * 24 * 60 * 60 * 1000,
+      "30d": 30 * 24 * 60 * 60 * 1000,
+      "90d": 90 * 24 * 60 * 60 * 1000,
+      "1y": 365 * 24 * 60 * 60 * 1000,
+    };
+    const cutoff = now - (timeRangeMs[args.timeRange || "30d"] || timeRangeMs["30d"]);
+
+    const posts = await ctx.db
+      .query("socialPosts")
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .filter((q) => q.gte(q.field("_creationTime"), cutoff))
+      .collect();
+
+    // Estimate cost per post (time + platform costs)
+    const avgCostPerPost = 25; // $25 estimated cost per post (time + tools)
+
+    const postROIs = posts
+      .filter((p) => p.performanceMetrics && p.status === "posted")
+      .map((post) => {
+        const metrics = post.performanceMetrics!;
+        // Estimate revenue: $0.50 per click, $2 per engagement
+        const estimatedRevenue = (metrics.clicks * 0.5) + (metrics.engagements * 2);
+        const roi = avgCostPerPost > 0 ? estimatedRevenue / avgCostPerPost : 0;
+
+        return {
+          postId: post._id,
+          content: post.content.substring(0, 100),
+          platforms: post.platforms,
+          impressions: metrics.impressions,
+          engagements: metrics.engagements,
+          clicks: metrics.clicks,
+          estimatedCost: avgCostPerPost,
+          estimatedRevenue: parseFloat(estimatedRevenue.toFixed(2)),
+          roi: parseFloat(roi.toFixed(2)),
+          publishedAt: post.postedAt || post._creationTime,
+        };
+      })
+      .sort((a, b) => b.roi - a.roi);
+
+    const totalCost = posts.length * avgCostPerPost;
+    const totalRevenue = postROIs.reduce((sum, p) => sum + p.estimatedRevenue, 0);
+    const overallROI = totalCost > 0 ? totalRevenue / totalCost : 0;
+
+    return {
+      posts: postROIs.slice(0, 10), // Top 10 posts by ROI
+      summary: {
+        totalPosts: posts.length,
+        totalCost,
+        totalRevenue: parseFloat(totalRevenue.toFixed(2)),
+        overallROI: parseFloat(overallROI.toFixed(2)),
+      },
+    };
+  },
+});
+
+/**
+ * Track audience growth over time
+ */
+export const getAudienceGrowth = query({
+  args: {
+    businessId: v.id("businesses"),
+    timeRange: v.optional(v.union(v.literal("7d"), v.literal("30d"), v.literal("90d"), v.literal("1y"))),
+  },
+  handler: async (ctx, args) => {
+    const now = Date.now();
+    const timeRangeMs: Record<string, number> = {
+      "7d": 7 * 24 * 60 * 60 * 1000,
+      "30d": 30 * 24 * 60 * 60 * 1000,
+      "90d": 90 * 24 * 60 * 60 * 1000,
+      "1y": 365 * 24 * 60 * 60 * 1000,
+    };
+    const range = args.timeRange || "30d";
+    const cutoff = now - timeRangeMs[range];
+
+    const posts = await ctx.db
+      .query("socialPosts")
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .filter((q) => q.gte(q.field("_creationTime"), cutoff))
+      .collect();
+
+    // Group posts by day and calculate cumulative impressions (proxy for audience reach)
+    const dayMs = 24 * 60 * 60 * 1000;
+    const daysInRange = Math.ceil(timeRangeMs[range] / dayMs);
+    const growthData: Array<{ date: string; impressions: number; engagements: number; followers: number }> = [];
+
+    for (let i = 0; i < daysInRange; i++) {
+      const dayStart = cutoff + (i * dayMs);
+      const dayEnd = dayStart + dayMs;
+      const dayPosts = posts.filter((p) => p._creationTime >= dayStart && p._creationTime < dayEnd);
+
+      const dayImpressions = dayPosts.reduce((sum, p) => sum + (p.performanceMetrics?.impressions || 0), 0);
+      const dayEngagements = dayPosts.reduce((sum, p) => sum + (p.performanceMetrics?.engagements || 0), 0);
+      
+      // Estimate follower growth: 1% of impressions convert to followers
+      const estimatedNewFollowers = Math.round(dayImpressions * 0.01);
+
+      growthData.push({
+        date: new Date(dayStart).toISOString().split("T")[0],
+        impressions: dayImpressions,
+        engagements: dayEngagements,
+        followers: estimatedNewFollowers,
+      });
+    }
+
+    const totalNewFollowers = growthData.reduce((sum, d) => sum + d.followers, 0);
+    const avgDailyGrowth = daysInRange > 0 ? totalNewFollowers / daysInRange : 0;
+
+    return {
+      growthData,
+      summary: {
+        totalNewFollowers,
+        avgDailyGrowth: parseFloat(avgDailyGrowth.toFixed(1)),
+        growthRate: parseFloat(((totalNewFollowers / Math.max(1, posts.length)) * 100).toFixed(2)),
+      },
+    };
+  },
+});
+
+/**
+ * Generate actionable insights based on analytics data
+ */
+export const generateInsights = query({
+  args: {
+    businessId: v.id("businesses"),
+  },
+  handler: async (ctx, args) => {
+    // Get recent posts (last 30 days)
+    const now = Date.now();
+    const thirtyDaysAgo = now - (30 * 24 * 60 * 60 * 1000);
+
+    const posts = await ctx.db
+      .query("socialPosts")
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .filter((q) => q.gte(q.field("_creationTime"), thirtyDaysAgo))
+      .collect();
+
+    const insights: Array<{ type: string; priority: string; message: string; actionable: string }> = [];
+
+    // Insight 1: Posting frequency
+    const postsPerWeek = (posts.length / 4.3).toFixed(1);
+    if (parseFloat(postsPerWeek) < 3) {
+      insights.push({
+        type: "frequency",
+        priority: "high",
+        message: `You're posting ${postsPerWeek} times per week. Increase to 5-7 posts/week for better engagement.`,
+        actionable: "Schedule more posts using the Post Scheduler",
+      });
+    }
+
+    // Insight 2: Best performing platform
+    const platformPerformance: Record<string, { posts: number; avgEngagement: number }> = {};
+    for (const post of posts) {
+      if (post.performanceMetrics) {
+        for (const platform of post.platforms) {
+          if (!platformPerformance[platform]) {
+            platformPerformance[platform] = { posts: 0, avgEngagement: 0 };
+          }
+          platformPerformance[platform].posts++;
+          platformPerformance[platform].avgEngagement += post.performanceMetrics.engagements;
+        }
+      }
+    }
+
+    let bestPlatform = "";
+    let bestEngagement = 0;
+    for (const [platform, data] of Object.entries(platformPerformance)) {
+      const avg = data.posts > 0 ? data.avgEngagement / data.posts : 0;
+      if (avg > bestEngagement) {
+        bestEngagement = avg;
+        bestPlatform = platform;
+      }
+    }
+
+    if (bestPlatform) {
+      insights.push({
+        type: "platform",
+        priority: "medium",
+        message: `${bestPlatform.charAt(0).toUpperCase() + bestPlatform.slice(1)} is your best performing platform with ${bestEngagement.toFixed(0)} avg engagements.`,
+        actionable: `Focus more content on ${bestPlatform}`,
+      });
+    }
+
+    // Insight 3: Engagement rate
+    const postsWithMetrics = posts.filter((p) => p.performanceMetrics);
+    if (postsWithMetrics.length > 0) {
+      const totalImpressions = postsWithMetrics.reduce((sum, p) => sum + (p.performanceMetrics?.impressions || 0), 0);
+      const totalEngagements = postsWithMetrics.reduce((sum, p) => sum + (p.performanceMetrics?.engagements || 0), 0);
+      const engagementRate = totalImpressions > 0 ? (totalEngagements / totalImpressions) * 100 : 0;
+
+      if (engagementRate < 2) {
+        insights.push({
+          type: "engagement",
+          priority: "high",
+          message: `Your engagement rate is ${engagementRate.toFixed(2)}%. Industry average is 2-3%.`,
+          actionable: "Use AI content generation to improve post quality",
+        });
+      } else if (engagementRate > 4) {
+        insights.push({
+          type: "engagement",
+          priority: "low",
+          message: `Excellent! Your engagement rate is ${engagementRate.toFixed(2)}%, above industry average.`,
+          actionable: "Keep up the great work and maintain consistency",
+        });
+      }
+    }
+
+    // Insight 4: Content timing
+    const hourlyDistribution: Record<number, number> = {};
+    for (const post of posts) {
+      if (post.postedAt) {
+        const hour = new Date(post.postedAt).getHours();
+        hourlyDistribution[hour] = (hourlyDistribution[hour] || 0) + 1;
+      }
+    }
+
+    const bestHour = Object.entries(hourlyDistribution)
+      .sort(([, a], [, b]) => b - a)[0]?.[0];
+
+    if (bestHour) {
+      insights.push({
+        type: "timing",
+        priority: "medium",
+        message: `Most of your posts are published around ${bestHour}:00. Consider testing different times.`,
+        actionable: "Use AI-powered optimal posting time suggestions",
+      });
+    }
+
+    // Insight 5: AI-generated content performance
+    const aiPosts = posts.filter((p) => p.aiGenerated);
+    const manualPosts = posts.filter((p) => !p.aiGenerated);
+
+    if (aiPosts.length > 0 && manualPosts.length > 0) {
+      const aiAvgEngagement = aiPosts
+        .filter((p) => p.performanceMetrics)
+        .reduce((sum, p) => sum + (p.performanceMetrics?.engagements || 0), 0) / aiPosts.length;
+      
+      const manualAvgEngagement = manualPosts
+        .filter((p) => p.performanceMetrics)
+        .reduce((sum, p) => sum + (p.performanceMetrics?.engagements || 0), 0) / manualPosts.length;
+
+      if (aiAvgEngagement > manualAvgEngagement * 1.2) {
+        insights.push({
+          type: "ai_content",
+          priority: "medium",
+          message: `AI-generated posts perform ${((aiAvgEngagement / manualAvgEngagement - 1) * 100).toFixed(0)}% better than manual posts.`,
+          actionable: "Increase use of AI content generation",
+        });
+      }
+    }
+
+    return {
+      insights,
+      summary: {
+        totalInsights: insights.length,
+        highPriority: insights.filter((i) => i.priority === "high").length,
+        mediumPriority: insights.filter((i) => i.priority === "medium").length,
+        lowPriority: insights.filter((i) => i.priority === "low").length,
+      },
+    };
+  },
+});
+
+/**
+ * Get platform-specific analytics breakdown
+ */
+export const getPlatformBreakdown = query({
+  args: {
+    businessId: v.id("businesses"),
+    timeRange: v.optional(v.union(v.literal("7d"), v.literal("30d"), v.literal("90d"), v.literal("1y"))),
+  },
+  handler: async (ctx, args) => {
+    const now = Date.now();
+    const timeRangeMs: Record<string, number> = {
+      "7d": 7 * 24 * 60 * 60 * 1000,
+      "30d": 30 * 24 * 60 * 60 * 1000,
+      "90d": 90 * 24 * 60 * 60 * 1000,
+      "1y": 365 * 24 * 60 * 60 * 1000,
+    };
+    const cutoff = now - (timeRangeMs[args.timeRange || "30d"] || timeRangeMs["30d"]);
+
+    const posts = await ctx.db
+      .query("socialPosts")
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .filter((q) => q.gte(q.field("_creationTime"), cutoff))
+      .collect();
+
+    const platformStats: Record<string, {
+      posts: number;
+      impressions: number;
+      engagements: number;
+      clicks: number;
+      shares: number;
+      comments: number;
+      likes: number;
+    }> = {
+      twitter: { posts: 0, impressions: 0, engagements: 0, clicks: 0, shares: 0, comments: 0, likes: 0 },
+      linkedin: { posts: 0, impressions: 0, engagements: 0, clicks: 0, shares: 0, comments: 0, likes: 0 },
+      facebook: { posts: 0, impressions: 0, engagements: 0, clicks: 0, shares: 0, comments: 0, likes: 0 },
+    };
+
+    for (const post of posts) {
+      if (post.performanceMetrics) {
+        for (const platform of post.platforms) {
+          const stats = platformStats[platform];
+          if (stats) {
+            stats.posts++;
+            stats.impressions += post.performanceMetrics.impressions || 0;
+            stats.engagements += post.performanceMetrics.engagements || 0;
+            stats.clicks += post.performanceMetrics.clicks || 0;
+            stats.shares += post.performanceMetrics.shares || 0;
+            stats.comments += post.performanceMetrics.comments || 0;
+            stats.likes += post.performanceMetrics.likes || 0;
+          }
+        }
+      }
+    }
+
+    const breakdown = Object.entries(platformStats).map(([platform, stats]) => ({
+      platform,
+      posts: stats.posts,
+      impressions: stats.impressions,
+      engagements: stats.engagements,
+      clicks: stats.clicks,
+      shares: stats.shares,
+      comments: stats.comments,
+      likes: stats.likes,
+      engagementRate: stats.impressions > 0 ? parseFloat(((stats.engagements / stats.impressions) * 100).toFixed(2)) : 0,
+      avgImpressions: stats.posts > 0 ? Math.round(stats.impressions / stats.posts) : 0,
+      avgEngagements: stats.posts > 0 ? Math.round(stats.engagements / stats.posts) : 0,
+    }));
+
+    return breakdown;
+  },
+});
