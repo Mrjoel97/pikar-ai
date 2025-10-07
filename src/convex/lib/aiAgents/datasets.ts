@@ -1,10 +1,26 @@
 import { query } from "../../_generated/server";
-import { api } from "../../_generated/api";
-// Avoid deep type inference by importing as any
-const internal = require("../../_generated/api").internal as any;
+import { v } from "convex/values";
+
+// Helper to check admin access without deep type instantiation
+async function checkAdminAccess(ctx: any): Promise<boolean> {
+  try {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return false;
+    
+    // Check if user is admin via direct query
+    const adminRecord = await ctx.db
+      .query("admins")
+      .withIndex("by_email", (q: any) => q.eq("email", identity.email))
+      .first();
+    
+    return adminRecord?.role === "superadmin" || adminRecord?.role === "senior" || adminRecord?.role === "admin";
+  } catch {
+    return false;
+  }
+}
 
 export async function adminCreateDataset(ctx: any, args: any) {
-  const isAdmin = await ctx.runQuery(api.admin.getIsAdmin, {});
+  const isAdmin = await checkAdminAccess(ctx);
   if (!isAdmin) throw new Error("Admin access required");
   const identity = await ctx.auth.getUserIdentity();
 
@@ -20,18 +36,19 @@ export async function adminCreateDataset(ctx: any, args: any) {
     status: "new",
   });
 
-  await ctx.runMutation((internal as any)["audit"]["write"], {
+  await ctx.db.insert("auditLogs", {
     action: "admin_create_dataset",
     entityType: "agentDatasets",
     entityId: id,
     details: { title: args.title, sourceType: args.sourceType, createdBy: identity?.subject || "" },
+    timestamp: Date.now(),
   });
 
   return { datasetId: id };
 }
 
 export async function adminListDatasets(ctx: any, args: any) {
-  const isAdmin = await ctx.runQuery(api.admin.getIsAdmin, {});
+  const isAdmin = await checkAdminAccess(ctx);
   if (!isAdmin) return [];
   const limit = Math.max(1, Math.min(args.limit ?? 100, 500));
   const rows = await ctx.db.query("agentDatasets").order("desc").take(limit);
@@ -39,7 +56,7 @@ export async function adminListDatasets(ctx: any, args: any) {
 }
 
 export async function adminLinkDatasetToAgent(ctx: any, args: any) {
-  const isAdmin = await ctx.runQuery(api.admin.getIsAdmin, {});
+  const isAdmin = await checkAdminAccess(ctx);
   if (!isAdmin) throw new Error("Admin access required");
   const ds = await ctx.db.get(args.datasetId);
   if (!ds) throw new Error("Dataset not found");
@@ -47,29 +64,31 @@ export async function adminLinkDatasetToAgent(ctx: any, args: any) {
   linked.add(args.agent_key);
   await ctx.db.patch(args.datasetId, { linkedAgentKeys: Array.from(linked) });
 
-  await ctx.runMutation((internal as any)["audit"]["write"], {
+  await ctx.db.insert("auditLogs", {
     action: "admin_link_dataset_to_agent",
     entityType: "agentDatasets",
     entityId: args.datasetId,
     details: { agent_key: args.agent_key },
+    timestamp: Date.now(),
   });
 
   return { success: true };
 }
 
 export async function adminUnlinkDatasetFromAgent(ctx: any, args: any) {
-  const isAdmin = await ctx.runQuery(api.admin.getIsAdmin, {});
+  const isAdmin = await checkAdminAccess(ctx);
   if (!isAdmin) throw new Error("Admin access required");
   const ds = await ctx.db.get(args.datasetId);
   if (!ds) throw new Error("Dataset not found");
   const filtered = (ds.linkedAgentKeys as string[]).filter((k) => k !== args.agent_key);
   await ctx.db.patch(args.datasetId, { linkedAgentKeys: filtered });
 
-  await ctx.runMutation((internal as any)["audit"]["write"], {
+  await ctx.db.insert("auditLogs", {
     action: "admin_unlink_dataset_from_agent",
     entityType: "agentDatasets",
     entityId: args.datasetId,
     details: { agent_key: args.agent_key },
+    timestamp: Date.now(),
   });
 
   return { success: true };
@@ -78,7 +97,7 @@ export async function adminUnlinkDatasetFromAgent(ctx: any, args: any) {
 export const listDatasets = query({
   args: {},
   handler: async (ctx) => {
-    const isAdmin = await ctx.runQuery(api.admin.getIsAdmin as any, {});
+    const isAdmin = await checkAdminAccess(ctx);
     if (!isAdmin) return [];
     const rows = await ctx.db.query("agentDatasets").order("desc").take(100);
     return rows;
