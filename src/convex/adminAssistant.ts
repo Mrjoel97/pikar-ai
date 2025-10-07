@@ -85,10 +85,9 @@ export const sendMessage = action({
     let allowed = false;
     try {
       if (args.adminToken) {
-        // Break type inference chain by casting internal object
-        const internalAny: any = internal;
-        const validateFn: any = internalAny.adminAuthData.validateSession;
-        const res: any = await ctx.runQuery(validateFn, { token: args.adminToken } as any) as any;
+        // Break type inference chain with bracket notation
+        const internalObj: any = internal;
+        const res: any = await ctx.runQuery(internalObj["adminAuthData"]["validateSession"], { token: args.adminToken } as any);
         allowed = !!(res && res.valid);
       }
     } catch {}

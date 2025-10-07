@@ -4,7 +4,8 @@ import { action } from "./_generated/server";
 import { v } from "convex/values";
 import { scrypt, randomBytes } from "crypto";
 import { promisify } from "util";
-import { internal } from "./_generated/api";
+// Avoid deep type inference by importing as any
+const internal = require("./_generated/api").internal as any;
 
 const scryptAsync = promisify(scrypt);
 
@@ -24,9 +25,11 @@ export const signUp = action({
     const normalizedEmail = email.toLowerCase().trim();
 
     // Check if admin auth already exists
-    // Break type inference chain by casting internal object
-    const getAdminAuthFn: any = (internal as any).adminAuthData.getAdminAuthByEmail;
-    const existing = (await ctx.runQuery(getAdminAuthFn, { email: normalizedEmail } as any)) as any;
+    // Break type inference chain by avoiding internal object entirely
+    const existing = (await ctx.runQuery(
+      (internal as any)["adminAuthData"]["getAdminAuthByEmail"],
+      { email: normalizedEmail } as any
+    )) as any;
     if (existing) {
       throw new Error("Admin account already exists with this email");
     }
@@ -37,18 +40,24 @@ export const signUp = action({
     const passwordHash = `scrypt:${salt}:${(derivedKey as Buffer).toString("hex")}`;
 
     // Persist admin auth
-    await ctx.runMutation((internal as any).adminAuthData.createAdminAuth, {
-      email: normalizedEmail,
-      passwordHash,
-      createdAt: Date.now(),
-    });
+    await ctx.runMutation(
+      (internal as any)["adminAuthData"]["createAdminAuth"],
+      {
+        email: normalizedEmail,
+        passwordHash,
+        createdAt: Date.now(),
+      }
+    );
 
     // Ensure admin role exists
-    // Break type inference chain by storing function reference
-    const getAdminFn: any = (internal as any).adminAuthData.getAdminByEmail;
-    const adminRole = (await ctx.runQuery(getAdminFn, { email: normalizedEmail } as any)) as any;
+    const adminRole = (await ctx.runQuery(
+      (internal as any)["adminAuthData"]["getAdminByEmail"],
+      { email: normalizedEmail } as any
+    )) as any;
     if (!adminRole) {
-      await ctx.runMutation((internal as any).adminAuthData.ensureAdminRole, {
+      await ctx.runMutation(
+        (internal as any)["adminAuthData"]["ensureAdminRole"],
+        {
         email: normalizedEmail,
         role: "admin",
       });
@@ -69,9 +78,10 @@ export const login = action({
     const normalizedEmail = email.toLowerCase().trim();
 
     // Load admin auth
-    // Break type inference chain by storing function reference
-    const getAdminAuthFn2: any = (internal as any).adminAuthData.getAdminAuthByEmail;
-    const adminAuth = (await ctx.runQuery(getAdminAuthFn2, { email: normalizedEmail } as any)) as any;
+    const adminAuth = (await ctx.runQuery(
+      (internal as any)["adminAuthData"]["getAdminAuthByEmail"],
+      { email: normalizedEmail } as any
+    )) as any;
     if (!adminAuth) {
       throw new Error("Invalid email or password");
     }
@@ -89,7 +99,9 @@ export const login = action({
     const token = randomBytes(32).toString("hex");
     const expiresAt = Date.now() + 7 * 24 * 60 * 60 * 1000;
 
-    await ctx.runMutation((internal as any).adminAuthData.createSession, {
+    await ctx.runMutation(
+      (internal as any)["adminAuthData"]["createSession"],
+      {
       token,
       email: normalizedEmail,
       createdAt: Date.now(),

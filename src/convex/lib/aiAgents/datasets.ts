@@ -1,4 +1,6 @@
 import { api } from "../../_generated/api";
+// Avoid deep type inference by importing as any
+const internal = require("../../_generated/api").internal as any;
 
 export async function adminCreateDataset(ctx: any, args: any) {
   const isAdmin = await ctx.runQuery(api.admin.getIsAdmin, {});
@@ -17,7 +19,7 @@ export async function adminCreateDataset(ctx: any, args: any) {
     status: "new",
   });
 
-  await ctx.runMutation(api.audit.write as any, {
+  await ctx.runMutation((internal as any)["audit"]["write"], {
     action: "admin_create_dataset",
     entityType: "agentDatasets",
     entityId: id,
@@ -44,7 +46,7 @@ export async function adminLinkDatasetToAgent(ctx: any, args: any) {
   linked.add(args.agent_key);
   await ctx.db.patch(args.datasetId, { linkedAgentKeys: Array.from(linked) });
 
-  await ctx.runMutation(api.audit.write as any, {
+  await ctx.runMutation((internal as any)["audit"]["write"], {
     action: "admin_link_dataset_to_agent",
     entityType: "agentDatasets",
     entityId: args.datasetId,
@@ -62,7 +64,7 @@ export async function adminUnlinkDatasetFromAgent(ctx: any, args: any) {
   const filtered = (ds.linkedAgentKeys as string[]).filter((k) => k !== args.agent_key);
   await ctx.db.patch(args.datasetId, { linkedAgentKeys: filtered });
 
-  await ctx.runMutation(api.audit.write as any, {
+  await ctx.runMutation((internal as any)["audit"]["write"], {
     action: "admin_unlink_dataset_from_agent",
     entityType: "agentDatasets",
     entityId: args.datasetId,
