@@ -35,6 +35,7 @@ export default function ApiDocsPage() {
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="authentication">Authentication</TabsTrigger>
           <TabsTrigger value="endpoints">Endpoints</TabsTrigger>
+          <TabsTrigger value="social-media">Social Media</TabsTrigger>
           <TabsTrigger value="webhooks">Webhooks</TabsTrigger>
           <TabsTrigger value="sdk">SDK</TabsTrigger>
         </TabsList>
@@ -148,6 +149,139 @@ export default function ApiDocsPage() {
                 </div>
                 <p className="text-sm text-muted-foreground">
                   List all email campaigns
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Social Media API Endpoints</CardTitle>
+              <CardDescription>
+                Manage social media posts, analytics, and integrations (Enterprise tier)
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="border-l-4 border-green-500 pl-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="px-2 py-1 bg-green-100 text-green-700 rounded text-xs font-semibold">
+                    POST
+                  </span>
+                  <code className="text-sm">/api/social/posts/create</code>
+                </div>
+                <p className="text-sm text-muted-foreground mb-2">
+                  Create and schedule a social media post across multiple platforms
+                </p>
+                <div className="p-3 bg-muted rounded-md font-mono text-xs">
+                  <pre>{`{
+  "content": "Your post content",
+  "platforms": ["twitter", "linkedin", "facebook"],
+  "scheduledAt": 1234567890000,
+  "mediaUrls": ["https://..."]
+}`}</pre>
+                </div>
+              </div>
+
+              <div className="border-l-4 border-blue-500 pl-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs font-semibold">
+                    GET
+                  </span>
+                  <code className="text-sm">/api/social/analytics</code>
+                </div>
+                <p className="text-sm text-muted-foreground mb-2">
+                  Retrieve social media analytics and performance metrics
+                </p>
+                <div className="p-3 bg-muted rounded-md font-mono text-xs">
+                  <pre>{`{
+  "timeRange": "30d",
+  "platforms": ["twitter", "linkedin"],
+  "metrics": ["engagement", "reach", "roi"]
+}`}</pre>
+                </div>
+              </div>
+
+              <div className="border-l-4 border-blue-500 pl-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs font-semibold">
+                    GET
+                  </span>
+                  <code className="text-sm">/api/social/accounts</code>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  List all connected social media accounts and their status
+                </p>
+              </div>
+
+              <div className="border-l-4 border-yellow-500 pl-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="px-2 py-1 bg-yellow-100 text-yellow-700 rounded text-xs font-semibold">
+                    PUT
+                  </span>
+                  <code className="text-sm">/api/social/posts/:id</code>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Update or reschedule an existing social media post
+                </p>
+              </div>
+
+              <div className="border-l-4 border-red-500 pl-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="px-2 py-1 bg-red-100 text-red-700 rounded text-xs font-semibold">
+                    DELETE
+                  </span>
+                  <code className="text-sm">/api/social/posts/:id</code>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Delete a scheduled or published social media post
+                </p>
+              </div>
+
+              <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <h4 className="font-semibold text-sm mb-2 flex items-center gap-2">
+                  <ExternalLink className="h-4 w-4" />
+                  Rate Limits
+                </h4>
+                <ul className="text-sm space-y-1 text-muted-foreground">
+                  <li>• Solopreneur: 30 posts/month, 2 platforms</li>
+                  <li>• Startup: 100 posts/month, 3 platforms</li>
+                  <li>• SME: 500 posts/month, 5 platforms</li>
+                  <li>• Enterprise: Unlimited posts, unlimited platforms</li>
+                </ul>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Error Handling</CardTitle>
+              <CardDescription>
+                Common error codes and troubleshooting
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="p-3 border-l-4 border-red-500 bg-red-50">
+                <code className="text-sm font-semibold">ERR_INVALID_TOKEN</code>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Social media account token has expired. Reconnect the account.
+                </p>
+              </div>
+              <div className="p-3 border-l-4 border-yellow-500 bg-yellow-50">
+                <code className="text-sm font-semibold">ERR_RATE_LIMIT</code>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Monthly post limit reached for your tier. Upgrade or wait for reset.
+                </p>
+              </div>
+              <div className="p-3 border-l-4 border-orange-500 bg-orange-50">
+                <code className="text-sm font-semibold">ERR_SCHEDULING_CONFLICT</code>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Another post is scheduled within 5 minutes. Choose a different time.
+                </p>
+              </div>
+              <div className="p-3 border-l-4 border-blue-500 bg-blue-50">
+                <code className="text-sm font-semibold">ERR_PLATFORM_LIMIT_EXCEEDED</code>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Maximum connected platforms reached for your tier. Upgrade to add more.
                 </p>
               </div>
             </CardContent>

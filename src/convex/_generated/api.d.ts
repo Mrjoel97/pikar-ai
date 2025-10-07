@@ -101,6 +101,7 @@ import type * as socialContentAgent_optimization from "../socialContentAgent/opt
 import type * as socialContentAgent from "../socialContentAgent.js";
 import type * as socialIntegrations from "../socialIntegrations.js";
 import type * as socialIntegrationsActions from "../socialIntegrationsActions.js";
+import type * as socialMediaDocs from "../socialMediaDocs.js";
 import type * as socialPosts from "../socialPosts.js";
 import type * as socialPostsCron from "../socialPostsCron.js";
 import type * as solopreneur from "../solopreneur.js";
@@ -216,6 +217,7 @@ declare const fullApi: ApiFromModules<{
   socialContentAgent: typeof socialContentAgent;
   socialIntegrations: typeof socialIntegrations;
   socialIntegrationsActions: typeof socialIntegrationsActions;
+  socialMediaDocs: typeof socialMediaDocs;
   socialPosts: typeof socialPosts;
   socialPostsCron: typeof socialPostsCron;
   solopreneur: typeof solopreneur;

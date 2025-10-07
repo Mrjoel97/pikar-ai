@@ -43,7 +43,7 @@ export default function LearningHubPage() {
   const [learningOpen, setLearningOpen] = useState<null | { id: string; title: string; description: string }>(null);
   const [aiChatInput, setAiChatInput] = useState("");
   const [aiMessages, setAiMessages] = useState<Array<{ role: "user" | "assistant"; content: string }>>([
-    { role: "assistant", content: "Hi! I’m your AI Guide. Ask about best practices or where to start by tier." },
+    { role: "assistant", content: "Hi! I'm your AI Guide. Ask about best practices or where to start by tier." },
   ]);
 
   const tips = useMemo(() => {
@@ -61,21 +61,25 @@ export default function LearningHubPage() {
         { id: "solo-email-101", title: "Your first newsletter", description: "Build and schedule a simple, on-brand newsletter." },
         { id: "solo-workflow-basics", title: "1-click workflows", description: "Turn ideas into lightweight, actionable flows." },
         { id: "solo-micro-analytics", title: "Micro-analytics", description: "Read quick KPIs and apply small weekly improvements." },
+        { id: "solo-social-media", title: "Social Media Basics", description: "Connect accounts, schedule posts, and track engagement across 2 platforms." },
       ],
       startup: [
         { id: "startup-email", title: "Team campaign setup", description: "Coordinate campaigns across roles and approvals." },
         { id: "startup-automation", title: "Scale workflows", description: "Standardize processes with approvals and guardrails." },
         { id: "startup-insights", title: "Diagnostics basics", description: "Use analytics to detect bottlenecks and ROI leaks." },
+        { id: "startup-social-collab", title: "Team Social Media", description: "Collaborate on posts, manage approvals, and track performance across 3 platforms." },
       ],
       sme: [
         { id: "sme-compliance", title: "Compliance preflight", description: "Apply policy checks and SLA floors to operations." },
         { id: "sme-governance", title: "Governance workflows", description: "Enforce multi-approver chains and role diversity." },
         { id: "sme-exec", title: "Executive summaries", description: "Roll up department metrics and SLA signals." },
+        { id: "sme-social-advanced", title: "Advanced Social Strategy", description: "Multi-brand management, competitor analysis, and ROI tracking across 5 platforms." },
       ],
       enterprise: [
         { id: "ent-governance", title: "Global governance", description: "Regional controls, multi-brand orchestration." },
         { id: "ent-agents", title: "Agent federation", description: "Coordinate specialized agents with org guardrails." },
         { id: "ent-observability", title: "Observability and risk", description: "SLA sweeps, alerts, and policy heatmaps." },
+        { id: "ent-social-enterprise", title: "Enterprise Social Command", description: "Global multi-brand social media orchestration with API access and white-label reporting." },
       ],
     };
     return map[tier];
@@ -86,6 +90,8 @@ export default function LearningHubPage() {
       { id: "gdpr", title: "GDPR for Marketers", summary: "Consent, minimization, DSAR basics." },
       { id: "snap", title: "SNAP Selling Guide", summary: "Simple, iNvaluable, Aligned, Priority." },
       { id: "dtfl", title: "Design Thinking (DTFL)", summary: "Define, Ideate, Prototype, Validate." },
+      { id: "social-best-practices", title: "Social Media Best Practices", summary: "Optimal posting times, content strategies, and engagement tips." },
+      { id: "social-troubleshooting", title: "Social Media Troubleshooting", summary: "Common issues and solutions for platform connections and posting." },
     ],
     [],
   );
