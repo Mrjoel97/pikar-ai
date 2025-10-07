@@ -1,2 +1,1 @@
-const validateFn: any = internal.adminAuthData.validateSession;
-const res: any = await ctx.runQuery(validateFn, { token: args.adminToken });
+await ctx.runQuery("module:function" as any, args)

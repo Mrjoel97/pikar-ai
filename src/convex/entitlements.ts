@@ -1,6 +1,5 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
-import { internal } from "./_generated/api";
 
 // Tier caps configuration
 const CAPS = {
@@ -290,7 +289,7 @@ export const checkEntitlement = mutation({
     
     // Audit on deny
     if (!allowed) {
-      await ctx.runMutation(internal.audit.write, {
+      await ctx.runMutation("audit:write" as any, {
         businessId: args.businessId,
         action: "entitlement_denied",
         entityType: "entitlement",

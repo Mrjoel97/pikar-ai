@@ -1,6 +1,5 @@
 import { action, mutation, query } from "./_generated/server";
 import { v } from "convex/values";
-import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 
 const evalTestValidator = v.object({
@@ -61,7 +60,7 @@ export const runSet: any = action({
   args: { setId: v.id("evalSets") },
   handler: async (ctx, args): Promise<{ runId: any; passCount: number; failCount: number; total: number }> => {
     const startedAt = Date.now();
-    const set: any = await ctx.runQuery(internal.evalsInternal.getSet, { setId: args.setId });
+    const set: any = await ctx.runQuery("evalsInternal:getSet" as any, { setId: args.setId });
 
     const results: Array<{
       testIndex: number;
@@ -134,7 +133,7 @@ export const runSet: any = action({
     const finishedAt = Date.now();
     const status = "completed" as const;
 
-    const runId: any = await ctx.runMutation(internal.evalsInternal.recordRun, {
+    const runId: any = await ctx.runMutation("evalsInternal:recordRun" as any, {
       setId: args.setId,
       startedAt,
       finishedAt,

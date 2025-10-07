@@ -2,7 +2,6 @@
 
 import { Resend } from "resend";
 import { internalAction, action } from "./_generated/server";
-import { internal } from "./_generated/api";
 import { renderHtml, escapeHtml } from "./emails";
 import { v } from "convex/values";
 
@@ -38,7 +37,7 @@ export const sendTestEmail = action({
     const DEV_SAFE = process.env.DEV_SAFE_EMAILS === "true";
 
     // Prefer per-business Resend key, fallback to global
-    const cfg: any = await ctx.runQuery(internal.emailConfig.getByBusiness, {
+    const cfg: any = await ctx.runQuery("emailConfig:getByBusiness" as any, {
       businessId: args.businessId,
     });
     const RESEND_KEY: string | undefined = (cfg?.resendApiKey as string | undefined) || process.env.RESEND_API_KEY;
@@ -57,7 +56,7 @@ export const sendTestEmail = action({
           subject: args.subject,
         });
 
-        await ctx.runMutation(internal.emails.ensureTokenMutation, {
+        await ctx.runMutation("emails:ensureTokenMutation" as any, {
           businessId: args.businessId,
           email: args.to,
         });
@@ -70,7 +69,7 @@ export const sendTestEmail = action({
     const resend: Resend = new Resend(RESEND_KEY);
 
     // Generate (or reuse) unsubscribe token for recipient
-    const token = await ctx.runMutation(internal.emails.ensureTokenMutation, {
+    const token = await ctx.runMutation("emails:ensureTokenMutation" as any, {
       businessId: args.businessId,
       email: args.to,
     });
@@ -123,7 +122,7 @@ export const sendCampaignInternal = internalAction({
   args: { campaignId: v.id("emails") },
   handler: async (ctx, { campaignId }) => {
     // Get campaign details
-    const campaign = await ctx.runQuery(internal.emails.getCampaignById, { 
+    const campaign = await ctx.runQuery("emails:getCampaignById" as any, { 
       campaignId 
     });
     
@@ -140,7 +139,7 @@ export const sendCampaignInternal = internalAction({
 
     try {
       // Mark as sending
-      await ctx.runMutation(internal.emails.updateCampaignStatus, {
+      await ctx.runMutation("emails:updateCampaignStatus" as any, {
         campaignId,
         status: "sending"
       });
@@ -148,13 +147,13 @@ export const sendCampaignInternal = internalAction({
       // Get recipients
       const recipients = campaign.recipients ||
         (campaign.audienceListId
-          ? await ctx.runQuery(internal.contacts.getListRecipientEmailsInternal, {
+          ? await ctx.runQuery("contacts:getListRecipientEmailsInternal" as any, {
               listId: campaign.audienceListId,
             })
           : []);
 
       if (recipients.length === 0) {
-        await ctx.runMutation(internal.emails.updateCampaignStatus, {
+        await ctx.runMutation("emails:updateCampaignStatus" as any, {
           campaignId,
           status: "failed",
           lastError: "No recipients found"
@@ -162,7 +161,7 @@ export const sendCampaignInternal = internalAction({
         return;
       }
 
-      const cfg: any = await ctx.runQuery(internal.emailConfig.getByBusiness, {
+      const cfg: any = await ctx.runQuery("emailConfig:getByBusiness" as any, {
         businessId: campaign.businessId,
       });
       const RESEND_KEY: string | undefined = (cfg?.resendApiKey as string | undefined) || process.env.RESEND_API_KEY;
@@ -173,12 +172,12 @@ export const sendCampaignInternal = internalAction({
       let lastError: string | undefined;
 
       if (!resend && !devSafeEmails) {
-        await ctx.runMutation(internal.emails.updateCampaignStatus, {
+        await ctx.runMutation("emails:updateCampaignStatus" as any, {
           campaignId,
           status: "failed",
           lastError: "RESEND_API_KEY not configured",
         });
-        await ctx.runMutation(internal.audit.write, {
+        await ctx.runMutation("audit:write" as any, {
           businessId: campaign.businessId,
           action: "campaign_failed",
           entityType: "email",
@@ -233,7 +232,7 @@ export const sendCampaignInternal = internalAction({
 
       // Update final status
       const finalStatus = successCount > 0 ? "sent" : "failed";
-      await ctx.runMutation(internal.emails.appendSendIdsAndComplete, {
+      await ctx.runMutation("emails:appendSendIdsAndComplete" as any, {
         campaignId,
         sendIds,
         status: finalStatus,
@@ -241,7 +240,7 @@ export const sendCampaignInternal = internalAction({
       });
 
       // Ensure audit log includes businessId
-      await ctx.runMutation(internal.audit.write, {
+      await ctx.runMutation("audit:write" as any, {
         businessId: campaign.businessId,
         action: "campaign_sent",
         entityType: "email",
@@ -259,14 +258,14 @@ export const sendCampaignInternal = internalAction({
     } catch (err: any) {
       console.error(`Campaign ${campaignId} failed:`, err);
       
-      await ctx.runMutation(internal.emails.updateCampaignStatus, {
+      await ctx.runMutation("emails:updateCampaignStatus" as any, {
         campaignId,
         status: "failed",
         lastError: err.message
       });
 
       // Ensure audit log includes businessId
-      await ctx.runMutation(internal.audit.write, {
+      await ctx.runMutation("audit:write" as any, {
         businessId: campaign?.businessId,
         action: "campaign_failed",
         entityType: "email", 

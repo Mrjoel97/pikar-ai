@@ -22,12 +22,28 @@ export const latestForBusiness = query({
 
 // Get the latest KPI snapshot for a business (fallback to zeros)
 export const getSnapshot = query({
-  args: { businessId: v.id("businesses") },
+  args: { businessId: v.optional(v.id("businesses")) },
   handler: async (ctx, args) => {
+    // Guest-safe: return default zeros if no businessId provided
+    if (!args.businessId) {
+      return {
+        businessId: undefined as any,
+        date: new Date().toISOString().slice(0, 10),
+        visitors: 0,
+        subscribers: 0,
+        engagement: 0,
+        revenue: 0,
+        visitorsDelta: 0,
+        subscribersDelta: 0,
+        engagementDelta: 0,
+        revenueDelta: 0,
+      };
+    }
+
     const latest = await ctx.db
       .query("dashboardKpis")
       .withIndex("by_business_and_date", (q) =>
-        q.eq("businessId", args.businessId)
+        q.eq("businessId", args.businessId!)
       )
       .order("desc")
       .first();
@@ -40,7 +56,6 @@ export const getSnapshot = query({
         subscribers: 0,
         engagement: 0,
         revenue: 0,
-        // trends default 0
         visitorsDelta: 0,
         subscribersDelta: 0,
         engagementDelta: 0,

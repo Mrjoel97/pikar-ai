@@ -1,6 +1,5 @@
 import { internalMutation, internalQuery, mutation, query } from "./_generated/server";
 import { v } from "convex/values";
-import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 
 export function escapeHtml(input: string): string {
@@ -91,13 +90,13 @@ export const createCampaign = mutation({
 
     // Add entitlement guard for per-campaign recipients
     if (args.audienceType === "direct" && recipients && recipients.length > 0) {
-      const gate = await ctx.runQuery(internal.entitlements.checkEntitlement, {
+      const gate = await ctx.runQuery("entitlements:checkEntitlement" as any, {
         businessId: args.businessId,
         action: "emails.createCampaign",
         context: { recipientsCount: recipients.length },
       });
       if (!gate.allowed) {
-        await ctx.runMutation(internal.audit.write, {
+        await ctx.runMutation("audit:write" as any, {
           businessId: args.businessId,
           action: "entitlement_block",
           entityType: "email_campaign",
@@ -134,7 +133,7 @@ export const createCampaign = mutation({
     });
 
     if (!args.scheduledAt || args.scheduledAt <= Date.now() + 60000) {
-      await ctx.scheduler.runAfter(0, internal.emailsActions.sendCampaignInternal, { campaignId });
+      await ctx.scheduler.runAfter(0, "emailsActions:sendCampaignInternal" as any, { campaignId });
     }
 
     return campaignId;
@@ -307,7 +306,7 @@ export const setUnsubscribeActive = internalMutation({
       token: unsubscribe.token,
       contactId: contact ? String(contact._id) : null,
     };
-    await ctx.runMutation(internal.audit.write, {
+    await ctx.runMutation("audit:write" as any, {
       businessId: unsubscribe.businessId,
       action: "email_unsubscribe",
       entityType: contact ? "contact" : "email",
@@ -364,7 +363,7 @@ export const processDueScheduledCampaigns = internalMutation({
       // Schedule the actual sending
       await ctx.scheduler.runAfter(
         0, // Run immediately
-        internal.emailsActions.sendCampaignInternal,
+        "emailsActions:sendCampaignInternal" as any,
         { campaignId: campaign._id }
       );
       
@@ -409,7 +408,7 @@ export const getOrCreateUnsubscribeUrl: any = internalMutation({
   args: { businessId: v.id("businesses"), email: v.string() },
   handler: async (ctx, args) => {
     // Ensure these are concrete types for TS
-    const token: string = await ctx.runMutation(internal.emails.ensureTokenMutation, {
+    const token: string = await ctx.runMutation("emails:ensureTokenMutation" as any, {
       businessId: args.businessId,
       email: args.email,
     });
