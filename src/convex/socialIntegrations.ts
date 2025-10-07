@@ -3,7 +3,7 @@ import { internalMutation, mutation, query } from "./_generated/server";
 import { internal } from "./_generated/api";
 
 /**
- * Connect a social media account (store OAuth tokens)
+ * Connect a social media account with enhanced error handling
  */
 export const connectSocialAccount = mutation({
   args: {
@@ -35,6 +35,33 @@ export const connectSocialAccount = mutation({
     }
     if (business.ownerId !== user._id && !business.teamMembers.includes(user._id)) {
       throw new Error("[ERR_FORBIDDEN] Not authorized.");
+    }
+
+    // Validate token is not empty
+    if (!args.accessToken || args.accessToken.trim().length === 0) {
+      throw new Error("[ERR_INVALID_TOKEN] Access token cannot be empty.");
+    }
+
+    // Check platform connection limits by tier
+    const tier = business.settings?.plan || "solopreneur";
+    const platformLimits: Record<string, number> = {
+      solopreneur: 2,
+      startup: 3,
+      sme: 5,
+      enterprise: 999,
+    };
+
+    const connectedAccounts = await ctx.db
+      .query("socialAccounts")
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .filter((q) => q.eq(q.field("isActive"), true))
+      .collect();
+
+    const limit = platformLimits[tier] || 2;
+    if (connectedAccounts.length >= limit) {
+      throw new Error(
+        `[ERR_PLATFORM_LIMIT_EXCEEDED] Platform connection limit reached. Your ${tier} tier allows ${limit} connected platforms. Please upgrade or disconnect an existing platform.`
+      );
     }
 
     // Check if account already exists for this business/platform

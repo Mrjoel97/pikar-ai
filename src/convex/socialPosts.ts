@@ -3,7 +3,76 @@ import { internalQuery, mutation, query } from "./_generated/server";
 import { internal } from "./_generated/api";
 
 /**
- * Create a new social post
+ * Check for scheduling conflicts before creating/updating posts
+ */
+async function checkSchedulingConflicts(
+  ctx: any,
+  businessId: string,
+  scheduledAt: number | undefined,
+  excludePostId?: string
+): Promise<{ hasConflict: boolean; conflictingPost?: any }> {
+  if (!scheduledAt) {
+    return { hasConflict: false };
+  }
+
+  // Check for posts scheduled within 5 minutes of this time
+  const timeWindow = 5 * 60 * 1000; // 5 minutes
+  const posts = await ctx.db
+    .query("socialPosts")
+    .withIndex("by_business", (q: any) => q.eq("businessId", businessId))
+    .filter((q: any) => q.eq(q.field("status"), "scheduled"))
+    .collect();
+
+  const conflictingPost = posts.find((p: any) => {
+    if (excludePostId && p._id === excludePostId) return false;
+    if (!p.scheduledAt) return false;
+    const timeDiff = Math.abs(p.scheduledAt - scheduledAt);
+    return timeDiff < timeWindow;
+  });
+
+  return {
+    hasConflict: !!conflictingPost,
+    conflictingPost,
+  };
+}
+
+/**
+ * Check rate limits for social posts
+ */
+async function checkRateLimits(
+  ctx: any,
+  businessId: string,
+  tier: string
+): Promise<{ withinLimit: boolean; current: number; limit: number }> {
+  const now = new Date();
+  const hourStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours()).getTime();
+
+  const recentPosts = await ctx.db
+    .query("socialPosts")
+    .withIndex("by_business", (q: any) => q.eq("businessId", businessId))
+    .filter((q: any) => q.gte(q.field("_creationTime"), hourStart))
+    .collect();
+
+  // Rate limits per hour by tier
+  const rateLimits: Record<string, number> = {
+    solopreneur: 5,
+    startup: 15,
+    sme: 30,
+    enterprise: 100,
+  };
+
+  const limit = rateLimits[tier] || 5;
+  const current = recentPosts.length;
+
+  return {
+    withinLimit: current < limit,
+    current,
+    limit,
+  };
+}
+
+/**
+ * Create a new social post with enhanced error handling
  */
 export const createSocialPost = mutation({
   args: {
@@ -35,9 +104,25 @@ export const createSocialPost = mutation({
       throw new Error("[ERR_FORBIDDEN] Not authorized.");
     }
 
-    // Check entitlements (social post limits)
-    // TODO: Add specific social post entitlement check
-    // For now, we'll add this to the entitlements module
+    // Check rate limits
+    const tier = business.settings?.plan || "solopreneur";
+    const rateCheck = await checkRateLimits(ctx, args.businessId, tier);
+    if (!rateCheck.withinLimit) {
+      throw new Error(
+        `[ERR_RATE_LIMIT_EXCEEDED] Rate limit exceeded. You can create ${rateCheck.limit} posts per hour. Current: ${rateCheck.current}/${rateCheck.limit}. Please try again later.`
+      );
+    }
+
+    // Check for scheduling conflicts
+    if (args.scheduledAt) {
+      const conflictCheck = await checkSchedulingConflicts(ctx, args.businessId, args.scheduledAt);
+      if (conflictCheck.hasConflict) {
+        const conflictTime = new Date(conflictCheck.conflictingPost.scheduledAt).toLocaleString();
+        throw new Error(
+          `[ERR_SCHEDULING_CONFLICT] Another post is scheduled within 5 minutes of this time (${conflictTime}). Please choose a different time.`
+        );
+      }
+    }
 
     const characterCount = args.content.length;
     const status = args.scheduledAt ? "scheduled" : "draft";
@@ -70,7 +155,7 @@ export const createSocialPost = mutation({
 });
 
 /**
- * Update an existing social post
+ * Update an existing social post with conflict checking
  */
 export const updateSocialPost = mutation({
   args: {
@@ -110,6 +195,22 @@ export const updateSocialPost = mutation({
     // Can't edit posted or posting posts
     if (post.status === "posted" || post.status === "posting") {
       throw new Error("[ERR_INVALID_STATUS] Cannot edit posted or posting posts.");
+    }
+
+    // Check for scheduling conflicts if time is being changed
+    if (args.scheduledAt !== undefined && args.scheduledAt !== post.scheduledAt) {
+      const conflictCheck = await checkSchedulingConflicts(
+        ctx,
+        post.businessId,
+        args.scheduledAt,
+        args.postId
+      );
+      if (conflictCheck.hasConflict) {
+        const conflictTime = new Date(conflictCheck.conflictingPost.scheduledAt).toLocaleString();
+        throw new Error(
+          `[ERR_SCHEDULING_CONFLICT] Another post is scheduled within 5 minutes of this time (${conflictTime}). Please choose a different time.`
+        );
+      }
     }
 
     const updates: any = {};
