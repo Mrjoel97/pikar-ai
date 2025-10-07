@@ -16,7 +16,6 @@ import React, { useEffect, useState } from "react";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { toast } from "sonner";
-import { useAuth } from "@/hooks/use-auth";
 
 type SyncError = {
   error: string;
@@ -176,7 +175,6 @@ export function InstrumentationProvider({
 }: {
   children: React.ReactNode;
 }) {
-  const { isAuthenticated } = useAuth();
   const [hasShownEnvToast, setHasShownEnvToast] = useState(false);
   const [hasShownQueueToast, setHasShownQueueToast] = useState(false);
 

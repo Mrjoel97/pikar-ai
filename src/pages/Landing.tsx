@@ -1,6 +1,5 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { useAuth } from "@/hooks/use-auth";
 import { motion } from "framer-motion";
 import { 
   ArrowRight, 
@@ -18,11 +17,10 @@ import { Badge } from "@/components/ui/badge";
 import { useNavigate } from "react-router";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Menu } from "lucide-react";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Mail } from "lucide-react";
-import { useMemo } from "react";
 import React from "react";
 
 // Add static KPI trend data used by KpiTrendsCard
@@ -42,7 +40,6 @@ const KpiTrendsCard = React.lazy(() => import("@/components/landing/KpiTrendsCar
 const ContextualTipsStrip = React.lazy(() => import("@/components/landing/ContextualTipsStrip"));
 
 export default function Landing() {
-  const { isLoading, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [demoOpen, setDemoOpen] = useState(false);
@@ -50,6 +47,7 @@ export default function Landing() {
   const [selectedTier, setSelectedTier] = useState<"solopreneur" | "startup" | "sme" | "enterprise">("startup");
   const [newsletterSubmitting, setNewsletterSubmitting] = useState(false);
   const [newsletterEmail, setNewsletterEmail] = useState("");
+  const [isLoading] = useState(false);
 
   const scrollTo = (id: string) => {
     const el = document.getElementById(id);
@@ -66,11 +64,7 @@ export default function Landing() {
   ];
 
   const handleGetStarted = () => {
-    if (isAuthenticated) {
-      navigate("/dashboard");
-    } else {
-      navigate("/auth");
-    }
+    navigate("/dashboard");
   };
 
   const features = [
@@ -178,11 +172,7 @@ export default function Landing() {
 
   const proceedUpgrade = () => {
     toast(`Selected ${selectedTier} plan`);
-    if (isAuthenticated) {
-      navigate(`/dashboard?tier=${selectedTier}`);
-    } else {
-      navigate(`/auth?tier=${selectedTier}`);
-    }
+    navigate(`/dashboard?tier=${selectedTier}`);
   };
 
   const handleSubscribe = async (e: React.FormEvent) => {
