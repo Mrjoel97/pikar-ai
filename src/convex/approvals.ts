@@ -628,7 +628,7 @@ export const sweepOverdueApprovals = internalMutation({
     for (const approval of overdueApprovals) {
       // Notify assignee
       if (approval.assigneeId) {
-        const result = await ctx.runMutation(internal.notifications.sendIfPermitted, {
+        const result = await (ctx as any).runMutation("notifications:sendIfPermitted" as any, {
           userId: approval.assigneeId,
           businessId: approval.businessId,
           type: "sla_warning",
@@ -644,7 +644,7 @@ export const sweepOverdueApprovals = internalMutation({
       }
       
       // Audit overdue item
-      await ctx.runMutation(internal.audit.write, {
+      await (ctx as any).runMutation("audit:write" as any, {
         businessId: approval.businessId,
         action: "approval_overdue",
         entityType: "approval",

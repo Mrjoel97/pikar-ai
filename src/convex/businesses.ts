@@ -90,7 +90,7 @@ export const create = mutation({
     } as any);
 
     // Write audit log (internal)
-    await ctx.runMutation(internal.audit.write, {
+    await (ctx as any).runMutation("audit:write" as any, {
       businessId,
       action: "business.create",
       entityType: "business",
@@ -206,7 +206,7 @@ export const update = mutation({
     await ctx.db.patch(id, updates);
 
     // Audit
-    await ctx.runMutation(internal.audit.write, {
+    await (ctx as any).runMutation("audit:write" as any, {
       businessId: id,
       action: "business.update",
       entityType: "business",
@@ -260,7 +260,7 @@ export const addTeamMember = mutation({
     });
 
     // Audit
-    await ctx.runMutation(internal.audit.write, {
+    await (ctx as any).runMutation("audit:write" as any, {
       businessId: args.businessId,
       action: "business.add_team_member",
       entityType: "business",
@@ -310,7 +310,7 @@ export const removeTeamMember = mutation({
     });
 
     // Audit
-    await ctx.runMutation(internal.audit.write, {
+    await (ctx as any).runMutation("audit:write" as any, {
       businessId: args.businessId,
       action: "business.remove_team_member",
       entityType: "business",

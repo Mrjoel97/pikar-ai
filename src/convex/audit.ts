@@ -265,8 +265,8 @@ export const listRecent = query({
     // If an adminToken is provided, validate it via the independent Admin Portal
     if (args.adminToken) {
       try {
-        const res = await ctx.runQuery(
-          api.adminAuthData.validateSession as any,
+        const res = await (ctx as any).runQuery(
+          "adminAuthData:validateSession" as any,
           { token: args.adminToken }
         );
         if (res?.valid === true) {

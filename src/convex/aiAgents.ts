@@ -253,7 +253,7 @@ export const adminActivateAll = mutation({
   args: {},
   handler: async (ctx) => {
     // Admin gate
-    const isAdmin = await ctx.runQuery(api.admin.getIsAdmin, {});
+    const isAdmin = await (ctx as any).runQuery("admin:getIsAdmin" as any, {});
     if (!isAdmin) {
       throw new Error("Admin access required");
     }
@@ -261,7 +261,7 @@ export const adminActivateAll = mutation({
     // Load current agents (DB-backed only)
     let agents: Array<any> = [];
     try {
-      agents = await ctx.runQuery(api.aiAgents.adminListAgents as any, {
+      agents = await (ctx as any).runQuery("aiAgents:adminListAgents" as any, {
         tenantId: undefined,
         limit: 500,
       } as any);
@@ -279,12 +279,12 @@ export const adminActivateAll = mutation({
       }
       try {
         // First attempt: standard publish
-        await ctx.runMutation(api.aiAgents.adminPublishAgent as any, { agent_key } as any);
+        await (ctx as any).runMutation("aiAgents:adminPublishAgent" as any, { agent_key } as any);
         results.push({ agent_key, ok: true, mode: "standard" });
       } catch (e1: any) {
         // Fallback attempt: enhanced publish (handles RAG/KG prerequisites)
         try {
-          await ctx.runMutation(api.aiAgents.adminPublishAgentEnhanced as any, { agent_key } as any);
+          await (ctx as any).runMutation("aiAgents:adminPublishAgentEnhanced" as any, { agent_key } as any);
           results.push({ agent_key, ok: true, mode: "enhanced" });
         } catch (e2: any) {
           results.push({

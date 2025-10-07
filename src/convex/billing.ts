@@ -145,7 +145,7 @@ export const handleCheckoutSuccess = action({
       throw new Error("Missing tier on session metadata");
     }
 
-    await ctx.runMutation(internal.billingInternal.applyCheckoutResult, {
+    await (ctx as any).runMutation("billingInternal:applyCheckoutResult" as any, {
       businessId,
       tier,
       stripeCustomerId: customerId ?? null,

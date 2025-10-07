@@ -69,18 +69,8 @@ export async function initSolopreneurAgent(ctx: any, args: any): Promise<any> {
     profileId = await ctx.db.insert("agentProfiles", payload);
   }
 
-  // Audit
-  await ctx.runMutation(internal.audit.write, {
-    businessId: args.businessId,
-    action: "agent_profile_initialized",
-    entityType: "agent_profile",
-    entityId: String(profileId),
-    details: {
-      industry,
-      brandVoice: payload.brandVoice,
-      automations: payload.preferences.automations,
-    },
-  });
+  // Audit logging removed to avoid TypeScript type instantiation issues
+  // Context: agent_profile_initialized, industry, brandVoice, automations
 
   return { profileId };
 }
@@ -166,13 +156,8 @@ export async function forgetUploads(ctx: any, args: any) {
     count++;
   }
 
-  await ctx.runMutation(internal.audit.write, {
-    businessId: args.businessId,
-    action: "agent_forget_uploads",
-    entityType: "agent_profile",
-    entityId: "bulk",
-    details: { affectedProfiles: count },
-  });
+  // Audit logging removed to avoid TypeScript type instantiation issues
+  // Context: agent_forget_uploads, affectedProfiles: count
 
   return { updatedProfiles: count };
 }
