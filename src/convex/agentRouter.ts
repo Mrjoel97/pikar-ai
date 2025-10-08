@@ -2,7 +2,6 @@
 
 import { action } from "./_generated/server";
 import { v } from "convex/values";
-import { api, internal } from "./_generated/api";
 
 export const route = action({
   args: {
@@ -15,16 +14,38 @@ export const route = action({
       const contextBlocks: string[] = [];
       const sources: any[] = [];
 
-      // Skip agent configuration and context retrieval to avoid type instantiation issues
-      // This is a simplified version that focuses on direct response generation
+      // Perform semantic search to retrieve relevant context
+      if (args.businessId) {
+        try {
+          const searchResults: any = await ctx.runAction("knowledge:semanticSearch" as any, {
+            text: args.message,
+            matchThreshold: 0.7,
+            matchCount: 5,
+            agentType: args.agentKey || "executive",
+            businessId: args.businessId,
+          });
+
+          if (searchResults && Array.isArray(searchResults) && searchResults.length > 0) {
+            for (const result of searchResults) {
+              contextBlocks.push(`[Context from ${result.documentId || "knowledge base"}]: ${result.preview}`);
+              sources.push({
+                documentId: result.documentId,
+                preview: result.preview,
+                score: result.score,
+              });
+            }
+          }
+        } catch (searchError) {
+          console.warn("Vector search failed, continuing without context:", searchError);
+        }
+      }
 
       // Prepare enhanced prompt with context
       const enhancedMessage = contextBlocks.length > 0 
-        ? `${args.message}\n\n${contextBlocks.join('\n\n')}`
+        ? `${args.message}\n\nRelevant context:\n${contextBlocks.join('\n\n')}`
         : args.message;
 
       // Generate response using existing OpenAI integration
-      // Use direct action call to avoid deep type instantiation
       const response: any = await (ctx as any).runAction(
         "openai:generate" as any,
         {
@@ -32,9 +53,6 @@ export const route = action({
           maxTokens: 500,
         }
       );
-
-      // Audit logging removed to avoid TypeScript type instantiation issues
-      // Context usage: contextBlocks.length, sources.length
 
       return { 
         response: response.text || "I apologize, but I couldn't generate a response.", 
@@ -95,6 +113,25 @@ export const execRouter: any = action({
       }
     }
 
+    // Perform vector search for relevant context based on mode
+    let vectorContext: string[] = [];
+    try {
+      const searchQuery = input || `${mode} for business goals`;
+      const searchResults: any = await ctx.runAction("knowledge:semanticSearch" as any, {
+        text: searchQuery,
+        matchThreshold: 0.65,
+        matchCount: 3,
+        agentType: "executive",
+        businessId,
+      });
+
+      if (searchResults && Array.isArray(searchResults)) {
+        vectorContext = searchResults.map((r: any) => r.preview || "").filter(Boolean);
+      }
+    } catch (_e) {
+      // Continue without vector context
+    }
+
     switch (mode) {
       case "summarizeIdeas": {
         const ideas: Array<{ content?: string; summary?: string; tags?: string[] }> = recentIdeas.map(
@@ -105,8 +142,12 @@ export const execRouter: any = action({
           })
         );
 
+        const contextStr = vectorContext.length > 0 
+          ? `\n\nAdditional context: ${vectorContext.join("; ")}`
+          : "";
+
         const prompt: string =
-          `Based on these recent ideas: ${JSON.stringify(ideas)}, provide a concise summary of key themes and actionable opportunities.`;
+          `Based on these recent ideas: ${JSON.stringify(ideas)}, provide a concise summary of key themes and actionable opportunities.${contextStr}`;
 
         const response: any = await (ctx as any).runAction(
           "openai:generate" as any,
@@ -120,6 +161,7 @@ export const execRouter: any = action({
           summary: response?.text,
           keyThemes: ideas.flatMap((i: { tags?: string[] }) => i.tags || []).slice(0, 5),
           actionableCount: ideas.length,
+          contextUsed: vectorContext.length,
         };
       }
 
@@ -135,11 +177,15 @@ export const execRouter: any = action({
           limit: 3,
         })) as any[];
 
+        const contextStr = vectorContext.length > 0 
+          ? `\n\nRelevant knowledge: ${vectorContext.join("; ")}`
+          : "";
+
         const prompt: string = `Given goals: "${goals}", recent focus areas: ${recentTags.join(
           ", "
         )}, and upcoming schedule: ${upcomingSlots.map((s) => s.label).join(
           ", "
-        )}, suggest the single most impactful next action.`;
+        )}, suggest the single most impactful next action.${contextStr}`;
 
         const response: any = await (ctx as any).runAction(
           "openai:generate" as any,
@@ -154,12 +200,18 @@ export const execRouter: any = action({
           priority: "high",
           estimatedTime: "15-30 min",
           category: recentTags[0] || "general",
+          contextUsed: vectorContext.length,
         };
       }
 
       case "planWeek": {
         const goals: string = profile?.businessSummary || "grow business";
-        const prompt: string = `Create a focused weekly plan for: "${goals}". Include 3 key priorities, suggested content themes, and optimal posting schedule.`;
+        
+        const contextStr = vectorContext.length > 0 
+          ? `\n\nRelevant insights: ${vectorContext.join("; ")}`
+          : "";
+
+        const prompt: string = `Create a focused weekly plan for: "${goals}". Include 3 key priorities, suggested content themes, and optimal posting schedule.${contextStr}`;
 
         const response: any = await (ctx as any).runAction(
           "openai:generate" as any,
@@ -173,6 +225,7 @@ export const execRouter: any = action({
           weeklyPlan: response?.text,
           priorities: ["Content creation", "Audience engagement", "Business development"],
           suggestedSlots: 3,
+          contextUsed: vectorContext.length,
         };
       }
 
@@ -214,9 +267,6 @@ export const execRouter: any = action({
           if (!response.ok) {
             throw new Error(`Playbook failed: ${response.status}`);
           }
-
-          // Audit logging removed to avoid TypeScript type instantiation issues
-          // Win logged: capsule_created, 45 minutes saved
 
           return {
             success: true,

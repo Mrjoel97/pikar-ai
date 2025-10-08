@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertCircle, Brain, Send, Zap, Calendar, TrendingUp, Copy } from "lucide-react";
+import { AlertCircle, Brain, Send, Zap, Calendar, TrendingUp, Copy, BookOpen } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 
 export default function ExecutiveTab() {
@@ -19,6 +19,8 @@ export default function ExecutiveTab() {
     question: string;
     answer: string;
     timestamp: number;
+    sources?: Array<{ documentId?: string; preview: string; score: number }>;
+    contextUsed?: number;
   }>>([]);
   const [lastError, setLastError] = useState<{
     title: string;
@@ -62,7 +64,6 @@ export default function ExecutiveTab() {
   // Helper: transient error detector
   const isTransientError = (err: unknown): boolean => {
     const msg = (err as any)?.message?.toLowerCase?.() || "";
-    // Network hiccups, 5xx-like hints, and fetch failures
     return (
       msg.includes("failed to fetch") ||
       msg.includes("network") ||
@@ -86,7 +87,7 @@ export default function ExecutiveTab() {
       } catch (err) {
         lastErr = err;
         if (!isTransientError(err) || i === attempts - 1) break;
-        const wait = baseDelayMs * Math.pow(2, i); // 400, 800, 1600
+        const wait = baseDelayMs * Math.pow(2, i);
         await new Promise((res) => setTimeout(res, wait));
       }
     }
@@ -98,7 +99,6 @@ export default function ExecutiveTab() {
 
     setIsAsking(true);
     try {
-      // For general questions, use summarizeIdeas mode
       const response = await execRouter({
         mode: "summarizeIdeas",
         businessId: currentBiz._id,
@@ -109,15 +109,16 @@ export default function ExecutiveTab() {
       const newEntry = {
         question: question.trim(),
         answer: response.summary || "I've analyzed your recent ideas and context.",
-        timestamp: Date.now()
+        timestamp: Date.now(),
+        contextUsed: response.contextUsed || 0,
       };
 
-      const newHistory = [newEntry, ...chatHistory].slice(0, 20); // Keep last 20
+      const newHistory = [newEntry, ...chatHistory].slice(0, 20);
       saveHistory(newHistory);
       setQuestion("");
       
-      setLastError(null); // clear any previous error on success
-      toast.success("Executive response generated");
+      setLastError(null);
+      toast.success(`Response generated${response.contextUsed ? ` (used ${response.contextUsed} context sources)` : ""}`);
     } catch (error: any) {
       const msg = error?.message || "Failed to get response.";
       setLastError({
@@ -152,7 +153,7 @@ export default function ExecutiveTab() {
         if (ok) {
           const saved =
             typeof (response as any)?.timeSaved === "number" ? (response as any).timeSaved : undefined;
-          setLastError(null); // clear on success
+          setLastError(null);
           toast.success(`Capsule created${saved ? `! Saved ${saved} minutes.` : "!"}`);
         } else {
           const message =
@@ -177,12 +178,13 @@ export default function ExecutiveTab() {
           (response as any).weeklyPlan ||
           "Action completed",
         timestamp: Date.now(),
+        contextUsed: (response as any).contextUsed || 0,
       };
 
       const newHistory = [newEntry, ...chatHistory].slice(0, 20);
       saveHistory(newHistory);
-      setLastError(null); // clear on success
-      toast.success("Quick action completed");
+      setLastError(null);
+      toast.success(`Quick action completed${newEntry.contextUsed ? ` (used ${newEntry.contextUsed} context sources)` : ""}`);
     } catch (error: any) {
       const transient = isTransientError(error);
       const message =
@@ -323,7 +325,7 @@ export default function ExecutiveTab() {
         </CardContent>
       </Card>
 
-      {/* Chat History - refined empty state */}
+      {/* Chat History with Context Display */}
       {chatHistory.length > 0 ? (
         <Card>
           <CardHeader>
@@ -337,6 +339,12 @@ export default function ExecutiveTab() {
                     <Badge variant="outline" className="text-xs">
                       {new Date(entry.timestamp).toLocaleString()}
                     </Badge>
+                    {entry.contextUsed !== undefined && entry.contextUsed > 0 && (
+                      <Badge variant="secondary" className="text-xs flex items-center gap-1">
+                        <BookOpen className="h-3 w-3" />
+                        {entry.contextUsed} context source{entry.contextUsed > 1 ? "s" : ""}
+                      </Badge>
+                    )}
                   </div>
                   <div>
                     <p className="text-sm font-medium text-muted-foreground">Q: {entry.question}</p>
