@@ -1,1 +1,4 @@
-await ctx.runQuery("module:function" as any, args)
+import TrustedLogosMarquee from "@/components/landing/TrustedLogosMarquee";
+import FeaturesSection from "@/components/landing/FeaturesSection";
+import KpiTrendsCard from "@/components/landing/KpiTrendsCard";
+import ContextualTipsStrip from "@/components/landing/ContextualTipsStrip";
