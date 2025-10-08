@@ -1,1 +1,1 @@
-grep -A 5 "const business = await ctx.db.get" src/convex/contacts.ts
+sed -i '156a\    }\n  };' src/components/social/PostComposer.tsx
