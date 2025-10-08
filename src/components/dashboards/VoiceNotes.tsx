@@ -166,8 +166,10 @@ export function VoiceNotes({ onSave, disabled, className }: VoiceNotesProps) {
       const result = await transcribeAudio({ fileId: storageId });
       setIsTranscribing(false);
 
-      if (!result?.transcript) {
-        toast.error("Transcription returned no text. Please try again.");
+      if (!result?.success || !result?.transcript) {
+        const errorMsg = result?.error || "Transcription returned no text. Please try again.";
+        toast.error(errorMsg);
+        setLastError(errorMsg);
         return;
       }
 
