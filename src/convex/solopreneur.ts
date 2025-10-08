@@ -172,6 +172,11 @@ export const runQuickAnalytics = query({
         revenue90d: 0,
         churnAlert: false,
         topProducts: [] as Array<{ name: string; margin: number }>,
+        deltas: {
+          revenue: 0,
+          subscribers: 0,
+          engagement: 0,
+        },
       };
     }
 
@@ -184,6 +189,93 @@ export const runQuickAnalytics = query({
         .unique()
         .catch(() => null);
       if (biz) businessId = biz._id;
+    }
+
+    // Calculate 7-day deltas for key metrics
+    const now = Date.now();
+    const sevenDaysAgo = now - 7 * 24 * 60 * 60 * 1000;
+    const fourteenDaysAgo = now - 14 * 24 * 60 * 60 * 1000;
+
+    // Helper to calculate delta percentage
+    const calculateDelta = (current: number, previous: number): number => {
+      if (previous === 0) return current > 0 ? 100 : 0;
+      return Number((((current - previous) / previous) * 100).toFixed(1));
+    };
+
+    // Revenue delta calculation
+    let revenueDelta = 0;
+    if (businessId) {
+      const recentRevenue = await ctx.db
+        .query("revenueEvents")
+        .withIndex("by_business", (q) => q.eq("businessId", businessId!))
+        .filter((q) => q.gte(q.field("timestamp"), sevenDaysAgo))
+        .collect();
+      const previousRevenue = await ctx.db
+        .query("revenueEvents")
+        .withIndex("by_business", (q) => q.eq("businessId", businessId!))
+        .filter((q) => 
+          q.and(
+            q.gte(q.field("timestamp"), fourteenDaysAgo),
+            q.lt(q.field("timestamp"), sevenDaysAgo)
+          )
+        )
+        .collect();
+      const recentTotal = recentRevenue.reduce((sum, e) => sum + e.amount, 0);
+      const previousTotal = previousRevenue.reduce((sum, e) => sum + e.amount, 0);
+      revenueDelta = calculateDelta(recentTotal, previousTotal);
+    }
+
+    // Subscribers delta calculation
+    let subscribersDelta = 0;
+    if (businessId) {
+      const recentSubs = await ctx.db
+        .query("contacts")
+        .withIndex("by_business", (q) => q.eq("businessId", businessId!))
+        .filter((q) => 
+          q.and(
+            q.gte(q.field("createdAt"), sevenDaysAgo),
+            q.eq(q.field("status"), "subscribed")
+          )
+        )
+        .collect();
+      const previousSubs = await ctx.db
+        .query("contacts")
+        .withIndex("by_business", (q) => q.eq("businessId", businessId!))
+        .filter((q) => 
+          q.and(
+            q.gte(q.field("createdAt"), fourteenDaysAgo),
+            q.lt(q.field("createdAt"), sevenDaysAgo),
+            q.eq(q.field("status"), "subscribed")
+          )
+        )
+        .collect();
+      subscribersDelta = calculateDelta(recentSubs.length, previousSubs.length);
+    }
+
+    // Engagement delta calculation (based on email opens/clicks)
+    let engagementDelta = 0;
+    if (businessId) {
+      const recentCampaigns = await ctx.db
+        .query("emailCampaigns")
+        .withIndex("by_business_and_status", (q) => 
+          q.eq("businessId", businessId!).eq("status", "sent")
+        )
+        .filter((q) => q.gte(q.field("scheduledAt"), sevenDaysAgo))
+        .collect();
+      const previousCampaigns = await ctx.db
+        .query("emailCampaigns")
+        .withIndex("by_business_and_status", (q) => 
+          q.eq("businessId", businessId!).eq("status", "sent")
+        )
+        .filter((q) => 
+          q.and(
+            q.gte(q.field("scheduledAt"), fourteenDaysAgo),
+            q.lt(q.field("scheduledAt"), sevenDaysAgo)
+          )
+        )
+        .collect();
+      // Simple engagement metric: number of campaigns sent
+      engagementDelta = calculateDelta(recentCampaigns.length, previousCampaigns.length);
     }
 
     // revenue_90d (prefer business-based metric)
@@ -237,7 +329,16 @@ export const runQuickAnalytics = query({
       { name: "Template Pack", margin: 0.48 },
     ];
 
-    return { revenue90d, churnAlert, topProducts };
+    return { 
+      revenue90d, 
+      churnAlert, 
+      topProducts,
+      deltas: {
+        revenue: revenueDelta,
+        subscribers: subscribersDelta,
+        engagement: engagementDelta,
+      },
+    };
   },
 });
 

@@ -25,6 +25,7 @@ import { FileText } from "lucide-react";
 import { InvoiceComposer } from "@/components/invoices/InvoiceComposer";
 import { ContentCalendar } from "@/components/calendar/ContentCalendar";
 import { RoiDashboard } from "@/components/dashboards/RoiDashboard";
+import { ArrowUp, ArrowDown, Minus } from "lucide-react";
 /* removed unused Alert imports */
 
 interface SolopreneurDashboardProps {
@@ -972,6 +973,11 @@ Renamed to avoid duplicate identifier collisions elsewhere in the file */
           revenue90d: 0,
           churnAlert: false,
           topProducts: [] as Array<{ name: string }>,
+          deltas: {
+            revenue: 0,
+            subscribers: 0,
+            engagement: 0,
+          },
         };
 
   // Limit "Today's Focus" to max 3 tasks
@@ -988,19 +994,45 @@ Renamed to avoid duplicate identifier collisions elsewhere in the file */
     visitors: { value: kpis.visitors ?? 1250, delta: kpis.visitorsDelta ?? 5 },
     subscribers: {
       value: kpis.subscribers ?? 320,
-      delta: kpis.subscribersDelta ?? 3,
+      delta: quickAnalytics?.deltas?.subscribers ?? kpis.subscribersDelta ?? 3,
     },
     engagement: {
       value: kpis.engagement ?? 62,
-      delta: kpis.engagementDelta ?? 2,
+      delta: quickAnalytics?.deltas?.engagement ?? kpis.engagementDelta ?? 2,
     }, // %
     revenue: {
       value: kpis.revenue ?? kpis.totalRevenue ?? 12500,
-      delta: kpis.revenueDelta ?? 4,
+      delta: quickAnalytics?.deltas?.revenue ?? kpis.revenueDelta ?? 4,
     }, // $
     taskCompletion: { value: kpis.taskCompletion ?? 89, delta: 0 }, // %
     activeCustomers: { value: kpis.activeCustomers ?? 45, delta: 0 },
     conversionRate: { value: kpis.conversionRate ?? 3.2, delta: 0 }, // %
+  };
+
+  // Helper to render trend indicator
+  const TrendIndicator = ({ delta }: { delta: number }) => {
+    if (delta > 0) {
+      return (
+        <span className="inline-flex items-center gap-1 text-xs text-emerald-700">
+          <ArrowUp className="h-3 w-3" />
+          +{fmtNum(delta)}% WoW
+        </span>
+      );
+    } else if (delta < 0) {
+      return (
+        <span className="inline-flex items-center gap-1 text-xs text-red-600">
+          <ArrowDown className="h-3 w-3" />
+          {fmtNum(delta)}% WoW
+        </span>
+      );
+    } else {
+      return (
+        <span className="inline-flex items-center gap-1 text-xs text-gray-500">
+          <Minus className="h-3 w-3" />
+          0% WoW
+        </span>
+      );
+    }
   };
 
   // Add mutations for One-Click Setup
@@ -3108,9 +3140,9 @@ Renamed to avoid duplicate identifier collisions elsewhere in the file */
               <p className="text-2xl font-bold">
                 ${fmtNum(snapshot.revenue.value)}
               </p>
-              <p className="text-xs text-emerald-700 mt-1">
-                +{fmtNum(snapshot.revenue.delta)}% WoW
-              </p>
+              <div className="mt-1">
+                <TrendIndicator delta={snapshot.revenue.delta} />
+              </div>
               <Progress
                 value={Math.min(100, (snapshot.revenue.value / 20000) * 100)}
                 className="mt-2"
@@ -3125,9 +3157,9 @@ Renamed to avoid duplicate identifier collisions elsewhere in the file */
               <p className="text-2xl font-bold">
                 {fmtNum(snapshot.subscribers.value)}
               </p>
-              <p className="text-xs text-emerald-700 mt-1">
-                +{fmtNum(snapshot.subscribers.delta)}% WoW
-              </p>
+              <div className="mt-1">
+                <TrendIndicator delta={snapshot.subscribers.delta} />
+              </div>
               <Progress
                 value={Math.min(100, (snapshot.subscribers.value / 1000) * 100)}
                 className="mt-2"
@@ -3142,9 +3174,9 @@ Renamed to avoid duplicate identifier collisions elsewhere in the file */
               <p className="text-2xl font-bold">
                 {fmtNum(snapshot.engagement.value)}%
               </p>
-              <p className="text-xs text-emerald-700 mt-1">
-                +{fmtNum(snapshot.engagement.delta)}% WoW
-              </p>
+              <div className="mt-1">
+                <TrendIndicator delta={snapshot.engagement.delta} />
+              </div>
               <Progress
                 value={Math.min(100, snapshot.engagement.value)}
                 className="mt-2"
