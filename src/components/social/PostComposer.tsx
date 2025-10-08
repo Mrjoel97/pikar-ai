@@ -121,18 +121,40 @@ export function PostComposer({
 
   // AI content generation
   const handleAIGenerate = async () => {
+    if (selectedPlatforms.length === 0) {
+      toast.error("Please select at least one platform first");
+      return;
+    }
+
     setIsGenerating(true);
     try {
-      // TODO: Integrate with AI agent for content generation
-      // For now, simulate AI generation
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-      
-      const aiContent = `🚀 Exciting news! We're transforming the way businesses automate workflows with AI-powered solutions.\n\n✨ Key benefits:\n• Save time with intelligent automation\n• Boost productivity across teams\n• Scale effortlessly\n\n#AI #Automation #Productivity`;
-      
-      setContent(aiContent);
-      toast.success("AI content generated!");
-    } catch (error) {
-      toast.error("Failed to generate content");
+      const result = await generateSocialContent({
+        businessId,
+        platforms: selectedPlatforms as ("twitter" | "linkedin" | "facebook")[],
+        topic: content || "business update",
+        tone: "professional",
+        includeHashtags: true,
+        includeEmojis: true,
+      });
+
+      // Use content from the first platform
+      const firstPlatform = selectedPlatforms[0];
+      const platformContent = result[firstPlatform];
+
+      if (platformContent) {
+        const contentWithHashtags = platformContent.hashtags.length > 0
+          ? `${platformContent.content}\n\n${platformContent.hashtags.map((h: string) => `#${h}`).join(" ")}`
+          : platformContent.content;
+
+        setContent(contentWithHashtags);
+        toast.success("AI content generated!");
+      } else {
+        toast.error("No content generated");
+      }
+    } catch (error: any) {
+      const errorMsg = error?.message || "Failed to generate content";
+      toast.error(errorMsg);
+      console.error("AI generation error:", error);
     } finally {
       setIsGenerating(false);
     }
