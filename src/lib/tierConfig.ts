@@ -46,7 +46,14 @@ export const tierConfigs: Record<TierType, TierConfig> = {
       "recent_activity",
       "basic_agents",
       "content_creation",
-      "email_automation"
+      "email_automation",
+      "solopreneur_exec_assistant",
+      "voice_notes",
+      "invoice_management",
+      "content_calendar",
+      "schedule_assistant",
+      "agent_insights",
+      "content_capsule"
     ],
     sidebarItems: [
       { label: "Dashboard", icon: BarChart3, to: "/dashboard" },
@@ -86,7 +93,13 @@ export const tierConfigs: Record<TierType, TierConfig> = {
       "approvals_tray",
       "advanced_agents",
       "team_workflows",
-      "basic_analytics"
+      "basic_analytics",
+      "crm_integration",
+      "ab_testing",
+      "social_media_hub",
+      "team_onboarding",
+      "approval_analytics",
+      "roi_dashboard"
     ],
     sidebarItems: [
       { label: "Dashboard", icon: BarChart3, to: "/dashboard" },
@@ -123,7 +136,14 @@ export const tierConfigs: Record<TierType, TierConfig> = {
       "compliance_monitoring",
       "advanced_workflows",
       "department_analytics",
-      "risk_management"
+      "risk_management",
+      "crm_integration",
+      "ab_testing",
+      "roi_dashboard",
+      "compliance_reports",
+      "risk_analytics",
+      "governance_automation",
+      "department_dashboards"
     ],
     sidebarItems: [
       { label: "Dashboard", icon: BarChart3, to: "/dashboard" },
@@ -163,7 +183,17 @@ export const tierConfigs: Record<TierType, TierConfig> = {
       "global_compliance",
       "enterprise_analytics",
       "custom_workflows",
-      "advanced_governance"
+      "advanced_governance",
+      "branding_portal",
+      "scim_provisioning",
+      "sso_configuration",
+      "kms_encryption",
+      "api_webhooks",
+      "white_label",
+      "global_social_command",
+      "crm_integration",
+      "ab_testing",
+      "roi_dashboard"
     ],
     sidebarItems: [
       { label: "Command Center", icon: Globe, to: "/dashboard" },
