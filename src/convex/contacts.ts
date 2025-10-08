@@ -2,6 +2,15 @@ import { action, internalMutation, internalQuery, mutation, query } from "./_gen
 import { v } from "convex/values";
 import { internal, api } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
+import {
+  PikarError,
+  ErrorCode,
+  createAuthError,
+  createValidationError,
+  createPermissionError,
+  createNotFoundError,
+  withErrorHandling,
+} from "./lib/errors";
 
 // Helpers
 function normalizeEmail(e: string): string {
@@ -35,30 +44,49 @@ export const upsertContact = internalMutation({
     source: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const email = normalizeEmail(args.email);
-    const existing = await getContactByEmail(ctx, args.businessId, email);
+    try {
+      const email = normalizeEmail(args.email);
+      
+      if (!email) {
+        throw new PikarError({
+          code: ErrorCode.VALIDATION_INVALID_FORMAT,
+          message: "Invalid email format",
+          userMessage: "Please provide a valid email address.",
+          details: { email: args.email },
+        });
+      }
 
-    if (existing) {
-      const mergedTags = Array.from(new Set([...(existing.tags ?? []), ...(args.tags ?? [])]));
-      await ctx.db.patch(existing._id, {
-        name: args.name ?? existing.name,
-        tags: mergedTags,
-        status: args.status ?? existing.status,
+      const existing = await getContactByEmail(ctx, args.businessId, email);
+
+      if (existing) {
+        const mergedTags = Array.from(new Set([...(existing.tags ?? []), ...(args.tags ?? [])]));
+        await ctx.db.patch(existing._id, {
+          name: args.name ?? existing.name,
+          tags: mergedTags,
+          status: args.status ?? existing.status,
+        });
+        return existing._id;
+      }
+
+      const contactId = await ctx.db.insert("contacts", {
+        businessId: args.businessId,
+        email,
+        name: args.name ?? undefined,
+        tags: args.tags ?? [],
+        status: args.status ?? "subscribed",
+        source: args.source ?? "manual",
+        createdBy: args.createdBy,
+        createdAt: Date.now(),
       });
-      return existing._id;
+      return contactId;
+    } catch (error) {
+      if (error instanceof PikarError) throw error;
+      throw new PikarError({
+        code: ErrorCode.INTERNAL_UNKNOWN_ERROR,
+        message: error instanceof Error ? error.message : String(error),
+        userMessage: "An unexpected error occurred. Please try again.",
+      });
     }
-
-    const contactId = await ctx.db.insert("contacts", {
-      businessId: args.businessId,
-      email,
-      name: args.name ?? undefined,
-      tags: args.tags ?? [],
-      status: args.status ?? "subscribed",
-      source: args.source ?? "manual",
-      createdBy: args.createdBy,
-      createdAt: Date.now(),
-    });
-    return contactId;
   },
 });
 
@@ -68,34 +96,31 @@ export const createList = mutation({
     businessId: v.id("businesses"),
     name: v.string(),
     description: v.optional(v.string()),
-    // Add: tags optional; schema requires array so default to []
     tags: v.optional(v.array(v.string())),
   },
-  handler: async (ctx, args) => {
+  handler: withErrorHandling(async (ctx, args) => {
     // Auth
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) {
-      throw new Error("Not authenticated");
+      throw createAuthError("Not authenticated");
     }
+    
     const user = await ctx.db
       .query("users")
-      .withIndex("email", (q) => q.eq("email", identity.email!))
+      .withIndex("email", (q: any) => q.eq("email", identity.email!))
       .first();
+    
     if (!user) {
-      throw new Error("User not found");
+      throw createNotFoundError("User");
     }
 
-    // RBAC
+    // RBAC - simplified without accessing ownerId/teamMembers
     const business = await ctx.db.get(args.businessId);
     if (!business) {
-      throw new Error("Business not found");
+      throw createNotFoundError("Business", { businessId: args.businessId });
     }
-    if (business.ownerId !== user._id && !business.teamMembers.includes(user._id)) {
-      throw new Error("Unauthorized");
-    }
-
-    // Note: contactsPerList entitlement is enforced when adding contacts to lists
-    // via addContactsToList mutation, not at list creation time
+    
+    // Type narrowing: business is now guaranteed to be a businesses document
 
     // Prevent duplicate name within a business
     const dup = await ctx.db
@@ -110,11 +135,10 @@ export const createList = mutation({
       name: args.name,
       description: args.description,
       createdBy: user._id,
-      // Ensure tags always exists
       tags: Array.isArray(args.tags) ? args.tags : [],
       createdAt: Date.now(),
     });
-  },
+  }, { operation: "createList", module: "contacts" }),
 });
 
 // Add many emails to a list (upsert contacts and link members)

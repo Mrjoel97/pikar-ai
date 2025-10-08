@@ -77,6 +77,7 @@ import type * as lib_aiAgents_datasets from "../lib/aiAgents/datasets.js";
 import type * as lib_aiAgents_publish from "../lib/aiAgents/publish.js";
 import type * as lib_aiAgents_training from "../lib/aiAgents/training.js";
 import type * as lib_aiAgents_versions from "../lib/aiAgents/versions.js";
+import type * as lib_errors from "../lib/errors.js";
 import type * as notifications from "../notifications.js";
 import type * as nudges from "../nudges.js";
 import type * as oidc from "../oidc.js";
@@ -193,6 +194,7 @@ declare const fullApi: ApiFromModules<{
   "lib/aiAgents/publish": typeof lib_aiAgents_publish;
   "lib/aiAgents/training": typeof lib_aiAgents_training;
   "lib/aiAgents/versions": typeof lib_aiAgents_versions;
+  "lib/errors": typeof lib_errors;
   notifications: typeof notifications;
   nudges: typeof nudges;
   oidc: typeof oidc;

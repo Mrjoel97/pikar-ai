@@ -3,6 +3,14 @@ import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import { api } from "./_generated/api";
+import {
+  PikarError,
+  ErrorCode,
+  createAuthError,
+  createNotFoundError,
+  createPermissionError,
+  withErrorHandling,
+} from "./lib/errors";
 
 // Import helper modules
 import * as training from "./lib/aiAgents/training";
@@ -110,9 +118,18 @@ export const adminUpsertAgent = mutation({
     active: v.boolean(),
   },
   handler: async (ctx, args) => {
-    // Note: Agent creation entitlement is checked within admin.adminUpsertAgent
-    // using checkEntitlement with action "create_agent"
-    return await admin.adminUpsertAgent(ctx, args);
+    try {
+      // Note: Agent creation entitlement is checked within admin.adminUpsertAgent
+      // using checkEntitlement with action "create_agent"
+      return await admin.adminUpsertAgent(ctx, args);
+    } catch (error) {
+      if (error instanceof PikarError) throw error;
+      throw new PikarError({
+        code: ErrorCode.INTERNAL_UNKNOWN_ERROR,
+        message: error instanceof Error ? error.message : String(error),
+        userMessage: "An unexpected error occurred. Please try again.",
+      });
+    }
   },
 });
 

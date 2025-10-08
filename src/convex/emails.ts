@@ -1,6 +1,14 @@
 import { internalMutation, internalQuery, mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
+import {
+  PikarError,
+  ErrorCode,
+  createAuthError,
+  createValidationError,
+  createEntitlementError,
+  withErrorHandling,
+} from "./lib/errors";
 
 export function escapeHtml(input: string): string {
   return input
@@ -63,7 +71,6 @@ export const createCampaign = mutation({
     body: v.string(),
     fromName: v.optional(v.string()),
     fromEmail: v.optional(v.string()),
-    // Add optional fields to support UI inputs
     replyTo: v.optional(v.string()),
     previewText: v.optional(v.string()),
     audienceType: v.union(v.literal("direct"), v.literal("list")),
@@ -78,8 +85,19 @@ export const createCampaign = mutation({
     scheduledAt: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
+    try {
+      const identity = await ctx.auth.getUserIdentity();
+      if (!identity) throw createAuthError("Not authenticated");
+
+      // Validation
+      if (!args.subject || args.subject.trim().length === 0) {
+        throw new PikarError({
+          code: ErrorCode.VALIDATION_REQUIRED_FIELD,
+          message: "Subject is required",
+          userMessage: "Please provide an email subject.",
+          details: { field: "subject" },
+        });
+      }
 
     // Basic size guard for direct recipients
     let recipients = args.recipients;
@@ -95,6 +113,7 @@ export const createCampaign = mutation({
         action: "emails.createCampaign",
         context: { recipientsCount: recipients.length },
       });
+      
       if (!gate.allowed) {
         await ctx.runMutation("audit:write" as any, {
           businessId: args.businessId,
@@ -108,7 +127,12 @@ export const createCampaign = mutation({
             limit: gate.limit,
           },
         });
-        throw new Error(gate.reason || "Action not permitted by your plan");
+        
+        throw createEntitlementError(gate.reason || "Action not permitted by your plan", {
+          tier: gate.tier,
+          limit: gate.limit,
+          requested: recipients.length,
+        });
       }
     }
 
@@ -119,7 +143,6 @@ export const createCampaign = mutation({
       body: args.body,
       fromName: args.fromName || "Pikar AI",
       fromEmail: args.fromEmail || "noreply@resend.dev",
-      // pass-through optional UI fields
       replyTo: args.replyTo,
       previewText: args.previewText,
       audienceType: args.audienceType,
@@ -136,7 +159,15 @@ export const createCampaign = mutation({
       await ctx.scheduler.runAfter(0, "emailsActions:sendCampaignInternal" as any, { campaignId });
     }
 
-    return campaignId;
+      return campaignId;
+    } catch (error) {
+      if (error instanceof PikarError) throw error;
+      throw new PikarError({
+        code: ErrorCode.INTERNAL_UNKNOWN_ERROR,
+        message: error instanceof Error ? error.message : String(error),
+        userMessage: "An unexpected error occurred. Please try again.",
+      });
+    }
   },
 });
 
