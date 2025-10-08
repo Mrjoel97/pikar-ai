@@ -88,7 +88,7 @@ export const createCampaign = mutation({
       console.warn("Recipients list capped to 5000 for direct campaign");
     }
 
-    // Add entitlement guard for per-campaign recipients
+    // Entitlement check for per-campaign recipients
     if (args.audienceType === "direct" && recipients && recipients.length > 0) {
       const gate = await ctx.runQuery("entitlements:checkEntitlement" as any, {
         businessId: args.businessId,

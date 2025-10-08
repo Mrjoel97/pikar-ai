@@ -94,6 +94,9 @@ export const createList = mutation({
       throw new Error("Unauthorized");
     }
 
+    // Note: contactsPerList entitlement is enforced when adding contacts to lists
+    // via addContactsToList mutation, not at list creation time
+
     // Prevent duplicate name within a business
     const dup = await ctx.db
       .query("contactLists")

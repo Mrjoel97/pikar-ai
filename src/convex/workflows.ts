@@ -358,14 +358,24 @@ export const createWorkflow = mutation({
       description: args?.description ?? "",
       steps: (args?.steps ?? args?.pipeline ?? []) as Array<WorkflowStepLike>,
     };
-
     const user = await getSignedInUser(ctx);
     if (!user) {
       throw new Error("[ERR_NOT_AUTHENTICATED] You must be signed in to create workflows.");
     }
     const wfBusiness_ctxUser = await getCurrentBusiness(ctx, user);
+    
+    // Entitlement check: Can create workflow?
+    if (wfBusiness_ctxUser?._id) {
+      const entitlementCheck = await ctx.runQuery("entitlements:checkEntitlement" as any, {
+        businessId: wfBusiness_ctxUser._id,
+        action: "create_workflow",
+      });
+      if (!entitlementCheck.allowed) {
+        throw new Error(`[ERR_ENTITLEMENT] ${entitlementCheck.reason}`);
+      }
+    }
+    
     let tier: string | null | undefined = wfBusiness_ctxUser?.tier ?? null;
-
     const issues = computeGovernanceIssuesForTier(tier, workflowPreview);
     const smeOrEnterprise = tier === "SME" || tier === "Enterprise";
 

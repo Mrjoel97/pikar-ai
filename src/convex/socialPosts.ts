@@ -104,6 +104,24 @@ export const createSocialPost = mutation({
       throw new Error("[ERR_FORBIDDEN] Not authorized.");
     }
 
+    // Entitlement check: Can create social post this month?
+    const postCheck = await ctx.runMutation("entitlements:canCreateSocialPost" as any, {
+      businessId: args.businessId,
+    });
+    if (!postCheck.allowed) {
+      throw new Error(`[ERR_ENTITLEMENT] ${postCheck.reason}`);
+    }
+
+    // Entitlement check: Can schedule post if scheduledAt provided?
+    if (args.scheduledAt) {
+      const scheduleCheck = await ctx.runMutation("entitlements:canSchedulePost" as any, {
+        businessId: args.businessId,
+      });
+      if (!scheduleCheck.allowed) {
+        throw new Error(`[ERR_ENTITLEMENT] ${scheduleCheck.reason}`);
+      }
+    }
+
     // Check rate limits
     const tier = business.settings?.plan || "solopreneur";
     const rateCheck = await checkRateLimits(ctx, args.businessId, tier);

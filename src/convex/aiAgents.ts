@@ -109,7 +109,11 @@ export const adminUpsertAgent = mutation({
     confidence_hint: v.number(),
     active: v.boolean(),
   },
-  handler: (ctx, args) => admin.adminUpsertAgent(ctx, args),
+  handler: async (ctx, args) => {
+    // Note: Agent creation entitlement is checked within admin.adminUpsertAgent
+    // using checkEntitlement with action "create_agent"
+    return await admin.adminUpsertAgent(ctx, args);
+  },
 });
 
 // Admin-gated: toggle agent active status
