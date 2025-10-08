@@ -69,6 +69,7 @@ export function PostComposer({
   const createPost = useMutation(api.socialPosts.createSocialPost);
   const updatePost = useMutation(api.socialPosts.updateSocialPost);
   const generateUploadUrl = useAction(api.files.generateUploadUrl);
+  const generateSocialContent = useAction(api.socialContentAgent.generateSocialContent);
 
   // Calculate character count for each platform
   const getCharacterCount = (platform: PlatformId) => {
