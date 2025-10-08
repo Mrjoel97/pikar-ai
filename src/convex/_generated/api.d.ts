@@ -118,6 +118,7 @@ import type * as webhooksActions from "../webhooksActions.js";
 import type * as workflowAssignments from "../workflowAssignments.js";
 import type * as workflowHandoffs from "../workflowHandoffs.js";
 import type * as workflowTemplates from "../workflowTemplates.js";
+import type * as workflows from "../workflows.js";
 
 /**
  * A utility for referencing Convex functions in your app's API.
@@ -233,6 +234,7 @@ declare const fullApi: ApiFromModules<{
   workflowAssignments: typeof workflowAssignments;
   workflowHandoffs: typeof workflowHandoffs;
   workflowTemplates: typeof workflowTemplates;
+  workflows: typeof workflows;
 }>;
 export declare const api: FilterApi<
   typeof fullApi,
