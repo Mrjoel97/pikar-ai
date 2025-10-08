@@ -9,6 +9,7 @@ import {
   createValidationError,
   createPermissionError,
   createNotFoundError,
+  createEntitlementError,
   withErrorHandling,
 } from "./lib/errors";
 
@@ -122,6 +123,18 @@ export const createList = mutation({
     
     // Type narrowing: business is now guaranteed to be a businesses document
 
+    // Entitlement check: Can create contact list?
+    const entitlementCheck = await ctx.runQuery("entitlements:checkEntitlement" as any, {
+      businessId: args.businessId,
+      action: "create_contact_list",
+    });
+    if (!entitlementCheck.allowed) {
+      throw createEntitlementError(entitlementCheck.reason || "Cannot create contact list", {
+        tier: entitlementCheck.tier,
+        limit: entitlementCheck.limit,
+      });
+    }
+
     // Prevent duplicate name within a business
     const dup = await ctx.db
       .query("contactLists")
@@ -160,6 +173,16 @@ export const addContactsToList = internalMutation({
     source: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    // Entitlement check: Verify contacts per list limit
+    const entitlementCheck = await (ctx as any).runQuery("entitlements:checkEntitlement" as any, {
+      businessId: args.businessId,
+      action: "contacts.addToList",
+      context: { contactsCount: args.emails.length },
+    });
+    if (!entitlementCheck.allowed) {
+      throw new Error(`[ERR_ENTITLEMENT] ${entitlementCheck.reason}`);
+    }
+
     const seen = new Set<string>();
     for (const raw of args.emails) {
       const email = normalizeEmail(raw);

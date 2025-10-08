@@ -76,6 +76,17 @@ export async function adminUpsertAgent(ctx: any, args: any) {
   const isAdmin = await (ctx as any).runQuery("admin:getIsAdmin" as any, {});
   if (!isAdmin) throw new Error("Admin access required");
 
+  // Entitlement check: Can create agent?
+  if (args.businessId) {
+    const entitlementCheck = await (ctx as any).runQuery("entitlements:checkEntitlement" as any, {
+      businessId: args.businessId,
+      action: "create_agent",
+    });
+    if (!entitlementCheck.allowed) {
+      throw new Error(`[ERR_ENTITLEMENT] ${entitlementCheck.reason}`);
+    }
+  }
+
   const existing = await ctx.db
     .query("agentCatalog")
     .withIndex("by_agent_key", (q: any) => q.eq("agent_key", args.agent_key))
