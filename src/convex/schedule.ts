@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { query, mutation } from "./_generated/server";
+import { query, mutation, action } from "./_generated/server";
 import { getAuthUserId } from "@convex-dev/auth/server";
 
 export const addSlot = mutation({
@@ -154,3 +154,206 @@ export const nextSlotByChannel = query({
     return filtered[0] ?? null;
   },
 });
+
+export const suggestOptimalSlots = action({
+  args: {
+    businessId: v.id("businesses"),
+    cadence: v.optional(v.union(v.literal("light"), v.literal("standard"), v.literal("aggressive"))),
+    timezone: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Not authenticated");
+
+    // Get agent profile for personalization
+    const profile = await ctx.runQuery("agentProfile:getMyAgentProfile" as any, {
+      businessId: args.businessId,
+    });
+
+    const cadence = args.cadence || profile?.cadence || "standard";
+    const timezone = args.timezone || "UTC";
+
+    // Build AI prompt for optimal scheduling
+    const prompt = `You are a scheduling optimization expert. Generate optimal posting times for a ${cadence} cadence content strategy.
+
+Cadence: ${cadence}
+- light: 2-3 posts per week, minimal email
+- standard: 3-4 posts per week, 1-2 emails
+- aggressive: 5-7 posts per week, 2-3 emails
+
+Timezone: ${timezone}
+
+For each suggested slot, provide:
+1. Day of week and time
+2. Channel (Post or Email)
+3. Label (descriptive name)
+4. Reasoning (why this time is optimal - engagement patterns, audience behavior, industry best practices)
+
+Return ONLY valid JSON array with this exact structure:
+[
+  {
+    "dayOfWeek": 2,
+    "hour": 10,
+    "minute": 0,
+    "channel": "Post",
+    "label": "Weekly Post",
+    "reasoning": "Tuesday mornings show 35% higher engagement for B2B audiences as professionals check social media after Monday catch-up"
+  }
+]
+
+Generate ${cadence === "light" ? "2-3" : cadence === "aggressive" ? "6-8" : "4-5"} optimal slots.`;
+
+    try {
+      // Call OpenAI for intelligent suggestions
+      const result = await ctx.runAction("openai:generate" as any, {
+        prompt,
+        model: "gpt-4o-mini",
+        temperature: 0.7,
+        maxTokens: 1000,
+      });
+
+      // Parse AI response
+      let suggestions: Array<{
+        dayOfWeek: number;
+        hour: number;
+        minute: number;
+        channel: "Post" | "Email";
+        label: string;
+        reasoning: string;
+      }> = [];
+
+      try {
+        // Extract JSON from response (handle markdown code blocks)
+        const text = result.text.trim();
+        const jsonMatch = text.match(/\[[\s\S]*\]/);
+        if (jsonMatch) {
+          suggestions = JSON.parse(jsonMatch[0]);
+        } else {
+          suggestions = JSON.parse(text);
+        }
+      } catch (parseError) {
+        console.error("Failed to parse AI suggestions:", parseError);
+        // Fallback to deterministic suggestions
+        suggestions = getFallbackSuggestions(cadence);
+      }
+
+      // Convert to absolute timestamps (next occurrence of each day/time)
+      const now = new Date();
+      const slots = suggestions.map((s) => {
+        const targetDate = new Date(now);
+        const daysUntil = (s.dayOfWeek + 7 - targetDate.getDay()) % 7 || 7;
+        targetDate.setDate(targetDate.getDate() + daysUntil);
+        targetDate.setHours(s.hour, s.minute, 0, 0);
+
+        return {
+          label: s.label,
+          channel: s.channel.toLowerCase() as "post" | "email",
+          scheduledAt: targetDate.getTime(),
+          reasoning: s.reasoning,
+          when: targetDate.toLocaleString(undefined, {
+            weekday: "short",
+            month: "short",
+            day: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
+        };
+      });
+
+      return { slots, aiGenerated: true };
+    } catch (error) {
+      console.error("AI suggestion error:", error);
+      // Fallback to deterministic suggestions
+      const fallback = getFallbackSuggestions(cadence);
+      const now = new Date();
+      const slots = fallback.map((s) => {
+        const targetDate = new Date(now);
+        const daysUntil = (s.dayOfWeek + 7 - targetDate.getDay()) % 7 || 7;
+        targetDate.setDate(targetDate.getDate() + daysUntil);
+        targetDate.setHours(s.hour, s.minute, 0, 0);
+
+        return {
+          label: s.label,
+          channel: s.channel.toLowerCase() as "post" | "email",
+          scheduledAt: targetDate.getTime(),
+          reasoning: s.reasoning,
+          when: targetDate.toLocaleString(undefined, {
+            weekday: "short",
+            month: "short",
+            day: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
+        };
+      });
+
+      return { slots, aiGenerated: false };
+    }
+  },
+});
+
+// Fallback suggestions when AI is unavailable
+function getFallbackSuggestions(cadence: "light" | "standard" | "aggressive") {
+  const base = [
+    {
+      dayOfWeek: 2,
+      hour: 10,
+      minute: 0,
+      channel: "Post" as const,
+      label: "Weekly Post",
+      reasoning: "Tuesday mornings are optimal for professional audiences checking social media after Monday",
+    },
+    {
+      dayOfWeek: 3,
+      hour: 14,
+      minute: 0,
+      channel: "Email" as const,
+      label: "Newsletter",
+      reasoning: "Wednesday afternoons have highest email open rates (18-22% average)",
+    },
+    {
+      dayOfWeek: 4,
+      hour: 10,
+      minute: 0,
+      channel: "Post" as const,
+      label: "Follow-up Post",
+      reasoning: "Thursday mornings maintain engagement momentum before weekend",
+    },
+  ];
+
+  if (cadence === "light") {
+    return base.slice(0, 2);
+  }
+
+  if (cadence === "aggressive") {
+    return [
+      ...base,
+      {
+        dayOfWeek: 1,
+        hour: 9,
+        minute: 0,
+        channel: "Post" as const,
+        label: "Momentum Post",
+        reasoning: "Monday mornings capture fresh week energy and planning mindset",
+      },
+      {
+        dayOfWeek: 5,
+        hour: 15,
+        minute: 0,
+        channel: "Email" as const,
+        label: "Promo Email",
+        reasoning: "Friday afternoons are ideal for promotional content as people plan weekend activities",
+      },
+      {
+        dayOfWeek: 6,
+        hour: 11,
+        minute: 0,
+        channel: "Post" as const,
+        label: "Weekend Teaser",
+        reasoning: "Saturday late mornings reach audiences during leisure browsing time",
+      },
+    ];
+  }
+
+  return base;
+}
