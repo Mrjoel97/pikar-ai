@@ -1,5 +1,16 @@
-   // TODO: Integrate with AI agent for content generation
-   // For now, simulate AI generation
-   await new Promise((resolve) => setTimeout(resolve, 1500));
-   const aiContent = `🚀 Exciting news! ...`; // Hardcoded content
-   
+// Line 122-136: Still has the mock implementation
+const handleAIGenerate = async () => {
+  setIsGenerating(true);
+  try {
+    // TODO: Integrate with AI agent for content generation
+    // For now, simulate AI generation
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    const aiContent = `🚀 Exciting news!...`; // Mock content
+    setContent(aiContent);
+    toast.success("AI content generated!");
+  } catch (error) {
+    toast.error("Failed to generate content");
+  } finally {
+    setIsGenerating(false);
+  }
+};
