@@ -12,7 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { useNavigate } from "react-router";
 import { Id } from "@/convex/_generated/dataModel";
-import { Shield, AlertTriangle, Globe, Zap, FileText, Palette } from "lucide-react";
+import { Shield, AlertTriangle, Globe, Zap, FileText, Palette, Lock } from "lucide-react";
 
 // Lazy-load heavy components to reduce initial bundle
 const RoiDashboard = lazy(() =>
@@ -99,6 +99,26 @@ export function EnterpriseDashboard({
     isGuest || !businessId ? undefined : { businessId }
   );
   const toggleFlag = useMutation(api.featureFlags.toggleFeatureFlag);
+
+  // Feature flag helpers
+  const isFeatureEnabled = (flagName: string): boolean => {
+    if (isGuest) return false;
+    if (!featureFlags || !Array.isArray(featureFlags)) return false;
+    const flag = featureFlags.find((f: any) => f.flagName === flagName);
+    return flag?.isEnabled ?? false;
+  };
+
+  const LockedRibbon = ({ label = "Feature requires upgrade" }: { label?: string }) => (
+    <div className="absolute inset-0 bg-black/5 backdrop-blur-[2px] rounded-lg flex items-center justify-center z-10">
+      <div className="flex items-center gap-2 bg-white/90 px-4 py-2 rounded-full shadow-lg border border-amber-300">
+        <Lock className="h-4 w-4 text-amber-600" />
+        <span className="text-sm font-medium text-amber-700">{label}</span>
+        <Button size="sm" variant="outline" onClick={onUpgrade} className="ml-2">
+          Upgrade
+        </Button>
+      </div>
+    </div>
+  );
 
   // sparkline helper now in GlobalOverview; we keep trend generator here
   const mkTrend = (base?: number): number[] => {
@@ -257,6 +277,15 @@ export function EnterpriseDashboard({
   const entAgents = useQuery(api.aiAgents.listRecommendedByTier, { tier: entTier, limit: 3 });
   const entAgentsEnabled = !!entFlags?.find((f: any) => f.flagName === "enterprise_governance")?.isEnabled;
 
+  // Feature flag checks for enterprise features
+  const brandingPortalEnabled = isFeatureEnabled("branding_portal");
+  const scimProvisioningEnabled = isFeatureEnabled("scim_provisioning");
+  const ssoConfigurationEnabled = isFeatureEnabled("sso_configuration");
+  const kmsEncryptionEnabled = isFeatureEnabled("kms_encryption");
+  const apiWebhooksEnabled = isFeatureEnabled("api_webhooks");
+  const whiteLabelEnabled = isFeatureEnabled("white_label");
+  const globalSocialCommandEnabled = isFeatureEnabled("global_social_command");
+
   return (
     <div className="space-y-6">
       {!isGuest && upgradeNudges && upgradeNudges.showBanner && (
@@ -297,185 +326,191 @@ export function EnterpriseDashboard({
         />
       </Suspense>
 
-      {/* NEW: Global Social Command Center */}
-      <section>
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <Globe className="h-5 w-5 text-emerald-600" />
-            <h2 className="text-xl font-semibold">Global Social Command Center</h2>
-          </div>
-          <Button size="sm" variant="outline" onClick={() => nav("/social")}>
-            Open Full Manager
-          </Button>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {/* Multi-Brand Management */}
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
-                <Palette className="h-4 w-4" />
-                Multi-Brand Management
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Active Brands</span>
-                  <span className="font-semibold">12</span>
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Connected Platforms</span>
-                  <span className="font-semibold">48</span>
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Scheduled Posts</span>
-                  <span className="font-semibold">2,341</span>
-                </div>
-              </div>
-              <Button size="sm" variant="outline" className="w-full" onClick={() => nav("/branding")}>
-                Manage Brands
-              </Button>
-            </CardContent>
-          </Card>
-
-          {/* Advanced AI Orchestration */}
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
-                <Zap className="h-4 w-4" />
-                AI Orchestration
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">AI-Generated Posts</span>
-                  <span className="font-semibold">1,847</span>
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Avg Engagement</span>
-                  <span className="font-semibold text-green-600">+34%</span>
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Auto-Optimized</span>
-                  <Badge variant="outline" className="border-emerald-300 text-emerald-700">Active</Badge>
-                </div>
-              </div>
-              <Button size="sm" variant="outline" className="w-full" onClick={() => nav("/agents")}>
-                Configure AI Agents
-              </Button>
-            </CardContent>
-          </Card>
-
-          {/* Crisis Management */}
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
-                <AlertTriangle className="h-4 w-4" />
-                Crisis Management
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Active Alerts</span>
-                  <Badge variant="outline" className="border-green-300 text-green-700">0</Badge>
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Sentiment Score</span>
-                  <span className="font-semibold text-green-600">94%</span>
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Response Time</span>
-                  <span className="font-semibold">2.3 min</span>
-                </div>
-              </div>
-              <Button size="sm" variant="outline" className="w-full" onClick={() => nav("/workflows")}>
-                Crisis Workflows
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* API Access & White-Label Reporting */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
-                <FileText className="h-4 w-4" />
-                API Access & Documentation
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <p className="text-sm text-muted-foreground">
-                Integrate social media management into your existing systems with our comprehensive API.
-              </p>
-              <div className="flex gap-2">
-                <Button size="sm" variant="outline" onClick={() => nav("/api-docs")}>
-                  View API Docs
-                </Button>
-                <Button size="sm" variant="outline" onClick={() => nav("/webhooks")}>
-                  Webhooks
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
-                <Palette className="h-4 w-4" />
-                White-Label Social Reporting
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <p className="text-sm text-muted-foreground">
-                Generate branded reports for clients with custom logos, colors, and domains.
-              </p>
-              <div className="flex gap-2">
-                <Button size="sm" variant="outline" onClick={() => nav("/branding")}>
-                  Customize Branding
-                </Button>
-                <Button size="sm" variant="outline" onClick={() => nav("/analytics")}>
-                  Export Reports
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Global Performance Overview */}
-        <Card className="mt-4">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">Global Performance Overview</CardTitle>
-            <CardDescription>Cross-brand social media metrics</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="p-3 border rounded-lg">
-                <div className="text-xs text-muted-foreground mb-1">Total Reach</div>
-                <div className="text-xl font-bold">12.4M</div>
-                <div className="text-xs text-green-600">+18% vs last month</div>
-              </div>
-              <div className="p-3 border rounded-lg">
-                <div className="text-xs text-muted-foreground mb-1">Engagement Rate</div>
-                <div className="text-xl font-bold">4.7%</div>
-                <div className="text-xs text-green-600">+0.8% vs last month</div>
-              </div>
-              <div className="p-3 border rounded-lg">
-                <div className="text-xs text-muted-foreground mb-1">Response Time</div>
-                <div className="text-xl font-bold">2.3 min</div>
-                <div className="text-xs text-green-600">-1.2 min vs last month</div>
-              </div>
-              <div className="p-3 border rounded-lg">
-                <div className="text-xs text-muted-foreground mb-1">ROI</div>
-                <div className="text-xl font-bold">3.8x</div>
-                <div className="text-xs text-green-600">+0.4x vs last month</div>
-              </div>
+      {/* Global Social Command Center - with feature flag */}
+      <section className="relative">
+        {!globalSocialCommandEnabled && <LockedRibbon label="Global Social Command requires Enterprise tier" />}
+        <div className={!globalSocialCommandEnabled ? "pointer-events-none opacity-50" : ""}>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <Globe className="h-5 w-5 text-emerald-600" />
+              <h2 className="text-xl font-semibold">Global Social Command Center</h2>
             </div>
-          </CardContent>
-        </Card>
+            <Button size="sm" variant="outline" onClick={() => nav("/social")} disabled={!globalSocialCommandEnabled}>
+              Open Full Manager
+            </Button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {/* Multi-Brand Management */}
+            <Card className="relative">
+              {!whiteLabelEnabled && <LockedRibbon label="White-label features require Enterprise tier" />}
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Palette className="h-4 w-4" />
+                  Multi-Brand Management
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Active Brands</span>
+                    <span className="font-semibold">12</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Connected Platforms</span>
+                    <span className="font-semibold">48</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Scheduled Posts</span>
+                    <span className="font-semibold">2,341</span>
+                  </div>
+                </div>
+                <Button size="sm" variant="outline" className="w-full" onClick={() => nav("/branding")} disabled={!brandingPortalEnabled}>
+                  Manage Brands
+                </Button>
+              </CardContent>
+            </Card>
+
+            {/* Advanced AI Orchestration */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Zap className="h-4 w-4" />
+                  AI Orchestration
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">AI-Generated Posts</span>
+                    <span className="font-semibold">1,847</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Avg Engagement</span>
+                    <span className="font-semibold text-green-600">+34%</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Auto-Optimized</span>
+                    <Badge variant="outline" className="border-emerald-300 text-emerald-700">Active</Badge>
+                  </div>
+                </div>
+                <Button size="sm" variant="outline" className="w-full" onClick={() => nav("/agents")}>
+                  Configure AI Agents
+                </Button>
+              </CardContent>
+            </Card>
+
+            {/* Crisis Management */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4" />
+                  Crisis Management
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Active Alerts</span>
+                    <Badge variant="outline" className="border-green-300 text-green-700">0</Badge>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Sentiment Score</span>
+                    <span className="font-semibold text-green-600">94%</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Response Time</span>
+                    <span className="font-semibold">2.3 min</span>
+                  </div>
+                </div>
+                <Button size="sm" variant="outline" className="w-full" onClick={() => nav("/workflows")}>
+                  Crisis Workflows
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* API Access & White-Label Reporting */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+            <Card className="relative">
+              {!apiWebhooksEnabled && <LockedRibbon label="API & Webhooks require Enterprise tier" />}
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <FileText className="h-4 w-4" />
+                  API Access & Documentation
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  Integrate social media management into your existing systems with our comprehensive API.
+                </p>
+                <div className="flex gap-2">
+                  <Button size="sm" variant="outline" onClick={() => nav("/api-docs")} disabled={!apiWebhooksEnabled}>
+                    View API Docs
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => nav("/webhooks")} disabled={!apiWebhooksEnabled}>
+                    Webhooks
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="relative">
+              {!whiteLabelEnabled && <LockedRibbon label="White-label reporting requires Enterprise tier" />}
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Palette className="h-4 w-4" />
+                  White-Label Social Reporting
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  Generate branded reports for clients with custom logos, colors, and domains.
+                </p>
+                <div className="flex gap-2">
+                  <Button size="sm" variant="outline" onClick={() => nav("/branding")} disabled={!brandingPortalEnabled}>
+                    Customize Branding
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => nav("/analytics")}>
+                    Export Reports
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Global Performance Overview */}
+          <Card className="mt-4">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">Global Performance Overview</CardTitle>
+              <CardDescription>Cross-brand social media metrics</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="p-3 border rounded-lg">
+                  <div className="text-xs text-muted-foreground mb-1">Total Reach</div>
+                  <div className="text-xl font-bold">12.4M</div>
+                  <div className="text-xs text-green-600">+18% vs last month</div>
+                </div>
+                <div className="p-3 border rounded-lg">
+                  <div className="text-xs text-muted-foreground mb-1">Engagement Rate</div>
+                  <div className="text-xl font-bold">4.7%</div>
+                  <div className="text-xs text-green-600">+0.8% vs last month</div>
+                </div>
+                <div className="p-3 border rounded-lg">
+                  <div className="text-xs text-muted-foreground mb-1">Response Time</div>
+                  <div className="text-xl font-bold">2.3 min</div>
+                  <div className="text-xs text-green-600">-1.2 min vs last month</div>
+                </div>
+                <div className="p-3 border rounded-lg">
+                  <div className="text-xs text-muted-foreground mb-1">ROI</div>
+                  <div className="text-xl font-bold">3.8x</div>
+                  <div className="text-xs text-green-600">+0.4x vs last month</div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </section>
 
       <section>
@@ -624,13 +659,14 @@ export function EnterpriseDashboard({
       <section>
         <h2 className="text-xl font-semibold mb-4">Enterprise Shortcuts</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <Card>
+          <Card className="relative">
+            {!brandingPortalEnabled && <LockedRibbon label="Branding Portal requires Enterprise tier" />}
             <CardContent className="p-4 flex items-center justify-between">
               <div>
                 <div className="text-sm font-medium">Branding</div>
                 <div className="text-xs text-muted-foreground">White-label customization</div>
               </div>
-              <Button size="sm" variant="outline" onClick={() => nav("/branding")}>
+              <Button size="sm" variant="outline" onClick={() => nav("/branding")} disabled={!brandingPortalEnabled}>
                 Customize
               </Button>
             </CardContent>
@@ -659,29 +695,32 @@ export function EnterpriseDashboard({
               )}
             </CardContent>
           </Card>
-          <Card className="neu-raised hover:neu-pressed transition-all cursor-pointer" onClick={() => nav("/scim-provisioning")}>
+          <Card className="relative">
+            {!scimProvisioningEnabled && <LockedRibbon label="SCIM Provisioning requires Enterprise tier" />}
             <CardContent className="p-6">
               <div className="text-sm font-medium">SCIM Provisioning</div>
               <div className="text-xs text-muted-foreground mt-1">User sync from IdP</div>
-              <Button size="sm" className="mt-4 w-full">
+              <Button size="sm" className="mt-4 w-full" onClick={() => nav("/scim-provisioning")} disabled={!scimProvisioningEnabled}>
                 Configure
               </Button>
             </CardContent>
           </Card>
-          <Card className="neu-raised hover:neu-pressed transition-all cursor-pointer" onClick={() => nav("/sso-configuration")}>
+          <Card className="relative">
+            {!ssoConfigurationEnabled && <LockedRibbon label="SSO Configuration requires Enterprise tier" />}
             <CardContent className="p-6">
               <div className="text-sm font-medium">SSO Configuration</div>
               <div className="text-xs text-muted-foreground mt-1">SAML & OIDC setup</div>
-              <Button size="sm" className="mt-4 w-full">
+              <Button size="sm" className="mt-4 w-full" onClick={() => nav("/sso-configuration")} disabled={!ssoConfigurationEnabled}>
                 Configure
               </Button>
             </CardContent>
           </Card>
-          <Card className="neu-raised hover:neu-pressed transition-all cursor-pointer" onClick={() => nav("/kms-configuration")}>
+          <Card className="relative">
+            {!kmsEncryptionEnabled && <LockedRibbon label="KMS Encryption requires Enterprise tier" />}
             <CardContent className="p-6">
               <div className="text-sm font-medium">Encryption (KMS)</div>
               <div className="text-xs text-muted-foreground mt-1">Secure key management</div>
-              <Button size="sm" className="mt-4 w-full">
+              <Button size="sm" className="mt-4 w-full" onClick={() => nav("/kms-configuration")} disabled={!kmsEncryptionEnabled}>
                 Configure
               </Button>
             </CardContent>
