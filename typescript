@@ -1,4 +1,481 @@
-import TrustedLogosMarquee from "@/components/landing/TrustedLogosMarquee";
-import FeaturesSection from "@/components/landing/FeaturesSection";
-import KpiTrendsCard from "@/components/landing/KpiTrendsCard";
-import ContextualTipsStrip from "@/components/landing/ContextualTipsStrip";
+// Create error handling standard
+// New file: src/convex/lib/errors.ts
+
+export class PikarError extends Error {
+  constructor(
+    public code: string,
+    public message: string,
+    public statusCode: number,
+    public details?: any
+  ) {
+    super(message);
+  }
+}
+
+export const ErrorCodes = {
+  UNAUTHORIZED: "UNAUTHORIZED",
+  FORBIDDEN: "FORBIDDEN",
+  NOT_FOUND: "NOT_FOUND",
+  VALIDATION_ERROR: "VALIDATION_ERROR",
+  RATE_LIMIT_EXCEEDED: "RATE_LIMIT_EXCEEDED",
+  ENTITLEMENT_EXCEEDED: "ENTITLEMENT_EXCEEDED",
+  // ... more codes
+};
+
+// Use in all mutations/actions
+
+// New file: src/convex/customApis.ts
+export const createCustomEndpoint = mutation({
+  args: {
+    businessId: v.id("businesses"),
+    path: v.string(),
+    method: v.string(),
+    handler: v.string(), // Code as string
+    rateLimit: v.number()
+  },
+  handler: async (ctx, args) => {
+    // Store custom endpoint definition
+    // Validate handler code
+    // Set up rate limiting
+  }
+});
+
+// Enhance src/convex/http.ts to route to custom endpoints
+
+// New file: src/convex/strategicInitiatives.ts
+export const createGlobalInitiative = mutation({
+  args: {
+    businessId: v.id("businesses"),
+    title: v.string(),
+    regions: v.array(v.string()),
+    budget: v.number(),
+    timeline: v.object({
+      start: v.number(),
+      end: v.number()
+    })
+  },
+  handler: async (ctx, args) => {
+    // Create cross-region initiative
+    // Allocate resources
+    // Set milestones
+  }
+});
+
+export const trackResourceAllocation = query({
+  args: { businessId: v.id("businesses") },
+  handler: async (ctx, args) => {
+    // Show resource allocation across initiatives
+    // Identify over/under-allocated areas
+  }
+});
+
+// New file: src/convex/enterpriseMetrics.ts
+export const getGlobalMetrics = query({
+  args: { businessId: v.id("businesses"), regions: v.array(v.string()) },
+  handler: async (ctx, args) => {
+    // Aggregate metrics across regions:
+    // - Total revenue by region
+    // - Active users by region
+    // - System health by region
+    // - Critical alerts
+    // Return global dashboard data
+  }
+});
+
+export const saveWidgetLayout = mutation({
+  args: {
+    userId: v.id("users"),
+    layout: v.array(v.object({
+      widgetId: v.string(),
+      position: v.object({ x: v.number(), y: v.number() }),
+      size: v.object({ w: v.number(), h: v.number() })
+    }))
+  },
+  handler: async (ctx, args) => {
+    // Save user's widget layout
+  }
+});
+
+// New file: src/convex/brands.ts
+export const createBrand = mutation({
+  args: {
+    businessId: v.id("businesses"),
+    name: v.string(),
+    guidelines: v.object({
+      colors: v.array(v.string()),
+      fonts: v.array(v.string()),
+      tone: v.string(),
+      logoUrl: v.string()
+    })
+  },
+  handler: async (ctx, args) => {
+    // Create brand profile
+  }
+});
+
+export const validateContentForBrand = action({
+  args: {
+    brandId: v.id("brands"),
+    content: v.string()
+  },
+  handler: async (ctx, args) => {
+    // Check content against brand guidelines
+    // Return compliance score and suggestions
+  }
+});
+
+// New file: src/convex/teamGoals.ts
+export const createGoal = mutation({
+  args: {
+    businessId: v.id("businesses"),
+    title: v.string(),
+    target: v.number(),
+    deadline: v.number(),
+    assignedTo: v.array(v.id("users"))
+  },
+  handler: async (ctx, args) => {
+    // Create goal
+    // Notify assigned team members
+  }
+});
+
+export const updateGoalProgress = mutation({
+  args: {
+    goalId: v.id("teamGoals"),
+    progress: v.number()
+  },
+  handler: async (ctx, args) => {
+    // Update progress
+    // Check if goal completed
+    // Notify team
+  }
+});
+
+// New file: src/convex/teamChat.ts
+export const sendMessage = mutation({
+  args: {
+    businessId: v.id("businesses"),
+    channelId: v.string(),
+    message: v.string()
+  },
+  handler: async (ctx, args) => {
+    // Store message
+    // Notify channel members
+  }
+});
+
+export const getChannelMessages = query({
+  args: { channelId: v.string(), limit: v.number() },
+  handler: async (ctx, args) => {
+    // Return recent messages
+  }
+});
+
+// Backend: src/convex/templatePins.ts (file exists but incomplete)
+export const trackTemplateUsage = mutation({
+  args: { 
+    businessId: v.id("businesses"), 
+    templateId: v.string() 
+  },
+  handler: async (ctx, args) => {
+    // Increment usage count
+    // Update last used timestamp
+  }
+});
+
+export const getTemplatesByUsage = query({
+  args: { businessId: v.id("businesses") },
+  handler: async (ctx, args) => {
+    // Return templates sorted by usage + pins
+  }
+});
+
+// Add to src/convex/agentProfile.ts:
+export const updateAgentPersona = mutation({
+  args: {
+    businessId: v.id("businesses"),
+    tone: v.string(),
+    persona: v.string(),
+    cadence: v.string()
+  },
+  handler: async (ctx, args) => {
+    // Update agent profile with persona settings
+    // Trigger re-training if needed
+  }
+});
+
+// Add to src/convex/telemetry.ts:
+export const getTeamPerformanceMetrics = query({
+  args: { businessId: v.id("businesses"), timeRange: v.number() },
+  handler: async (ctx, args) => {
+    // Calculate per-user metrics:
+    // - Tasks completed
+    // - Workflows executed
+    // - Approvals processed
+    // - Response time
+    // Return team leaderboard
+  }
+});
+
+// Add to src/convex/kpis.ts:
+export const getGrowthMetrics = query({
+  args: { businessId: v.id("businesses") },
+  handler: async (ctx, args) => {
+    // Calculate:
+    // - Lead funnel (stages: visitor → lead → qualified → customer)
+    // - Conversion rates per stage
+    // - CAC trend (cost / new customers)
+    // - LTV calculations
+    // Return growth dashboard data
+  }
+});
+
+// Enhance src/convex/socialPosts.ts:
+export const getMultiBrandMetrics = query({
+  args: { businessId: v.id("businesses") },
+  handler: async (ctx, args) => {
+    // Aggregate metrics across all brands
+    // Return brand comparison data
+  }
+});
+
+export const createSocialPost = mutation({
+  args: { /* ... */ },
+  handler: async (ctx, args) => {
+    // Check entitlement FIRST
+    const canPost = await ctx.runQuery(
+      "entitlements:canCreateSocialPost" as any,
+      { businessId: args.businessId }
+    );
+    
+    if (!canPost) {
+      throw new Error("Monthly social post limit reached");
+    }
+    
+    // Proceed
+  }
+});
+
+// Complete src/convex/solopreneur.ts:
+export const supportTriageSuggest = action({
+  args: { emailContent: v.string() },
+  handler: async (ctx, args) => {
+    // Parse email content
+    // Classify urgency and category
+    // Generate AI reply suggestions (3 options)
+    // Return structured suggestions
+  }
+});
+
+export const runQuickAnalytics = action({
+  args: { businessId: v.id("businesses") },
+  handler: async (ctx, args) => {
+    // Fetch current week metrics
+    // Fetch previous week metrics
+    // Calculate deltas (percentage change)
+    // Generate AI-powered nudges based on trends
+    // Return analytics with actionable insights
+  }
+});
+
+export const generateContentCapsule = action({
+  args: {
+    businessId: v.id("businesses"),
+    topic: v.string(),
+    tone: v.string()
+  },
+  handler: async (ctx, args) => {
+    // Generate social post
+    // Generate email content
+    // Generate tweet thread
+    // Return complete content package
+  }
+});
+
+// Enhance src/convex/complianceReports.ts:
+export const distributeReport = action({
+  args: { reportId: v.id("complianceReports") },
+  handler: async (ctx, args) => {
+    // Send report to stakeholders via email
+    // Store distribution log
+    // Track acknowledgments
+  }
+});
+
+export const createReportVersion = mutation({
+  args: { reportId: v.id("complianceReports") },
+  handler: async (ctx, args) => {
+    // Create versioned copy
+    // Link to original
+    // Track changes
+  }
+});
+
+// Enhance src/convex/departmentKpis.ts:
+export const collectMarketingKpis = internalMutation({
+  args: { businessId: v.id("businesses") },
+  handler: async (ctx, args) => {
+    // Aggregate from:
+    // - Email campaigns (CTR, opens, conversions)
+    // - Social posts (engagement, reach)
+    // - Website analytics (if integrated)
+    // Store in kpiSnapshots table
+  }
+});
+
+// Add cron job to run daily
+
+// Enhance src/convex/governanceAutomation.ts:
+export const executeAutoRemediation = internalMutation({
+  args: { violationId: v.id("governanceViolations") },
+  handler: async (ctx, args) => {
+    // Implement more remediation actions:
+    // - Add missing approval steps
+    // - Extend SLA deadlines
+    // - Assign backup approvers
+    // - Create audit log entry
+    // - Support rollback
+  }
+});
+
+// New file: src/convex/capa.ts
+export const createCapaRecord = mutation({
+  args: {
+    businessId: v.id("businesses"),
+    issueDescription: v.string(),
+    severity: v.string(),
+    affectedArea: v.string()
+  },
+  handler: async (ctx, args) => {
+    // Create CAPA record
+    // Assign investigation team
+    // Set deadlines
+  }
+});
+
+export const updateRootCauseAnalysis = mutation({
+  args: {
+    capaId: v.id("capaRecords"),
+    rootCause: v.string(),
+    correctiveActions: v.array(v.string()),
+    preventiveActions: v.array(v.string())
+  },
+  handler: async (ctx, args) => {
+    // Update CAPA with analysis
+    // Create action items
+  }
+});
+
+// New file: src/convex/crisisManagement.ts
+export const detectCrisis = action({
+  args: { businessId: v.id("businesses") },
+  handler: async (ctx, args) => {
+    // Monitor social sentiment
+    // Detect negative trends
+    // Alert stakeholders
+    // Suggest response actions
+  }
+});
+
+// New file: src/convex/enterpriseSupport.ts
+export const createSupportTicket = mutation({
+  args: {
+    businessId: v.id("businesses"),
+    priority: v.string(),
+    subject: v.string(),
+    description: v.string()
+  },
+  handler: async (ctx, args) => {
+    // Create ticket
+    // Assign to account manager
+    // Set SLA based on priority
+  }
+});
+
+export const scheduleTraining = mutation({
+  args: {
+    businessId: v.id("businesses"),
+    topic: v.string(),
+    attendees: v.array(v.id("users")),
+    scheduledAt: v.number()
+  },
+  handler: async (ctx, args) => {
+    // Schedule training session
+    // Send calendar invites
+  }
+});
+
+// Enhance src/convex/billing.ts:
+
+export const handleStripeWebhook = action({
+  args: { event: v.any() },
+  handler: async (ctx, args) => {
+    // Handle all Stripe events:
+    // - customer.subscription.updated
+    // - customer.subscription.deleted
+    // - invoice.payment_failed (dunning)
+    // - invoice.payment_succeeded
+    // - customer.subscription.trial_will_end
+    
+    // Implement dunning logic
+    // Send payment failure notifications
+    // Downgrade on cancellation
+  }
+});
+
+export const calculateProratedUpgrade = action({
+  args: {
+    businessId: v.id("businesses"),
+    newTier: v.string()
+  },
+  handler: async (ctx, args) => {
+    // Calculate prorated amount
+    // Create Stripe invoice
+    // Update subscription
+  }
+});
+
+export const deleteWorkflow = mutation({
+  args: { workflowId: v.id("workflows") },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+    
+    const user = await ctx.db
+      .query("users")
+      .withIndex("email", (q) => q.eq("email", identity.email!))
+      .first();
+    
+    const workflow = await ctx.db.get(args.workflowId);
+    
+    // Check permission
+    if (user?.role !== "admin" && workflow?.createdBy !== user?._id) {
+      throw new Error("Not authorized");
+    }
+    
+    // Proceed with deletion
+  }
+});
+
+// Add to src/convex/workflows.ts:
+export const createWorkflow = mutation({
+  args: { /* ... */ },
+  handler: async (ctx, args) => {
+    // Validate SLA requirements
+    const business = await ctx.db.get(args.businessId);
+    const tier = business?.tier || "solopreneur";
+    
+    if (tier === "sme" || tier === "enterprise") {
+      const minSla = tier === "sme" ? 24 : 48;
+      const approvalSteps = args.pipeline.filter(s => s.type === "approval");
+      
+      for (const step of approvalSteps) {
+        if (step.slaHours < minSla) {
+          throw new Error(`${tier} tier requires minimum ${minSla}h SLA`);
+        }
+      }
+    }
+    
+    // Proceed
+  }
+});
