@@ -1881,6 +1881,27 @@ const schema = defineSchema({
     .index("by_status", ["status"])
     .index("by_severity", ["severity"])
     .index("by_business_and_status", ["businessId", "status"]),
+
+  customApis: defineTable({
+    businessId: v.id("businesses"),
+    name: v.string(),
+    description: v.optional(v.string()),
+    method: v.union(v.literal("GET"), v.literal("POST"), v.literal("PUT"), v.literal("DELETE")),
+    path: v.string(),
+    convexFunction: v.string(),
+    requiresAuth: v.boolean(),
+    rateLimit: v.optional(v.object({
+      requestsPerMinute: v.number(),
+      requestsPerHour: v.number(),
+    })),
+    isActive: v.boolean(),
+    totalCalls: v.number(),
+    createdBy: v.string(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_path", ["path"]),
 });
 
 export default schema;

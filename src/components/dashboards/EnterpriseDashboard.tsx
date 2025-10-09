@@ -731,6 +731,17 @@ export function EnterpriseDashboard({
               </Button>
             </CardContent>
           </Card>
+          <Card>
+            <CardContent className="p-4 flex items-center justify-between">
+              <div>
+                <div className="text-sm font-medium">Custom APIs</div>
+                <div className="text-xs text-muted-foreground">Build custom endpoints</div>
+              </div>
+              <Button size="sm" variant="outline" onClick={() => nav("/api/builder")}>
+                Open Builder
+              </Button>
+            </CardContent>
+          </Card>
         </div>
       </section>
 
