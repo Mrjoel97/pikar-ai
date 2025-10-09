@@ -1624,7 +1624,7 @@ const schema = defineSchema({
   workflowHandoffs: defineTable({
     businessId: v.id("businesses"),
     workflowId: v.id("workflows"),
-    stepId: v.id("workflowRunSteps"),
+    stepId: v.id("workflowSteps"),
     fromDepartment: v.string(),
     toDepartment: v.string(),
     status: v.union(

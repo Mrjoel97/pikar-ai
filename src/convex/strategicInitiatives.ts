@@ -229,7 +229,7 @@ export const getInitiativeProgress = query({
 });
 
 // Allocate resources to an initiative
-export const allocateResources = mutation({
+export const allocateResources = internalMutation({
   args: {
     initiativeId: v.id("initiatives"),
     workflowIds: v.optional(v.array(v.id("workflows"))),
