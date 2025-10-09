@@ -1836,11 +1836,9 @@ Renamed to avoid duplicate identifier collisions elsewhere in the file */
         : agentProfile?.cadence === "aggressive"
           ? "high‑tempo"
           : "steady weekly";
-
     const weeklyPost = adaptCopy(
       `Weekly update: momentum check, ${cadenceCopy} plan, and a quick spotlight on ${top}. ${churn}`,
     );
-
     const emailSubject = adaptCopy(`This week's quick win: ${top}`);
     const emailBody = adaptCopy(
       `Here's your ${cadenceCopy} nudge. Highlight: ${top}. Rolling 90‑day revenue at $${rev}. ` +
@@ -1848,7 +1846,6 @@ Renamed to avoid duplicate identifier collisions elsewhere in the file */
           ? "Let's re‑activate quiet subscribers with a friendly value note."
           : "Stay consistent and keep delivering value."),
     );
-
     const tweets: string[] = [
       adaptCopy(
         `Ship > perfect. This week: feature ${top} and keep your streak alive.`,
@@ -1858,9 +1855,12 @@ Renamed to avoid duplicate identifier collisions elsewhere in the file */
       ),
       adaptCopy(`Tiny wins add up. Spotlight ${top} in under 90 words.`),
     ];
-
     return { weeklyPost, emailSubject, emailBody, tweets };
   };
+
+  // Backend AI-powered capsule generation
+  const generateCapsuleAI = useAction(api.solopreneur.generateContentCapsule);
+  const [generatingCapsule, setGeneratingCapsule] = React.useState(false);
 
   // UI state: Content Capsule
   const [capsuleOpen, setCapsuleOpen] = React.useState(false);
@@ -1870,17 +1870,64 @@ Renamed to avoid duplicate identifier collisions elsewhere in the file */
     emailBody: string;
     tweets: string[];
   } | null>(null);
-  const handleOpenCapsule = () => {
-    const c = genContentCapsule();
-    setCapsule(c);
+  const [editMode, setEditMode] = React.useState(false);
+
+  const handleOpenCapsule = async () => {
+    if (!business?._id) {
+      toast.error("Please sign in to generate content");
+      return;
+    }
+
+    setGeneratingCapsule(true);
     setCapsuleOpen(true);
+
+    try {
+      const result = await generateCapsuleAI({
+        businessId: business._id,
+        agentProfile: agentProfile
+          ? {
+              tone: agentProfile.tone,
+              persona: agentProfile.persona,
+              cadence: agentProfile.cadence,
+            }
+          : undefined,
+        analyticsContext: quickAnalytics
+          ? {
+              revenue90d: quickAnalytics.revenue90d,
+              churnAlert: quickAnalytics.churnAlert,
+              topProducts: quickAnalytics.topProducts,
+            }
+          : undefined,
+      });
+
+      if (result.success) {
+        setCapsule(result.capsule);
+        if (result.fallback) {
+          toast.info("Using template-based generation (AI unavailable)");
+        } else {
+          toast.success("AI-powered content generated!");
+        }
+      } else {
+        throw new Error("Generation failed");
+      }
+    } catch (error) {
+      console.error("Capsule generation error:", error);
+      toast.error("Failed to generate content. Using fallback.");
+      // Fallback to client-side generation
+      const c = genContentCapsule();
+      setCapsule(c);
+    } finally {
+      setGeneratingCapsule(false);
+    }
   };
+
   const handleCopy = (txt: string, toastMsg = "Copied") => {
     navigator.clipboard.writeText(txt).then(
       () => toast.success(toastMsg),
       () => toast.error("Copy failed"),
     );
   };
+
   const handleSaveCapsuleWins = async () => {
     utils.recordLocalWin(12, "content_capsule_generated", {
       cadence: agentProfile?.cadence,
@@ -2562,25 +2609,51 @@ Renamed to avoid duplicate identifier collisions elsewhere in the file */
 
       {/* Content Capsule Dialog */}
       <Dialog open={capsuleOpen} onOpenChange={setCapsuleOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Content Capsule</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground">
-              One weekly post, one email, and 3 tweet variants adapted to your
-              tone/persona.
+              {generatingCapsule
+                ? "Generating AI-powered content..."
+                : "One weekly post, one email, and 3 tweet variants adapted to your tone/persona."}
             </p>
-            {capsule && (
+            {generatingCapsule && (
+              <div className="flex items-center justify-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600"></div>
+              </div>
+            )}
+            {capsule && !generatingCapsule && (
               <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setEditMode(!editMode)}
+                  >
+                    {editMode ? "View Mode" : "Edit Mode"}
+                  </Button>
+                </div>
+
                 <Card>
                   <CardContent className="p-3 space-y-2">
                     <div className="text-xs text-muted-foreground">
                       Weekly Post
                     </div>
-                    <div className="text-sm whitespace-pre-wrap">
-                      {capsule.weeklyPost}
-                    </div>
+                    {editMode ? (
+                      <textarea
+                        className="w-full min-h-[100px] p-2 text-sm border rounded"
+                        value={capsule.weeklyPost}
+                        onChange={(e) =>
+                          setCapsule({ ...capsule, weeklyPost: e.target.value })
+                        }
+                      />
+                    ) : (
+                      <div className="text-sm whitespace-pre-wrap">
+                        {capsule.weeklyPost}
+                      </div>
+                    )}
                     <Button
                       size="sm"
                       variant="outline"
@@ -2592,15 +2665,41 @@ Renamed to avoid duplicate identifier collisions elsewhere in the file */
                     </Button>
                   </CardContent>
                 </Card>
+
                 <Card>
                   <CardContent className="p-3 space-y-2">
                     <div className="text-xs text-muted-foreground">Email</div>
-                    <div className="text-sm font-medium">
-                      Subject: {capsule.emailSubject}
-                    </div>
-                    <div className="text-sm whitespace-pre-wrap">
-                      {capsule.emailBody}
-                    </div>
+                    {editMode ? (
+                      <>
+                        <input
+                          className="w-full p-2 text-sm border rounded font-medium"
+                          placeholder="Subject"
+                          value={capsule.emailSubject}
+                          onChange={(e) =>
+                            setCapsule({
+                              ...capsule,
+                              emailSubject: e.target.value,
+                            })
+                          }
+                        />
+                        <textarea
+                          className="w-full min-h-[120px] p-2 text-sm border rounded"
+                          value={capsule.emailBody}
+                          onChange={(e) =>
+                            setCapsule({ ...capsule, emailBody: e.target.value })
+                          }
+                        />
+                      </>
+                    ) : (
+                      <>
+                        <div className="text-sm font-medium">
+                          Subject: {capsule.emailSubject}
+                        </div>
+                        <div className="text-sm whitespace-pre-wrap">
+                          {capsule.emailBody}
+                        </div>
+                      </>
+                    )}
                     <div className="flex gap-2">
                       <Button
                         size="sm"
@@ -2623,6 +2722,7 @@ Renamed to avoid duplicate identifier collisions elsewhere in the file */
                     </div>
                   </CardContent>
                 </Card>
+
                 <Card>
                   <CardContent className="p-3 space-y-2">
                     <div className="text-xs text-muted-foreground">
@@ -2634,7 +2734,21 @@ Renamed to avoid duplicate identifier collisions elsewhere in the file */
                           key={i}
                           className="flex items-start justify-between gap-2 border rounded p-2"
                         >
-                          <div className="text-sm whitespace-pre-wrap">{t}</div>
+                          {editMode ? (
+                            <textarea
+                              className="flex-1 min-h-[60px] p-1 text-sm border rounded"
+                              value={t}
+                              onChange={(e) => {
+                                const newTweets = [...capsule.tweets];
+                                newTweets[i] = e.target.value;
+                                setCapsule({ ...capsule, tweets: newTweets });
+                              }}
+                            />
+                          ) : (
+                            <div className="text-sm whitespace-pre-wrap flex-1">
+                              {t}
+                            </div>
+                          )}
                           <Button
                             size="sm"
                             variant="outline"

@@ -410,6 +410,113 @@ export const supportTriageSuggest = action({
   },
 });
 
+// Generate AI-powered Content Capsule with multi-format output
+export const generateContentCapsule = action({
+  args: {
+    businessId: v.id("businesses"),
+    agentProfile: v.optional(
+      v.object({
+        tone: v.optional(v.union(v.literal("concise"), v.literal("friendly"), v.literal("premium"))),
+        persona: v.optional(v.union(v.literal("maker"), v.literal("coach"), v.literal("executive"))),
+        cadence: v.optional(v.union(v.literal("light"), v.literal("standard"), v.literal("aggressive"))),
+      })
+    ),
+    analyticsContext: v.optional(
+      v.object({
+        revenue90d: v.optional(v.number()),
+        churnAlert: v.optional(v.boolean()),
+        topProducts: v.optional(v.array(v.object({ name: v.string() }))),
+      })
+    ),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Not authenticated");
+
+    // Fetch business context
+    const business = await ctx.runQuery("businesses:get" as any, {
+      businessId: args.businessId,
+    });
+    if (!business) throw new Error("Business not found");
+
+    // Build context for AI
+    const tone = args.agentProfile?.tone || "friendly";
+    const persona = args.agentProfile?.persona || "maker";
+    const cadence = args.agentProfile?.cadence || "standard";
+    const revenue = args.analyticsContext?.revenue90d || 0;
+    const churnAlert = args.analyticsContext?.churnAlert || false;
+    const topProduct = args.analyticsContext?.topProducts?.[0]?.name || "your top offer";
+
+    const toneInstructions = {
+      concise: "Be brief and to the point. No fluff.",
+      friendly: "Be warm, conversational, and approachable.",
+      premium: "Be polished, professional, and sophisticated.",
+    };
+
+    const personaInstructions = {
+      maker: "Focus on building, shipping, and momentum. Action-oriented.",
+      coach: "Be supportive, encouraging, and provide actionable guidance.",
+      executive: "Emphasize ROI, clear next steps, and strategic value.",
+    };
+
+    const cadenceInstructions = {
+      light: "Suggest a relaxed, weekly check-in approach.",
+      standard: "Maintain steady, consistent communication.",
+      aggressive: "Push for high-tempo, frequent engagement.",
+    };
+
+    const systemPrompt = `You are a content generation assistant for a solopreneur business.
+
+Tone: ${toneInstructions[tone]}
+Persona: ${personaInstructions[persona]}
+Cadence: ${cadenceInstructions[cadence]}
+
+Generate a content package with:
+1. Weekly Post (150-200 words): A momentum check-in highlighting the top product/offer
+2. Email Subject (8-12 words): Compelling subject line
+3. Email Body (200-250 words): Value-driven email with a clear CTA
+4. Three Tweet Variants (each 200-280 characters): Short, punchy, shareable
+
+Business Context:
+- Top Product/Offer: ${topProduct}
+- 90-day Revenue: $${revenue.toFixed(2)}
+- Churn Alert: ${churnAlert ? "Yes - re-engagement needed" : "No - healthy retention"}
+
+Return ONLY valid JSON in this exact format:
+{
+  "weeklyPost": "...",
+  "emailSubject": "...",
+  "emailBody": "...",
+  "tweets": ["...", "...", "..."]
+}`;
+
+    try {
+      const { generate } = await import("./openai");
+      const result = await generate(ctx, {
+        prompt: systemPrompt,
+        model: "gpt-4o-mini",
+      });
+
+      // Parse JSON response
+      let capsule;
+      try {
+        capsule = JSON.parse(result);
+      } catch (parseError) {
+        // Fallback: extract JSON from markdown code blocks if present
+        const jsonMatch = result.match(/```json\s*([\s\S]*?)\s*```/);
+        if (jsonMatch) {
+          capsule = JSON.parse(jsonMatch[1]);
+        }
+      }
+
+      return capsule;
+    } catch (error) {
+      console.error("Error generating content capsule:", error);
+      throw new Error("Failed to generate content capsule");
+    }
+  },
+});
+
 // Seed a few simple one-click templates for Solopreneurs
 export const seedOneClickTemplates = mutation({
   args: {

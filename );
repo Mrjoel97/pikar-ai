@@ -1,0 +1,81 @@
+        if (jsonMatch) {
+          capsule = JSON.parse(jsonMatch[1]);
+        } else {
+          throw new Error("Failed to parse AI response as JSON");
+        }
+      }
+
+      // Validate structure
+      if (
+        !capsule.weeklyPost ||
+        !capsule.emailSubject ||
+        !capsule.emailBody ||
+        !Array.isArray(capsule.tweets) ||
+        capsule.tweets.length !== 3
+      ) {
+        throw new Error("Invalid capsule structure from AI");
+      }
+
+      // Log audit event
+      await ctx.runMutation("audit:log" as any, {
+        businessId: args.businessId,
+        userId,
+        action: "content_capsule_generated",
+        details: {
+          tone,
+          persona,
+          cadence,
+          topProduct,
+          aiGenerated: true,
+        },
+      });
+
+      return {
+        success: true,
+        capsule: {
+          weeklyPost: capsule.weeklyPost,
+          emailSubject: capsule.emailSubject,
+          emailBody: capsule.emailBody,
+          tweets: capsule.tweets,
+        },
+      };
+    } catch (error: any) {
+      console.error("Content capsule generation error:", error);
+      
+      // Fallback to template-based generation
+      const cadenceCopy =
+        cadence === "light"
+          ? "light weekly"
+          : cadence === "aggressive"
+            ? "high-tempo"
+            : "steady weekly";
+
+      const churnCopy = churnAlert
+        ? "Churn risk spotted — re-engage now."
+        : "Healthy retention — keep cadence.";
+
+      return {
+        success: true,
+        capsule: {
+          weeklyPost: `Weekly update: momentum check, ${cadenceCopy} plan, and a quick spotlight on ${topProduct}. ${churnCopy}`,
+          emailSubject: `This week's quick win: ${topProduct}`,
+          emailBody: `Here's your ${cadenceCopy} nudge. Highlight: ${topProduct}. Rolling 90-day revenue at $${revenue.toFixed(2)}. ${churnAlert ? "Let's re-activate quiet subscribers with a friendly value note." : "Stay consistent and keep delivering value."}`,
+          tweets: [
+            `Ship > perfect. This week: feature ${topProduct} and keep your streak alive.`,
+            `Consistency compounds. One quick post today = momentum for the week.`,
+            `Tiny wins add up. Spotlight ${topProduct} in under 90 words.`,
+          ],
+        },
+        fallback: true,
+      };
+    }
+  },
+});
+
+export const seedOneClickTemplates = mutation({
+  // ... keep existing code
+});
+
+export const forgetUploads = mutation({
+  // ... keep existing code
+});
