@@ -27,6 +27,7 @@ export function ComplianceReportGenerator({ businessId }: ComplianceReportGenera
     end: undefined,
   });
   const [departments, setDepartments] = useState<string[]>([]);
+  const [changeNotes, setChangeNotes] = useState<string>("");
   const [isGenerating, setIsGenerating] = useState(false);
 
   const departmentOptions = ["Marketing", "Sales", "Operations", "Finance", "IT", "HR"];
@@ -49,6 +50,7 @@ export function ComplianceReportGenerator({ businessId }: ComplianceReportGenera
         departments: departments.length > 0 ? departments : undefined,
       });
       toast.success("Compliance report generated successfully");
+      setChangeNotes("");
     } catch (error) {
       toast.error("Failed to generate report");
       console.error(error);
@@ -151,6 +153,17 @@ export function ComplianceReportGenerator({ businessId }: ComplianceReportGenera
               </div>
             ))}
           </div>
+        </div>
+
+        {/* Version Notes */}
+        <div className="space-y-2">
+          <Label>Version Notes (Optional)</Label>
+          <textarea
+            className="w-full min-h-[80px] px-3 py-2 text-sm border rounded-md"
+            placeholder="Describe what's new or changed in this report version..."
+            value={changeNotes}
+            onChange={(e) => setChangeNotes(e.target.value)}
+          />
         </div>
 
         {/* Actions */}

@@ -1731,10 +1731,16 @@ const schema = defineSchema({
     }),
     generatedAt: v.number(),
     downloadUrl: v.optional(v.string()),
+    version: v.optional(v.number()),
+    changeNotes: v.optional(v.string()),
+    previousVersionId: v.optional(v.id("generatedReports")),
+    emailedTo: v.optional(v.array(v.string())),
+    emailedAt: v.optional(v.number()),
   })
     .index("by_business", ["businessId"])
     .index("by_framework", ["framework"])
-    .index("by_generated_at", ["generatedAt"]),
+    .index("by_generated_at", ["generatedAt"])
+    .index("by_template_and_framework", ["templateId", "framework"]),
 
   // SSO Configuration tables
   samlConfigs: defineTable({

@@ -221,7 +221,7 @@ export function TeamChat({ businessId }: TeamChatProps) {
           <TabsContent value="direct" className="mt-0">
             <ScrollArea className="h-[500px] p-2">
               <div className="space-y-1">
-                {teamMembers?.map((member: any) => (
+                {teamMembers?.map((member) => (
                   <Button
                     key={member._id}
                     variant={selectedUserId === member._id ? "secondary" : "ghost"}
@@ -264,7 +264,7 @@ export function TeamChat({ businessId }: TeamChatProps) {
               <>
                 <User className="h-5 w-5" />
                 <span className="font-semibold">
-                  {teamMembers?.find((m: any) => m._id === selectedUserId)?.name}
+                  {teamMembers?.find((m) => m._id === selectedUserId)?.name}
                 </span>
               </>
             )}
@@ -353,7 +353,7 @@ export function TeamChat({ businessId }: TeamChatProps) {
               placeholder={
                 activeTab === "channels"
                   ? `Message #${channels?.find((c) => c._id === selectedChannelId)?.name || "channel"}`
-                  : `Message ${teamMembers?.find((m: any) => m._id === selectedUserId)?.name || "user"}`
+                  : `Message ${teamMembers?.find((m) => m._id === selectedUserId)?.name || "user"}`
               }
               className="flex-1"
             />
