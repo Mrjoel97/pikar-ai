@@ -503,3 +503,30 @@ export const resolveAlert = mutation({
     return true;
   },
 });
+
+// Add public query for admin session validation (client-callable)
+export const validateAdminSession = query({
+  args: { token: v.optional(v.string()) },
+  handler: async (ctx, args) => {
+    if (!args.token) {
+      return { valid: false };
+    }
+    const session = await ctx.db
+      .query("adminSessions")
+      .withIndex("by_token", (q: any) => q.eq("token", args.token))
+      .unique();
+    if (!session || session.expiresAt < Date.now()) {
+      return { valid: false };
+    }
+    const admin = await ctx.db
+      .query("admins")
+      .withIndex("by_email", (q: any) => q.eq("email", session.email))
+      .unique();
+    const role = admin?.role || "admin";
+    return {
+      valid: true,
+      email: session.email,
+      role,
+    };
+  },
+});

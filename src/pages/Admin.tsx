@@ -37,7 +37,7 @@ export default function AdminPage() {
 
   // Validate admin session
   const adminSession = useQuery(
-    api.adminAuthData.validateSession as any,
+    api.admin.validateAdminSession as any,
     adminToken ? { token: adminToken } : undefined
   );
 
