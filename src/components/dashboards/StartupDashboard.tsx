@@ -430,7 +430,7 @@ const pendingApprovals = useQuery(
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {teamPerformance.teamMembers.slice(0, 5).map((member, idx) => (
+                {teamPerformance.teamMembers.slice(0, 5).map((member: { userId: string; name: string; contributions: number; approvals: number; tasks: number }, idx: number) => (
                   <div key={member.userId} className="flex items-center gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors">
                     <div className={`flex items-center justify-center w-8 h-8 rounded-full font-bold ${
                       idx === 0 ? 'bg-yellow-100 text-yellow-700' :

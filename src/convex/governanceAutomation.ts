@@ -213,12 +213,12 @@ export const getRemediationHistory = query({
     if (args.businessId) {
       remediations = await ctx.db
         .query("governanceRemediations")
-        .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+        .withIndex("by_business", (q) => q.eq("businessId", args.businessId!))
         .collect();
     } else if (args.workflowId) {
       remediations = await ctx.db
         .query("governanceRemediations")
-        .withIndex("by_workflow", (q) => q.eq("workflowId", args.workflowId))
+        .withIndex("by_workflow", (q) => q.eq("workflowId", args.workflowId!))
         .collect();
     } else {
       remediations = await ctx.db.query("governanceRemediations").collect();

@@ -73,7 +73,7 @@ export const getGrowthMetrics = query({
     // Calculate funnel stages
     const visitors = auditLogs.filter(log => log.action === "page_view").length || 1000;
     const leads = contacts.length;
-    const qualified = contacts.filter(c => c.status === "active").length;
+    const qualified = contacts.filter(c => c.status === "subscribed").length;
     const customers = auditLogs.filter(log => log.action === "purchase" || log.action === "subscription_created").length;
 
     const conversionFunnel = [

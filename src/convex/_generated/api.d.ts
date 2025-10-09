@@ -33,6 +33,7 @@ import type * as billingInternal from "../billingInternal.js";
 import type * as branding from "../branding.js";
 import type * as businesses from "../businesses.js";
 import type * as calendar from "../calendar.js";
+import type * as capa from "../capa.js";
 import type * as chunking from "../chunking.js";
 import type * as complianceReports from "../complianceReports.js";
 import type * as contacts from "../contacts.js";
@@ -152,6 +153,7 @@ declare const fullApi: ApiFromModules<{
   branding: typeof branding;
   businesses: typeof businesses;
   calendar: typeof calendar;
+  capa: typeof capa;
   chunking: typeof chunking;
   complianceReports: typeof complianceReports;
   contacts: typeof contacts;

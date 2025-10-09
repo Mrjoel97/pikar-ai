@@ -202,7 +202,7 @@ export function TeamChat({ businessId }: TeamChatProps) {
 
               <ScrollArea className="h-[450px]">
                 <div className="space-y-1">
-                  {channels?.map((channel) => (
+                  {channels?.map((channel: { _id: string; name: string; isPublic: boolean }) => (
                     <Button
                       key={channel._id}
                       variant={selectedChannelId === channel._id ? "secondary" : "ghost"}
@@ -221,7 +221,7 @@ export function TeamChat({ businessId }: TeamChatProps) {
           <TabsContent value="direct" className="mt-0">
             <ScrollArea className="h-[500px] p-2">
               <div className="space-y-1">
-                {teamMembers?.map((member) => (
+                {teamMembers?.map((member: { _id: string; name: string; email: string }) => (
                   <Button
                     key={member._id}
                     variant={selectedUserId === member._id ? "secondary" : "ghost"}
@@ -256,7 +256,7 @@ export function TeamChat({ businessId }: TeamChatProps) {
               <>
                 <Hash className="h-5 w-5" />
                 <span className="font-semibold">
-                  {channels?.find((c) => c._id === selectedChannelId)?.name}
+                  {channels?.find((c: { _id: string; name: string }) => c._id === selectedChannelId)?.name}
                 </span>
               </>
             )}
@@ -264,7 +264,7 @@ export function TeamChat({ businessId }: TeamChatProps) {
               <>
                 <User className="h-5 w-5" />
                 <span className="font-semibold">
-                  {teamMembers?.find((m) => m._id === selectedUserId)?.name}
+                  {teamMembers?.find((m: { _id: string; name: string }) => m._id === selectedUserId)?.name}
                 </span>
               </>
             )}
@@ -352,8 +352,8 @@ export function TeamChat({ businessId }: TeamChatProps) {
               }}
               placeholder={
                 activeTab === "channels"
-                  ? `Message #${channels?.find((c) => c._id === selectedChannelId)?.name || "channel"}`
-                  : `Message ${teamMembers?.find((m) => m._id === selectedUserId)?.name || "user"}`
+                  ? `Message #${channels?.find((c: { _id: string; name: string }) => c._id === selectedChannelId)?.name || "channel"}`
+                  : `Message ${teamMembers?.find((m: { _id: string; name: string }) => m._id === selectedUserId)?.name || "user"}`
               }
               className="flex-1"
             />

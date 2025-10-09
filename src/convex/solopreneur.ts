@@ -492,7 +492,7 @@ Return ONLY valid JSON in this exact format:
 
     try {
       const { generate } = await import("./openai");
-      const result = await generate(ctx, {
+      const result = await ctx.runAction("openai:generate" as any, {
         prompt: systemPrompt,
         model: "gpt-4o-mini",
       });
