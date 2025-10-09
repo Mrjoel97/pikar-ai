@@ -1637,7 +1637,11 @@ const schema = defineSchema({
     resolvedBy: v.optional(v.id("users")),
     resolvedAt: v.optional(v.number()),
     notes: v.optional(v.string()),
-  }),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_workflow", ["workflowId"])
+    .index("by_status", ["status"])
+    .index("by_business_and_status", ["businessId", "status"]),
 
   brandingConfigs: defineTable({
     businessId: v.id("businesses"),

@@ -1,5 +1,6 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
+import { Id } from "./_generated/dataModel";
 import * as builtin from "./templatesData";
 
 // Helpers to read built-ins flexibly regardless of export shape
@@ -113,8 +114,8 @@ export const listTemplatesWithSmartOrdering = query({
         .withIndex("by_user", (q) => q.eq("userId", args.userId as Id<"users">))
         .collect();
       pins.forEach((p) => {
-        pinnedSet.add(p.templateId);
-        pinnedDates.set(p.templateId, p._creationTime);
+        pinnedSet.add(String(p.templateId));
+        pinnedDates.set(String(p.templateId), p._creationTime);
       });
     }
 
@@ -125,7 +126,7 @@ export const listTemplatesWithSmartOrdering = query({
       const usageEvents = await ctx.db
         .query("audit_logs")
         .withIndex("by_business", (q) => 
-          q.eq("businessId", args.businessId)
+          q.eq("businessId", args.businessId as Id<"businesses">)
         )
         .filter((q) => 
           q.and(
@@ -184,11 +185,12 @@ export const listTemplatesWithSmartOrdering = query({
     const scored = filtered.map((template) => {
       let score = 0;
       const templateId = template._id;
-      const usage = usageStats.get(templateId);
+      const templateIdStr = String(templateId);
+      const usage = usageStats.get(templateIdStr);
 
       // 1. Pinned (highest priority) - 1000 points + recency
-      if (pinnedSet.has(templateId)) {
-        const pinDate = pinnedDates.get(templateId) || 0;
+      if (pinnedSet.has(templateIdStr)) {
+        const pinDate = pinnedDates.get(templateIdStr) || 0;
         score += 1000 + (pinDate / 1000000); // Add fractional recency
       }
 
@@ -227,7 +229,7 @@ export const listTemplatesWithSmartOrdering = query({
       return {
         ...template,
         _smartScore: score,
-        _isPinned: pinnedSet.has(templateId),
+        _isPinned: pinnedSet.has(templateIdStr),
         _usageCount: usage?.count || 0,
         _lastUsed: usage?.lastUsed || 0,
         _isNew: template._creationTime > fourteenDaysAgo,
@@ -258,7 +260,7 @@ export const getTemplateUsageStats = query({
     const usageEvents = await ctx.db
       .query("audit_logs")
       .withIndex("by_business", (q) => 
-        q.eq("businessId", args.businessId)
+        q.eq("businessId", args.businessId as Id<"businesses">)
       )
       .filter((q) => 
         q.and(
