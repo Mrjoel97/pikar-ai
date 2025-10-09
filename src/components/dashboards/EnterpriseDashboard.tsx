@@ -62,6 +62,11 @@ const StrategicCommandCenter = lazy(() =>
     default: m.StrategicCommandCenter,
   })),
 );
+const IntegrationHub = lazy(() =>
+  import("@/components/integrations/IntegrationHub").then((m) => ({
+    default: m.IntegrationHub,
+  }))
+);
 
 interface EnterpriseDashboardProps {
   business: any;
@@ -523,6 +528,27 @@ export function EnterpriseDashboard({
             </CardContent>
           </Card>
         </div>
+      </section>
+
+      {/* Advanced Integrations Hub - Enterprise Enhanced */}
+      <section>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-semibold">Integration Hub</h2>
+          <Button size="sm" variant="outline" onClick={() => nav("/integrations")}>
+            Manage All Integrations
+          </Button>
+        </div>
+        <Suspense fallback={<div className="rounded-md border p-4 text-sm text-muted-foreground">Loading integrations...</div>}>
+          {!isGuest && business?._id ? (
+            <IntegrationHub businessId={business._id} tier={tier} isGuest={isGuest} />
+          ) : (
+            <Card>
+              <CardContent className="p-6 text-center">
+                <p className="text-muted-foreground">Sign in to access the Integration Hub</p>
+              </CardContent>
+            </Card>
+          )}
+        </Suspense>
       </section>
 
       <section>

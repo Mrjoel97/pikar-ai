@@ -26,6 +26,7 @@ import { RiskTrendChart } from "@/components/risk/RiskTrendChart";
 import { HandoffQueue } from "@/components/workflows/HandoffQueue";
 import { CrossDepartmentMetrics } from "@/components/workflows/CrossDepartmentMetrics";
 import { SystemHealthStrip } from "@/components/dashboard/SystemHealthStrip";
+import { lazy } from "react";
 
 interface SmeDashboardProps {
   business: any;
@@ -282,6 +283,13 @@ export function SmeDashboard({
 
   // Add: Department Tabs
   const [activeTab, setActiveTab] = React.useState("marketing");
+
+  // Add: Integration Hub
+  const IntegrationHub = lazy(() =>
+    import("@/components/integrations/IntegrationHub").then((m) => ({
+      default: m.IntegrationHub,
+    }))
+  );
 
   return (
     <div className="space-y-6 p-6">
@@ -1144,6 +1152,34 @@ export function SmeDashboard({
           </CardContent>
         </Card>
       )}
+
+      {/* Advanced Integrations Hub - SME+ Feature */}
+      <section className="relative">
+        {!isFeatureEnabled("advanced_integrations") && (
+          <LockedRibbon label="Advanced Integrations requires SME tier or higher" />
+        )}
+        <div className={!isFeatureEnabled("advanced_integrations") ? "pointer-events-none opacity-50" : ""}>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold">Integration Hub</h2>
+            <Button size="sm" variant="outline" onClick={() => nav("/integrations")}>
+              View All Integrations
+            </Button>
+          </div>
+          <Suspense fallback={<div className="rounded-md border p-4 text-sm text-muted-foreground">Loading integrations...</div>}>
+            {!isGuest && business?._id && isFeatureEnabled("advanced_integrations") ? (
+              <IntegrationHub businessId={business._id} tier={tier} isGuest={isGuest} />
+            ) : (
+              <Card>
+                <CardContent className="p-6 text-center">
+                  <p className="text-muted-foreground">
+                    {isGuest ? "Sign in to access the Integration Hub" : "Upgrade to SME tier to unlock Advanced Integrations"}
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+          </Suspense>
+        </div>
+      </section>
     </div>
   );
 }

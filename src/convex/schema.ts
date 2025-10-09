@@ -1889,6 +1889,7 @@ const schema = defineSchema({
   customApis: defineTable({
     businessId: v.id("businesses"),
     name: v.string(),
+    description: v.optional(v.string()),
     method: v.union(v.literal("GET"), v.literal("POST"), v.literal("PUT"), v.literal("DELETE")),
     path: v.string(),
     convexFunction: v.string(),
@@ -1897,6 +1898,8 @@ const schema = defineSchema({
     isActive: v.boolean(),
     createdBy: v.id("users"),
     createdAt: v.number(),
+    totalCalls: v.optional(v.number()),
+    metadata: v.optional(v.any()),
     updatedAt: v.number(),
   })
     .index("by_business", ["businessId"])
