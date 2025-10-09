@@ -1,118 +1,51 @@
+"use node";
+
 import { v } from "convex/values";
-import { query, mutation, internalMutation } from "./_generated/server";
+import { query, mutation, internalMutation, internalAction } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
 
 /**
- * Crisis Detection Thresholds
- */
-const CRISIS_THRESHOLDS = {
-  negativeEngagementSpike: 5, // 5x normal negative engagement
-  rapidResponseRequired: 100, // 100+ negative comments in 1 hour
-  viralNegativePost: 10000, // 10k+ impressions with <1% positive engagement
-  brandMentionSpike: 10, // 10x normal brand mentions
-};
-
-/**
- * Detect potential crisis situations based on social media activity
+ * Query: Detect crisis situations based on social media metrics
  */
 export const detectCrisis = query({
   args: {
     businessId: v.id("businesses"),
-    timeWindow: v.optional(v.number()), // minutes, default 60
+    timeWindow: v.number(), // minutes
   },
   handler: async (ctx, args) => {
-    const timeWindow = args.timeWindow || 60;
-    const cutoff = Date.now() - (timeWindow * 60 * 1000);
+    const { businessId, timeWindow } = args;
 
-    // Get recent posts with performance metrics
-    const recentPosts = await ctx.db
-      .query("socialPosts")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+    const cutoff = Date.now() - timeWindow * 60 * 1000;
+
+    // Get recent crisis alerts
+    const alerts = await ctx.db
+      .query("crisisAlerts")
+      .withIndex("by_business", (q) => q.eq("businessId", businessId))
       .filter((q) => q.gte(q.field("_creationTime"), cutoff))
       .collect();
 
-    const alerts: Array<{
-      severity: "low" | "medium" | "high" | "critical";
-      type: string;
-      message: string;
-      postId?: Id<"socialPosts">;
-      metrics?: any;
-      timestamp: number;
-    }> = [];
-
-    for (const post of recentPosts) {
-      if (!post.performanceMetrics) continue;
-
-      const metrics = post.performanceMetrics;
-      const totalEngagement = metrics.engagements || 0;
-      const negativeEngagement = (metrics.comments || 0) * 0.3; // Estimate 30% negative
-
-      // Check for viral negative post
-      if (metrics.impressions > CRISIS_THRESHOLDS.viralNegativePost) {
-        const positiveRate = totalEngagement > 0 ? (metrics.likes / totalEngagement) : 0;
-        if (positiveRate < 0.01) {
-          alerts.push({
-            severity: "critical",
-            type: "viral_negative",
-            message: `Post going viral with negative sentiment: ${metrics.impressions.toLocaleString()} impressions, ${positiveRate.toFixed(2)}% positive engagement`,
-            postId: post._id,
-            metrics,
-            timestamp: post._creationTime,
-          });
-        }
-      }
-
-      // Check for rapid negative response
-      if (metrics.comments > CRISIS_THRESHOLDS.rapidResponseRequired) {
-        alerts.push({
-          severity: "high",
-          type: "rapid_response_required",
-          message: `High volume of comments detected: ${metrics.comments} comments in ${timeWindow} minutes`,
-          postId: post._id,
-          metrics,
-          timestamp: post._creationTime,
-        });
-      }
-
-      // Check for engagement anomalies
-      const avgEngagement = 100; // This should be calculated from historical data
-      if (negativeEngagement > avgEngagement * CRISIS_THRESHOLDS.negativeEngagementSpike) {
-        alerts.push({
-          severity: "medium",
-          type: "negative_spike",
-          message: `Negative engagement spike detected: ${negativeEngagement.toFixed(0)} vs avg ${avgEngagement}`,
-          postId: post._id,
-          metrics,
-          timestamp: post._creationTime,
-        });
-      }
-    }
-
-    // Sort by severity and timestamp
-    const severityOrder = { critical: 0, high: 1, medium: 2, low: 3 };
-    alerts.sort((a, b) => {
-      const severityDiff = severityOrder[a.severity] - severityOrder[b.severity];
-      if (severityDiff !== 0) return severityDiff;
-      return b.timestamp - a.timestamp;
-    });
+    const summary = {
+      total: alerts.length,
+      critical: alerts.filter((a) => a.severity === "critical").length,
+      high: alerts.filter((a) => a.severity === "high").length,
+      medium: alerts.filter((a) => a.severity === "medium").length,
+    };
 
     return {
-      alerts,
-      summary: {
-        total: alerts.length,
-        critical: alerts.filter((a) => a.severity === "critical").length,
-        high: alerts.filter((a) => a.severity === "high").length,
-        medium: alerts.filter((a) => a.severity === "medium").length,
-        low: alerts.filter((a) => a.severity === "low").length,
-      },
-      timeWindow,
-      lastChecked: Date.now(),
+      alerts: alerts.map((a) => ({
+        severity: a.severity,
+        type: a.type,
+        message: a.message,
+        timestamp: a._creationTime,
+        status: a.status,
+      })),
+      summary,
     };
   },
 });
 
 /**
- * Get crisis alerts history
+ * Query: Get crisis history
  */
 export const getCrisisHistory = query({
   args: {
@@ -120,11 +53,11 @@ export const getCrisisHistory = query({
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const limit = args.limit || 50;
+    const { businessId, limit = 50 } = args;
 
     const alerts = await ctx.db
       .query("crisisAlerts")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .withIndex("by_business", (q) => q.eq("businessId", businessId))
       .order("desc")
       .take(limit);
 
@@ -133,47 +66,32 @@ export const getCrisisHistory = query({
 });
 
 /**
- * Create a crisis alert
+ * Mutation: Create a crisis alert
  */
 export const createCrisisAlert = mutation({
   args: {
     businessId: v.id("businesses"),
-    severity: v.union(v.literal("low"), v.literal("medium"), v.literal("high"), v.literal("critical")),
+    severity: v.string(),
     type: v.string(),
     message: v.string(),
     postId: v.optional(v.id("socialPosts")),
     metrics: v.optional(v.any()),
-    autoDetected: v.boolean(),
+    autoDetected: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Unauthorized");
+    const user = await ctx.auth.getUserIdentity();
+    if (!user) throw new Error("Unauthorized");
 
     const alertId = await ctx.db.insert("crisisAlerts", {
       businessId: args.businessId,
-      severity: args.severity,
+      severity: args.severity as "low" | "medium" | "high" | "critical",
       type: args.type,
       message: args.message,
       postId: args.postId,
       metrics: args.metrics,
-      status: "open",
-      autoDetected: args.autoDetected,
-      createdBy: identity.email || "system",
-      createdAt: Date.now(),
-    });
-
-    // Log audit event
-    await ctx.db.insert("audit_logs", {
-      businessId: args.businessId,
-      userId: undefined,
-      action: "crisis_alert_created",
-      entityType: "crisisAlert",
-      entityId: alertId,
-      details: {
-        severity: args.severity,
-        type: args.type,
-        autoDetected: args.autoDetected,
-      },
+      status: "open" as const,
+      autoDetected: args.autoDetected ?? false,
+      createdBy: user.subject,
       createdAt: Date.now(),
     });
 
@@ -182,48 +100,31 @@ export const createCrisisAlert = mutation({
 });
 
 /**
- * Update crisis alert status
+ * Mutation: Update crisis alert status
  */
 export const updateCrisisAlert = mutation({
   args: {
     alertId: v.id("crisisAlerts"),
-    status: v.union(v.literal("open"), v.literal("investigating"), v.literal("resolved"), v.literal("false_positive")),
+    status: v.string(),
     resolution: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Unauthorized");
-
-    const alert = await ctx.db.get(args.alertId);
-    if (!alert) throw new Error("Alert not found");
+    const user = await ctx.auth.getUserIdentity();
+    if (!user) throw new Error("Unauthorized");
 
     await ctx.db.patch(args.alertId, {
-      status: args.status,
+      status: args.status as "open" | "investigating" | "resolved" | "false_positive",
       resolution: args.resolution,
-      resolvedBy: identity.email,
-      resolvedAt: args.status === "resolved" || args.status === "false_positive" ? Date.now() : undefined,
+      resolvedBy: args.status === "resolved" ? user.subject : undefined,
+      resolvedAt: args.status === "resolved" ? Date.now() : undefined,
     });
 
-    // Log audit event
-    await ctx.db.insert("audit_logs", {
-      businessId: alert.businessId,
-      userId: undefined,
-      action: "crisis_alert_updated",
-      entityType: "crisisAlert",
-      entityId: args.alertId,
-      details: {
-        status: args.status,
-        resolution: args.resolution,
-      },
-      createdAt: Date.now(),
-    });
-
-    return args.alertId;
+    return { success: true };
   },
 });
 
 /**
- * Get crisis response templates
+ * Query: Get crisis response templates
  */
 export const getCrisisTemplates = query({
   args: {
@@ -233,43 +134,94 @@ export const getCrisisTemplates = query({
     // Return predefined crisis response templates
     return [
       {
-        id: "apology",
-        name: "Public Apology",
-        template: "We sincerely apologize for [issue]. We take full responsibility and are working to [resolution]. We value your feedback and are committed to doing better.",
-        useCase: "Product/service failures, customer complaints",
+        type: "negative_sentiment",
+        template: "We sincerely apologize for any inconvenience. We're investigating this matter and will provide an update shortly.",
       },
       {
-        id: "clarification",
-        name: "Clarification Statement",
-        template: "We'd like to clarify [misconception]. The facts are [accurate information]. We appreciate the opportunity to set the record straight.",
-        useCase: "Misinformation, misunderstandings",
+        type: "viral_negative",
+        template: "We're aware of the concerns being raised and take them very seriously. Our team is working on a comprehensive response.",
       },
       {
-        id: "investigation",
-        name: "Investigation Update",
-        template: "We're aware of [issue] and are actively investigating. We'll provide updates as we learn more. Your patience is appreciated.",
-        useCase: "Ongoing issues, security concerns",
-      },
-      {
-        id: "resolution",
-        name: "Resolution Announcement",
-        template: "Update: [issue] has been resolved. Here's what we did: [actions taken]. Thank you for your patience and understanding.",
-        useCase: "Issue resolution, follow-up",
+        type: "engagement_spike",
+        template: "Thank you for the overwhelming response! We're monitoring the situation closely.",
       },
     ];
   },
 });
 
 /**
- * Internal: Auto-create crisis alerts from detection
+ * Internal: Auto-create crisis alerts from detection for a single business
  */
 export const autoCreateCrisisAlerts = internalMutation({
   args: {
     businessId: v.id("businesses"),
   },
   handler: async (ctx, args) => {
-    // This would be called by a cron job
-    // For now, it's a placeholder for automated crisis detection
-    return { success: true };
+    const { businessId } = args;
+
+    const cutoff = Date.now() - 24 * 60 * 60 * 1000;
+    const recentPosts = await ctx.db
+      .query("socialPosts")
+      .withIndex("by_business", (q) => q.eq("businessId", businessId))
+      .filter((q) => q.gte(q.field("_creationTime"), cutoff))
+      .collect();
+
+    let alertsCreated = 0;
+
+    for (const post of recentPosts) {
+      const metrics = post.performanceMetrics || { likes: 0, comments: 0, shares: 0, impressions: 0, engagements: 0, clicks: 0 };
+      const engagement = (metrics.likes || 0) + (metrics.comments || 0) + (metrics.shares || 0);
+
+      if (engagement > 1000) {
+        const existing = await ctx.db
+          .query("crisisAlerts")
+          .withIndex("by_business", (q) => q.eq("businessId", businessId))
+          .filter((q) => q.eq(q.field("postId"), post._id))
+          .first();
+
+        if (!existing) {
+          await ctx.db.insert("crisisAlerts", {
+            businessId,
+            severity: "high" as const,
+            type: "engagement_spike",
+            message: `Post has received unusually high engagement (${engagement} interactions)`,
+            postId: post._id,
+            metrics: { engagement },
+            status: "open" as const,
+            autoDetected: true,
+            createdBy: "system",
+            createdAt: Date.now(),
+          });
+          alertsCreated++;
+        }
+      }
+    }
+
+    return { alertsCreated };
+  },
+});
+
+/**
+ * Internal Action: Auto-create crisis alerts for all businesses
+ */
+export const autoCreateCrisisAlertsForAll = internalAction({
+  args: {},
+  handler: async (ctx) => {
+    // Get all active businesses
+    const businesses = await ctx.runQuery("businesses:listAllBusinesses" as any, {});
+    
+    let totalCreated = 0;
+    for (const business of businesses) {
+      try {
+        const result = await ctx.runMutation("crisisManagement:autoCreateCrisisAlerts" as any, {
+          businessId: business._id,
+        });
+        totalCreated += result.alertsCreated || 0;
+      } catch (error) {
+        console.error(`Failed to auto-create crisis alerts for business ${business._id}:`, error);
+      }
+    }
+    
+    return { success: true, totalAlertsCreated: totalCreated };
   },
 });

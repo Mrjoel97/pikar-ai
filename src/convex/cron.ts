@@ -37,4 +37,20 @@ crons.interval(
   {}
 );
 
+// Auto-detect and create crisis alerts every 15 minutes
+crons.interval(
+  "auto-detect crisis alerts",
+  { minutes: 15 },
+  "crisisManagement:autoCreateCrisisAlertsForAll" as any,
+  {}
+);
+
+// Collect enterprise metrics hourly for Global Command Center
+crons.interval(
+  "collect enterprise metrics",
+  { hours: 1 },
+  "enterpriseMetrics:collectAllBusinessMetrics" as any,
+  {}
+);
+
 export default crons;

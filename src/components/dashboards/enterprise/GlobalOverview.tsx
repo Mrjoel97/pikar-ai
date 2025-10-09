@@ -20,6 +20,9 @@ type Props = {
   slaSummaryText?: string | null;
 };
 
+// Widget persistence key
+const WIDGET_PREFS_KEY = "globalCommandCenter_widgetPrefs";
+
 export function GlobalOverview({
   businessId,
   region,
@@ -32,6 +35,31 @@ export function GlobalOverview({
 }: Props) {
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [lastUpdate, setLastUpdate] = useState<number>(Date.now());
+
+  // Load widget preferences from localStorage
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(WIDGET_PREFS_KEY);
+      if (saved) {
+        const prefs = JSON.parse(saved);
+        if (prefs.region) setRegion(prefs.region);
+        if (prefs.unit) setUnit(prefs.unit);
+        if (typeof prefs.autoRefresh === "boolean") setAutoRefresh(prefs.autoRefresh);
+      }
+    } catch (e) {
+      console.error("Failed to load widget preferences:", e);
+    }
+  }, []);
+
+  // Save widget preferences to localStorage
+  useEffect(() => {
+    try {
+      const prefs = { region, unit, autoRefresh };
+      localStorage.setItem(WIDGET_PREFS_KEY, JSON.stringify(prefs));
+    } catch (e) {
+      console.error("Failed to save widget preferences:", e);
+    }
+  }, [region, unit, autoRefresh]);
 
   // Fetch real-time regional metrics
   const regionalMetrics = useQuery(
