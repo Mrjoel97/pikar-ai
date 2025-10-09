@@ -29,4 +29,12 @@ crons.interval(
   {}
 );
 
+// Collect department KPIs daily at 3 AM (1 hour after compliance reports)
+crons.interval(
+  "collect department KPIs",
+  { hours: 24 },
+  "departmentKpis:collectAllBusinessKpis" as any,
+  {}
+);
+
 export default crons;

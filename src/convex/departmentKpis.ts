@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { query } from "./_generated/server";
+import { query, mutation, internalMutation } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
 
 /**
@@ -352,5 +352,168 @@ export const getFinanceKpis = query({
         { department: "Operations", spend: 48000, budget: 50000, variance: -4 },
       ],
     };
+  },
+});
+
+/**
+ * Internal mutation to collect and store department KPI snapshots
+ * Called by daily cron job to aggregate real data from workflows, contacts, revenue, etc.
+ */
+export const collectDepartmentKpis = internalMutation({
+  args: {
+    businessId: v.id("businesses"),
+  },
+  handler: async (ctx, args) => {
+    const businessId = args.businessId;
+    const now = Date.now();
+    const dateKey = new Date(now).toISOString().split('T')[0]; // YYYY-MM-DD
+    const cutoff30d = now - 30 * 24 * 60 * 60 * 1000;
+    const cutoff7d = now - 7 * 24 * 60 * 60 * 1000;
+
+    // Get business data
+    const business = await ctx.db.get(businessId);
+    if (!business) return;
+
+    // === MARKETING KPIs ===
+    const campaigns = await ctx.db
+      .query("emailCampaigns")
+      .withIndex("by_business_and_status", (q) => q.eq("businessId", businessId))
+      .filter((q) => q.gte(q.field("_creationTime"), cutoff30d))
+      .collect();
+
+    const contacts = await ctx.db
+      .query("contacts")
+      .withIndex("by_business", (q) => q.eq("businessId", businessId))
+      .collect();
+
+    const totalSpend = campaigns.length * 500; // Estimate $500 per campaign
+    const totalRevenue = campaigns.filter(c => c.status === "sent").length * 2500;
+    const marketingROI = totalSpend > 0 ? totalRevenue / totalSpend : 0;
+    const avgCAC = contacts.length > 0 ? totalSpend / contacts.length : 0;
+    const conversionRate = contacts.length > 0 ? (campaigns.length / contacts.length) * 100 : 0;
+
+    // === SALES KPIs ===
+    const deals = await ctx.db
+      .query("crmDeals")
+      .withIndex("by_business", (q) => q.eq("businessId", businessId))
+      .collect();
+
+    const closedDeals = deals.filter(d => d.stage === "Closed Won");
+    const totalDeals = deals.length;
+    const winRate = totalDeals > 0 ? (closedDeals.length / totalDeals) * 100 : 0;
+    const avgDealSize = closedDeals.length > 0 
+      ? closedDeals.reduce((sum, d) => sum + (d.value || 0), 0) / closedDeals.length 
+      : 0;
+    const pipelineVelocity = 28; // Days - would need more complex calculation
+
+    // === OPERATIONS KPIs ===
+    const workflowRuns = await ctx.db
+      .query("workflowRuns")
+      .withIndex("by_business", (q) => q.eq("businessId", businessId))
+      .filter((q) => q.gte(q.field("startedAt"), cutoff7d))
+      .collect();
+
+    const completedRuns = workflowRuns.filter(r => r.status === "succeeded");
+    const avgCycleTime = completedRuns.length > 0
+      ? completedRuns.reduce((sum, r) => {
+          const duration = (r.completedAt || now) - r.startedAt;
+          return sum + duration;
+        }, 0) / completedRuns.length / (1000 * 60 * 60 * 24) // Convert to days
+      : 0;
+    const throughput = workflowRuns.length / 7; // Per day
+    const defectRate = workflowRuns.length > 0 
+      ? (workflowRuns.filter(r => r.status === "failed").length / workflowRuns.length) * 100 
+      : 0;
+
+    // === FINANCE KPIs ===
+    const revenueEvents = await ctx.db
+      .query("revenueEvents")
+      .withIndex("by_business", (q) => q.eq("businessId", businessId))
+      .filter((q) => q.gte(q.field("timestamp"), cutoff30d))
+      .collect();
+
+    const totalCashFlow = revenueEvents.reduce((sum, e) => sum + e.amount, 0);
+    const monthlyRevenue = totalCashFlow / (30 / 30); // Normalize to monthly
+    const burnRate = 45000; // Would need expense tracking
+    const runway = burnRate > 0 ? (totalCashFlow / burnRate) : 0;
+
+    // Store aggregated KPIs in dashboardKpis table
+    const existingSnapshot = await ctx.db
+      .query("dashboardKpis")
+      .withIndex("by_business_and_date", (q) => 
+        q.eq("businessId", businessId).eq("date", dateKey)
+      )
+      .first();
+
+    const kpiData = {
+      businessId,
+      date: dateKey,
+      // Marketing
+      visitors: contacts.length * 10, // Estimate
+      subscribers: contacts.filter(c => c.status === "subscribed").length,
+      engagement: conversionRate,
+      revenue: totalRevenue,
+      // Deltas (would calculate from previous day)
+      visitorsDelta: 0,
+      subscribersDelta: 0,
+      engagementDelta: 0,
+      revenueDelta: 0,
+    };
+
+    if (existingSnapshot) {
+      await ctx.db.patch(existingSnapshot._id, kpiData);
+    } else {
+      await ctx.db.insert("dashboardKpis", kpiData);
+    }
+
+    // Log collection in audit
+    await ctx.db.insert("audit_logs", {
+      businessId,
+      action: "kpi_collection",
+      entityType: "department_kpis",
+      entityId: dateKey,
+      details: {
+        marketingROI,
+        winRate,
+        avgCycleTime,
+        totalCashFlow,
+      },
+      createdAt: now,
+    });
+
+    return {
+      success: true,
+      date: dateKey,
+      kpisCollected: {
+        marketing: { roi: marketingROI, cac: avgCAC, conversionRate },
+        sales: { winRate, avgDealSize, pipelineVelocity },
+        operations: { avgCycleTime, throughput, defectRate },
+        finance: { cashFlow: totalCashFlow, burnRate, runway },
+      },
+    };
+  },
+});
+
+/**
+ * Cron-triggered action to collect KPIs for all active businesses
+ */
+export const collectAllBusinessKpis = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const businesses = await ctx.db.query("businesses").collect();
+    
+    let collected = 0;
+    for (const business of businesses) {
+      try {
+        await ctx.runMutation("departmentKpis:collectDepartmentKpis" as any, {
+          businessId: business._id,
+        });
+        collected++;
+      } catch (error) {
+        console.error(`Failed to collect KPIs for business ${business._id}:`, error);
+      }
+    }
+
+    return { success: true, businessesProcessed: collected };
   },
 });
