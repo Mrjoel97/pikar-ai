@@ -26,7 +26,7 @@ import { RiskTrendChart } from "@/components/risk/RiskTrendChart";
 import { HandoffQueue } from "@/components/workflows/HandoffQueue";
 import { CrossDepartmentMetrics } from "@/components/workflows/CrossDepartmentMetrics";
 import { SystemHealthStrip } from "@/components/dashboard/SystemHealthStrip";
-import { lazy } from "react";
+import { lazy, Suspense } from "react";
 
 interface SmeDashboardProps {
   business: any;
@@ -290,6 +290,11 @@ export function SmeDashboard({
       default: m.IntegrationHub,
     }))
   );
+
+  // Helper function for feature flag checks
+  const isFeatureEnabled = (flagName: string) => {
+    return !!smeFlags?.find((f: any) => f.flagName === flagName)?.isEnabled;
+  };
 
   return (
     <div className="space-y-6 p-6">

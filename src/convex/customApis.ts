@@ -148,7 +148,7 @@ export const updateCustomApi = mutation({
     // Audit log
     await ctx.db.insert("audit_logs", {
       businessId: api.businessId,
-      userId: identity.subject,
+      userId: identity.subject as Id<"users">,
       action: "custom_api_updated",
       entityType: "custom_api",
       entityId: args.apiId,
@@ -179,7 +179,7 @@ export const deleteCustomApi = mutation({
     // Audit log
     await ctx.db.insert("audit_logs", {
       businessId: api.businessId,
-      userId: identity.subject,
+      userId: identity.subject as Id<"users">,
       action: "custom_api_deleted",
       entityType: "custom_api",
       entityId: args.apiId,

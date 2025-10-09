@@ -11,6 +11,8 @@ type SidebarProps = {
   onNavigate: (to: string) => void;
   onLogout: () => void;
   featureHighlights?: string[];
+  logoUrl?: string;
+  primaryColor?: string;
 };
 
 export function Sidebar({
@@ -20,10 +22,33 @@ export function Sidebar({
   onNavigate,
   onLogout,
   featureHighlights,
+  logoUrl,
+  primaryColor,
 }: SidebarProps) {
+  const bgStyle = primaryColor 
+    ? { background: `linear-gradient(to bottom, ${primaryColor}, ${primaryColor}dd)` }
+    : {};
+
   return (
-    <aside className="hidden md:flex fixed left-0 top-0 bottom-0 w-72 bg-gradient-to-b from-emerald-900 to-emerald-800 text-white">
+    <aside 
+      className="hidden md:flex fixed left-0 top-0 bottom-0 w-72 bg-gradient-to-b from-emerald-900 to-emerald-800 text-white"
+      style={bgStyle}
+    >
       <div className="flex flex-col h-full w-full p-4">
+        {/* Logo Section */}
+        {logoUrl && (
+          <div className="mb-4 flex justify-center">
+            <img 
+              src={logoUrl} 
+              alt="Company Logo" 
+              className="h-12 object-contain"
+              onError={(e) => {
+                (e.target as HTMLImageElement).style.display = "none";
+              }}
+            />
+          </div>
+        )}
+
         {/* Search */}
         <div className="mb-4">
           <Input

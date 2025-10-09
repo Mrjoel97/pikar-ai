@@ -1,5 +1,5 @@
 import { Toaster } from "sonner";
-import { InstrumentationProvider } from "@/instrumentation.tsx";
+import { FullInstrumentationProvider } from "@/instrumentation.tsx";
 import { ConvexAuthProvider } from "@convex-dev/auth/react";
 import { ConvexReactClient } from "convex/react";
 import React, { StrictMode, useEffect, Component } from "react";
@@ -118,7 +118,7 @@ createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <ErrorBoundary>
       <AppProviders>
-        <InstrumentationProvider>
+        <FullInstrumentationProvider>
           <MemoryRouter
             initialEntries={[
               `${window.location.pathname}${window.location.search}${window.location.hash}`,
@@ -342,7 +342,7 @@ createRoot(document.getElementById("root")!).render(
             </Routes>
           </MemoryRouter>
           <Toaster />
-        </InstrumentationProvider>
+        </FullInstrumentationProvider>
       </AppProviders>
     </ErrorBoundary>
   </StrictMode>,

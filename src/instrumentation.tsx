@@ -170,7 +170,7 @@ class ErrorBoundary extends React.Component<
   }
 }
 
-export function InstrumentationProvider({
+export function FullInstrumentationProvider({
   children,
 }: {
   children: React.ReactNode;
