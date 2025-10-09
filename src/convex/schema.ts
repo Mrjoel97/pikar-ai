@@ -1646,6 +1646,23 @@ const schema = defineSchema({
     updatedAt: v.number(),
   }).index("by_business", ["businessId"]),
 
+  brands: defineTable({
+    businessId: v.id("businesses"),
+    name: v.string(),
+    description: v.optional(v.string()),
+    logoUrl: v.optional(v.string()),
+    primaryColor: v.string(),
+    secondaryColor: v.string(),
+    website: v.optional(v.string()),
+    isDefault: v.boolean(),
+    isActive: v.boolean(),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_business_and_default", ["businessId", "isDefault"]),
+
   // Webhook Management System
   webhooks: defineTable({
     businessId: v.id("businesses"),
