@@ -107,6 +107,7 @@ import type * as socialPosts from "../socialPosts.js";
 import type * as socialPostsCron from "../socialPostsCron.js";
 import type * as solopreneur from "../solopreneur.js";
 import type * as tasks from "../tasks.js";
+import type * as teamChat from "../teamChat.js";
 import type * as teamOnboarding from "../teamOnboarding.js";
 import type * as telemetry from "../telemetry.js";
 import type * as templatePins from "../templatePins.js";
@@ -224,6 +225,7 @@ declare const fullApi: ApiFromModules<{
   socialPostsCron: typeof socialPostsCron;
   solopreneur: typeof solopreneur;
   tasks: typeof tasks;
+  teamChat: typeof teamChat;
   teamOnboarding: typeof teamOnboarding;
   telemetry: typeof telemetry;
   templatePins: typeof templatePins;

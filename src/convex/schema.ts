@@ -1754,6 +1754,38 @@ const schema = defineSchema({
     createdAt: v.number(),
     updatedAt: v.optional(v.number()),
   }).index("by_business", ["businessId"]),
+
+  teamChannels: defineTable({
+    businessId: v.id("businesses"),
+    name: v.string(),
+    description: v.optional(v.string()),
+    isPrivate: v.boolean(),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+  })
+    .index("by_business", ["businessId"]),
+
+  teamMessages: defineTable({
+    businessId: v.id("businesses"),
+    senderId: v.id("users"),
+    channelId: v.optional(v.id("teamChannels")),
+    recipientUserId: v.optional(v.id("users")),
+    content: v.string(),
+    attachments: v.optional(v.array(v.object({
+      name: v.string(),
+      url: v.string(),
+      type: v.string(),
+    }))),
+    reactions: v.array(v.object({
+      userId: v.id("users"),
+      emoji: v.string(),
+    })),
+    createdAt: v.number(),
+    editedAt: v.optional(v.number()),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_business_and_channel", ["businessId", "channelId"])
+    .index("by_sender", ["senderId"]),
 });
 
 export default schema;
