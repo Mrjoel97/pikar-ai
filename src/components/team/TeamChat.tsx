@@ -207,7 +207,7 @@ export function TeamChat({ businessId }: TeamChatProps) {
                       key={channel._id}
                       variant={selectedChannelId === channel._id ? "secondary" : "ghost"}
                       className="w-full justify-start"
-                      onClick={() => setSelectedChannelId(channel._id)}
+                      onClick={() => setSelectedChannelId(channel._id as any)}
                     >
                       <Hash className="h-4 w-4 mr-2" />
                       {channel.name}
@@ -226,7 +226,7 @@ export function TeamChat({ businessId }: TeamChatProps) {
                     key={member._id}
                     variant={selectedUserId === member._id ? "secondary" : "ghost"}
                     className="w-full justify-start"
-                    onClick={() => setSelectedUserId(member._id)}
+                    onClick={() => setSelectedUserId(member._id as any)}
                   >
                     <Avatar className="h-6 w-6 mr-2">
                       <AvatarFallback className="text-xs">
@@ -234,7 +234,7 @@ export function TeamChat({ businessId }: TeamChatProps) {
                       </AvatarFallback>
                     </Avatar>
                     <span className="truncate">{member.name}</span>
-                    {member.isOwner && (
+                    {(member as any).isOwner && (
                       <Badge variant="outline" className="ml-auto text-xs">
                         Owner
                       </Badge>

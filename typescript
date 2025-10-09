@@ -1,2 +1,3 @@
-   const generateSocialContent = useAction(api.socialContentAgent.generateSocialContent);
-   
+  crons.interval("collect department KPIs", { hours: 24 }, 
+    "departmentKpis:collectAllBusinessKpis" as any, {});
+  

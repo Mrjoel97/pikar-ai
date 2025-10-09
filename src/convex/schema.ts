@@ -857,6 +857,9 @@ const schema = defineSchema({
         })
       )
     ),
+    // A/B testing fields
+    experimentId: v.optional(v.id("experiments")),
+    variantId: v.optional(v.id("experimentVariants")),
   })
     .index("by_business", ["businessId"])
     .index("by_campaign", ["campaignId"])

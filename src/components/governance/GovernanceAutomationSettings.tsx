@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
@@ -29,13 +29,13 @@ export function GovernanceAutomationSettings({ businessId }: GovernanceAutomatio
   const [escalateTo, setEscalateTo] = useState("senior_admin");
 
   // Update local state when settings load
-  useState(() => {
+  useEffect(() => {
     if (settings) {
       setAutoRemediate(settings.autoRemediate);
       setEscalationThreshold(settings.escalationRules.threshold);
       setEscalateTo(settings.escalationRules.escalateTo);
     }
-  });
+  }, [settings]);
 
   const handleSave = async () => {
     try {

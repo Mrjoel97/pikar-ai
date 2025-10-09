@@ -174,7 +174,7 @@ export const createCampaign = mutation({
 
       // Create Variant A (original)
       variantAId = await ctx.db.insert("experimentVariants", {
-        // experimentId is stored separately in experiments table
+        experimentId,
         variantKey: "A",
         name: "Variant A (Original)",
         subject: args.subject,
