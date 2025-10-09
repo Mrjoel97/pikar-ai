@@ -302,14 +302,11 @@ export function EnterpriseDashboard({
 
       <Suspense fallback={<div className="rounded-md border p-4 text-sm text-muted-foreground">Loading overview…</div>}>
         <GlobalOverview
+          businessId={businessId as Id<"businesses"> | null}
           region={region}
           setRegion={setRegion}
           unit={unit}
           setUnit={setUnit}
-          unifiedRevenue={unifiedRevenue}
-          unifiedGlobalEfficiency={unifiedGlobalEfficiency}
-          revenueTrend={revenueTrend}
-          efficiencyTrend={efficiencyTrend}
           onRunDiagnostics={handleRunDiagnostics}
           onEnforceGovernance={handleEnforceGovernance}
           slaSummaryText={slaSummaryText}
