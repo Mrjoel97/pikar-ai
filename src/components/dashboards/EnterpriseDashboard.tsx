@@ -56,6 +56,11 @@ const SocialCommandCenter = lazy(() =>
     default: m.SocialCommandCenter,
   })),
 );
+const StrategicCommandCenter = lazy(() =>
+  import("./enterprise/StrategicCommandCenter").then((m) => ({
+    default: m.StrategicCommandCenter,
+  })),
+);
 
 interface EnterpriseDashboardProps {
   business: any;
@@ -292,22 +297,11 @@ export function EnterpriseDashboard({
   const globalSocialCommandEnabled = isFeatureEnabled("global_social_command");
 
   return (
-    <div className="space-y-6">
-      {!isGuest && upgradeNudges && upgradeNudges.showBanner && (
-        <div className="rounded-md border p-3 bg-amber-50 flex items-center gap-3">
-          <Badge variant="outline" className="border-amber-300 text-amber-700">Upgrade</Badge>
-          <div className="text-sm">
-            {upgradeNudges.nudges?.[0]?.message || "Unlock more capacity and premium features."}
-          </div>
-          <div className="ml-auto">
-            <Button size="sm" variant="outline" onClick={onUpgrade}>See Plans</Button>
-          </div>
-        </div>
-      )}
-
+    <div className="space-y-6 p-6">
+      {/* Global Command Center */}
       <Suspense fallback={<div className="rounded-md border p-4 text-sm text-muted-foreground">Loading overview…</div>}>
         <GlobalOverview
-          businessId={businessId as Id<"businesses"> | null}
+          businessId={businessId}
           region={region}
           setRegion={setRegion}
           unit={unit}
@@ -316,6 +310,16 @@ export function EnterpriseDashboard({
           onEnforceGovernance={handleEnforceGovernance}
           slaSummaryText={slaSummaryText}
         />
+      </Suspense>
+
+      {/* Strategic Command Center */}
+      <Suspense fallback={<div className="rounded-md border p-4 text-sm text-muted-foreground">Loading strategic center…</div>}>
+        <StrategicCommandCenter businessId={businessId} />
+      </Suspense>
+
+      {/* Social Command Center */}
+      <Suspense fallback={<div className="rounded-md border p-4 text-sm text-muted-foreground">Loading social center…</div>}>
+        <SocialCommandCenter businessId={businessId} />
       </Suspense>
 
       <Suspense fallback={<div className="rounded-md border p-4 text-sm text-muted-foreground">Loading widgets…</div>}>

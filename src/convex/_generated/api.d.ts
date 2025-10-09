@@ -110,6 +110,7 @@ import type * as socialMediaDocs from "../socialMediaDocs.js";
 import type * as socialPosts from "../socialPosts.js";
 import type * as socialPostsCron from "../socialPostsCron.js";
 import type * as solopreneur from "../solopreneur.js";
+import type * as strategicInitiatives from "../strategicInitiatives.js";
 import type * as tasks from "../tasks.js";
 import type * as teamChat from "../teamChat.js";
 import type * as teamGoals from "../teamGoals.js";
@@ -233,6 +234,7 @@ declare const fullApi: ApiFromModules<{
   socialPosts: typeof socialPosts;
   socialPostsCron: typeof socialPostsCron;
   solopreneur: typeof solopreneur;
+  strategicInitiatives: typeof strategicInitiatives;
   tasks: typeof tasks;
   teamChat: typeof teamChat;
   teamGoals: typeof teamGoals;
