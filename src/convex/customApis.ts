@@ -85,7 +85,7 @@ export const createCustomApi = mutation({
       path: args.path,
       convexFunction: args.convexFunction,
       requiresAuth: args.requiresAuth,
-      rateLimit: typeof args.rateLimit === 'object' ? undefined : args.rateLimit,
+      rateLimit: args.rateLimit ? (args.rateLimit.requestsPerMinute + args.rateLimit.requestsPerHour) / 2 : undefined,
       isActive: true,
       totalCalls: 0,
       createdBy: identity.subject as Id<"users">,
@@ -101,7 +101,7 @@ export const createCustomApi = mutation({
       entityType: "custom_api",
       entityId: apiId,
       metadata: { name: args.name, path: args.path },
-      timestamp: Date.now(),
+      createdAt: Date.now(),
     });
 
     return apiId;
@@ -138,7 +138,9 @@ export const updateCustomApi = mutation({
     if (args.method !== undefined) updates.method = args.method;
     if (args.convexFunction !== undefined) updates.convexFunction = args.convexFunction;
     if (args.requiresAuth !== undefined) updates.requiresAuth = args.requiresAuth;
-    if (args.rateLimit !== undefined) updates.rateLimit = args.rateLimit;
+    if (args.rateLimit !== undefined) {
+      updates.rateLimit = (args.rateLimit.requestsPerMinute + args.rateLimit.requestsPerHour) / 2;
+    }
     if (args.isActive !== undefined) updates.isActive = args.isActive;
 
     await ctx.db.patch(args.apiId, updates);
@@ -151,7 +153,7 @@ export const updateCustomApi = mutation({
       entityType: "custom_api",
       entityId: args.apiId,
       metadata: updates,
-      timestamp: Date.now(),
+      createdAt: Date.now(),
     });
 
     return args.apiId;
@@ -182,7 +184,7 @@ export const deleteCustomApi = mutation({
       entityType: "custom_api",
       entityId: args.apiId,
       metadata: { name: api.name, path: api.path },
-      timestamp: Date.now(),
+      createdAt: Date.now(),
     });
 
     return { success: true };

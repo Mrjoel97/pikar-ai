@@ -726,6 +726,7 @@ const schema = defineSchema({
     entityType: v.string(),
     entityId: v.string(),
     details: v.optional(v.any()),
+    metadata: v.optional(v.any()),
     createdAt: v.number(),
     ipAddress: v.optional(v.string()),
     userAgent: v.optional(v.string()),
@@ -1692,6 +1693,7 @@ const schema = defineSchema({
     status: v.union(v.literal("success"), v.literal("error")),
     timestamp: v.number(),
     details: v.optional(v.any()),
+    metadata: v.optional(v.any()),
     errorMessage: v.optional(v.string()),
   })
     .index("by_timestamp", ["timestamp"])
@@ -1903,7 +1905,8 @@ const schema = defineSchema({
     updatedAt: v.number(),
   })
     .index("by_business", ["businessId"])
-    .index("by_path", ["path"]),
+    .index("by_path", ["path"])
+    .index("by_business_and_active", ["businessId", "isActive"]),
 
   supportTickets: defineTable({
     businessId: v.id("businesses"),
