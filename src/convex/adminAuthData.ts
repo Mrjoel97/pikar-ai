@@ -71,8 +71,40 @@ export const ensureAdminRole = internalMutation({
   },
 });
 
+// Public query for session validation (called from client)
+export const validateSession = query({
+  args: { token: v.optional(v.string()) },
+  handler: async (ctx, args) => {
+    if (!args.token) {
+      return { valid: false };
+    }
+
+    const session = await ctx.db
+      .query("adminSessions")
+      .withIndex("by_token", (q: any) => q.eq("token", args.token))
+      .unique();
+
+    if (!session || session.expiresAt < Date.now()) {
+      return { valid: false };
+    }
+
+    const admin = await ctx.db
+      .query("admins")
+      .withIndex("by_email", (q: any) => q.eq("email", session.email))
+      .unique();
+
+    const role = admin?.role || "admin";
+
+    return {
+      valid: true,
+      email: session.email,
+      role,
+    };
+  },
+});
+
 // Internal query for session validation (used by Node actions)
-export const validateSession = internalQuery({
+export const validateSessionInternal = internalQuery({
   args: { token: v.optional(v.string()) },
   handler: async (ctx, args) => {
     if (!args.token) {
