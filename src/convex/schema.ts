@@ -1599,6 +1599,24 @@ const schema = defineSchema({
     updatedAt: v.number(),
   }).index("by_business", ["businessId"]),
 
+  // Governance Remediation History
+  governanceRemediations: defineTable({
+    businessId: v.id("businesses"),
+    workflowId: v.id("workflows"),
+    violationType: v.string(),
+    action: v.string(),
+    changes: v.any(),
+    originalPipeline: v.any(),
+    newPipeline: v.any(),
+    status: v.union(v.literal("applied"), v.literal("rolled_back")),
+    appliedAt: v.number(),
+    rollbackReason: v.optional(v.string()),
+    rolledBackAt: v.optional(v.number()),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_workflow", ["workflowId"])
+    .index("by_status", ["status"]),
+
   // Cross-Department Workflow Handoffs
   workflowHandoffs: defineTable({
     businessId: v.id("businesses"),

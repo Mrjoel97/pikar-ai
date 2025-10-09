@@ -21,57 +21,106 @@ export const autoRemediateViolation = mutation({
     const tier = business?.tier || "solopreneur";
 
     const pipeline = workflow.pipeline || [];
+    const originalPipeline = JSON.parse(JSON.stringify(pipeline)); // Deep copy for rollback
     let remediated = false;
     let action = "";
+    let changes: any = {};
 
     // Apply remediation based on violation type
     if (args.violationType === "missing_approval") {
       // Add a default approval step
-      pipeline.push({
+      const newStep = {
         type: "approval",
         title: "Auto-added Approval",
         assigneeRole: "admin",
         slaHours: tier === "enterprise" ? 48 : 24,
-      });
+      };
+      pipeline.push(newStep);
       remediated = true;
       action = "Added missing approval step";
+      changes = { addedStep: newStep, position: pipeline.length - 1 };
     } else if (args.violationType === "insufficient_sla") {
       // Update SLA hours for approval steps
-      pipeline.forEach((step: any) => {
+      const updatedSteps: any[] = [];
+      pipeline.forEach((step: any, index: number) => {
         if (step.type === "approval") {
           const minSLA = tier === "enterprise" ? 48 : 24;
           if (!step.slaHours || step.slaHours < minSLA) {
+            const oldSLA = step.slaHours;
             step.slaHours = minSLA;
             remediated = true;
+            updatedSteps.push({ index, oldSLA, newSLA: minSLA });
           }
         }
       });
       action = "Updated SLA hours to meet minimum requirements";
+      changes = { updatedSteps };
     } else if (args.violationType === "insufficient_approvals") {
       // Add second approval for enterprise
       if (tier === "enterprise" && pipeline.filter((s: any) => s.type === "approval").length < 2) {
-        pipeline.push({
+        const newStep = {
           type: "approval",
           title: "Secondary Approval",
           assigneeRole: "senior_admin",
           slaHours: 48,
-        });
+        };
+        pipeline.push(newStep);
         remediated = true;
         action = "Added second approval step for enterprise tier";
+        changes = { addedStep: newStep, position: pipeline.length - 1 };
       }
     } else if (args.violationType === "role_diversity") {
       // Ensure role diversity in approvals
       const approvalSteps = pipeline.filter((s: any) => s.type === "approval");
       if (approvalSteps.length >= 2) {
+        const oldRoles = approvalSteps.map((s: any) => s.assigneeRole);
         approvalSteps[0].assigneeRole = "admin";
         approvalSteps[1].assigneeRole = "senior_admin";
         remediated = true;
         action = "Updated approval roles for diversity";
+        changes = { oldRoles, newRoles: ["admin", "senior_admin"] };
       }
+    } else if (args.violationType === "missing_notification") {
+      // Add notification step
+      const newStep = {
+        type: "notification",
+        title: "Auto-added Notification",
+        recipients: ["admin"],
+        template: "workflow_status_update",
+      };
+      pipeline.push(newStep);
+      remediated = true;
+      action = "Added missing notification step";
+      changes = { addedStep: newStep, position: pipeline.length - 1 };
+    } else if (args.violationType === "missing_audit_log") {
+      // Add audit logging step
+      const newStep = {
+        type: "audit",
+        title: "Auto-added Audit Log",
+        logLevel: "info",
+        includePayload: true,
+      };
+      pipeline.push(newStep);
+      remediated = true;
+      action = "Added audit logging step";
+      changes = { addedStep: newStep, position: pipeline.length - 1 };
     }
 
     if (remediated) {
       await ctx.db.patch(args.workflowId, { pipeline });
+
+      // Store remediation history for rollback support
+      const remediationId = await ctx.db.insert("governanceRemediations", {
+        businessId: workflow.businessId,
+        workflowId: args.workflowId,
+        violationType: args.violationType,
+        action,
+        changes,
+        originalPipeline,
+        newPipeline: pipeline,
+        status: "applied",
+        appliedAt: Date.now(),
+      });
 
       // Log audit event
       await ctx.db.insert("audit_logs", {
@@ -82,15 +131,125 @@ export const autoRemediateViolation = mutation({
         details: {
           violationType: args.violationType,
           action,
+          remediationId,
         },
         createdAt: Date.now(),
       });
 
-      // Note: Governance health will be recomputed on next evaluation
-      // We don't call enforceGovernanceForWorkflow here to avoid circular dependencies
+      return { remediated, action, remediationId };
     }
 
-    return { remediated, action };
+    return { remediated: false, action: "", remediationId: null };
+  },
+});
+
+/**
+ * Rollback a remediation action
+ */
+export const rollbackRemediation = mutation({
+  args: {
+    remediationId: v.id("governanceRemediations"),
+    reason: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const remediation = await ctx.db.get(args.remediationId);
+    if (!remediation) {
+      throw new Error("Remediation not found");
+    }
+
+    if (remediation.status === "rolled_back") {
+      throw new Error("Remediation already rolled back");
+    }
+
+    const workflow = await ctx.db.get(remediation.workflowId);
+    if (!workflow) {
+      throw new Error("Workflow not found");
+    }
+
+    // Restore original pipeline
+    await ctx.db.patch(remediation.workflowId, {
+      pipeline: remediation.originalPipeline,
+    });
+
+    // Update remediation status
+    await ctx.db.patch(args.remediationId, {
+      status: "rolled_back",
+      rollbackReason: args.reason,
+      rolledBackAt: Date.now(),
+    });
+
+    // Log audit event
+    await ctx.db.insert("audit_logs", {
+      businessId: remediation.businessId,
+      action: "governance_remediation_rollback",
+      entityType: "workflow",
+      entityId: remediation.workflowId,
+      details: {
+        remediationId: args.remediationId,
+        reason: args.reason,
+        violationType: remediation.violationType,
+      },
+      createdAt: Date.now(),
+    });
+
+    return { success: true, workflowId: remediation.workflowId };
+  },
+});
+
+/**
+ * Get remediation history for a business or workflow
+ */
+export const getRemediationHistory = query({
+  args: {
+    businessId: v.optional(v.id("businesses")),
+    workflowId: v.optional(v.id("workflows")),
+    status: v.optional(v.union(v.literal("applied"), v.literal("rolled_back"))),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    let remediations;
+
+    // Filter by business or workflow
+    if (args.businessId) {
+      remediations = await ctx.db
+        .query("governanceRemediations")
+        .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+        .collect();
+    } else if (args.workflowId) {
+      remediations = await ctx.db
+        .query("governanceRemediations")
+        .withIndex("by_workflow", (q) => q.eq("workflowId", args.workflowId))
+        .collect();
+    } else {
+      remediations = await ctx.db.query("governanceRemediations").collect();
+    }
+
+    // Filter by status if provided
+    if (args.status) {
+      remediations = remediations.filter((r) => r.status === args.status);
+    }
+
+    // Sort by most recent first
+    remediations.sort((a, b) => b.appliedAt - a.appliedAt);
+
+    // Apply limit
+    if (args.limit) {
+      remediations = remediations.slice(0, args.limit);
+    }
+
+    // Enrich with workflow details
+    const enriched = await Promise.all(
+      remediations.map(async (rem) => {
+        const workflow = await ctx.db.get(rem.workflowId);
+        return {
+          ...rem,
+          workflowName: (workflow && "name" in workflow) ? workflow.name : "Unknown",
+          workflowStatus: (workflow && "status" in workflow) ? workflow.status : "unknown",
+        };
+      })
+    );
+
+    return enriched;
   },
 });
 
