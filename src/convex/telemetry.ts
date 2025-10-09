@@ -1,4 +1,4 @@
-import { query } from "./_generated/server";
+import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 
 type Caps = {
@@ -225,5 +225,35 @@ export const getTeamPerformanceMetrics = query({
       teamMembers: teamMetrics,
       summary,
     };
+  },
+});
+
+/**
+ * Track template usage event
+ */
+export const trackTemplateUsage = mutation({
+  args: {
+    businessId: v.id("businesses"),
+    userId: v.id("users"),
+    templateId: v.string(),
+    workflowId: v.optional(v.id("workflows")),
+    templateName: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    // Log to audit trail
+    await ctx.db.insert("audit_logs", {
+      businessId: args.businessId,
+      userId: args.userId,
+      entityType: "workflow",
+      entityId: args.workflowId || ("template_" + args.templateId),
+      action: "created_from_template",
+      createdAt: Date.now(),
+      metadata: {
+        templateId: args.templateId,
+        templateName: args.templateName,
+      },
+    });
+
+    return { success: true };
   },
 });

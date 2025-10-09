@@ -87,3 +87,198 @@ export const copyBuiltInTemplate = mutation({
     return id;
   },
 });
+
+/**
+ * Smart Template Ordering Query
+ * Returns templates ordered by intelligent ranking algorithm
+ */
+export const listTemplatesWithSmartOrdering = query({
+  args: {
+    businessId: v.optional(v.id("businesses")),
+    userId: v.optional(v.id("users")),
+    tier: v.optional(v.string()),
+    category: v.optional(v.string()),
+    search: v.optional(v.string()),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const limit = args.limit ?? 20;
+    
+    // Get pinned templates if user is authenticated
+    const pinnedSet = new Set<string>();
+    const pinnedDates = new Map<string, number>();
+    if (args.userId) {
+      const pins = await ctx.db
+        .query("templatePins")
+        .withIndex("by_user", (q) => q.eq("userId", args.userId))
+        .collect();
+      pins.forEach((p) => {
+        pinnedSet.add(p.templateId);
+        pinnedDates.set(p.templateId, p._creationTime);
+      });
+    }
+
+    // Get usage stats if business context available
+    const usageStats = new Map<string, { count: number; lastUsed: number }>();
+    if (args.businessId) {
+      const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
+      const usageEvents = await ctx.db
+        .query("audit_logs")
+        .withIndex("by_business_and_time", (q) => 
+          q.eq("businessId", args.businessId).gt("createdAt", thirtyDaysAgo)
+        )
+        .filter((q) => 
+          q.and(
+            q.eq(q.field("entityType"), "workflow"),
+            q.eq(q.field("action"), "created_from_template")
+          )
+        )
+        .collect();
+
+      usageEvents.forEach((event) => {
+        const templateId = event.metadata?.templateId as string;
+        if (templateId) {
+          const existing = usageStats.get(templateId) || { count: 0, lastUsed: 0 };
+          existing.count++;
+          existing.lastUsed = Math.max(existing.lastUsed, event.createdAt);
+          usageStats.set(templateId, existing);
+        }
+      });
+    }
+
+    // Get business for tier and industry matching
+    const business = args.businessId 
+      ? await ctx.db.get(args.businessId)
+      : null;
+    const userTier = args.tier || business?.tier || "solopreneur";
+    const userIndustry = business?.industry?.toLowerCase();
+
+    // Get all built-in templates (from client-side generator)
+    // In production, these would be stored in DB
+    const allTemplates = await ctx.db
+      .query("workflowTemplates")
+      .filter((q) => q.eq(q.field("template"), true))
+      .collect();
+
+    // Apply filters
+    let filtered = allTemplates;
+    if (args.category) {
+      filtered = filtered.filter((t) => 
+        t.tags?.some((tag) => tag.toLowerCase().includes(args.category!.toLowerCase()))
+      );
+    }
+    if (args.search) {
+      const searchLower = args.search.toLowerCase();
+      filtered = filtered.filter((t) => 
+        t.name.toLowerCase().includes(searchLower) ||
+        t.description?.toLowerCase().includes(searchLower) ||
+        t.tags?.some((tag) => tag.toLowerCase().includes(searchLower))
+      );
+    }
+
+    // Calculate smart ranking score for each template
+    const now = Date.now();
+    const sevenDaysAgo = now - 7 * 24 * 60 * 60 * 1000;
+    const fourteenDaysAgo = now - 14 * 24 * 60 * 60 * 1000;
+
+    const scored = filtered.map((template) => {
+      let score = 0;
+      const templateId = template._id;
+      const usage = usageStats.get(templateId);
+
+      // 1. Pinned (highest priority) - 1000 points + recency
+      if (pinnedSet.has(templateId)) {
+        const pinDate = pinnedDates.get(templateId) || 0;
+        score += 1000 + (pinDate / 1000000); // Add fractional recency
+      }
+
+      // 2. Recently used (last 7 days) - 500 points
+      if (usage && usage.lastUsed > sevenDaysAgo) {
+        score += 500;
+      }
+
+      // 3. Frequently used (30 day count) - up to 300 points
+      if (usage) {
+        score += Math.min(300, usage.count * 30);
+      }
+
+      // 4. Tier match - 200 points
+      if (template.tier === userTier) {
+        score += 200;
+      }
+
+      // 5. Industry match - 150 points
+      if (userIndustry && template.tags?.some((tag) => 
+        tag.toLowerCase().includes(userIndustry)
+      )) {
+        score += 150;
+      }
+
+      // 6. Recency of template (newer = better) - up to 100 points
+      const templateAge = now - template._creationTime;
+      if (templateAge < fourteenDaysAgo) {
+        score += 100 - (templateAge / fourteenDaysAgo) * 100;
+      }
+
+      // 7. Global popularity (mock for now) - up to 50 points
+      // In production, aggregate from all businesses
+      score += Math.random() * 50;
+
+      return {
+        ...template,
+        _smartScore: score,
+        _isPinned: pinnedSet.has(templateId),
+        _usageCount: usage?.count || 0,
+        _lastUsed: usage?.lastUsed || 0,
+        _isNew: template._creationTime > fourteenDaysAgo,
+      };
+    });
+
+    // Sort by score descending
+    scored.sort((a, b) => b._smartScore - a._smartScore);
+
+    // Return limited results
+    return scored.slice(0, limit);
+  },
+});
+
+/**
+ * Get template usage statistics
+ */
+export const getTemplateUsageStats = query({
+  args: {
+    businessId: v.id("businesses"),
+    templateId: v.string(),
+    days: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const days = args.days ?? 30;
+    const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
+
+    const usageEvents = await ctx.db
+      .query("audit_logs")
+      .withIndex("by_business_and_time", (q) => 
+        q.eq("businessId", args.businessId).gt("createdAt", cutoff)
+      )
+      .filter((q) => 
+        q.and(
+          q.eq(q.field("entityType"), "workflow"),
+          q.eq(q.field("action"), "created_from_template"),
+          q.eq(q.field("metadata.templateId"), args.templateId)
+        )
+      )
+      .collect();
+
+    return {
+      totalUses: usageEvents.length,
+      lastUsed: usageEvents.length > 0 
+        ? Math.max(...usageEvents.map((e) => e.createdAt))
+        : null,
+      usageByDay: usageEvents.reduce((acc, event) => {
+        const day = new Date(event.createdAt).toISOString().split("T")[0];
+        acc[day] = (acc[day] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>),
+    };
+  },
+});

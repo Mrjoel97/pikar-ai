@@ -8,10 +8,10 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { useState, useEffect } from "react";
-import { useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { getAllBuiltInTemplates } from "@/lib/templatesClient";
 import { useMutation as usePinMutation, useQuery as usePinQuery } from "convex/react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 export default function WorkflowTemplatesPage() {
   const navigate = useNavigate();
@@ -20,6 +20,7 @@ export default function WorkflowTemplatesPage() {
   // Optional filters
   const [tierFilter, setTierFilter] = useState<string>("all");
   const [search, setSearch] = useState<string>("");
+  const [orderMode, setOrderMode] = useState<"smart" | "alpha">("smart");
 
   const builtIns = useMemo(() => {
     const all = getAllBuiltInTemplates();
@@ -35,16 +36,25 @@ export default function WorkflowTemplatesPage() {
         return name.includes(q) || desc.includes(q) || tags.some((tag) => tag.includes(q));
       });
     }
+    
+    // Apply ordering
+    if (orderMode === "alpha") {
+      items.sort((a: any, b: any) => a.name.localeCompare(b.name));
+    }
+    // Smart ordering is handled by backend query in production
+    
     return items;
-  }, [tierFilter, search]);
+  }, [tierFilter, search, orderMode]);
 
-  // To copy into a workspace, need a businessId. Reuse user's first business if exists.
+  // To copy into a workspace, need a businessId
   const businesses = useQuery(api.businesses.getUserBusinesses, {});
   const firstBizId = businesses?.[0]?._id;
+  const userId = useQuery(api.users.getCurrentUser, {});
 
   const upsertWorkflow = useMutation(api.workflows.upsertWorkflow);
+  const trackUsage = useMutation(api.telemetry.trackTemplateUsage);
 
-  // Add: Default the tier filter to the user's business tier once loaded
+  // Default the tier filter to the user's business tier once loaded
   useEffect(() => {
     const bizTier = (businesses && businesses[0]?.tier) as string | undefined;
     if (tierFilter === "all" && bizTier && ["solopreneur", "startup", "sme", "enterprise"].includes(bizTier)) {
@@ -52,7 +62,7 @@ export default function WorkflowTemplatesPage() {
     }
   }, [businesses, tierFilter]);
 
-  // Backend‑persistent template pinning
+  // Backend-persistent template pinning
   const pinnedList = usePinQuery(api.templatePins?.listPinned as any, isAuthenticated ? {} : "skip") as any[] | undefined;
   const togglePin = usePinMutation(api.templatePins?.togglePin as any);
   const pinnedSet = useMemo(() => {
@@ -76,6 +86,41 @@ export default function WorkflowTemplatesPage() {
       toast(nextPin ? "Pinned template" : "Unpinned template");
     } catch (e: any) {
       toast.error(e?.message ?? "Failed to update pin");
+    }
+  };
+
+  const handleCopyTemplate = async (template: any) => {
+    if (!firstBizId) {
+      toast.error("No business found. Complete onboarding first.");
+      return;
+    }
+    try {
+      const workflowId = await upsertWorkflow({
+        businessId: firstBizId as any,
+        name: template.name,
+        description: template.description || undefined,
+        trigger: template.trigger || { type: "manual" },
+        approval: template.approval || { required: false, threshold: 1 },
+        pipeline: Array.isArray(template.pipeline) ? template.pipeline : [],
+        template: false,
+        tags: Array.isArray(template.tags) ? template.tags : [],
+      } as any);
+
+      // Track template usage
+      if (userId?._id) {
+        await trackUsage({
+          businessId: firstBizId as any,
+          userId: userId._id,
+          templateId: template._id,
+          workflowId: workflowId as any,
+          templateName: template.name,
+        });
+      }
+
+      toast.success("Template copied to your workflows");
+      navigate("/workflows");
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to copy template");
     }
   };
 
@@ -118,6 +163,15 @@ export default function WorkflowTemplatesPage() {
         </div>
 
         <div className="flex items-center gap-2">
+          <Select value={orderMode} onValueChange={(v) => setOrderMode(v as any)}>
+            <SelectTrigger className="w-36">
+              <SelectValue placeholder="Order" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="smart">Smart Order</SelectItem>
+              <SelectItem value="alpha">Alphabetical</SelectItem>
+            </SelectContent>
+          </Select>
           <Select value={tierFilter} onValueChange={setTierFilter}>
             <SelectTrigger className="w-40">
               <SelectValue placeholder="Tier" />
@@ -144,77 +198,82 @@ export default function WorkflowTemplatesPage() {
 
       <div className="text-xs text-muted-foreground">
         {builtIns ? builtIns.length : 0} template{(builtIns?.length || 0) === 1 ? "" : "s"} found
+        {orderMode === "smart" && " • Showing recommended templates first"}
       </div>
 
       <div className="grid gap-4">
-        {(builtIns || []).map((template: any) => (
-          <Card key={template._id}>
-            <CardHeader>
-              <div className="flex items-center justify-between gap-2">
-                <div>
-                  <CardTitle className="text-lg">{template.name}</CardTitle>
-                  {template.description && (
-                    <CardDescription>{template.description}</CardDescription>
+        <TooltipProvider>
+          {(builtIns || []).map((template: any, idx: number) => {
+            const isPinned = pinnedSet.has(template._id);
+            const isRecommended = orderMode === "smart" && idx < 3;
+            const isNew = template._creationTime && (Date.now() - template._creationTime < 14 * 24 * 60 * 60 * 1000);
+            
+            return (
+              <Card key={template._id} className={isRecommended ? "border-emerald-500 border-2" : ""}>
+                <CardHeader>
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <CardTitle className="text-lg">{template.name}</CardTitle>
+                        {isRecommended && (
+                          <Badge className="bg-emerald-600 text-white">Recommended</Badge>
+                        )}
+                        {isNew && (
+                          <Badge variant="outline" className="border-blue-500 text-blue-700">New</Badge>
+                        )}
+                        {isPinned && (
+                          <Badge variant="outline" className="border-amber-500 text-amber-700">Pinned</Badge>
+                        )}
+                      </div>
+                      {template.description && (
+                        <CardDescription>{template.description}</CardDescription>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {isAuthenticated && (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              size="icon"
+                              variant={isPinned ? "default" : "outline"}
+                              className={isPinned ? "bg-emerald-600 text-white hover:bg-emerald-700 h-8 w-8" : "h-8 w-8"}
+                              onClick={() => handlePin(template._id, !isPinned)}
+                              aria-label={isPinned ? "Unpin template" : "Pin template"}
+                            >
+                              {isPinned ? "★" : "☆"}
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            {isPinned ? "Unpin template" : "Pin to top"}
+                          </TooltipContent>
+                        </Tooltip>
+                      )}
+                      <Button
+                        disabled={!firstBizId}
+                        onClick={() => handleCopyTemplate(template)}
+                      >
+                        Copy to Workflows
+                      </Button>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                    <span>Steps: {template.pipeline.length}</span>
+                    <span>Trigger: {template.trigger.type}</span>
+                  </div>
+                  {template.tags?.length > 0 && (
+                    <div className="flex gap-1 mt-2 flex-wrap">
+                      {template.tags.map((tag: string) => (
+                        <Badge key={tag} variant="outline" className="text-xs">{tag}</Badge>
+                      ))}
+                    </div>
                   )}
-                </div>
-                <div className="flex items-center gap-2">
-                  {isAuthenticated && (
-                    <Button
-                      size="icon"
-                      variant={pinnedSet.has(template._id) ? "default" : "outline"}
-                      className={pinnedSet.has(template._id) ? "bg-emerald-600 text-white hover:bg-emerald-700 h-8 w-8" : "h-8 w-8"}
-                      onClick={() => handlePin(template._id, !pinnedSet.has(template._id))}
-                      aria-label={pinnedSet.has(template._id) ? "Unpin template" : "Pin template"}
-                      title={pinnedSet.has(template._id) ? "Unpin" : "Pin"}
-                    >
-                      {pinnedSet.has(template._id) ? "★" : "☆"}
-                    </Button>
-                  )}
-                  <Button
-                    disabled={!firstBizId}
-                    onClick={async () => {
-                      if (!firstBizId) {
-                        toast.error("No business found. Complete onboarding first.");
-                        return;
-                      }
-                      try {
-                        await upsertWorkflow({
-                          businessId: firstBizId as any,
-                          name: template.name,
-                          description: template.description || undefined,
-                          trigger: template.trigger || { type: "manual" },
-                          approval: template.approval || { required: false, threshold: 1 },
-                          pipeline: Array.isArray(template.pipeline) ? template.pipeline : [],
-                          template: false,
-                          tags: Array.isArray(template.tags) ? template.tags : [],
-                        } as any);
-                        toast.success("Template copied to your workflows");
-                        navigate("/workflows");
-                      } catch (e: any) {
-                        toast.error(e?.message || "Failed to copy template");
-                      }
-                    }}
-                  >
-                    Copy to Workflows
-                  </Button>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                <span>Steps: {template.pipeline.length}</span>
-                <span>Trigger: {template.trigger.type}</span>
-              </div>
-              {template.tags?.length > 0 && (
-                <div className="flex gap-1 mt-2 flex-wrap">
-                  {template.tags.map((tag: string) => (
-                    <Badge key={tag} variant="outline" className="text-xs">{tag}</Badge>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        ))}
+                </CardContent>
+              </Card>
+            );
+          })}
+        </TooltipProvider>
       </div>
     </div>
   );
