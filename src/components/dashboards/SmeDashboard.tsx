@@ -25,6 +25,7 @@ import { RiskHeatmap } from "@/components/risk/RiskHeatmap";
 import { RiskTrendChart } from "@/components/risk/RiskTrendChart";
 import { HandoffQueue } from "@/components/workflows/HandoffQueue";
 import { CrossDepartmentMetrics } from "@/components/workflows/CrossDepartmentMetrics";
+import { SystemHealthStrip } from "@/components/dashboard/SystemHealthStrip";
 
 interface SmeDashboardProps {
   business: any;
@@ -283,7 +284,12 @@ export function SmeDashboard({
   const [activeTab, setActiveTab] = React.useState("marketing");
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-6">
+      {/* System Health Strip - SME+ */}
+      {!isGuest && business?._id && (
+        <SystemHealthStrip businessId={business._id} isGuest={isGuest} />
+      )}
+
       {/* Add: Upgrade nudge banner */}
       {!isGuest && upgradeNudges && upgradeNudges.showBanner && (
         <div className="rounded-md border p-3 bg-amber-50 flex items-center gap-3">

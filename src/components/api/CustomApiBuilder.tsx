@@ -245,7 +245,7 @@ export function CustomApiBuilder({ businessId }: CustomApiBuilderProps) {
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            {apis?.map((api) => (
+            {apis?.map((api: any) => (
               <div key={api._id} className="border rounded-lg p-4">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">

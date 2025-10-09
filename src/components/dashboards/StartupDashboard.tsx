@@ -50,6 +50,7 @@ import {
   FunnelChart,
   Funnel,
 } from "recharts";
+import { SystemHealthStrip } from "@/components/dashboard/SystemHealthStrip";
 
 interface StartupDashboardProps {
   business: any;
@@ -325,21 +326,10 @@ const pendingApprovals = useQuery(
   }
 
   return (
-    <div className="space-y-6">
-      {/* Pending Team Onboarding Alert */}
-      {!isGuest && incompleteOnboarding > 0 && (
-        <div className="rounded-md border border-amber-300 bg-amber-50 p-3 flex items-center gap-3">
-          <AlertCircle className="h-5 w-5 text-amber-600" />
-          <div className="flex-1">
-            <p className="text-sm font-medium">
-              {incompleteOnboarding} team member{incompleteOnboarding > 1 ? "s" : ""} pending onboarding
-            </p>
-            <p className="text-xs text-muted-foreground">Help them get started to improve team productivity</p>
-          </div>
-          <Button size="sm" variant="outline" onClick={() => nav("/team")}>
-            Manage Team
-          </Button>
-        </div>
+    <div className="space-y-6 p-6">
+      {/* System Health Strip - Startup+ */}
+      {!isGuest && business?._id && (
+        <SystemHealthStrip businessId={business._id} isGuest={isGuest} />
       )}
 
       {/* Add: Upgrade nudge banner */}
@@ -351,36 +341,6 @@ const pendingApprovals = useQuery(
           </div>
           <div className="ml-auto">
             <Button size="sm" variant="outline" onClick={onUpgrade}>See Plans</Button>
-          </div>
-        </div>
-      )}
-
-      {/* System Health strip (env + integrations) */}
-      {!isGuest && envStatus && envStatus !== "skip" && (
-        <div className="rounded-md border p-3 bg-slate-50 mb-4 grid grid-cols-2 md:grid-cols-4 gap-3">
-          <div className="text-xs">
-            <div className="text-slate-500">Resend</div>
-            <div className={envStatus.emailConfigured ? "text-emerald-600" : "text-amber-600"}>
-              {envStatus.emailConfigured ? "Configured" : "Missing"}
-            </div>
-          </div>
-          <div className="text-xs">
-            <div className="text-slate-500">Base URL</div>
-            <div className={envStatus.publicBaseUrlOk ? "text-emerald-600" : "text-amber-600"}>
-              {envStatus.publicBaseUrlOk ? "OK" : "Not set"}
-            </div>
-          </div>
-          <div className="text-xs">
-            <div className="text-slate-500">Email Queue</div>
-            <div className={envStatus.emailQueueDepth > 25 ? "text-amber-600" : "text-emerald-600"}>
-              {envStatus.emailQueueDepth} queued
-            </div>
-          </div>
-          <div className="text-xs">
-            <div className="text-slate-500">Cron Freshness</div>
-            <div className={(envStatus.cronLastProcessedDeltaMins ?? 0) > 5 ? "text-amber-600" : "text-emerald-600"}>
-              {Math.round(envStatus.cronLastProcessedDeltaMins ?? 0)}m
-            </div>
           </div>
         </div>
       )}
@@ -952,44 +912,6 @@ const pendingApprovals = useQuery(
           </Suspense>
         </CardContent>
       </Card>
-
-      {/* System Health (Bottom) */}
-      <section>
-        <h2 className="text-xl font-semibold mb-4">System Health</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card>
-            <CardContent className="p-4">
-              <h3 className="text-sm font-medium text-muted-foreground">Integrations Status</h3>
-              <p className="text-2xl font-bold">
-                {(isGuest ? demoData?.integrationsOk : true) ? "Healthy" : "Issues"}
-              </p>
-              <p className="text-xs text-muted-foreground mt-1">
-                {(isGuest ? demoData?.integrationsCount ?? 5 : 5)} connected
-              </p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4">
-              <h3 className="text-sm font-medium text-muted-foreground">Automation Performance</h3>
-              <p className="text-2xl font-bold">
-                {(isGuest ? demoData?.automationSuccessRate ?? 97 : 97)}%
-              </p>
-              <p className="text-xs text-muted-foreground mt-1">Success rate past 7 days</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4">
-              <h3 className="text-sm font-medium text-muted-foreground">Data Sync</h3>
-              <p className="text-2xl font-bold">
-                {(isGuest ? demoData?.dataSyncStatus ?? "Up-to-date" : "Up-to-date")}
-              </p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Last sync: {(isGuest ? demoData?.lastSync ?? "2m ago" : "2m ago")}
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-      </section>
 
       {/* CRM Sync Status */}
       {!isGuest && business?._id && (

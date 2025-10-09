@@ -110,7 +110,7 @@ export const listTemplatesWithSmartOrdering = query({
     if (args.userId) {
       const pins = await ctx.db
         .query("templatePins")
-        .withIndex("by_user", (q) => q.eq("userId", args.userId))
+        .withIndex("by_user", (q) => q.eq("userId", args.userId as Id<"users">))
         .collect();
       pins.forEach((p) => {
         pinnedSet.add(p.templateId);
@@ -124,19 +124,20 @@ export const listTemplatesWithSmartOrdering = query({
       const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
       const usageEvents = await ctx.db
         .query("audit_logs")
-        .withIndex("by_business_and_time", (q) => 
-          q.eq("businessId", args.businessId).gt("createdAt", thirtyDaysAgo)
+        .withIndex("by_business", (q) => 
+          q.eq("businessId", args.businessId)
         )
         .filter((q) => 
           q.and(
             q.eq(q.field("entityType"), "workflow"),
-            q.eq(q.field("action"), "created_from_template")
+            q.eq(q.field("action"), "created_from_template"),
+            q.gt(q.field("createdAt"), thirtyDaysAgo)
           )
         )
         .collect();
 
       usageEvents.forEach((event) => {
-        const templateId = event.metadata?.templateId as string;
+        const templateId = (event.details as any)?.templateId as string;
         if (templateId) {
           const existing = usageStats.get(templateId) || { count: 0, lastUsed: 0 };
           existing.count++;
@@ -157,7 +158,6 @@ export const listTemplatesWithSmartOrdering = query({
     // In production, these would be stored in DB
     const allTemplates = await ctx.db
       .query("workflowTemplates")
-      .filter((q) => q.eq(q.field("template"), true))
       .collect();
 
     // Apply filters
@@ -257,17 +257,18 @@ export const getTemplateUsageStats = query({
 
     const usageEvents = await ctx.db
       .query("audit_logs")
-      .withIndex("by_business_and_time", (q) => 
-        q.eq("businessId", args.businessId).gt("createdAt", cutoff)
+      .withIndex("by_business", (q) => 
+        q.eq("businessId", args.businessId)
       )
       .filter((q) => 
         q.and(
           q.eq(q.field("entityType"), "workflow"),
           q.eq(q.field("action"), "created_from_template"),
-          q.eq(q.field("metadata.templateId"), args.templateId)
+          q.gt(q.field("createdAt"), cutoff)
         )
       )
-      .collect();
+      .collect()
+      .then(events => events.filter(e => (e.details as any)?.templateId === args.templateId));
 
     return {
       totalUses: usageEvents.length,

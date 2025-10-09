@@ -256,7 +256,7 @@ export default function Support() {
             </div>
 
             <div className="grid gap-4">
-              {tickets?.map((ticket) => (
+              {tickets?.map((ticket: any) => (
                 <Card key={ticket._id}>
                   <CardHeader>
                     <div className="flex items-start justify-between">
@@ -360,7 +360,7 @@ export default function Support() {
             </div>
 
             <div className="grid gap-4">
-              {trainingSessions?.map((session) => (
+              {trainingSessions?.map((session: any) => (
                 <Card key={session._id}>
                   <CardHeader>
                     <div className="flex items-start justify-between">

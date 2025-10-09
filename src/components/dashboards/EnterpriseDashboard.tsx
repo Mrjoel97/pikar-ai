@@ -13,6 +13,7 @@ import { Separator } from "@/components/ui/separator";
 import { useNavigate } from "react-router";
 import { Id } from "@/convex/_generated/dataModel";
 import { Shield, AlertTriangle, Globe, Zap, FileText, Palette, Lock } from "lucide-react";
+import { SystemHealthStrip } from "@/components/dashboard/SystemHealthStrip";
 
 // Lazy-load heavy components to reduce initial bundle
 const RoiDashboard = lazy(() =>
@@ -298,6 +299,11 @@ export function EnterpriseDashboard({
 
   return (
     <div className="space-y-6 p-6">
+      {/* System Health Strip - Enterprise */}
+      {!isGuest && business?._id && (
+        <SystemHealthStrip businessId={business._id} isGuest={isGuest} />
+      )}
+
       {/* Global Command Center */}
       <Suspense fallback={<div className="rounded-md border p-4 text-sm text-muted-foreground">Loading overview…</div>}>
         <GlobalOverview

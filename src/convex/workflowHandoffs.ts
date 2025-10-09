@@ -18,7 +18,7 @@ export const recordHandoff = mutation({
     return await ctx.db.insert("workflowHandoffs", {
       businessId: args.businessId,
       workflowId: args.workflowId,
-      stepId: args.stepId,
+      stepId: args.stepId as Id<"workflowSteps">,
       fromDepartment: args.fromDepartment,
       toDepartment: args.toDepartment,
       status: "pending",

@@ -85,10 +85,10 @@ export const createCustomApi = mutation({
       path: args.path,
       convexFunction: args.convexFunction,
       requiresAuth: args.requiresAuth,
-      rateLimit: args.rateLimit,
+      rateLimit: typeof args.rateLimit === 'object' ? undefined : args.rateLimit,
       isActive: true,
       totalCalls: 0,
-      createdBy: identity.subject,
+      createdBy: identity.subject as Id<"users">,
       createdAt: Date.now(),
       updatedAt: Date.now(),
     });
@@ -96,7 +96,7 @@ export const createCustomApi = mutation({
     // Audit log
     await ctx.db.insert("audit_logs", {
       businessId: args.businessId,
-      userId: identity.subject,
+      userId: identity.subject as Id<"users">,
       action: "custom_api_created",
       entityType: "custom_api",
       entityId: apiId,
