@@ -38,6 +38,7 @@ import type * as capa from "../capa.js";
 import type * as chunking from "../chunking.js";
 import type * as complianceReports from "../complianceReports.js";
 import type * as contacts from "../contacts.js";
+import type * as crisisManagement from "../crisisManagement.js";
 import type * as crmIntegrations from "../crmIntegrations.js";
 import type * as cron from "../cron.js";
 import type * as data_playbooksSeed from "../data/playbooksSeed.js";
@@ -160,6 +161,7 @@ declare const fullApi: ApiFromModules<{
   chunking: typeof chunking;
   complianceReports: typeof complianceReports;
   contacts: typeof contacts;
+  crisisManagement: typeof crisisManagement;
   crmIntegrations: typeof crmIntegrations;
   cron: typeof cron;
   "data/playbooksSeed": typeof data_playbooksSeed;

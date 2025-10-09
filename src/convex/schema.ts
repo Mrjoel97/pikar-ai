@@ -1861,6 +1861,26 @@ const schema = defineSchema({
   })
     .index("by_goal", ["goalId"])
     .index("by_business", ["businessId"]),
+
+  crisisAlerts: defineTable({
+    businessId: v.id("businesses"),
+    severity: v.union(v.literal("low"), v.literal("medium"), v.literal("high"), v.literal("critical")),
+    type: v.string(),
+    message: v.string(),
+    postId: v.optional(v.id("socialPosts")),
+    metrics: v.optional(v.any()),
+    status: v.union(v.literal("open"), v.literal("investigating"), v.literal("resolved"), v.literal("false_positive")),
+    autoDetected: v.boolean(),
+    resolution: v.optional(v.string()),
+    createdBy: v.string(),
+    createdAt: v.number(),
+    resolvedBy: v.optional(v.string()),
+    resolvedAt: v.optional(v.number()),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_status", ["status"])
+    .index("by_severity", ["severity"])
+    .index("by_business_and_status", ["businessId", "status"]),
 });
 
 export default schema;

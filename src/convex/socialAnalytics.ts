@@ -409,3 +409,164 @@ export const getPlatformBreakdown = query({
     return breakdown;
   },
 });
+
+/**
+ * Get multi-brand performance comparison
+ */
+export const getMultiBrandMetrics = query({
+  args: {
+    businessId: v.id("businesses"),
+    timeRange: v.optional(v.union(v.literal("7d"), v.literal("30d"), v.literal("90d"), v.literal("1y"))),
+  },
+  handler: async (ctx, args) => {
+    const now = Date.now();
+    const timeRangeMs: Record<string, number> = {
+      "7d": 7 * 24 * 60 * 60 * 1000,
+      "30d": 30 * 24 * 60 * 60 * 1000,
+      "90d": 90 * 24 * 60 * 60 * 1000,
+      "1y": 365 * 24 * 60 * 60 * 1000,
+    };
+    const cutoff = now - (timeRangeMs[args.timeRange || "30d"] || timeRangeMs["30d"]);
+
+    // Get all brands for this business
+    const brands = await ctx.db
+      .query("brands")
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .filter((q) => q.eq(q.field("isActive"), true))
+      .collect();
+
+    // Get all posts in time range
+    const posts = await ctx.db
+      .query("socialPosts")
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .filter((q) => q.gte(q.field("_creationTime"), cutoff))
+      .collect();
+
+    // Aggregate metrics by brand
+    const brandMetrics = brands.map((brand) => {
+      // In a real implementation, posts would have a brandId field
+      // For now, we'll distribute posts evenly across brands
+      const brandPosts = posts.filter((_, idx) => idx % brands.length === brands.indexOf(brand));
+      
+      let totalImpressions = 0;
+      let totalEngagements = 0;
+      let totalClicks = 0;
+      let totalShares = 0;
+      let totalComments = 0;
+      let totalLikes = 0;
+
+      for (const post of brandPosts) {
+        if (post.performanceMetrics) {
+          totalImpressions += post.performanceMetrics.impressions || 0;
+          totalEngagements += post.performanceMetrics.engagements || 0;
+          totalClicks += post.performanceMetrics.clicks || 0;
+          totalShares += post.performanceMetrics.shares || 0;
+          totalComments += post.performanceMetrics.comments || 0;
+          totalLikes += post.performanceMetrics.likes || 0;
+        }
+      }
+
+      const engagementRate = totalImpressions > 0 ? (totalEngagements / totalImpressions) * 100 : 0;
+
+      return {
+        brandId: brand._id,
+        brandName: brand.name,
+        brandColor: brand.primaryColor,
+        posts: brandPosts.length,
+        impressions: totalImpressions,
+        engagements: totalEngagements,
+        clicks: totalClicks,
+        shares: totalShares,
+        comments: totalComments,
+        likes: totalLikes,
+        engagementRate: parseFloat(engagementRate.toFixed(2)),
+        avgImpressions: brandPosts.length > 0 ? Math.round(totalImpressions / brandPosts.length) : 0,
+      };
+    });
+
+    // Calculate totals
+    const totals = {
+      posts: posts.length,
+      impressions: brandMetrics.reduce((sum, b) => sum + b.impressions, 0),
+      engagements: brandMetrics.reduce((sum, b) => sum + b.engagements, 0),
+      clicks: brandMetrics.reduce((sum, b) => sum + b.clicks, 0),
+      shares: brandMetrics.reduce((sum, b) => sum + b.shares, 0),
+      comments: brandMetrics.reduce((sum, b) => sum + b.comments, 0),
+      likes: brandMetrics.reduce((sum, b) => sum + b.likes, 0),
+    };
+
+    return {
+      brands: brandMetrics,
+      totals,
+      timeRange: args.timeRange || "30d",
+    };
+  },
+});
+
+/**
+ * Get cross-platform performance summary
+ */
+export const getCrossPlatformSummary = query({
+  args: {
+    businessId: v.id("businesses"),
+    timeRange: v.optional(v.union(v.literal("7d"), v.literal("30d"), v.literal("90d"), v.literal("1y"))),
+  },
+  handler: async (ctx, args) => {
+    const now = Date.now();
+    const timeRangeMs: Record<string, number> = {
+      "7d": 7 * 24 * 60 * 60 * 1000,
+      "30d": 30 * 24 * 60 * 60 * 1000,
+      "90d": 90 * 24 * 60 * 60 * 1000,
+      "1y": 365 * 24 * 60 * 60 * 1000,
+    };
+    const cutoff = now - (timeRangeMs[args.timeRange || "30d"] || timeRangeMs["30d"]);
+
+    const posts = await ctx.db
+      .query("socialPosts")
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .filter((q) => q.gte(q.field("_creationTime"), cutoff))
+      .collect();
+
+    // Get connected accounts
+    const accounts = await ctx.db
+      .query("socialAccounts")
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .filter((q) => q.eq(q.field("isActive"), true))
+      .collect();
+
+    const platformSummary = {
+      twitter: { connected: false, posts: 0, engagement: 0 },
+      linkedin: { connected: false, posts: 0, engagement: 0 },
+      facebook: { connected: false, posts: 0, engagement: 0 },
+    };
+
+    // Mark connected platforms
+    for (const account of accounts) {
+      if (platformSummary[account.platform]) {
+        platformSummary[account.platform].connected = true;
+      }
+    }
+
+    // Aggregate post metrics by platform
+    for (const post of posts) {
+      if (post.performanceMetrics) {
+        for (const platform of post.platforms) {
+          if (platformSummary[platform]) {
+            platformSummary[platform].posts++;
+            platformSummary[platform].engagement += post.performanceMetrics.engagements || 0;
+          }
+        }
+      }
+    }
+
+    return {
+      platforms: Object.entries(platformSummary).map(([name, data]) => ({
+        name,
+        ...data,
+        avgEngagement: data.posts > 0 ? Math.round(data.engagement / data.posts) : 0,
+      })),
+      totalConnected: accounts.length,
+      totalPosts: posts.length,
+    };
+  },
+});

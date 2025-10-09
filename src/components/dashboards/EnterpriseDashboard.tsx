@@ -51,6 +51,11 @@ const BrainDumpSection = lazy(() =>
     default: m.BrainDumpSection,
   })),
 );
+const SocialCommandCenter = lazy(() =>
+  import("./enterprise/SocialCommandCenter").then((m) => ({
+    default: m.SocialCommandCenter,
+  })),
+);
 
 interface EnterpriseDashboardProps {
   business: any;
