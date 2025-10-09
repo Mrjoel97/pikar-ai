@@ -83,11 +83,23 @@ export const createCampaign = mutation({
     experimentId: v.optional(v.id("experiments")),
     variantId: v.optional(v.id("experimentVariants")),
     scheduledAt: v.optional(v.number()),
+    // New: A/B testing fields
+    enableAbTest: v.optional(v.boolean()),
+    variantB: v.optional(v.object({
+      subject: v.string(),
+      body: v.string(),
+    })),
   },
   handler: async (ctx, args) => {
     try {
       const identity = await ctx.auth.getUserIdentity();
       if (!identity) throw createAuthError("Not authenticated");
+
+      const user = await ctx.db
+        .query("users")
+        .withIndex("email", (q) => q.eq("email", identity.email!))
+        .unique();
+      if (!user) throw new Error("User not found");
 
       // Validation
       if (!args.subject || args.subject.trim().length === 0) {
@@ -136,6 +148,80 @@ export const createCampaign = mutation({
       }
     }
 
+    let experimentId = args.experimentId;
+    let variantAId: any = undefined;
+    let variantBId: any = undefined;
+
+    // Create A/B test experiment if enabled
+    if (args.enableAbTest && args.variantB && args.variantB.subject && args.variantB.body) {
+      // Create experiment
+      experimentId = await ctx.db.insert("experiments", {
+        businessId: args.businessId,
+        name: `Campaign: ${args.subject}`,
+        hypothesis: "Testing subject and body variations",
+        goal: "opens",
+        status: "running",
+        createdBy: user._id,
+        configuration: {
+          confidenceLevel: 95,
+          minimumSampleSize: 100,
+          durationDays: 7,
+          autoDeclareWinner: true,
+        },
+        createdAt: Date.now(),
+        startedAt: Date.now(),
+      });
+
+      // Create Variant A (original)
+      variantAId = await ctx.db.insert("experimentVariants", {
+        experimentId,
+        variantKey: "A",
+        name: "Variant A (Original)",
+        subject: args.subject,
+        body: args.body,
+        buttons: args.buttons,
+        trafficSplit: 50,
+        metrics: {
+          sent: 0,
+          opened: 0,
+          clicked: 0,
+          converted: 0,
+          revenue: 0,
+        },
+      });
+
+      // Create Variant B
+      variantBId = await ctx.db.insert("experimentVariants", {
+        experimentId,
+        variantKey: "B",
+        name: "Variant B",
+        subject: args.variantB.subject,
+        body: args.variantB.body,
+        buttons: args.buttons,
+        trafficSplit: 50,
+        metrics: {
+          sent: 0,
+          opened: 0,
+          clicked: 0,
+          converted: 0,
+          revenue: 0,
+        },
+      });
+
+      // Audit log
+      await ctx.runMutation("audit:write" as any, {
+        businessId: args.businessId,
+        action: "ab_test_created",
+        entityType: "experiment",
+        entityId: String(experimentId),
+        details: { 
+          campaignSubject: args.subject,
+          variantAId: String(variantAId),
+          variantBId: String(variantBId),
+        },
+      });
+    }
+
     const campaignId = await ctx.db.insert("emails", {
       businessId: args.businessId,
       type: "campaign",
@@ -153,10 +239,17 @@ export const createCampaign = mutation({
       status: args.scheduledAt && args.scheduledAt > Date.now() + 60000 ? "scheduled" : "queued",
       sendIds: [],
       createdAt: Date.now(),
+      experimentId,
+      variantId: variantAId, // Default to variant A for now
     });
 
     if (!args.scheduledAt || args.scheduledAt <= Date.now() + 60000) {
-      await ctx.scheduler.runAfter(0, "emailsActions:sendCampaignInternal" as any, { campaignId });
+      await ctx.scheduler.runAfter(0, "emailsActions:sendCampaignInternal" as any, { 
+        campaignId,
+        experimentId,
+        variantAId,
+        variantBId,
+      });
     }
 
       return campaignId;

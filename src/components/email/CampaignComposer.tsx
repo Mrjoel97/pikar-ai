@@ -290,6 +290,14 @@ export function CampaignComposer({ businessId, onClose, onCreated, defaultSchedu
       return;
     }
 
+    // Validate A/B test if enabled
+    if (enableAb) {
+      if (!variantB.subject || !variantB.body) {
+        toast.error("Please fill in both subject and body for Variant B");
+        return;
+      }
+    }
+
     try {
       const recipients = audienceType === "direct" 
         ? directRecipients.split(",").map(email => email.trim()).filter(Boolean)
@@ -308,14 +316,16 @@ export function CampaignComposer({ businessId, onClose, onCreated, defaultSchedu
         audienceListId: audienceType === "list" ? selectedListId : undefined,
         buttons: formData.buttons.map(({ text, url }) => ({ text, url })),
         scheduledAt: defaultScheduledAt ?? Date.now(),
+        enableAbTest: enableAb,
+        variantB: enableAb ? variantB : undefined,
       });
 
-      // Note: A/B variant is UI-only scaffold for now (not persisted in campaign)
       if (enableAb && variantB.subject && variantB.body) {
-        toast("A/B scaffold saved locally (B variant not yet scheduled server-side).");
+        toast.success("Campaign with A/B test scheduled successfully!");
+      } else {
+        toast.success("Campaign scheduled successfully!");
       }
-
-      toast.success("Campaign scheduled successfully!");
+      
       onCreated?.();
       onClose();
     } catch (error: any) {
@@ -658,7 +668,12 @@ export function CampaignComposer({ businessId, onClose, onCreated, defaultSchedu
 
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <Label>A/B Testing (scaffold)</Label>
+          <div>
+            <Label>A/B Testing</Label>
+            <p className="text-sm text-muted-foreground mt-1">
+              Test two versions to see which performs better
+            </p>
+          </div>
           <div className="flex items-center gap-2">
             <Switch checked={enableAb} onCheckedChange={setEnableAb} />
             <span className="text-sm text-muted-foreground">{enableAb ? "Enabled" : "Disabled"}</span>
@@ -668,7 +683,10 @@ export function CampaignComposer({ businessId, onClose, onCreated, defaultSchedu
           <Card>
             <CardHeader>
               <CardTitle className="text-sm">Variant B</CardTitle>
-              <CardDescription>Lightweight fields for a second variant (UI-only)</CardDescription>
+              <CardDescription>
+                Create an alternative version to test against your original (Variant A).
+                Recipients will be split 50/50 between variants.
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
               <div>
@@ -690,6 +708,12 @@ export function CampaignComposer({ businessId, onClose, onCreated, defaultSchedu
                   rows={6}
                 />
               </div>
+              <Alert>
+                <AlertDescription className="text-xs">
+                  <strong>Note:</strong> Both variants will use the same sender info, buttons, and audience.
+                  Results will be tracked automatically and you can view them in the Experiments dashboard.
+                </AlertDescription>
+              </Alert>
             </CardContent>
           </Card>
         )}
