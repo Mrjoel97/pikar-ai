@@ -34,6 +34,7 @@ const ScimProvisioningPage = React.lazy(() => import("./pages/ScimProvisioning")
 const SsoConfigurationPage = React.lazy(() => import("./pages/SsoConfiguration"));
 const KmsConfigurationPage = React.lazy(() => import("./pages/KmsConfiguration"));
 const ApiBuilderPage = React.lazy(() => import("./pages/ApiBuilder"));
+const SupportPage = React.lazy(() => import("./pages/Support"));
 
 class ErrorBoundary extends Component<
   { children: React.ReactNode },
@@ -322,6 +323,14 @@ createRoot(document.getElementById("root")!).render(
                 element={
                   <React.Suspense fallback={<div className="p-6 text-sm">Loading…</div>}>
                     <ApiBuilderPage />
+                  </React.Suspense>
+                }
+              />
+              <Route
+                path="/support"
+                element={
+                  <React.Suspense fallback={<div className="p-6 text-sm">Loading…</div>}>
+                    <SupportPage />
                   </React.Suspense>
                 }
               />

@@ -1885,23 +1885,70 @@ const schema = defineSchema({
   customApis: defineTable({
     businessId: v.id("businesses"),
     name: v.string(),
-    description: v.optional(v.string()),
     method: v.union(v.literal("GET"), v.literal("POST"), v.literal("PUT"), v.literal("DELETE")),
     path: v.string(),
     convexFunction: v.string(),
     requiresAuth: v.boolean(),
-    rateLimit: v.optional(v.object({
-      requestsPerMinute: v.number(),
-      requestsPerHour: v.number(),
-    })),
+    rateLimit: v.optional(v.number()),
     isActive: v.boolean(),
-    totalCalls: v.number(),
-    createdBy: v.string(),
+    createdBy: v.id("users"),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
     .index("by_business", ["businessId"])
     .index("by_path", ["path"]),
+
+  supportTickets: defineTable({
+    businessId: v.id("businesses"),
+    subject: v.string(),
+    description: v.string(),
+    priority: v.union(v.literal("low"), v.literal("medium"), v.literal("high"), v.literal("critical")),
+    category: v.string(),
+    status: v.union(
+      v.literal("open"),
+      v.literal("in_progress"),
+      v.literal("waiting_customer"),
+      v.literal("resolved"),
+      v.literal("closed")
+    ),
+    createdBy: v.id("users"),
+    assignedTo: v.optional(v.id("users")),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_status", ["status"])
+    .index("by_priority", ["priority"]),
+
+  ticketComments: defineTable({
+    ticketId: v.id("supportTickets"),
+    userId: v.id("users"),
+    comment: v.string(),
+    createdAt: v.number(),
+  })
+    .index("by_ticket", ["ticketId"]),
+
+  trainingSessions: defineTable({
+    businessId: v.id("businesses"),
+    title: v.string(),
+    description: v.string(),
+    scheduledAt: v.number(),
+    durationMinutes: v.number(),
+    topic: v.string(),
+    maxAttendees: v.optional(v.number()),
+    status: v.union(
+      v.literal("scheduled"),
+      v.literal("in_progress"),
+      v.literal("completed"),
+      v.literal("cancelled")
+    ),
+    trainerId: v.optional(v.id("users")),
+    attendees: v.optional(v.array(v.id("users"))),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_status", ["status"]),
 });
 
 export default schema;

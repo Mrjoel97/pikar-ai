@@ -55,6 +55,7 @@ import type * as emailDrafts from "../emailDrafts.js";
 import type * as emails from "../emails.js";
 import type * as emailsActions from "../emailsActions.js";
 import type * as enterpriseMetrics from "../enterpriseMetrics.js";
+import type * as enterpriseSupport from "../enterpriseSupport.js";
 import type * as entitlements from "../entitlements.js";
 import type * as evals from "../evals.js";
 import type * as evalsInternal from "../evalsInternal.js";
@@ -180,6 +181,7 @@ declare const fullApi: ApiFromModules<{
   emails: typeof emails;
   emailsActions: typeof emailsActions;
   enterpriseMetrics: typeof enterpriseMetrics;
+  enterpriseSupport: typeof enterpriseSupport;
   entitlements: typeof entitlements;
   evals: typeof evals;
   evalsInternal: typeof evalsInternal;

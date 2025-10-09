@@ -742,6 +742,17 @@ export function EnterpriseDashboard({
               </Button>
             </CardContent>
           </Card>
+          <Card>
+            <CardContent className="p-4 flex items-center justify-between">
+              <div>
+                <div className="text-sm font-medium">Enterprise Support</div>
+                <div className="text-xs text-muted-foreground">Tickets & training</div>
+              </div>
+              <Button size="sm" variant="outline" onClick={() => nav("/support")}>
+                Open Portal
+              </Button>
+            </CardContent>
+          </Card>
         </div>
       </section>
 
