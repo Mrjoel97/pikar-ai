@@ -9,6 +9,7 @@ import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Copy } from "lucide-react";
 
 export default function SettingsPage() {
   const navigate = useNavigate();
@@ -67,6 +68,26 @@ export default function SettingsPage() {
   function isEmail(s: string) {
     return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(s);
   }
+
+  // Add copy handler for URLs
+  function copyUrl(url: string, label: string) {
+    if (!url) {
+      toast.error(`${label} is not available`);
+      return;
+    }
+    navigator.clipboard.writeText(url)
+      .then(() => {
+        toast.success(`Copied ${label}`);
+      })
+      .catch((err) => {
+        console.error("Clipboard copy failed:", err);
+        toast.error("Failed to copy to clipboard. Please copy manually.");
+      });
+  }
+
+  // Get Convex URL from environment
+  const convexUrl = (import.meta as any)?.env?.VITE_CONVEX_URL as string | undefined;
+  const googleRedirectUrl = convexUrl ? `${convexUrl}/api/auth/callback/google` : "";
 
   async function handleSendTestEmail() {
     if (!hasResend) {
@@ -147,6 +168,76 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
       )}
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Google OAuth Setup URLs</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Use these URLs when configuring Google OAuth in the Google Cloud Console.
+          </p>
+          
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="convexUrl">Convex Deployment URL</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="convexUrl"
+                  value={convexUrl || "Not configured"}
+                  readOnly
+                  className="bg-gray-50 font-mono text-sm"
+                />
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => copyUrl(convexUrl || "", "Convex URL")}
+                  disabled={!convexUrl}
+                >
+                  <Copy className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="googleRedirect">Google OAuth Redirect URI</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="googleRedirect"
+                  value={googleRedirectUrl || "Not configured"}
+                  readOnly
+                  className="bg-gray-50 font-mono text-sm"
+                />
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => copyUrl(googleRedirectUrl, "Redirect URI")}
+                  disabled={!googleRedirectUrl}
+                >
+                  <Copy className="h-4 w-4" />
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Add this as an authorized redirect URI in your Google Cloud Console OAuth configuration.
+              </p>
+            </div>
+          </div>
+
+          <div className="pt-4 border-t">
+            <p className="text-xs text-muted-foreground">
+              <strong>Setup Steps:</strong>
+            </p>
+            <ol className="list-decimal ml-5 space-y-1 text-xs text-muted-foreground mt-2">
+              <li>Copy the Redirect URI above</li>
+              <li>Go to Google Cloud Console → APIs & Services → Credentials</li>
+              <li>Create or edit your OAuth 2.0 Client ID</li>
+              <li>Add the Redirect URI to "Authorized redirect URIs"</li>
+              <li>Copy your Client ID and Client Secret</li>
+              <li>Add them to your Convex dashboard environment variables as GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET</li>
+            </ol>
+          </div>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
