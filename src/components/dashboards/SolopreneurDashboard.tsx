@@ -1456,7 +1456,6 @@ Renamed to avoid duplicate identifier collisions elsewhere in the file */
           }
         })
         .catch((err) => {
-          console.error("Failed to load suggestions:", err);
           toast.error("Failed to load AI suggestions");
         })
         .finally(() => {
@@ -1913,7 +1912,6 @@ Renamed to avoid duplicate identifier collisions elsewhere in the file */
         throw new Error("Generation failed");
       }
     } catch (error) {
-      console.error("Capsule generation error:", error);
       toast.error("Failed to generate content. Using fallback.");
       // Fallback to client-side generation
       const c = genContentCapsule();
@@ -2250,7 +2248,6 @@ Renamed to avoid duplicate identifier collisions elsewhere in the file */
       });
     } catch (error) {
       toast.error("Failed to generate invoice");
-      console.error(error);
     }
   };
 
