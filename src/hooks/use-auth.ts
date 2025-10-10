@@ -4,25 +4,31 @@ import * as AuthReact from "@convex-dev/auth/react";
 type UseAuthResult = {
   isAuthenticated: boolean;
   isLoading: boolean;
-  user: any | null;
-  signIn: (provider: string, formData?: FormData) => Promise<any>;
-  signOut: () => Promise<any>;
-  [key: string]: any; // allow passthrough of additional fields from the underlying hook
+  user: {
+    email?: string;
+    name?: string;
+    [key: string]: unknown;
+  } | null;
+  signIn: (provider: string, formData?: FormData) => Promise<void>;
+  signOut: () => Promise<void>;
+  [key: string]: unknown; // allow passthrough of additional fields from the underlying hook
 };
 
 export function useAuth(): UseAuthResult {
-  const anyMod = AuthReact as any;
+  const authModule = AuthReact as {
+    useAuth?: () => Partial<UseAuthResult>;
+  };
 
   // If the Convex auth hook exists, return it while ensuring required fields are present.
-  if (typeof anyMod.useAuth === "function") {
-    const res: any = anyMod.useAuth();
+  if (typeof authModule.useAuth === "function") {
+    const res = authModule.useAuth();
     return {
       ...res,
       isAuthenticated: !!res?.isAuthenticated,
       isLoading: !!res?.isLoading,
       user: res?.user ?? null,
-      signIn: (res?.signIn ?? (async () => {})) as any,
-      signOut: (res?.signOut ?? (async () => {})) as any,
+      signIn: res?.signIn ?? (async () => {}),
+      signOut: res?.signOut ?? (async () => {}),
     };
   }
 
