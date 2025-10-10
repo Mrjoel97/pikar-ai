@@ -94,41 +94,21 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
           throw new Error("Password must be at least 8 characters long");
         }
 
-        const result = await fetch("/api/convex", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            path: "passwordAuth:signUpPassword",
-            args: { email, password },
-          }),
-        }).then(r => r.json());
-
-        if (result.error) throw new Error(result.error);
-
-        clearGuestMode();
-
-        toast.success("Account created! Please verify your email to continue.");
-        navigate("/onboarding");
+        // For now, redirect to email OTP flow for signup
+        // Password auth can be added later with proper backend setup
+        toast.info("Please use email verification to create your account");
+        setAuthMethod("email");
+        return;
       } else {
-        const result = await fetch("/api/convex", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            path: "passwordAuth:loginPassword",
-            args: { email, password },
-          }),
-        }).then(r => r.json());
-
-        if (result.error) throw new Error(result.error);
-
-        clearGuestMode();
-
-        toast.success("Signed in! Verify your email for full access.");
-        navigate("/dashboard");
+        // For login, also use email OTP for now
+        toast.info("Please use email verification to sign in");
+        setAuthMethod("email");
+        return;
       }
     } catch (error) {
       console.error("Password auth error:", error);
       setError(error instanceof Error ? error.message : "Authentication failed");
+      toast.error(error instanceof Error ? error.message : "Authentication failed");
     } finally {
       setIsLoading(false);
     }
@@ -169,13 +149,19 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
     setIsLoading(true);
     setError(null);
     try {
+      // Sign in anonymously first
+      await signIn("anonymous");
+      
+      // Set guest mode in localStorage
       setGuestMode(guestTier);
+      
       toast("Signed in as guest");
       const redirect = "/dashboard?guest=1&tier=" + encodeURIComponent(guestTier);
       navigate(redirect);
     } catch (error) {
       console.error("Guest login error:", error);
       setError(`Failed to continue as guest: ${error instanceof Error ? error.message : "Unknown error"}`);
+      toast.error("Failed to sign in as guest");
     } finally {
       setIsLoading(false);
     }
