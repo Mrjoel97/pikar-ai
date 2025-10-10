@@ -72,12 +72,15 @@ export function StartupDashboard({
   const kpis = isGuest ? demoData?.kpis || {} : {};
   const tasks = isGuest ? demoData?.tasks || [] : [];
 
+  // Define businessId early before any queries that depend on it
+  const businessId = !isGuest ? business?._id : null;
+
   const runDiagnostics = useMutation(api.initiatives.runPhase0Diagnostics);
 
   // Add: Growth metrics query
   const growthMetrics = useQuery(
     api.kpis.getGrowthMetrics,
-    isGuest || !business?._id ? undefined : { businessId: business._id, timeRange: "30d" }
+    isGuest || !businessId ? undefined : { businessId, timeRange: "30d" }
   );
 
   // Use growth metrics or fallback to demo data
@@ -113,7 +116,7 @@ export function StartupDashboard({
 
   const upgradeNudges = useQuery(
     api.telemetry.getUpgradeNudges,
-    isGuest || !business?._id ? undefined : { businessId: business._id }
+    isGuest || !businessId ? undefined : { businessId }
   );
 
   const UpgradeCTA = ({ feature }: { feature: string }) => (
@@ -158,16 +161,16 @@ export function StartupDashboard({
 
   const envStatus = useQuery(
     api.health.envStatus,
-    isGuest || !business?._id ? undefined : { businessId: business._id }
+    isGuest || !businessId ? undefined : { businessId }
   );
 
   const recentActivity = useQuery(
     api.activityFeed.getRecent,
-    isGuest || !business?._id ? undefined : { businessId: business._id, limit: 10 }
+    isGuest || !businessId ? undefined : { businessId, limit: 10 }
   );
 const pendingApprovals = useQuery(
   api.approvals.getApprovalQueue,
-  isGuest || !business?._id ? undefined : { businessId: business._id, status: "pending" as const }
+  isGuest || !businessId ? undefined : { businessId, status: "pending" as const }
 );
 
   // Fallback counters
@@ -178,7 +181,7 @@ const pendingApprovals = useQuery(
   // A/B summary using campaigns as proxy
   const campaigns = useQuery(
     api.emails.listCampaignsByBusiness,
-    isGuest || !business?._id ? undefined : { businessId: business._id }
+    isGuest || !businessId ? undefined : { businessId }
   );
   const testsRunning = (campaigns && campaigns !== "skip") ? Math.min(campaigns.length, 3) : (isGuest ? 2 : 0);
   const lastUplift = isGuest ? 8.4 : (testsRunning > 0 ? 5.1 : 0);
@@ -186,7 +189,7 @@ const pendingApprovals = useQuery(
 
   const teamPerformance = useQuery(
     api.telemetry.getTeamPerformanceMetrics,
-    isGuest || !business?._id ? undefined : { businessId: business._id, days: 7 }
+    isGuest || !businessId ? undefined : { businessId, days: 7 }
   );
 
   const approveSelf = useMutation(api.approvals.approveSelf);
@@ -219,12 +222,12 @@ const pendingApprovals = useQuery(
   // Add queries for team onboarding and approval health
   const teamOnboarding = useQuery(
     api.teamOnboarding.listTeamOnboarding,
-    isGuest || !business?._id ? undefined : { businessId: business._id }
+    isGuest || !businessId ? undefined : { businessId }
   );
 
   const approvalMetrics = useQuery(
     api.approvalAnalytics.getApprovalMetrics,
-    isGuest || !business?._id ? undefined : { businessId: business._id, timeRange: 7 }
+    isGuest || !businessId ? undefined : { businessId, timeRange: 7 }
   );
 
   const incompleteOnboarding = teamOnboarding?.filter((t: any) => !t.completedAt).length || 0;
@@ -232,12 +235,12 @@ const pendingApprovals = useQuery(
   // Add queries for social media data
   const connectedAccounts = useQuery(
     api.socialIntegrations.listConnectedAccounts,
-    isGuest || !business?._id ? undefined : { businessId: business._id }
+    isGuest || !businessId ? undefined : { businessId }
   );
 
   const upcomingPosts = useQuery(
     api.socialPosts.getUpcomingPosts,
-    isGuest || !business?._id ? undefined : { businessId: business._id, limit: 5 }
+    isGuest || !businessId ? undefined : { businessId, limit: 5 }
   );
 
   function BrainDumpSection({ businessId }: { businessId: string }) {
