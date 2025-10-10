@@ -104,7 +104,6 @@ export function PasswordAuthForm({
           type="submit"
           className="w-full neu-raised rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white"
           disabled={isLoading || !isValidEmail || !password}
-          title="Password authentication is currently disabled. Please use email verification."
         >
           {isLoading ? (
             <>
@@ -115,9 +114,6 @@ export function PasswordAuthForm({
             authMode === "signup" ? "Create Account" : "Sign In"
           )}
         </Button>
-        <p className="text-xs text-center text-emerald-200 mt-2">
-          Password authentication is temporarily disabled. Please use email verification below.
-        </p>
 
         <div className="mt-4">
           <div className="relative">

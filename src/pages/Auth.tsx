@@ -40,7 +40,7 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
     isAuthenticated ? {} : undefined
   );
 
-  const [authMethod, setAuthMethod] = useState<"email" | "password" | "google">("password");
+  const [authMethod, setAuthMethod] = useState<"password">("password");
   const [authMode, setAuthMode] = useState<"signup" | "login">("signup");
 
   const business = useQuery(api.businesses.currentUserBusiness, undefined);
@@ -94,16 +94,54 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
           throw new Error("Password must be at least 8 characters long");
         }
 
-        // For now, redirect to email OTP flow for signup
-        // Password auth can be added later with proper backend setup
-        toast.info("Please use email verification to create your account");
-        setAuthMethod("email");
-        return;
+        // Call password signup action
+        const formData = new FormData(event.currentTarget);
+        const result = await fetch("/api/convex", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            path: "passwordAuth:signUpPassword",
+            args: { email, password },
+          }),
+        });
+
+        if (!result.ok) {
+          const error = await result.json();
+          throw new Error(error.message || "Sign up failed");
+        }
+
+        toast.success("Account created! Please sign in.");
+        setAuthMode("login");
+        setPassword("");
+        setConfirmPassword("");
       } else {
-        // For login, also use email OTP for now
-        toast.info("Please use email verification to sign in");
-        setAuthMethod("email");
-        return;
+        // Call password login action
+        const result = await fetch("/api/convex", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            path: "passwordAuth:loginPassword",
+            args: { email, password },
+          }),
+        });
+
+        if (!result.ok) {
+          const error = await result.json();
+          throw new Error(error.message || "Login failed");
+        }
+
+        const { token } = await result.json();
+        
+        // Use token to authenticate with Convex
+        const formData = new FormData();
+        formData.append("token", token);
+        await signIn("credentials", formData);
+        
+        clearGuestMode();
+        toast.success("Signed in successfully");
+        
+        const redirect = redirectAfterAuth || "/";
+        navigate(redirect);
       }
     } catch (error) {
       console.error("Password auth error:", error);
@@ -111,28 +149,6 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
       toast.error(error instanceof Error ? error.message : "Authentication failed");
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const handleOtpSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setIsLoading(true);
-    setError(null);
-    try {
-      const formData = new FormData(event.currentTarget);
-      await signIn("email-otp", formData);
-
-      clearGuestMode();
-
-      const redirect = authMode === "signup" ? "/onboarding" : (redirectAfterAuth || "/");
-      toast.success("Signed in");
-      navigate(redirect);
-    } catch (error) {
-      console.error("OTP verification error:", error);
-      setError("The verification code you entered is incorrect.");
-      setIsLoading(false);
-      setOtp("");
-      toast.error("Incorrect verification code");
     }
   };
 
@@ -193,84 +209,42 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
           </p>
         </div>
 
-        <AuthMethodTabs authMethod={authMethod} setAuthMethod={setAuthMethod} />
-
         <div className="flex-1 flex items-center justify-center px-4">
           <div className="flex items-center justify-center h-full flex-col">
             <Card className="w-full neu-raised rounded-2xl border-0 shadow-xl bg-emerald-800 text-emerald-50">
-              {step === "signIn" ? (
-                <>
-                  <CardHeader className="text-center">
-                    <div className="flex justify-center">
-                      <Brain
-                        className="h-16 w-16 rounded-xl mb-4 mt-4 cursor-pointer bg-emerald-700 p-2 text-emerald-50"
-                        onClick={() => navigate("/")}
-                      />
-                    </div>
-                    <CardTitle className="text-xl text-emerald-50">Get Started</CardTitle>
-                    <CardDescription className="text-emerald-200">
-                      {authMethod === "password" 
-                        ? `${authMode === "signup" ? "Create your account" : "Sign in"} with your password.`
-                        : "Enter your email and we'll send you a 6‑digit code to sign in or create your account."
-                      }
-                    </CardDescription>
-                  </CardHeader>
+              <>
+                <CardHeader className="text-center">
+                  <div className="flex justify-center">
+                    <Brain
+                      className="h-16 w-16 rounded-xl mb-4 mt-4 cursor-pointer bg-emerald-700 p-2 text-emerald-50"
+                      onClick={() => navigate("/")}
+                    />
+                  </div>
+                  <CardTitle className="text-xl text-emerald-50">Get Started</CardTitle>
+                  <CardDescription className="text-emerald-200">
+                    {authMode === "signup" ? "Create your account" : "Sign in"} with your password.
+                  </CardDescription>
+                </CardHeader>
 
-                  {authMethod === "password" ? (
-                    <PasswordAuthForm
-                      email={email}
-                      setEmail={setEmail}
-                      password={password}
-                      setPassword={setPassword}
-                      confirmPassword={confirmPassword}
-                      setConfirmPassword={setConfirmPassword}
-                      authMode={authMode}
-                      setAuthMode={setAuthMode}
-                      isLoading={isLoading}
-                      touched={touched}
-                      setTouched={setTouched}
-                      isValidEmail={isValidEmail}
-                      error={error}
-                      onSubmit={handlePasswordSubmit}
-                      onGoogleLogin={handleGoogleLogin}
-                      onGuestLogin={handleGuestLogin}
-                    />
-                  ) : (
-                    <EmailAuthForm
-                      email={email}
-                      setEmail={setEmail}
-                      authMode={authMode}
-                      setAuthMode={setAuthMode}
-                      isLoading={isLoading}
-                      touched={touched}
-                      setTouched={setTouched}
-                      isValidEmail={isValidEmail}
-                      error={error}
-                      onSubmit={handleEmailSubmit}
-                      onGoogleLogin={handleGoogleLogin}
-                      onGuestLogin={handleGuestLogin}
-                    />
-                  )}
-                </>
-              ) : (
-                <>
-                  <CardHeader className="text-center">
-                    <CardTitle className="text-emerald-50">Check your email</CardTitle>
-                    <CardDescription className="text-emerald-200">
-                      We've sent a code to {step.email}
-                    </CardDescription>
-                  </CardHeader>
-                  <OtpVerificationForm
-                    email={step.email}
-                    otp={otp}
-                    setOtp={setOtp}
-                    isLoading={isLoading}
-                    error={error}
-                    onSubmit={handleOtpSubmit}
-                    onBackToSignIn={() => setStep("signIn")}
-                  />
-                </>
-              )}
+                <PasswordAuthForm
+                  email={email}
+                  setEmail={setEmail}
+                  password={password}
+                  setPassword={setPassword}
+                  confirmPassword={confirmPassword}
+                  setConfirmPassword={setConfirmPassword}
+                  authMode={authMode}
+                  setAuthMode={setAuthMode}
+                  isLoading={isLoading}
+                  touched={touched}
+                  setTouched={setTouched}
+                  isValidEmail={isValidEmail}
+                  error={error}
+                  onSubmit={handlePasswordSubmit}
+                  onGoogleLogin={handleGoogleLogin}
+                  onGuestLogin={handleGuestLogin}
+                />
+              </>
 
               <div className="py-4 px-6 text-xs text-center bg-emerald-900/40 border-t border-emerald-700/50 rounded-b-lg text-emerald-200">
                 Secured by{" "}
