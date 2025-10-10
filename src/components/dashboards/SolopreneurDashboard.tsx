@@ -30,13 +30,7 @@ import { RoiDashboard } from "@/components/dashboards/RoiDashboard";
 import { ArrowUp, ArrowDown, Minus } from "lucide-react";
 /* removed unused Alert imports */
 
-interface SolopreneurDashboardProps {
-  business: any;
-  demoData: any;
-  isGuest: boolean;
-  tier: string;
-  onUpgrade: () => void;
-}
+import type { SolopreneurDashboardProps } from "@/types/dashboard";
 
 export function SolopreneurDashboard({
   business,

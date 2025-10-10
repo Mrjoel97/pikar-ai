@@ -14,6 +14,7 @@ import { useNavigate } from "react-router";
 import { Id } from "@/convex/_generated/dataModel";
 import { Shield, AlertTriangle, Globe, Zap, FileText, Palette, Lock } from "lucide-react";
 import { SystemHealthStrip } from "@/components/dashboard/SystemHealthStrip";
+import type { EnterpriseDashboardProps } from "@/types/dashboard";
 
 // Lazy-load heavy components to reduce initial bundle
 const RoiDashboard = lazy(() =>
@@ -68,14 +69,6 @@ const IntegrationHub = lazy(() =>
   }))
 );
 
-interface EnterpriseDashboardProps {
-  business: any;
-  demoData: any;
-  isGuest: boolean;
-  tier: string;
-  onUpgrade: () => void;
-}
-
 export function EnterpriseDashboard({
   business,
   demoData,
@@ -91,7 +84,7 @@ export function EnterpriseDashboard({
     !isGuest && business?._id ? { businessId: business._id } : undefined
   );
 
-  const businessId = !isGuest ? business?._id : null;
+  const businessId = !isGuest && business?._id ? business._id : null;
 
   const approvals = useQuery(
     api.approvals.getApprovalQueue,
@@ -325,7 +318,7 @@ export function EnterpriseDashboard({
 
       {/* Strategic Command Center */}
       <Suspense fallback={<div className="rounded-md border p-4 text-sm text-muted-foreground">Loading strategic center…</div>}>
-        <StrategicCommandCenter businessId={businessId} />
+        <StrategicCommandCenter businessId={businessId || undefined} />
       </Suspense>
 
       {/* Social Command Center */}

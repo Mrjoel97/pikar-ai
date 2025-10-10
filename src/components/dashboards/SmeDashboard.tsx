@@ -27,14 +27,7 @@ import { HandoffQueue } from "@/components/workflows/HandoffQueue";
 import { CrossDepartmentMetrics } from "@/components/workflows/CrossDepartmentMetrics";
 import { SystemHealthStrip } from "@/components/dashboard/SystemHealthStrip";
 import { lazy, Suspense } from "react";
-
-interface SmeDashboardProps {
-  business: any;
-  demoData: any;
-  isGuest: boolean;
-  tier: string;
-  onUpgrade: () => void;
-}
+import type { SmeDashboardProps } from "@/types/dashboard";
 
 export function SmeDashboard({ 
   business, 
@@ -759,8 +752,8 @@ export function SmeDashboard({
 
                 <TabsContent value="compliance" className="space-y-4">
                   <div className="grid gap-4 md:grid-cols-2">
-                    <ComplianceReportGenerator businessId={business?._id} />
-                    <ReportLibrary businessId={business?._id} />
+                    <ComplianceReportGenerator businessId={business!._id} />
+                    <ReportLibrary businessId={business!._id} />
                   </div>
                 </TabsContent>
               </Tabs>

@@ -51,14 +51,7 @@ import {
   Funnel,
 } from "recharts";
 import { SystemHealthStrip } from "@/components/dashboard/SystemHealthStrip";
-
-interface StartupDashboardProps {
-  business: any;
-  demoData: any;
-  isGuest: boolean;
-  tier: string;
-  onUpgrade: () => void;
-}
+import type { StartupDashboardProps } from "@/types/dashboard";
 
 export function StartupDashboard({ 
   business, 
@@ -69,7 +62,19 @@ export function StartupDashboard({
 }: StartupDashboardProps) {
   const agents = isGuest ? demoData?.agents || [] : [];
   const workflows = isGuest ? demoData?.workflows || [] : [];
-  const kpis = isGuest ? demoData?.kpis || {} : {};
+  const kpis = isGuest ? (demoData?.kpis || {
+    totalRevenue: 0,
+    activeCustomers: 0,
+    conversionRate: 0,
+    teamProductivity: 0,
+    taskCompletion: 0
+  }) : {
+    totalRevenue: 0,
+    activeCustomers: 0,
+    conversionRate: 0,
+    teamProductivity: 0,
+    taskCompletion: 0
+  };
   const tasks = isGuest ? demoData?.tasks || [] : [];
 
   // Define businessId early before any queries that depend on it
@@ -988,7 +993,7 @@ const pendingApprovals = useQuery(
                 <h3 className="font-medium mb-3">Quick Post</h3>
                 <PostComposer
                   businessId={business._id as Id<"businesses">}
-                  userId={business._id as Id<"users">}
+                  userId={business._id as unknown as Id<"users">}
                   onPostCreated={() => {
                     toast.success("Post created successfully!");
                   }}
@@ -1159,7 +1164,7 @@ const pendingApprovals = useQuery(
             <DialogTitle>Create Email Campaign</DialogTitle>
           </DialogHeader>
           <CampaignComposer
-            businessId={business?._id}
+            businessId={business?._id!}
             onClose={() => setShowComposer(false)}
             onCreated={() => {
               setShowComposer(false);
