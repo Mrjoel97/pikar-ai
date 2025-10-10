@@ -1,3 +1,1 @@
-  crons.interval("collect department KPIs", { hours: 24 }, 
-    "departmentKpis:collectAllBusinessKpis" as any, {});
-  
+<Route path="/admin/test-runner" element={<TestRunner />} />

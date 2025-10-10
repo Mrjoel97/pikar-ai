@@ -32,6 +32,20 @@ export function AdminSidebar({ onNavigate, isAdminSession, onLogout }: Props) {
         >
           System Agents Hub
         </button>
+        <button
+          onClick={() => {
+            try {
+              window.postMessage({ type: "navigateTo", path: "/admin/test-runner" }, "*");
+            } catch {}
+            try {
+              (window as any).parent?.postMessage?.({ type: "navigateTo", path: "/admin/test-runner" }, "*");
+            } catch {}
+            window.location.href = "/admin/test-runner";
+          }}
+          className="text-left px-3 py-2 rounded-md hover:bg-white/10 transition"
+        >
+          Test Runner
+        </button>
         <button onClick={() => onNavigate("section-system-health")} className="text-left px-3 py-2 rounded-md hover:bg-white/10 transition">
           System Health
         </button>
