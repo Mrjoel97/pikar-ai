@@ -75,7 +75,7 @@ export function ScheduleAssistant({ businessId, open, onOpenChange }: ScheduleAs
   const filteredSlots = React.useMemo(() => {
     if (!listSlots) return [];
     if (channelFilter === "all") return listSlots;
-    return listSlots.filter((s) => s.channel === channelFilter);
+    return listSlots.filter((s: any) => s.channel === channelFilter);
   }, [listSlots, channelFilter]);
 
   return (
@@ -155,7 +155,7 @@ export function ScheduleAssistant({ businessId, open, onOpenChange }: ScheduleAs
           <div>
             <h3 className="font-semibold mb-3">Current Schedule ({filteredSlots.length} slots)</h3>
             <div className="space-y-2 max-h-[300px] overflow-y-auto">
-              {filteredSlots.map((slot) => (
+              {filteredSlots.map((slot: any) => (
                 <div key={slot._id} className="flex items-center justify-between p-2 border rounded">
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
