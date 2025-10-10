@@ -33,9 +33,14 @@ export function EnvironmentSettings() {
   }, [cronLastProcessed]);
 
   function copy(text: string) {
-    navigator.clipboard.writeText(text).then(() => {
-      toast.success(`Copied "${text}"`);
-    });
+    navigator.clipboard.writeText(text)
+      .then(() => {
+        toast.success(`Copied "${text}"`);
+      })
+      .catch((err) => {
+        console.error("Clipboard copy failed:", err);
+        toast.error("Failed to copy to clipboard. Please copy manually.");
+      });
   }
 
   async function handleSendInboxTest() {
