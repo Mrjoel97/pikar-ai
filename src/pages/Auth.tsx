@@ -94,54 +94,13 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
           throw new Error("Password must be at least 8 characters long");
         }
 
-        // Call password signup action
-        const formData = new FormData(event.currentTarget);
-        const result = await fetch("/api/convex", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            path: "passwordAuth:signUpPassword",
-            args: { email, password },
-          }),
-        });
-
-        if (!result.ok) {
-          const error = await result.json();
-          throw new Error(error.message || "Sign up failed");
-        }
-
-        toast.success("Account created! Please sign in.");
-        setAuthMode("login");
-        setPassword("");
-        setConfirmPassword("");
+        // For now, password signup is not fully integrated with Convex auth
+        // Direct users to use Google Sign-In instead
+        throw new Error("Password signup is not available yet. Please use Google Sign-In.");
       } else {
-        // Call password login action
-        const result = await fetch("/api/convex", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            path: "passwordAuth:loginPassword",
-            args: { email, password },
-          }),
-        });
-
-        if (!result.ok) {
-          const error = await result.json();
-          throw new Error(error.message || "Login failed");
-        }
-
-        const { token } = await result.json();
-        
-        // Use token to authenticate with Convex
-        const formData = new FormData();
-        formData.append("token", token);
-        await signIn("credentials", formData);
-        
-        clearGuestMode();
-        toast.success("Signed in successfully");
-        
-        const redirect = redirectAfterAuth || "/";
-        navigate(redirect);
+        // For now, password login is not fully integrated with Convex auth
+        // Direct users to use Google Sign-In instead
+        throw new Error("Password login is not available yet. Please use Google Sign-In.");
       }
     } catch (error) {
       console.error("Password auth error:", error);
