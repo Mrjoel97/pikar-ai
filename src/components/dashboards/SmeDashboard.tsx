@@ -28,6 +28,10 @@ import { CrossDepartmentMetrics } from "@/components/workflows/CrossDepartmentMe
 import { SystemHealthStrip } from "@/components/dashboard/SystemHealthStrip";
 import { lazy, Suspense } from "react";
 import type { SmeDashboardProps } from "@/types/dashboard";
+import { DepartmentTabs } from "./sme/DepartmentTabs";
+import { GovernancePanel } from "./sme/GovernancePanel";
+import { ComplianceRisk } from "./sme/ComplianceRisk";
+import { IntegrationHub } from "@/components/integrations/IntegrationHub";
 
 export function SmeDashboard({ 
   business, 
@@ -274,16 +278,6 @@ export function SmeDashboard({
     );
   }
 
-  // Add: Department Tabs
-  const [activeTab, setActiveTab] = React.useState("marketing");
-
-  // Add: Integration Hub
-  const IntegrationHub = lazy(() =>
-    import("@/components/integrations/IntegrationHub").then((m) => ({
-      default: m.IntegrationHub,
-    }))
-  );
-
   // Helper function for feature flag checks
   const isFeatureEnabled = (flagName: string) => {
     return !!smeFlags?.find((f: any) => f.flagName === flagName)?.isEnabled;
@@ -337,120 +331,27 @@ export function SmeDashboard({
                 {riskMatrix?.highRisks ?? (isGuest ? 3 : 0)}
               </div>
             </CardContent>
-            </Card>
-          </div>
-        </section>
-
-      {/* Governance Score Card - gated by feature flag */}
-      {business?._id && governanceAutomationEnabled && (
-        <div className="grid gap-6 md:grid-cols-2">
-          <GovernanceScoreCard businessId={business?._id} days={30} />
-          
-          {/* Escalations Alert */}
-          {pendingEscalations && pendingEscalations.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <AlertTriangle className="h-5 w-5 text-yellow-600" />
-                  Governance Alerts
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  <p className="text-2xl font-bold text-yellow-600">
-                    {pendingEscalations.length}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    Escalation{pendingEscalations.length !== 1 ? "s" : ""} pending review
-                  </p>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      const governanceSection = document.getElementById("governance-panel");
-                      governanceSection?.scrollIntoView({ behavior: "smooth" });
-                    }}
-                  >
-                    View Details
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-        </div>
-      )}
-
-      {/* Show locked ribbon if governance automation is not enabled */}
-      {business?._id && !governanceAutomationEnabled && !isGuest && (
-        <Card className="border-dashed border-2 border-amber-300">
-          <CardContent className="p-4">
-            <LockedRibbon label="Governance Automation requires SME tier or higher" />
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Governance Panel */}
-      <section>
-        <h2 className="text-lg font-semibold mb-3">Governance Panel</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Card>
-            <CardHeader className="pb-2"><CardTitle>Checklist Progress</CardTitle></CardHeader>
-            <CardContent className="text-sm text-muted-foreground">
-              {isGuest ? (
-                <div>MMR enforced, SLA ≥ 24h, Approver roles configured. 4/5 checks passed.</div>
-              ) : (
-                <div>Key policies enforced. SLA floors and approvals configured. Review workflows for issues.</div>
-              )}
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2"><CardTitle>Audit Highlights</CardTitle></CardHeader>
-            <CardContent className="space-y-2">
-              {isGuest ? (
-                <>
-                  <div className="text-xs text-muted-foreground">Policy update recorded</div>
-                  <div className="text-xs text-muted-foreground">Approval overdue warning sent</div>
-                </>
-              ) : !auditLatest ? (
-                <div className="text-sm text-muted-foreground">Loading…</div>
-              ) : auditLatest.length === 0 ? (
-                <div className="text-sm text-muted-foreground">No recent events.</div>
-              ) : (
-                auditLatest.slice(0, 6).map((e: any) => (
-                  <div key={e._id} className="text-xs text-muted-foreground">
-                    {new Date(e.createdAt).toLocaleDateString()} — {e.entityType}: {e.action}
-                  </div>
-                ))
-              )}
-            </CardContent>
           </Card>
         </div>
       </section>
 
-      {/* KPI Trends */}
-      <section>
-        <h2 className="text-xl font-semibold mb-4">KPI Trends</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="text-sm font-medium text-muted-foreground">Compliance Score</h3>
-                <span className="text-xs text-emerald-700">{kpis?.complianceScore ?? 0}%</span>
-              </div>
-              <Sparkline values={complianceTrend} />
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="text-sm font-medium text-muted-foreground">Risk (Lower is Better)</h3>
-                <span className="text-xs text-emerald-700">{kpis?.riskScore ?? 0}</span>
-              </div>
-              <Sparkline values={riskTrend} color="bg-emerald-500" />
-            </CardContent>
-          </Card>
-        </div>
-      </section>
+      {/* Governance Panel Component */}
+      <GovernancePanel 
+        businessId={businessId}
+        isGuest={isGuest}
+        governanceAutomationEnabled={governanceAutomationEnabled}
+        hasTier={hasTier}
+        LockedRibbon={LockedRibbon}
+      />
+
+      {/* Compliance & Risk Component */}
+      <ComplianceRisk 
+        businessId={businessId}
+        isGuest={isGuest}
+        kpis={kpis}
+        riskAnalyticsEnabled={riskAnalyticsEnabled}
+        LockedRibbon={LockedRibbon}
+      />
 
       {/* Pending Approvals by Department */}
       <section>
@@ -474,148 +375,6 @@ export function SmeDashboard({
           ))}
         </div>
       </section>
-
-      {/* Risk Analytics Section - gated by feature flag */}
-      {!isGuest && riskAnalyticsEnabled && riskMatrix && riskTrend30d && (
-        <section>
-          <h2 className="text-xl font-semibold mb-4">Risk Analytics</h2>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <RiskHeatmap 
-              matrix={riskMatrix.matrix}
-              totalRisks={riskMatrix.totalRisks}
-              highRisks={riskMatrix.highRisks}
-            />
-            <RiskTrendChart 
-              trendData={riskTrend30d.trendData}
-              byCategory={riskTrend30d.byCategory}
-              newRisks={riskTrend30d.newRisks}
-              mitigatedRisks={riskTrend30d.mitigatedRisks}
-              avgRiskScore={riskTrend30d.avgRiskScore}
-              period={riskTrend30d.period}
-            />
-          </div>
-        </section>
-      )}
-
-      {/* Show locked ribbon if risk analytics is not enabled */}
-      {!isGuest && !riskAnalyticsEnabled && (
-        <Card className="border-dashed border-2 border-amber-300">
-          <CardContent className="p-4">
-            <LockedRibbon label="Risk Analytics requires SME tier or higher" />
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Governance & Audit data hooks */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle>Governance Panel</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {isGuest ? (
-              <div className="text-sm text-muted-foreground">
-                Demo: 3 pending approvals across departments.
-              </div>
-            ) : !pendingApprovals ? (
-              <div className="text-sm text-muted-foreground">Loading approvals…</div>
-            ) : pendingApprovals.length === 0 ? (
-              <div className="text-sm text-muted-foreground">No pending approvals.</div>
-            ) : (
-              pendingApprovals.slice(0, 6).map((a: any) => (
-                <div key={a._id} className="flex items-center justify-between border rounded-md p-2">
-                  <div className="flex flex-col">
-                    <span className="text-sm font-medium">Workflow {String(a.workflowId).slice(-6)}</span>
-                    <span className="text-xs text-muted-foreground">
-                      Step {String(a.stepId).slice(-6)} • Requested {new Date(a.createdAt).toLocaleDateString()}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Badge
-                      variant="outline"
-                      className={
-                        a.priority === "urgent" ? "border-red-300 text-red-700" :
-                        a.priority === "high" ? "border-amber-300 text-amber-700" :
-                        "border-slate-300 text-slate-700"
-                      }
-                    >
-                      {a.priority}
-                    </Badge>
-                    {!isGuest && (
-                      <>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={async () => {
-                            try {
-                              await approveSelf({ id: a._id });
-                              toast.success("Approved");
-                            } catch (e: any) {
-                              toast.error(e?.message || "Failed to approve");
-                            }
-                          }}
-                        >
-                          Approve
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          onClick={async () => {
-                            try {
-                              await rejectSelf({ id: a._id });
-                              toast.success("Rejected");
-                            } catch (e: any) {
-                              toast.error(e?.message || "Failed to reject");
-                            }
-                          }}
-                        >
-                          Reject
-                        </Button>
-                      </>
-                    )}
-                  </div>
-                </div>
-              ))
-            )}
-            {/* Add: gating ribbon if governance approval actions are Enterprise+ */}
-            {!isGuest && !hasTier("enterprise") && (
-              <div className="pt-2 border-t mt-2">
-                <LockedRibbon label="Advanced governance automation is Enterprise+" />
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Audit Trail Highlights */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle>Audit Trail Highlights</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {isGuest ? (
-              <div className="text-sm text-muted-foreground">
-                Demo: 5 latest policy and permission changes.
-              </div>
-            ) : !auditHighlights ? (
-              <div className="text-sm text-muted-foreground">Loading audit logs…</div>
-            ) : auditHighlights.length === 0 ? (
-              <div className="text-sm text-muted-foreground">No recent audit events.</div>
-            ) : (
-              auditHighlights.map((e: any) => (
-                <div key={e._id} className="flex items-start gap-3">
-                  <div className="text-xs text-muted-foreground mt-0.5">
-                    {new Date(e.createdAt).toLocaleDateString()}
-                  </div>
-                  <div className="flex-1">
-                    <div className="text-sm font-medium">{e.entityType}</div>
-                    <div className="text-xs text-muted-foreground">{e.action}</div>
-                  </div>
-                </div>
-              ))
-            )}
-          </CardContent>
-        </Card>
-      </div>
 
       {/* Department Views - gated by feature flag */}
       <section>
@@ -645,119 +404,11 @@ export function SmeDashboard({
                 Enforce Governance
               </Button>
             </div>
-            <section className="mb-6">
-              <div className="flex items-center justify-between mb-2">
-                <h2 className="text-lg font-semibold">Departments</h2>
-                <Button asChild size="sm" variant="outline"><a href="/analytics">Open Analytics</a></Button>
-              </div>
-              <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-                <TabsList>
-                  <TabsTrigger value="overview">Overview</TabsTrigger>
-                  <TabsTrigger value="marketing">Marketing</TabsTrigger>
-                  <TabsTrigger value="sales">Sales</TabsTrigger>
-                  <TabsTrigger value="operations">Operations</TabsTrigger>
-                  <TabsTrigger value="finance">Finance</TabsTrigger>
-                  <TabsTrigger value="compliance">Compliance</TabsTrigger>
-                </TabsList>
-
-                <TabsContent value="overview" className="space-y-4">
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <Card>
-                      <CardHeader>
-                        <CardTitle>Marketing</CardTitle>
-                        <CardDescription>Marketing performance and leads</CardDescription>
-                      </CardHeader>
-                      <CardContent className="space-y-3">
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <div className="text-sm text-muted-foreground">Leads</div>
-                            <div className="text-2xl font-bold">{isGuest ? 312 : ((kpiDoc as any)?.marketingLeads ?? "—")}</div>
-                          </div>
-                          <div>
-                            <div className="text-sm text-muted-foreground">CTR</div>
-                            <div className="text-2xl font-bold">{isGuest ? "3.2%" : (((kpiDoc as any)?.ctr ?? 0) + "%")}</div>
-                          </div>
-                          <div>
-                            <div className="text-sm text-muted-foreground">Subs</div>
-                            <div className="text-2xl font-bold">{isGuest ? 124 : ((kpiDoc as any)?.subscribers ?? "—")}</div>
-                          </div>
-                          <div>
-                            <div className="text-sm text-muted-foreground">Revenue</div>
-                            <div className="text-2xl font-bold">${(kpiDoc as any)?.revenue?.toLocaleString?.() ?? (isGuest ? "120,400" : "—")}</div>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-
-                    <Card>
-                      <CardHeader>
-                        <CardTitle>Sales</CardTitle>
-                        <CardDescription>Sales pipeline and performance</CardDescription>
-                      </CardHeader>
-                      <CardContent className="space-y-3">
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <div className="text-sm text-muted-foreground">Pipeline</div>
-                            <div className="text-2xl font-bold">${isGuest ? "540k" : ((kpiDoc as any)?.pipeline ?? "—")}</div>
-                          </div>
-                          <div>
-                            <div className="text-sm text-muted-foreground">Win Rate</div>
-                            <div className="text-2xl font-bold">{isGuest ? "27%" : (((kpiDoc as any)?.winRate ?? 0) + "%")}</div>
-                          </div>
-                          <div>
-                            <div className="text-sm text-muted-foreground">Cycle</div>
-                            <div className="text-2xl font-bold">{isGuest ? "18d" : (((kpiDoc as any)?.cycleDays ?? 0) + "d")}</div>
-                          </div>
-                          <div>
-                            <div className="text-sm text-muted-foreground">Revenue</div>
-                            <div className="text-2xl font-bold">${(kpiDoc as any)?.revenue?.toLocaleString?.() ?? (isGuest ? "120,400" : "—")}</div>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </div>
-                </TabsContent>
-
-                <TabsContent value="marketing" className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <Card><CardContent className="p-4"><div className="text-sm text-muted-foreground">Leads</div><div className="text-2xl font-bold">{isGuest ? 312 : ((kpiDoc as any)?.marketingLeads ?? "—")}</div></CardContent></Card>
-                    <Card><CardContent className="p-4"><div className="text-sm text-muted-foreground">CTR</div><div className="text-2xl font-bold">{isGuest ? "3.2%" : (((kpiDoc as any)?.ctr ?? 0) + "%")}</div></CardContent></Card>
-                    <Card><CardContent className="p-4"><div className="text-sm text-muted-foreground">Subs</div><div className="text-2xl font-bold">{isGuest ? 124 : ((kpiDoc as any)?.subscribers ?? "—")}</div></CardContent></Card>
-                  </div>
-                </TabsContent>
-
-                <TabsContent value="sales" className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <Card><CardContent className="p-4"><div className="text-sm text-muted-foreground">Pipeline</div><div className="text-2xl font-bold">${isGuest ? "540k" : ((kpiDoc as any)?.pipeline ?? "—")}</div></CardContent></Card>
-                    <Card><CardContent className="p-4"><div className="text-sm text-muted-foreground">Win Rate</div><div className="text-2xl font-bold">{isGuest ? "27%" : (((kpiDoc as any)?.winRate ?? 0) + "%")}</div></CardContent></Card>
-                    <Card><CardContent className="p-4"><div className="text-sm text-muted-foreground">Cycle</div><div className="text-2xl font-bold">{isGuest ? "18d" : (((kpiDoc as any)?.cycleDays ?? 0) + "d")}</div></CardContent></Card>
-                  </div>
-                </TabsContent>
-
-                <TabsContent value="operations" className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <Card><CardContent className="p-4"><div className="text-sm text-muted-foreground">On-time</div><div className="text-2xl font-bold">{isGuest ? "96%" : (((kpiDoc as any)?.onTime ?? 0) + "%")}</div></CardContent></Card>
-                    <Card><CardContent className="p-4"><div className="text-sm text-muted-foreground">Tickets</div><div className="text-2xl font-bold">{isGuest ? 42 : ((kpiDoc as any)?.tickets ?? "—")}</div></CardContent></Card>
-                    <Card><CardContent className="p-4"><div className="text-sm text-muted-foreground">MTTR</div><div className="text-2xl font-bold">{isGuest ? "2.4h" : (((kpiDoc as any)?.mttrHrs ?? 0) + "h")}</div></CardContent></Card>
-                  </div>
-                </TabsContent>
-
-                <TabsContent value="finance" className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <Card><CardContent className="p-4"><div className="text-sm text-muted-foreground">MRR</div><div className="text-2xl font-bold">${isGuest ? "80,200" : ((kpiDoc as any)?.mrr ?? "—")}</div></CardContent></Card>
-                    <Card><CardContent className="p-4"><div className="text-sm text-muted-foreground">Gross Margin</div><div className="text-2xl font-bold">{isGuest ? "72%" : (((kpiDoc as any)?.gm ?? 0) + "%")}</div></CardContent></Card>
-                    <Card><CardContent className="p-4"><div className="text-sm text-muted-foreground">Runway</div><div className="text-2xl font-bold">{isGuest ? "14m" : (((kpiDoc as any)?.runwayMonths ?? 0) + "m")}</div></CardContent></Card>
-                  </div>
-                </TabsContent>
-
-                <TabsContent value="compliance" className="space-y-4">
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <ComplianceReportGenerator businessId={business!._id} />
-                    <ReportLibrary businessId={business!._id} />
-                  </div>
-                </TabsContent>
-              </Tabs>
-            </section>
+            <DepartmentTabs 
+              businessId={businessId}
+              isGuest={isGuest}
+              kpiDoc={kpiDoc}
+            />
           </>
         ) : (
           <Card className="border-dashed border-2 border-amber-300">
@@ -767,40 +418,6 @@ export function SmeDashboard({
           </Card>
         )}
       </section>
-
-      {/* Department Tabs */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Department Dashboards</CardTitle>
-          <CardDescription>Deep dive into each department's metrics</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid w-full grid-cols-4">
-              <TabsTrigger value="marketing">Marketing</TabsTrigger>
-              <TabsTrigger value="sales">Sales</TabsTrigger>
-              <TabsTrigger value="ops">Ops</TabsTrigger>
-              <TabsTrigger value="finance">Finance</TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="marketing" className="mt-6">
-              <MarketingDashboard businessId={business?._id} isGuest={isGuest} />
-            </TabsContent>
-            
-            <TabsContent value="sales" className="mt-6">
-              <SalesDashboard businessId={business?._id} isGuest={isGuest} />
-            </TabsContent>
-            
-            <TabsContent value="ops" className="mt-6">
-              <OpsDashboard businessId={business?._id} isGuest={isGuest} />
-            </TabsContent>
-            
-            <TabsContent value="finance" className="mt-6">
-              <FinanceDashboard businessId={business?._id} isGuest={isGuest} />
-            </TabsContent>
-          </Tabs>
-        </CardContent>
-      </Card>
 
       {/* Department Performance */}
       <section>
@@ -834,44 +451,6 @@ export function SmeDashboard({
               <p className="text-xs text-green-600">+3% from last month</p>
             </CardContent>
           </Card>
-        </div>
-      </section>
-
-      {/* Compliance Summary */}
-      <section>
-        <h2 className="text-xl font-semibold mb-4">Compliance & Risk</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Card>
-            <CardContent className="p-4">
-              <h3 className="font-medium mb-3">Recent Compliance Activities</h3>
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 bg-green-500 rounded-full" />
-                  <span className="text-sm">Quarterly audit completed</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 bg-yellow-500 rounded-full" />
-                  <span className="text-sm">New regulation review pending</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 bg-blue-500 rounded-full" />
-                  <span className="text-sm">Policy update scheduled</span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          {/* Hide upgrade prompt for guests */}
-          {!isGuest && (
-            <Card className="border-dashed border-2 border-gray-300">
-              <CardContent className="p-4">
-                <h3 className="font-medium mb-2">Executive Controls</h3>
-                <p className="text-sm text-muted-foreground mb-2">
-                  Generate executive reports and automate approvals.
-                </p>
-                <LockedRibbon label="Executive actions are Enterprise+" />
-              </CardContent>
-            </Card>
-          )}
         </div>
       </section>
 
