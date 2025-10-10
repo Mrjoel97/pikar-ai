@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useState, useMemo, useEffect, lazy, Suspense } from "react";
+import { useState, useMemo, useEffect, useCallback, lazy, Suspense } from "react";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Badge } from "@/components/ui/badge";
@@ -132,7 +132,7 @@ export function EnterpriseDashboard({
   );
 
   // sparkline helper now in GlobalOverview; we keep trend generator here
-  const mkTrend = (base?: number): number[] => {
+  const mkTrend = useCallback((base?: number): number[] => {
     const b = typeof base === "number" && !Number.isNaN(base) ? base : 60;
     const arr: number[] = [];
     for (let i = 0; i < 12; i++) {
@@ -140,7 +140,7 @@ export function EnterpriseDashboard({
       arr.push(Math.max(5, Math.min(100, b + jitter)));
     }
     return arr;
-  };
+  }, []);
 
   const runDiagnostics = useMutation(api.initiatives.runPhase0Diagnostics);
 
@@ -221,8 +221,10 @@ export function EnterpriseDashboard({
     } catch {}
   }, [widgetOrder]);
 
-  const widgetsByKey: Record<string, { key: string; title: string; content: React.ReactNode }> =
-    Object.fromEntries(defaultWidgets.map(w => [w.key, w]));
+  const widgetsByKey = useMemo(
+    () => Object.fromEntries(defaultWidgets.map(w => [w.key, w])),
+    [defaultWidgets]
+  );
 
   const nav = useNavigate();
 
@@ -239,13 +241,16 @@ export function EnterpriseDashboard({
   const [showRoiDashboard, setShowRoiDashboard] = useState(false);
 
   // Derived helpers
-  const slaSummaryText =
-    slaSummary && typeof slaSummary !== "string"
-      ? `SLA: ${slaSummary.overdueCount ?? 0} overdue, ${slaSummary.dueSoonCount ?? 0} due soon`
-      : null;
+  const slaSummaryText = useMemo(
+    () =>
+      slaSummary && typeof slaSummary !== "string"
+        ? `SLA: ${slaSummary.overdueCount ?? 0} overdue, ${slaSummary.dueSoonCount ?? 0} due soon`
+        : null,
+    [slaSummary]
+  );
 
   // Handlers
-  const handleRunDiagnostics = async () => {
+  const handleRunDiagnostics = useCallback(async () => {
     if (!business?._id) return;
     try {
       await runDiagnostics({ businessId: business._id });
@@ -253,9 +258,9 @@ export function EnterpriseDashboard({
     } catch (e: any) {
       toast.error(e?.message || "Failed to run diagnostics");
     }
-  };
+  }, [business?._id, runDiagnostics]);
 
-  const handleEnforceGovernance = async () => {
+  const handleEnforceGovernance = useCallback(async () => {
     if (!business?._id) return;
     try {
       const res = await enforceGovernanceForBiz({ businessId: business._id });
@@ -263,24 +268,25 @@ export function EnterpriseDashboard({
     } catch (e: any) {
       toast.error(e?.message || "Failed to enforce governance");
     }
-  };
+  }, [business?._id, enforceGovernanceForBiz]);
 
-  const handleApprove = async (id: string) => {
+  const handleApprove = useCallback(async (id: string) => {
     try {
       await approveSelf({ id: id as any });
       toast.success("Approved");
     } catch (e: any) {
       toast.error(e?.message || "Failed to approve");
     }
-  };
-  const handleReject = async (id: string) => {
+  }, [approveSelf]);
+
+  const handleReject = useCallback(async (id: string) => {
     try {
       await rejectSelf({ id: id as any });
       toast.success("Rejected");
     } catch (e: any) {
       toast.error(e?.message || "Failed to reject");
     }
-  };
+  }, [rejectSelf]);
 
   // ent agents (kept as-is)
   const entTier = "enterprise";
