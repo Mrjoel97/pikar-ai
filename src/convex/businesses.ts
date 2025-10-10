@@ -1,21 +1,18 @@
 import { v } from "convex/values";
-import { query, mutation, internalQuery } from "./_generated/server";
-import { Id } from "./_generated/dataModel";
+import { query, internalQuery } from "./_generated/server";
 
 export const getUserBusinesses = query({
   args: {},
   handler: async (ctx) => {
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
+    if (!identity?.email) {
       return [];
     }
     
     const user = await ctx.db
       .query("users")
-      .withIndex("by_token", (q) =>
-        q.eq("tokenIdentifier", identity.tokenIdentifier)
-      )
-      .unique();
+      .withIndex("email", (q) => q.eq("email", identity.email))
+      .first();
     
     if (!user) {
       return [];
