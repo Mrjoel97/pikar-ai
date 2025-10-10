@@ -7,6 +7,7 @@ import { GovernanceScoreCard } from "@/components/governance/GovernanceScoreCard
 import { AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { Id } from "@/convex/_generated/dataModel";
+import { withMutationErrorHandling } from "@/lib/dashboardErrorHandling";
 
 /**
  * Props for the GovernancePanel component
@@ -202,12 +203,12 @@ export function GovernancePanel({
                           size="sm"
                           variant="outline"
                           onClick={async () => {
-                            try {
-                              await approveSelf({ id: a._id });
-                              toast.success("Approved");
-                            } catch (e: any) {
-                              toast.error(e?.message || "Failed to approve");
-                            }
+                            await withMutationErrorHandling(
+                              () => approveSelf({ id: a._id }),
+                              "approval",
+                              "Approved",
+                              "APPROVE"
+                            );
                           }}
                         >
                           Approve
@@ -216,12 +217,12 @@ export function GovernancePanel({
                           size="sm"
                           variant="destructive"
                           onClick={async () => {
-                            try {
-                              await rejectSelf({ id: a._id });
-                              toast.success("Rejected");
-                            } catch (e: any) {
-                              toast.error(e?.message || "Failed to reject");
-                            }
+                            await withMutationErrorHandling(
+                              () => rejectSelf({ id: a._id }),
+                              "rejection",
+                              "Rejected",
+                              "REJECT"
+                            );
                           }}
                         >
                           Reject

@@ -6,7 +6,13 @@ import { Badge } from "@/components/ui/badge";
  * 
  * Displays the current connection status of various third-party integrations
  * including CRM, Analytics, and Billing systems. Shows visual indicators
- * for connection health (Connected, Attention, Not linked).
+ * for connection health using color-coded badges:
+ * - Green (Connected): Integration is active and healthy
+ * - Amber (Attention): Integration requires attention or configuration
+ * - Gray (Not linked): Integration is not yet configured
+ * 
+ * Note: This is currently a static preview component. Future versions will
+ * fetch real-time integration status from the backend.
  * 
  * @returns {JSX.Element} Rendered integration status card with connection badges
  */

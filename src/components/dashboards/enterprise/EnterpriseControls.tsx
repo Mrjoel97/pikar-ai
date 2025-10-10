@@ -17,7 +17,14 @@ interface EnterpriseControlsProps {
  * 
  * Displays enterprise-level control options including SSO & RBAC, API Access,
  * and Integrations management. Shows locked state for non-enterprise tiers
- * with upgrade prompts.
+ * with upgrade prompts. All control actions are currently disabled pending
+ * full enterprise feature implementation.
+ * 
+ * Features:
+ * - SSO & RBAC management (disabled)
+ * - API Access configuration (disabled)
+ * - Integrations management (disabled)
+ * - Tier-based upgrade prompts
  * 
  * @param {EnterpriseControlsProps} props - Component props
  * @returns {JSX.Element} Rendered enterprise controls card

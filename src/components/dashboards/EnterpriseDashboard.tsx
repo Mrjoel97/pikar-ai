@@ -17,6 +17,7 @@ import { SystemHealthStrip } from "@/components/dashboard/SystemHealthStrip";
 import type { EnterpriseDashboardProps } from "@/types/dashboard";
 import { EnterpriseControls } from "./enterprise/EnterpriseControls";
 import { IntegrationStatus } from "./enterprise/IntegrationStatus";
+import { withMutationErrorHandling } from "@/lib/dashboardErrorHandling";
 
 // Lazy-load heavy components to reduce initial bundle
 const RoiDashboard = lazy(() =>
@@ -300,12 +301,11 @@ export function EnterpriseDashboard({
    */
   const handleRunDiagnostics = useCallback(async () => {
     if (!business?._id) return;
-    try {
-      await runDiagnostics({ businessId: business._id });
-      toast.success("Diagnostics started");
-    } catch (e: any) {
-      toast.error(e?.message || "Failed to run diagnostics");
-    }
+    await withMutationErrorHandling(
+      () => runDiagnostics({ businessId: business._id }),
+      "diagnostics",
+      "Diagnostics started"
+    );
   }, [business?._id, runDiagnostics]);
 
   /**
@@ -317,11 +317,12 @@ export function EnterpriseDashboard({
    */
   const handleEnforceGovernance = useCallback(async () => {
     if (!business?._id) return;
-    try {
-      const res = await enforceGovernanceForBiz({ businessId: business._id });
-      toast.success(`Governance updated for ${res.count ?? 0} workflows`);
-    } catch (e: any) {
-      toast.error(e?.message || "Failed to enforce governance");
+    const result = await withMutationErrorHandling(
+      () => enforceGovernanceForBiz({ businessId: business._id }),
+      "governance enforcement"
+    );
+    if (result) {
+      toast.success(`Governance updated for ${result.count ?? 0} workflows`);
     }
   }, [business?._id, enforceGovernanceForBiz]);
 
@@ -331,12 +332,12 @@ export function EnterpriseDashboard({
    * @param {string} id - ID of the approval to approve
    */
   const handleApprove = useCallback(async (id: string) => {
-    try {
-      await approveSelf({ id: id as any });
-      toast.success("Approved");
-    } catch (e: any) {
-      toast.error(e?.message || "Failed to approve");
-    }
+    await withMutationErrorHandling(
+      () => approveSelf({ id: id as any }),
+      "approval",
+      "Approved",
+      "APPROVE"
+    );
   }, [approveSelf]);
 
   /**
@@ -345,12 +346,12 @@ export function EnterpriseDashboard({
    * @param {string} id - ID of the approval to reject
    */
   const handleReject = useCallback(async (id: string) => {
-    try {
-      await rejectSelf({ id: id as any });
-      toast.success("Rejected");
-    } catch (e: any) {
-      toast.error(e?.message || "Failed to reject");
-    }
+    await withMutationErrorHandling(
+      () => rejectSelf({ id: id as any }),
+      "rejection",
+      "Rejected",
+      "REJECT"
+    );
   }, [rejectSelf]);
 
   // ent agents (kept as-is)

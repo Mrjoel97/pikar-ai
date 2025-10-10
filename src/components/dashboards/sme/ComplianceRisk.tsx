@@ -4,6 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { RiskHeatmap } from "@/components/risk/RiskHeatmap";
 import { RiskTrendChart } from "@/components/risk/RiskTrendChart";
 import { Id } from "@/convex/_generated/dataModel";
+import { getLoadingMessage, getEmptyStateMessage } from "@/lib/dashboardErrorHandling";
 
 /**
  * Props for the ComplianceRisk component
@@ -125,25 +126,41 @@ export function ComplianceRisk({
       </section>
 
       {/* Risk Analytics Section - gated by feature flag */}
-      {!isGuest && riskAnalyticsEnabled && riskMatrix && riskTrend30d && (
-        <section>
-          <h2 className="text-xl font-semibold mb-4">Risk Analytics</h2>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <RiskHeatmap 
-              matrix={riskMatrix.matrix}
-              totalRisks={riskMatrix.totalRisks}
-              highRisks={riskMatrix.highRisks}
-            />
-            <RiskTrendChart 
-              trendData={riskTrend30d.trendData}
-              byCategory={riskTrend30d.byCategory}
-              newRisks={riskTrend30d.newRisks}
-              mitigatedRisks={riskTrend30d.mitigatedRisks}
-              avgRiskScore={riskTrend30d.avgRiskScore}
-              period={riskTrend30d.period}
-            />
-          </div>
-        </section>
+      {!isGuest && riskAnalyticsEnabled && (
+        <>
+          {riskMatrix === undefined || riskTrend30d === undefined ? (
+            <Card>
+              <CardContent className="p-4">
+                <p className="text-sm text-muted-foreground">{getLoadingMessage("risk analytics")}</p>
+              </CardContent>
+            </Card>
+          ) : riskMatrix && riskTrend30d ? (
+            <section>
+              <h2 className="text-xl font-semibold mb-4">Risk Analytics</h2>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <RiskHeatmap 
+                  matrix={riskMatrix.matrix}
+                  totalRisks={riskMatrix.totalRisks}
+                  highRisks={riskMatrix.highRisks}
+                />
+                <RiskTrendChart 
+                  trendData={riskTrend30d.trendData}
+                  byCategory={riskTrend30d.byCategory}
+                  newRisks={riskTrend30d.newRisks}
+                  mitigatedRisks={riskTrend30d.mitigatedRisks}
+                  avgRiskScore={riskTrend30d.avgRiskScore}
+                  period={riskTrend30d.period}
+                />
+              </div>
+            </section>
+          ) : (
+            <Card>
+              <CardContent className="p-4">
+                <p className="text-sm text-muted-foreground">{getEmptyStateMessage("risk data")}</p>
+              </CardContent>
+            </Card>
+          )}
+        </>
       )}
 
       {/* Show locked ribbon if risk analytics is not enabled */}
