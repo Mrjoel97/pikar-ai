@@ -28,6 +28,35 @@ export const getUserBusinesses = query({
   },
 });
 
+export const currentUserBusiness = query({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity?.email) {
+      return null;
+    }
+    
+    const user = await ctx.db
+      .query("users")
+      .withIndex("email", (q) => q.eq("email", identity.email))
+      .first();
+    
+    if (!user) {
+      return null;
+    }
+    
+    // Get the first business where user is owner or team member
+    const allBusinesses = await ctx.db.query("businesses").collect();
+    const userBusiness = allBusinesses.find(
+      (business) =>
+        business.ownerId === user._id ||
+        business.teamMembers?.includes(user._id)
+    );
+    
+    return userBusiness || null;
+  },
+});
+
 export const listAllBusinesses = internalQuery({
   args: {},
   handler: async (ctx) => {
