@@ -954,7 +954,7 @@ Renamed to avoid duplicate identifier collisions elsewhere in the file */
   // Use Convex KPI snapshot when authenticated; fallback to demo data for guests
   const kpiDoc = useQuery(
     api.kpis.getSnapshot,
-    !isGuest && business?._id ? { businessId: business?._id } : undefined
+    !isGuest && businessId ? { businessId: businessId } : undefined
   );
 
   // Use demo data when in guest mode
