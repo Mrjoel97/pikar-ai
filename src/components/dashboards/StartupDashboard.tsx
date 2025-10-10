@@ -52,6 +52,9 @@ import {
 } from "recharts";
 import { SystemHealthStrip } from "@/components/dashboard/SystemHealthStrip";
 import type { StartupDashboardProps } from "@/types/dashboard";
+import { TeamPerformance } from "./startup/TeamPerformance";
+import { GrowthMetrics } from "./startup/GrowthMetrics";
+import { CampaignList } from "./startup/CampaignList";
 
 export function StartupDashboard({ 
   business, 
@@ -353,116 +356,8 @@ const pendingApprovals = useQuery(
         </div>
       )}
 
-      {/* Team Performance */}
-      <section className="mb-6">
-        <h2 className="text-lg font-semibold mb-3">Team Performance (7d)</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-          <Card>
-            <CardContent className="p-4">
-              <div className="text-sm text-muted-foreground">Contributions</div>
-              <div className="text-2xl font-bold">
-                {teamPerformance?.summary.totalContributions || (isGuest ? 27 : 0)}
-              </div>
-              <div className="text-xs text-emerald-600">+{isGuest ? 2 : 0} vs prior</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4">
-              <div className="text-sm text-muted-foreground">Approvals Completed</div>
-              <div className="text-2xl font-bold">
-                {teamPerformance?.summary.totalApprovals || (isGuest ? 7 : 0)}
-              </div>
-              <div className="text-xs text-emerald-600">SLA improving</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4">
-              <div className="text-sm text-muted-foreground">Tasks Completed</div>
-              <div className="text-2xl font-bold">
-                {teamPerformance?.summary.totalTasks || (isGuest ? 12 : 0)}
-              </div>
-              <div className="text-xs text-emerald-600">Momentum up</div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Team Leaderboard */}
-        {teamPerformance && teamPerformance.teamMembers.length > 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Trophy className="h-5 w-5 text-yellow-600" />
-                Team Leaderboard
-              </CardTitle>
-              <CardDescription>Top contributors this week</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {teamPerformance.teamMembers.slice(0, 5).map((member: { userId: string; name: string; contributions: number; approvals: number; tasks: number }, idx: number) => (
-                  <div key={member.userId} className="flex items-center gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors">
-                    <div className={`flex items-center justify-center w-8 h-8 rounded-full font-bold ${
-                      idx === 0 ? 'bg-yellow-100 text-yellow-700' :
-                      idx === 1 ? 'bg-gray-100 text-gray-700' :
-                      idx === 2 ? 'bg-orange-100 text-orange-700' :
-                      'bg-muted text-muted-foreground'
-                    }`}>
-                      {idx + 1}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="font-medium truncate">{member.name}</div>
-                      <div className="text-xs text-muted-foreground truncate">{member.userId}</div>
-                    </div>
-                    <div className="text-right">
-                      <div className="font-bold text-lg">{member.contributions}</div>
-                      <div className="text-xs text-muted-foreground">contributions</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Guest mode fallback leaderboard */}
-        {isGuest && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Trophy className="h-5 w-5 text-yellow-600" />
-                Team Leaderboard
-              </CardTitle>
-              <CardDescription>Top contributors this week (Demo)</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {[
-                  { name: "Sarah Chen", email: "sarah@demo.com", contributions: 15 },
-                  { name: "Mike Johnson", email: "mike@demo.com", contributions: 12 },
-                  { name: "Alex Rivera", email: "alex@demo.com", contributions: 8 },
-                ].map((member, idx) => (
-                  <div key={idx} className="flex items-center gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors">
-                    <div className={`flex items-center justify-center w-8 h-8 rounded-full font-bold ${
-                      idx === 0 ? 'bg-yellow-100 text-yellow-700' :
-                      idx === 1 ? 'bg-gray-100 text-gray-700' :
-                      'bg-orange-100 text-orange-700'
-                    }`}>
-                      {idx + 1}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="font-medium truncate">{member.name}</div>
-                      <div className="text-xs text-muted-foreground truncate">{member.email}</div>
-                    </div>
-                    <div className="text-right">
-                      <div className="font-bold text-lg">{member.contributions}</div>
-                      <div className="text-xs text-muted-foreground">contributions</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-      </section>
+      {/* Team Performance - Now using sub-component */}
+      <TeamPerformance teamPerformance={teamPerformance} isGuest={isGuest} />
 
       {/* Approval Health Card - Add after Team Performance section */}
       {!isGuest && approvalMetrics && (
@@ -529,155 +424,8 @@ const pendingApprovals = useQuery(
         </div>
       </section>
 
-      {/* Growth Metrics Dashboard */}
-      <section>
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h2 className="text-xl font-semibold">Growth Metrics Dashboard</h2>
-            <p className="text-sm text-muted-foreground">Track funnel performance, CAC, and customer acquisition</p>
-          </div>
-        </div>
-
-        {/* Summary Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mb-6">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Revenue</CardTitle>
-              <DollarSign className="h-4 w-4 text-green-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">${metrics?.summary.totalRevenue?.toLocaleString() || kpis.totalRevenue?.toLocaleString() || 0}</div>
-              <p className="text-xs text-muted-foreground">Total revenue</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Customers</CardTitle>
-              <Users className="h-4 w-4 text-blue-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{metrics?.summary.activeCustomers || kpis.activeCustomers || 0}</div>
-              <p className="text-xs text-muted-foreground">Active customers</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Conversion</CardTitle>
-              <Target className="h-4 w-4 text-purple-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{metrics?.summary.conversionRate || kpis.conversionRate || 0}%</div>
-              <p className="text-xs text-muted-foreground">Visitor to customer</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Avg CAC</CardTitle>
-              <DollarSign className="h-4 w-4 text-orange-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">${metrics?.summary.avgCAC || 0}</div>
-              <p className="text-xs text-muted-foreground">Customer acquisition</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Avg LTV</CardTitle>
-              <TrendingUp className="h-4 w-4 text-emerald-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">${metrics?.summary.avgLTV || 0}</div>
-              <p className="text-xs text-muted-foreground">Lifetime value</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">LTV:CAC</CardTitle>
-              <TrendingUp className="h-4 w-4 text-blue-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{metrics?.summary.ltvcacRatio || 0}x</div>
-              <p className="text-xs text-muted-foreground">Ratio</p>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Charts Row */}
-        <div className="grid gap-4 md:grid-cols-2 mb-6">
-          {/* Conversion Funnel */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Conversion Funnel</CardTitle>
-              <CardDescription>Customer journey from visitor to conversion</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={metrics?.conversionFunnel || []} layout="vertical">
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis type="number" />
-                  <YAxis dataKey="stage" type="category" width={100} />
-                  <Tooltip />
-                  <Bar dataKey="count" fill="#10b981">
-                    {(metrics?.conversionFunnel || []).map((entry: any, index: number) => (
-                      <Cell key={`cell-${index}`} fill={["#10b981", "#3b82f6", "#8b5cf6", "#f59e0b"][index % 4]} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-
-          {/* CAC by Channel */}
-          <Card>
-            <CardHeader>
-              <CardTitle>CAC by Channel</CardTitle>
-              <CardDescription>Customer acquisition cost across channels</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={metrics?.cacByChannel || []}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="channel" />
-                  <YAxis yAxisId="left" />
-                  <YAxis yAxisId="right" orientation="right" />
-                  <Tooltip />
-                  <Legend />
-                  <Bar yAxisId="left" dataKey="cac" fill="#ef4444" name="CAC ($)" />
-                  <Bar yAxisId="right" dataKey="customers" fill="#10b981" name="Customers" />
-                </BarChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Trends Chart */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Growth Trends</CardTitle>
-            <CardDescription>Revenue, CAC, and customer trends over time</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={metrics?.trends || []}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="date" />
-                <YAxis yAxisId="left" />
-                <YAxis yAxisId="right" orientation="right" />
-                <Tooltip />
-                <Legend />
-                <Line yAxisId="left" type="monotone" dataKey="revenue" stroke="#10b981" name="Revenue ($)" strokeWidth={2} />
-                <Line yAxisId="right" type="monotone" dataKey="cac" stroke="#ef4444" name="CAC ($)" strokeWidth={2} />
-                <Line yAxisId="right" type="monotone" dataKey="customers" stroke="#3b82f6" name="Customers" strokeWidth={2} />
-              </LineChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-      </section>
+      {/* Growth Metrics Dashboard - Now using sub-component */}
+      <GrowthMetrics metrics={metrics} kpis={kpis} />
 
       {/* Active Initiatives */}
       <section>
@@ -851,75 +599,8 @@ const pendingApprovals = useQuery(
         </section>
       )}
 
-      {/* Email Campaigns section with skeleton loading */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            Email Campaigns
-            <Button size="sm" onClick={() => setShowComposer(true)}>
-              Create Campaign
-            </Button>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Suspense fallback={
-            <div className="space-y-3">
-              {Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className="flex items-center justify-between p-3 border rounded">
-                  <div className="space-y-1">
-                    <Skeleton className="h-4 w-48" />
-                    <Skeleton className="h-3 w-32" />
-                  </div>
-                  <Skeleton className="h-6 w-16" />
-                </div>
-              ))}
-            </div>
-          }>
-            {!campaigns ? (
-              <div className="space-y-3">
-                {Array.from({ length: 3 }).map((_, i) => (
-                  <div key={i} className="flex items-center justify-between p-3 border rounded">
-                    <div className="space-y-1">
-                      <Skeleton className="h-4 w-48" />
-                      <Skeleton className="h-3 w-32" />
-                    </div>
-                    <Skeleton className="h-6 w-16" />
-                  </div>
-                ))}
-              </div>
-            ) : campaigns.length === 0 ? (
-              <div className="text-center py-6 text-muted-foreground">
-                No campaigns yet. Create your first campaign to get started.
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {campaigns.slice(0, 5).map((campaign: any) => (
-                  <Card key={campaign._id}>
-                    <CardContent className="p-4">
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <h3 className="font-medium">{campaign.subject}</h3>
-                          <p className="text-xs text-muted-foreground">From: {campaign.fromName ? `${campaign.fromName} <${campaign.fromEmail}>` : campaign.fromEmail}</p>
-                        </div>
-                        <Badge variant="outline">{campaign.status}</Badge>
-                      </div>
-                      <p className="text-xs text-muted-foreground mt-2">
-                        {(campaign.audienceType === "list" ? "Contact list" : `${(campaign.recipients?.length ?? 0)} recipients`)} • {(
-                          campaign.scheduledAt
-                            ? `Scheduled ${new Date(campaign.scheduledAt).toLocaleString?.()}`
-                            : campaign.createdAt
-                            ? `Created ${new Date(campaign.createdAt).toLocaleString?.()}`
-                            : ""
-                        )}
-                      </p>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            )}
-          </Suspense>
-        </CardContent>
-      </Card>
+      {/* Email Campaigns - Now using sub-component */}
+      <CampaignList campaigns={campaigns} onCreateCampaign={() => setShowComposer(true)} />
 
       {/* CRM Sync Status */}
       {!isGuest && business?._id && (
