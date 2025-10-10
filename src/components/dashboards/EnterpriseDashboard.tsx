@@ -71,6 +71,27 @@ const IntegrationHub = lazy(() =>
   }))
 );
 
+/**
+ * EnterpriseDashboard Component
+ * 
+ * Main dashboard view for Enterprise tier users. Provides comprehensive
+ * business intelligence, global command centers, strategic initiatives,
+ * system telemetry, and enterprise-specific controls.
+ * 
+ * Features:
+ * - Global Command Center with multi-region data aggregation
+ * - Strategic Command Center for initiative tracking
+ * - Social Command Center for multi-brand social media management
+ * - Draggable widget grid with local storage persistence
+ * - Integration hub with health monitoring
+ * - Feature flag management with tier-based gating
+ * - Approval workflows and audit trail
+ * - A/B testing and ROI dashboards
+ * - Enterprise shortcuts (Branding, SCIM, SSO, KMS, Custom APIs)
+ * 
+ * @param {EnterpriseDashboardProps} props - Component props
+ * @returns {JSX.Element} Rendered enterprise dashboard
+ */
 export function EnterpriseDashboard({
   business,
   demoData,
@@ -111,7 +132,12 @@ export function EnterpriseDashboard({
   );
   const toggleFlag = useMutation(api.featureFlags.toggleFeatureFlag);
 
-  // Feature flag helpers
+  /**
+   * Check if a specific feature flag is enabled for the current business
+   * 
+   * @param {string} flagName - Name of the feature flag to check
+   * @returns {boolean} True if the flag is enabled, false otherwise
+   */
   const isFeatureEnabled = (flagName: string): boolean => {
     if (isGuest) return false;
     if (!featureFlags || !Array.isArray(featureFlags)) return false;
@@ -119,6 +145,15 @@ export function EnterpriseDashboard({
     return flag?.isEnabled ?? false;
   };
 
+  /**
+   * LockedRibbon Component
+   * 
+   * Displays an overlay indicating a feature is locked and requires an upgrade.
+   * 
+   * @param {Object} props - Component props
+   * @param {string} [props.label="Feature requires upgrade"] - Message to display
+   * @returns {JSX.Element} Rendered locked ribbon overlay
+   */
   const LockedRibbon = ({ label = "Feature requires upgrade" }: { label?: string }) => (
     <div className="absolute inset-0 bg-black/5 backdrop-blur-[2px] rounded-lg flex items-center justify-center z-10">
       <div className="flex items-center gap-2 bg-white/90 px-4 py-2 rounded-full shadow-lg border border-amber-300">
@@ -131,7 +166,15 @@ export function EnterpriseDashboard({
     </div>
   );
 
-  // sparkline helper now in GlobalOverview; we keep trend generator here
+  /**
+   * Generate trend data for sparkline visualizations
+   * 
+   * Creates a 12-point trend array with alternating jitter around a base value.
+   * Memoized to prevent unnecessary recalculations.
+   * 
+   * @param {number} [base=60] - Base value for the trend (0-100)
+   * @returns {number[]} Array of 12 trend values with jitter
+   */
   const mkTrend = useCallback((base?: number): number[] => {
     const b = typeof base === "number" && !Number.isNaN(base) ? base : 60;
     const arr: number[] = [];
@@ -249,7 +292,12 @@ export function EnterpriseDashboard({
     [slaSummary]
   );
 
-  // Handlers
+  /**
+   * Run Phase 0 diagnostics for the current business
+   * 
+   * Triggers a comprehensive diagnostic check of workflows, agents,
+   * and system health. Displays success/error toast notifications.
+   */
   const handleRunDiagnostics = useCallback(async () => {
     if (!business?._id) return;
     try {
@@ -260,6 +308,13 @@ export function EnterpriseDashboard({
     }
   }, [business?._id, runDiagnostics]);
 
+  /**
+   * Enforce governance policies for all workflows in the business
+   * 
+   * Validates and updates workflows to ensure compliance with
+   * governance rules (SLA floors, approval requirements, etc.).
+   * Displays count of updated workflows in success toast.
+   */
   const handleEnforceGovernance = useCallback(async () => {
     if (!business?._id) return;
     try {
@@ -270,6 +325,11 @@ export function EnterpriseDashboard({
     }
   }, [business?._id, enforceGovernanceForBiz]);
 
+  /**
+   * Approve a pending approval request
+   * 
+   * @param {string} id - ID of the approval to approve
+   */
   const handleApprove = useCallback(async (id: string) => {
     try {
       await approveSelf({ id: id as any });
@@ -279,6 +339,11 @@ export function EnterpriseDashboard({
     }
   }, [approveSelf]);
 
+  /**
+   * Reject a pending approval request
+   * 
+   * @param {string} id - ID of the approval to reject
+   */
   const handleReject = useCallback(async (id: string) => {
     try {
       await rejectSelf({ id: id as any });

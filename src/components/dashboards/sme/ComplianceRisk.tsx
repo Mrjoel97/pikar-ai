@@ -5,14 +5,41 @@ import { RiskHeatmap } from "@/components/risk/RiskHeatmap";
 import { RiskTrendChart } from "@/components/risk/RiskTrendChart";
 import { Id } from "@/convex/_generated/dataModel";
 
+/**
+ * Props for the ComplianceRisk component
+ */
 interface ComplianceRiskProps {
+  /** Business ID for fetching compliance and risk data */
   businessId: Id<"businesses"> | undefined;
+  /** Whether the user is in guest mode */
   isGuest: boolean;
+  /** KPI data object containing compliance and risk scores */
   kpis: any;
+  /** Whether risk analytics features are enabled */
   riskAnalyticsEnabled: boolean;
+  /** Component to display when features are locked */
   LockedRibbon: ({ label }: { label?: string }) => React.ReactElement;
 }
 
+/**
+ * ComplianceRisk Component
+ * 
+ * Displays compliance and risk analytics for SME tier businesses.
+ * Shows KPI trends, risk matrix visualization, risk trend charts,
+ * and recent compliance activities. Features are gated based on
+ * tier and feature flags.
+ * 
+ * Features:
+ * - Compliance score trends with sparklines
+ * - Risk score tracking (lower is better)
+ * - Risk heatmap matrix (5x5 probability vs impact)
+ * - 30-day risk trend analysis
+ * - Recent compliance activities feed
+ * - Tier-based feature gating
+ * 
+ * @param {ComplianceRiskProps} props - Component props
+ * @returns {JSX.Element} Rendered compliance and risk sections
+ */
 export function ComplianceRisk({ 
   businessId, 
   isGuest, 
@@ -30,7 +57,16 @@ export function ComplianceRisk({
     isGuest || !businessId || !riskAnalyticsEnabled ? undefined : { businessId, days: 30 }
   );
 
-  // Sparkline utility
+  /**
+   * Sparkline Component
+   * 
+   * Renders a mini bar chart visualization for trend data.
+   * 
+   * @param {Object} props - Component props
+   * @param {number[]} props.values - Array of values to visualize (0-100 scale)
+   * @param {string} [props.color="bg-emerald-600"] - Tailwind background color class
+   * @returns {JSX.Element} Rendered sparkline visualization
+   */
   const Sparkline = ({ values, color = "bg-emerald-600" }: { values: number[]; color?: string }) => (
     <div className="flex items-end gap-1 h-12">
       {values.map((v, i) => (
@@ -39,6 +75,15 @@ export function ComplianceRisk({
     </div>
   );
 
+  /**
+   * Generate trend data for sparkline visualization
+   * 
+   * Creates a 12-point trend array with jitter around a base value.
+   * Used for generating demo/preview trend data.
+   * 
+   * @param {number} [base=50] - Base value for the trend (0-100)
+   * @returns {number[]} Array of 12 trend values with jitter
+   */
   const mkTrend = (base?: number): number[] => {
     const b = typeof base === "number" && !Number.isNaN(base) ? base : 50;
     const arr: number[] = [];

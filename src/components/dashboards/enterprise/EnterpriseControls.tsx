@@ -2,11 +2,26 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
+/**
+ * Props for the EnterpriseControls component
+ */
 interface EnterpriseControlsProps {
+  /** Function to check if the current tier meets the required tier level */
   hasTier: (tier: string) => boolean;
+  /** Callback function triggered when user clicks upgrade */
   onUpgrade: () => void;
 }
 
+/**
+ * EnterpriseControls Component
+ * 
+ * Displays enterprise-level control options including SSO & RBAC, API Access,
+ * and Integrations management. Shows locked state for non-enterprise tiers
+ * with upgrade prompts.
+ * 
+ * @param {EnterpriseControlsProps} props - Component props
+ * @returns {JSX.Element} Rendered enterprise controls card
+ */
 export function EnterpriseControls({ hasTier, onUpgrade }: EnterpriseControlsProps) {
   return (
     <Card className="xl:col-span-1">

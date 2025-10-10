@@ -1,6 +1,15 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
+/**
+ * IntegrationStatus Component
+ * 
+ * Displays the current connection status of various third-party integrations
+ * including CRM, Analytics, and Billing systems. Shows visual indicators
+ * for connection health (Connected, Attention, Not linked).
+ * 
+ * @returns {JSX.Element} Rendered integration status card with connection badges
+ */
 export function IntegrationStatus() {
   return (
     <Card className="xl:col-span-1">

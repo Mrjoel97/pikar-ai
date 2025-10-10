@@ -8,14 +8,40 @@ import { AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { Id } from "@/convex/_generated/dataModel";
 
+/**
+ * Props for the GovernancePanel component
+ */
 interface GovernancePanelProps {
+  /** Business ID for fetching governance data */
   businessId: Id<"businesses"> | undefined;
+  /** Whether the user is in guest mode */
   isGuest: boolean;
+  /** Whether governance automation features are enabled */
   governanceAutomationEnabled: boolean;
+  /** Function to check if the current tier meets the required tier level */
   hasTier: (tier: string) => boolean;
+  /** Component to display when features are locked */
   LockedRibbon: ({ label }: { label?: string }) => React.ReactElement;
 }
 
+/**
+ * GovernancePanel Component
+ * 
+ * Displays governance-related information including pending approvals,
+ * audit highlights, governance score, and escalation alerts. Provides
+ * approval/rejection actions for pending items and shows governance
+ * automation status based on tier and feature flags.
+ * 
+ * Features:
+ * - Governance score tracking (30-day window)
+ * - Pending approvals queue with priority badges
+ * - Audit trail highlights
+ * - Escalation alerts for policy violations
+ * - Tier-based feature gating
+ * 
+ * @param {GovernancePanelProps} props - Component props
+ * @returns {JSX.Element} Rendered governance panel sections
+ */
 export function GovernancePanel({ 
   businessId, 
   isGuest, 
