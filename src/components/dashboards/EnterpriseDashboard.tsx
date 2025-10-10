@@ -15,6 +15,8 @@ import { Id } from "@/convex/_generated/dataModel";
 import { Shield, AlertTriangle, Globe, Zap, FileText, Palette, Lock } from "lucide-react";
 import { SystemHealthStrip } from "@/components/dashboard/SystemHealthStrip";
 import type { EnterpriseDashboardProps } from "@/types/dashboard";
+import { EnterpriseControls } from "./enterprise/EnterpriseControls";
+import { IntegrationStatus } from "./enterprise/IntegrationStatus";
 
 // Lazy-load heavy components to reduce initial bundle
 const RoiDashboard = lazy(() =>
@@ -615,59 +617,8 @@ export function EnterpriseDashboard({
       <section>
         <h2 className="text-xl font-semibold mb-4">Enterprise Controls</h2>
         <div className="mt-6 grid grid-cols-1 xl:grid-cols-3 gap-4">
-          <Card className="xl:col-span-1">
-            <CardHeader className="pb-2">
-              <CardTitle>Enterprise Controls</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-sm">SSO & RBAC</span>
-                <Button size="sm" disabled>Manage</Button>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm">API Access</span>
-                <Button size="sm" disabled>Configure</Button>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm">Integrations</span>
-                <Button size="sm" disabled>Open</Button>
-              </div>
-              <div className="text-xs text-muted-foreground">
-                Contact support to enable enterprise controls.
-              </div>
-              {!hasTier("enterprise") && (
-                <div className="pt-2 border-t mt-2">
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <Badge variant="outline" className="border-amber-300 text-amber-700">Locked</Badge>
-                    <span>Advanced controls are Enterprise+</span>
-                    <Button size="sm" variant="outline" onClick={onUpgrade} className="ml-auto">Upgrade</Button>
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card className="xl:col-span-1">
-            <CardHeader className="pb-2">
-              <CardTitle>Integration Status</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-sm">CRM</span>
-                <Badge variant="outline" className="border-emerald-300 text-emerald-700">Connected</Badge>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm">Analytics</span>
-                <Badge variant="outline" className="border-amber-300 text-amber-700">Attention</Badge>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm">Billing</span>
-                <Badge variant="outline" className="border-slate-300 text-slate-700">Not linked</Badge>
-              </div>
-              <div className="text-xs text-muted-foreground">Integration health overview (static preview).</div>
-            </CardContent>
-          </Card>
-
+          <EnterpriseControls hasTier={hasTier} onUpgrade={onUpgrade} />
+          <IntegrationStatus />
           <Card className="xl:col-span-1">
             <CardHeader className="pb-2">
               <CardTitle>Approvals & Audit</CardTitle>
