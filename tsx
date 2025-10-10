@@ -1,5 +1,8 @@
-{slot.reasoning && (
-  <div className="text-xs text-muted-foreground bg-muted/50 p-2 rounded">
-    💡 <strong>Why this time:</strong> {slot.reasoning}
-  </div>
-)}
+<Route
+  path="/admin/test-runner"
+  element={
+    <React.Suspense fallback={<div className="p-6 text-sm">Loading…</div>}>
+      <TestRunnerPage />
+    </React.Suspense>
+  }
+/>
