@@ -1,1 +1,4 @@
-<Route path="/admin/test-runner" element={<TestRunner />} />
+useQuery(
+  api.governanceAutomation.getEscalations,
+  !isGuest && businessId ? { businessId, status: "pending" as const } : undefined
+)

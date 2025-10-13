@@ -308,18 +308,23 @@ export const escalateViolation = mutation({
 
 /**
  * Get pending and resolved escalations
+ * Guest-safe: returns [] when businessId is not provided
  */
 export const getEscalations = query({
   args: {
-    businessId: v.id("businesses"),
+    businessId: v.optional(v.id("businesses")),
     status: v.optional(v.union(v.literal("pending"), v.literal("resolved"))),
   },
   handler: async (ctx, args) => {
-    let query = ctx.db
-      .query("governanceEscalations")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId));
+    // Guest/public: no business context → return empty array
+    if (!args.businessId) {
+      return [];
+    }
 
-    const escalations = await query.collect();
+    const escalations = await ctx.db
+      .query("governanceEscalations")
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId!))
+      .collect();
 
     // Filter by status if provided
     const filtered = args.status
@@ -380,14 +385,25 @@ export const resolveEscalation = mutation({
  */
 export const getGovernanceScoreTrend = query({
   args: {
-    businessId: v.id("businesses"),
+    businessId: v.optional(v.id("businesses")),
     days: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
+    // Guest-safe: return defaults if no business context
+    if (!args.businessId) {
+      return {
+        currentScore: 100,
+        trend: [],
+        compliantCount: 0,
+        totalCount: 0,
+        byDepartment: {},
+        byPolicyType: {},
+      };
+    }
     const days = args.days || 30;
     const workflows = await ctx.db
       .query("workflows")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId!))
       .collect();
 
     const total = workflows.length;
@@ -468,11 +484,28 @@ export const getGovernanceScoreTrend = query({
  * Get automation settings for a business
  */
 export const getAutomationSettings = query({
-  args: { businessId: v.id("businesses") },
+  args: { businessId: v.optional(v.id("businesses")) },
   handler: async (ctx, args) => {
+    // Guest-safe: return defaults when no businessId
+    if (!args.businessId) {
+      return {
+        businessId: args.businessId as any,
+        autoRemediate: {
+          missing_approval: false,
+          insufficient_sla: false,
+          insufficient_approvals: false,
+          role_diversity: false,
+        },
+        escalationRules: {
+          threshold: 3,
+          escalateTo: "senior_admin",
+        },
+      };
+    }
+
     const settings = await ctx.db
       .query("governanceAutomationSettings")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId!))
       .first();
 
     return (
