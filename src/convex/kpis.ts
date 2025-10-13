@@ -158,14 +158,33 @@ export const latestForBusiness = query({
   },
 });
 
-// Get a specific KPI snapshot
+// Make getSnapshot guest-safe and accept optional args
 export const getSnapshot = query({
-  args: { businessId: v.id("businesses"), date: v.string() },
+  args: { 
+    businessId: v.optional(v.id("businesses")), 
+    date: v.optional(v.string()) 
+  },
   handler: async (ctx, args) => {
+    // Return null if businessId is not provided (guest/public views)
+    if (!args.businessId) {
+      return null;
+    }
+
+    // If no date provided, get the latest snapshot
+    if (!args.date) {
+      const snapshots = await ctx.db
+        .query("dashboardKpis")
+        .withIndex("by_business_and_date", (q) => q.eq("businessId", args.businessId!))
+        .order("desc")
+        .first();
+      return snapshots || null;
+    }
+
+    // Get snapshot for specific date
     const snapshots = await ctx.db
       .query("dashboardKpis")
       .withIndex("by_business_and_date", (q) => 
-        q.eq("businessId", args.businessId).eq("date", args.date)
+        q.eq("businessId", args.businessId!).eq("date", args.date!)
       )
       .first();
     return snapshots || null;
