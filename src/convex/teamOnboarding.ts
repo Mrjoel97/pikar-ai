@@ -57,17 +57,20 @@ export const getOnboardingTemplate = query({
 // List all team members' onboarding status
 export const listTeamOnboarding = query({
   args: {
-    businessId: v.id("businesses"),
+    businessId: v.optional(v.id("businesses")),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) return [];
 
+    // Return empty array if no businessId provided
+    if (!args.businessId) return [];
+
     // Check if the table exists by trying to query it
     try {
       return await ctx.db
         .query("onboardingChecklists")
-        .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+        .withIndex("by_business", (q) => q.eq("businessId", args.businessId!))
         .collect();
     } catch (error) {
       console.error("Error querying onboardingChecklists:", error);
