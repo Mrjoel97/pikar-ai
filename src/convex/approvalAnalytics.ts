@@ -2,10 +2,10 @@ import { v } from "convex/values";
 import { query } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
 
-// Get approval metrics with aggregation
+// Update: Make businessId optional and return defaults when not provided
 export const getApprovalMetrics = query({
   args: {
-    businessId: v.id("businesses"),
+    businessId: v.optional(v.id("businesses")),
     timeRange: v.optional(v.number()), // days
     breakdown: v.optional(v.union(v.literal("user"), v.literal("workflow"), v.literal("time"))),
   },
@@ -13,12 +13,23 @@ export const getApprovalMetrics = query({
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Not authenticated");
 
+    // Guest/public: no business context → return empty/default metrics
+    if (!args.businessId) {
+      return {
+        totalApprovals: 0,
+        overdueCount: 0,
+        avgTimeHours: 0,
+        approvalsByUser: {},
+        timeRange: args.timeRange || 30,
+      };
+    }
+
     const timeRange = args.timeRange || 30;
     const startTime = Date.now() - timeRange * 24 * 60 * 60 * 1000;
 
     const approvals = await ctx.db
       .query("approvalQueue")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId!))
       .filter((q) => q.gt(q.field("_creationTime"), startTime))
       .collect();
 
@@ -27,7 +38,6 @@ export const getApprovalMetrics = query({
       (a) => a.status === "pending" && a.slaDeadline && a.slaDeadline < Date.now()
     ).length;
 
-    // Calculate average approval time
     const processedApprovals = approvals.filter((a) => a.status !== "pending");
     const totalTime = processedApprovals.reduce((sum, a) => {
       const processedAt = a.reviewedAt || Date.now();
@@ -38,7 +48,6 @@ export const getApprovalMetrics = query({
         ? totalTime / processedApprovals.length / (1000 * 60 * 60)
         : 0;
 
-    // Breakdown by user
     const approvalsByUser: Record<string, number> = {};
     approvals.forEach((a) => {
       const userId = String(a.assigneeId || "unassigned");
@@ -58,18 +67,22 @@ export const getApprovalMetrics = query({
 // Identify approval bottlenecks
 export const identifyBottlenecks = query({
   args: {
-    businessId: v.id("businesses"),
+    businessId: v.optional(v.id("businesses")),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Not authenticated");
 
+    // Return empty array if no businessId provided
+    if (!args.businessId) {
+      return [];
+    }
+
     const approvals = await ctx.db
       .query("approvalQueue")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId!))
       .collect();
 
-    // Group by user
     const userStats: Record<
       string,
       {
@@ -102,7 +115,6 @@ export const identifyBottlenecks = query({
       }
     });
 
-    // Identify bottlenecks
     const bottlenecks = [];
     for (const [key, stats] of Object.entries(userStats)) {
       const avgTimeHours =
@@ -118,7 +130,6 @@ export const identifyBottlenecks = query({
       }
 
       if (reason) {
-        // Fetch user name
         let userName = "Unknown";
         if (stats.userId) {
           const user = await ctx.db.get(stats.userId);
@@ -142,12 +153,17 @@ export const identifyBottlenecks = query({
 // Get approval trends over time
 export const getApprovalTrends = query({
   args: {
-    businessId: v.id("businesses"),
+    businessId: v.optional(v.id("businesses")),
     period: v.optional(v.union(v.literal("day"), v.literal("week"), v.literal("month"))),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Not authenticated");
+
+    // Return empty array if no businessId provided
+    if (!args.businessId) {
+      return [];
+    }
 
     const period = args.period || "day";
     const now = Date.now();
@@ -156,11 +172,10 @@ export const getApprovalTrends = query({
 
     const approvals = await ctx.db
       .query("approvalQueue")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId!))
       .filter((q) => q.gt(q.field("_creationTime"), startTime))
       .collect();
 
-    // Group by time period
     const trends: Record<string, { approved: number; rejected: number; pending: number }> = {};
 
     approvals.forEach((a) => {
