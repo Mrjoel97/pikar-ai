@@ -2,29 +2,32 @@ import { v } from "convex/values";
 import { query } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
 
-// Update: Make businessId optional and return defaults when not provided
+/**
+ * Guest-safe approval metrics: no auth checks; returns defaults when businessId is not provided.
+ */
 export const getApprovalMetrics = query({
   args: {
     businessId: v.optional(v.id("businesses")),
     timeRange: v.optional(v.number()), // days
-    breakdown: v.optional(v.union(v.literal("user"), v.literal("workflow"), v.literal("time"))),
+    breakdown: v.optional(
+      v.union(v.literal("user"), v.literal("workflow"), v.literal("time"))
+    ),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
+    // Default to 30 days if not provided
+    const timeRange = args.timeRange ?? 30;
 
-    // Guest/public: no business context → return empty/default metrics
+    // Guest/public: no business context → return defaults
     if (!args.businessId) {
       return {
         totalApprovals: 0,
         overdueCount: 0,
         avgTimeHours: 0,
         approvalsByUser: {},
-        timeRange: args.timeRange || 30,
+        timeRange,
       };
     }
 
-    const timeRange = args.timeRange || 30;
     const startTime = Date.now() - timeRange * 24 * 60 * 60 * 1000;
 
     const approvals = await ctx.db
@@ -64,16 +67,13 @@ export const getApprovalMetrics = query({
   },
 });
 
-// Identify approval bottlenecks
+// Ensure identifyBottlenecks is guest-safe: return [] if no businessId
 export const identifyBottlenecks = query({
   args: {
     businessId: v.optional(v.id("businesses")),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
-
-    // Return empty array if no businessId provided
+    // Return empty array if no businessId provided (guest/public)
     if (!args.businessId) {
       return [];
     }
@@ -116,7 +116,7 @@ export const identifyBottlenecks = query({
     });
 
     const bottlenecks = [];
-    for (const [key, stats] of Object.entries(userStats)) {
+    for (const [_, stats] of Object.entries(userStats)) {
       const avgTimeHours =
         stats.processedCount > 0
           ? stats.totalTime / stats.processedCount / (1000 * 60 * 60)
@@ -150,17 +150,14 @@ export const identifyBottlenecks = query({
   },
 });
 
-// Get approval trends over time
+// Ensure getApprovalTrends is guest-safe: return [] if no businessId
 export const getApprovalTrends = query({
   args: {
     businessId: v.optional(v.id("businesses")),
     period: v.optional(v.union(v.literal("day"), v.literal("week"), v.literal("month"))),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
-
-    // Return empty array if no businessId provided
+    // Return empty array if no businessId provided (guest/public)
     if (!args.businessId) {
       return [];
     }
