@@ -2,11 +2,19 @@ import { query } from "./_generated/server";
 import { v } from "convex/values";
 
 export const getRiskMatrix = query({
-  args: { businessId: v.id("businesses") },
+  args: { businessId: v.optional(v.id("businesses")) },
   handler: async (ctx, args) => {
+    // Guest/public: no business context → return empty matrix
+    if (!args.businessId) {
+      return {
+        matrix: {},
+        totalRisks: 0,
+        highRisks: 0,
+      };
+    }
     const risks = await ctx.db
       .query("risks")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId!))
       .collect();
 
     // Group risks by probability (1-5) and impact (1-5)
@@ -30,16 +38,27 @@ export const getRiskMatrix = query({
 
 export const getRiskTrend = query({
   args: { 
-    businessId: v.id("businesses"),
+    businessId: v.optional(v.id("businesses")),
     days: v.optional(v.number())
   },
   handler: async (ctx, args) => {
+    // Guest/public: no business context → return empty trend
+    if (!args.businessId) {
+      return {
+        newRisks: 0,
+        mitigatedRisks: 0,
+        avgRiskScore: 0,
+        byCategory: {},
+        trendData: [],
+        period: `${args.days ?? 30}d`,
+      };
+    }
     const days = args.days ?? 30;
     const cutoffTime = Date.now() - days * 24 * 60 * 60 * 1000;
 
     const risks = await ctx.db
       .query("risks")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId!))
       .collect();
 
     const recentRisks = risks.filter(r => r.createdAt >= cutoffTime);
