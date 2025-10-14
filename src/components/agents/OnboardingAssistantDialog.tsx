@@ -100,7 +100,56 @@ export default function OnboardingAssistantDialog() {
     }
   };
 
-  // ... keep existing code (handleSave remains the same, only calls runWeeklyMomentum when createNow)
+  // Add handler to save setup, seed slots, and optionally run playbook
+  const handleSave = async () => {
+    if (!businessId) {
+      toast.error("Please select or create a workspace first.");
+      return;
+    }
+    try {
+      setSaving(true);
+
+      // Initialize the Solopreneur Executive Agent profile/config
+      try {
+        await (initExec as any)({
+          businessId,
+          goals,
+          tone,
+          timezone,
+          cadence,
+          channels: { email: useEmail, social: useSocial },
+        });
+      } catch {
+        // ignore non-fatal init errors
+      }
+
+      // Seed suggested schedule slots
+      try {
+        for (const s of suggestedSlots) {
+          await (addSlot as any)({
+            businessId,
+            label: s.label,
+            channel: s.channel,
+            scheduledAt: s.scheduledAt,
+          });
+        }
+      } catch {
+        // ignore non-fatal seeding errors
+      }
+
+      // Optionally trigger the first capsule run
+      if (createNow) {
+        await runWeeklyMomentum(businessId);
+      }
+
+      toast.success("Executive Assistant initialized");
+      setOpen(false);
+    } catch (e: any) {
+      toast.error(e?.message ?? "Failed to save setup");
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>

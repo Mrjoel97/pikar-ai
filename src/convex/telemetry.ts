@@ -152,15 +152,21 @@ export const getTeamPerformanceMetrics = query({
     // Calculate metrics per user
     const teamMetrics = await Promise.all(
       teamMemberIds.map(async (userId: any) => {
-        const user = await ctx.db.get(userId);
-        
+        // Narrow user and avoid union property errors by explicit casting
+        const userDoc = await ctx.db.get(userId as any);
+        const userEmail = (userDoc as any)?.email as string | undefined;
+        const userName =
+          ((userDoc as any)?.name as string | undefined) ??
+          userEmail ??
+          "Unknown User";
+
         // Count workflow runs created by user
         const workflowRuns = await ctx.db
           .query("workflowRuns")
           .withIndex("by_business", (q) => q.eq("businessId", businessId))
           .filter((q) => q.gte(q.field("_creationTime"), cutoffTime))
           .collect();
-        
+
         const userWorkflowRuns = workflowRuns.filter(
           (run) => run.startedAt >= cutoffTime
         ).length;
@@ -169,23 +175,24 @@ export const getTeamPerformanceMetrics = query({
         const approvals = await ctx.db
           .query("approvalQueue")
           .withIndex("by_business", (q) => q.eq("businessId", businessId))
-          .filter((q) => 
+          .filter((q) =>
             q.and(
               q.eq(q.field("status"), "approved"),
               q.gte(q.field("_creationTime"), cutoffTime)
             )
           )
           .collect();
-        
+
+        const reviewerEmail = userEmail;
         const userApprovals = approvals.filter(
-          (a) => a.reviewedBy === user?.email
+          (a: any) => a.reviewedBy === reviewerEmail
         ).length;
 
         // Count tasks completed (from audit logs)
         const auditLogs = await ctx.db
           .query("audit_logs")
           .withIndex("by_business", (q) => q.eq("businessId", businessId))
-          .filter((q) => 
+          .filter((q) =>
             q.and(
               q.eq(q.field("userId"), userId),
               q.gte(q.field("createdAt"), cutoffTime),
@@ -201,8 +208,8 @@ export const getTeamPerformanceMetrics = query({
 
         return {
           userId,
-          userName: user?.name || user?.email || "Unknown User",
-          userEmail: user?.email || "",
+          userName,
+          userEmail: userEmail || "",
           contributions: totalContributions,
           workflowRuns: userWorkflowRuns,
           approvals: userApprovals,

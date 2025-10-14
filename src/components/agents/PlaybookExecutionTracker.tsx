@@ -81,7 +81,7 @@ export default function PlaybookExecutionTracker({
     if (execution.status === "failed" || execution.status === "cancelled") return 0;
     if (!execution.steps || execution.steps.length === 0) return 10;
 
-    const completedSteps = execution.steps.filter((s) => s.status === "completed").length;
+    const completedSteps = execution.steps.filter((s: any) => s.status === "completed").length;
     return Math.min(95, (completedSteps / execution.steps.length) * 100);
   };
 
@@ -109,7 +109,9 @@ export default function PlaybookExecutionTracker({
             {getStatusIcon(execution.status)}
             <div>
               <CardTitle className="text-lg">
-                {execution.playbookKey.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())}
+                {execution.playbookKey
+                  .replace(/_/g, " ")
+                  .replace(/\b\w/g, (l: string) => l.toUpperCase())}
               </CardTitle>
               <p className="text-sm text-muted-foreground">
                 Started {new Date(execution.startedAt).toLocaleString()} • {duration}s
@@ -169,7 +171,7 @@ export default function PlaybookExecutionTracker({
             <div className="space-y-2">
               <h4 className="text-sm font-medium">Execution Steps</h4>
               <div className="space-y-2">
-                {execution.steps.map((step, index) => (
+                {execution.steps.map((step: any, index: number) => (
                   <div
                     key={index}
                     className="flex items-start gap-3 p-3 rounded-md border bg-muted/30"

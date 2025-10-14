@@ -1,13 +1,13 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Calendar, ChevronLeft, ChevronRight, Mail, MessageSquare, Clock, Trash2, Edit } from "lucide-react";
+import { Calendar, ChevronLeft, ChevronRight, Mail, MessageSquare, Clock, Trash2, Edit, Move } from "lucide-react";
 import { toast } from "sonner";
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, addMonths, subMonths, startOfWeek, endOfWeek } from "date-fns";
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, addMonths, subMonths, startOfWeek, endOfWeek, setHours, setMinutes } from "date-fns";
 
 interface ContentCalendarProps {
   businessId: string;
@@ -18,6 +18,8 @@ export function ContentCalendar({ businessId, userId }: ContentCalendarProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [view, setView] = useState<"month" | "week" | "day">("month");
   const [selectedEvent, setSelectedEvent] = useState<any>(null);
+  const [draggedEvent, setDraggedEvent] = useState<any>(null);
+  const [dragOverDay, setDragOverDay] = useState<Date | null>(null);
 
   const startDate = useMemo(() => {
     if (view === "month") {
@@ -51,6 +53,7 @@ export function ContentCalendar({ businessId, userId }: ContentCalendarProps) {
   );
 
   const bulkDelete = useMutation(api.calendar.bulkDelete);
+  const bulkReschedule = useMutation(api.calendar.bulkReschedule);
 
   const days = useMemo(() => {
     return eachDayOfInterval({ start: new Date(startDate), end: new Date(endDate) });
@@ -93,6 +96,52 @@ export function ContentCalendar({ businessId, userId }: ContentCalendarProps) {
       toast.error("Failed to delete event");
     }
   };
+
+  const handleDragStart = useCallback((event: any, e: React.DragEvent) => {
+    setDraggedEvent(event);
+    e.dataTransfer.effectAllowed = "move";
+  }, []);
+
+  const handleDragOver = useCallback((day: Date, e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    setDragOverDay(day);
+  }, []);
+
+  const handleDragLeave = useCallback(() => {
+    setDragOverDay(null);
+  }, []);
+
+  const handleDrop = useCallback(async (day: Date, e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOverDay(null);
+
+    if (!draggedEvent) return;
+
+    try {
+      // Calculate new scheduled time (preserve original time, change date)
+      const originalDate = new Date(draggedEvent.scheduledAt);
+      const newScheduledAt = setMinutes(
+        setHours(day, originalDate.getHours()),
+        originalDate.getMinutes()
+      ).getTime();
+
+      await bulkReschedule({
+        events: [{
+          id: draggedEvent.id,
+          type: draggedEvent.type,
+          newScheduledAt,
+        }],
+        userId: userId as any,
+      });
+
+      toast.success("Event rescheduled successfully");
+      setDraggedEvent(null);
+    } catch (error) {
+      toast.error("Failed to reschedule event");
+      setDraggedEvent(null);
+    }
+  }, [draggedEvent, bulkReschedule, userId]);
 
   const getEventIcon = (type: string) => {
     switch (type) {
@@ -185,28 +234,35 @@ export function ContentCalendar({ businessId, userId }: ContentCalendarProps) {
             {days.map((day) => {
               const dayEvents = getEventsForDay(day);
               const isToday = isSameDay(day, new Date());
+              const isDragOver = dragOverDay && isSameDay(dragOverDay, day);
               return (
                 <div
                   key={day.toISOString()}
-                  className={`min-h-24 border rounded-lg p-2 ${
+                  className={`min-h-24 border rounded-lg p-2 transition-colors ${
                     isToday ? "bg-emerald-50 border-emerald-300" : "bg-white"
-                  }`}
+                  } ${isDragOver ? "bg-blue-50 border-blue-400 border-2" : ""}`}
+                  onDragOver={(e) => handleDragOver(day, e)}
+                  onDragLeave={handleDragLeave}
+                  onDrop={(e) => handleDrop(day, e)}
                 >
                   <div className="text-sm font-medium mb-1">{format(day, "d")}</div>
                   <div className="space-y-1">
                     {dayEvents.slice(0, 3).map((event: any) => (
-                      <button
+                      <div
                         key={event.id}
+                        draggable
+                        onDragStart={(e) => handleDragStart(event, e)}
                         onClick={() => setSelectedEvent(event)}
-                        className={`w-full text-left text-xs p-1 rounded border ${getEventColor(
+                        className={`w-full text-left text-xs p-1 rounded border cursor-move ${getEventColor(
                           event.type
                         )} hover:opacity-80 transition-opacity`}
                       >
                         <div className="flex items-center gap-1">
+                          <Move className="h-3 w-3 opacity-50" />
                           {getEventIcon(event.type)}
                           <span className="truncate">{event.title}</span>
                         </div>
-                      </button>
+                      </div>
                     ))}
                     {dayEvents.length > 3 && (
                       <div className="text-xs text-muted-foreground">
