@@ -3319,7 +3319,7 @@ Renamed to avoid duplicate identifier collisions elsewhere in the file */
       </div>
 
       {/* Add Email Campaign Analytics section after existing sections */}
-      <Card className="neu-raised">
+      <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Mail className="h-5 w-5" />
@@ -3333,6 +3333,9 @@ Renamed to avoid duplicate identifier collisions elsewhere in the file */
           <EmailCampaignAnalytics businessId={businessId} />
         </CardContent>
       </Card>
+
+      {/* Social Media Performance */}
+      <SocialPerformance businessId={businessId} />
 
       {/* Add Calendar Dialog */}
       <Dialog open={showCalendar} onOpenChange={setShowCalendar}>

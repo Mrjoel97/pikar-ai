@@ -48,7 +48,7 @@ export function EmailCampaignAnalytics({ businessId }: EmailCampaignAnalyticsPro
   };
 
   // Prepare chart data
-  const chartData = campaigns.map((c) => ({
+  const chartData = campaigns.map((c: any) => ({
     name: c.subject.substring(0, 20) + (c.subject.length > 20 ? "..." : ""),
     openRate: c.openRate,
     clickRate: c.clickRate,
@@ -162,7 +162,7 @@ export function EmailCampaignAnalytics({ businessId }: EmailCampaignAnalyticsPro
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {campaigns.map((campaign) => (
+                {campaigns.map((campaign: any) => (
                   <div
                     key={campaign.campaignId}
                     className="flex items-center justify-between p-3 border rounded-lg hover:bg-accent/50 transition-colors"

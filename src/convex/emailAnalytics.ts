@@ -103,7 +103,7 @@ export const getBusinessCampaignMetrics = query({
 
     const campaigns = await ctx.db
       .query("emailCampaigns")
-      .withIndex("by_business", (q) => q.eq("businessId", businessId))
+      .withIndex("by_business_and_status", (q) => q.eq("businessId", businessId))
       .order("desc")
       .take(takeLimit);
 
