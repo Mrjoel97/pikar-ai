@@ -17,29 +17,7 @@ export function SocialCommandCenter({ businessId }: SocialCommandCenterProps) {
   const [timeRange, setTimeRange] = useState<"7d" | "30d" | "90d">("30d");
   const [refreshKey, setRefreshKey] = useState(0);
 
-  // Compute args for queries (skip when no businessId)
-  const crisisArgs = businessId ? { businessId, timeWindow: 60 } : undefined;
-  const metricsArgs = businessId ? { businessId, timeRange } : undefined;
-
-  // Fetch crisis alerts (will be skipped if args are undefined)
-  const crisisData = useQuery(
-    api.crisisManagement.detectCrisis,
-    crisisArgs
-  );
-
-  // Fetch multi-brand metrics (skipped if args undefined)
-  const multiBrandMetrics = useQuery(
-    api.socialAnalytics.getMultiBrandMetrics,
-    metricsArgs
-  );
-
-  // Fetch cross-platform summary (skipped if args undefined)
-  const platformSummary = useQuery(
-    api.socialAnalytics.getCrossPlatformSummary,
-    metricsArgs
-  );
-
-  // If no businessId, render sign-in prompt after hooks
+  // Early return before any hooks if no businessId
   if (!businessId) {
     return (
       <Card>
@@ -50,12 +28,28 @@ export function SocialCommandCenter({ businessId }: SocialCommandCenterProps) {
     );
   }
 
+  // Now safe to call hooks with guaranteed businessId
+  const multiBrand = useQuery(
+    api.socialAnalytics.getMultiBrandMetrics,
+    { businessId, timeRange: "30d" as const }
+  );
+
+  const crossPlatform = useQuery(
+    api.socialAnalytics.getCrossPlatformSummary,
+    { businessId, timeRange: "30d" as const }
+  );
+
+  const crisisSummary = useQuery(
+    api.crisisManagement.detectCrisis,
+    { businessId, timeWindow: 24 }
+  );
+
   const handleRefresh = () => {
     setRefreshKey((prev) => prev + 1);
   };
 
-  const criticalAlerts = crisisData?.alerts.filter((a: any) => a.severity === "critical") || [];
-  const highAlerts = crisisData?.alerts.filter((a: any) => a.severity === "high") || [];
+  const criticalAlerts = crisisSummary?.alerts.filter((a: any) => a.severity === "critical") || [];
+  const highAlerts = crisisSummary?.alerts.filter((a: any) => a.severity === "high") || [];
 
   return (
     <div className="space-y-4">
@@ -115,7 +109,7 @@ export function SocialCommandCenter({ businessId }: SocialCommandCenterProps) {
                 <Activity className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{multiBrandMetrics?.totals.posts || 0}</div>
+                <div className="text-2xl font-bold">{multiBrand?.totals.posts || 0}</div>
                 <p className="text-xs text-muted-foreground">Across all brands</p>
               </CardContent>
             </Card>
@@ -127,7 +121,7 @@ export function SocialCommandCenter({ businessId }: SocialCommandCenterProps) {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  {(multiBrandMetrics?.totals.impressions || 0).toLocaleString()}
+                  {(multiBrand?.totals.impressions || 0).toLocaleString()}
                 </div>
                 <p className="text-xs text-muted-foreground">Impressions</p>
               </CardContent>
@@ -140,7 +134,7 @@ export function SocialCommandCenter({ businessId }: SocialCommandCenterProps) {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  {(multiBrandMetrics?.totals.engagements || 0).toLocaleString()}
+                  {(multiBrand?.totals.engagements || 0).toLocaleString()}
                 </div>
                 <p className="text-xs text-muted-foreground">Total interactions</p>
               </CardContent>
@@ -152,9 +146,9 @@ export function SocialCommandCenter({ businessId }: SocialCommandCenterProps) {
                 <AlertTriangle className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{crisisData?.summary.total || 0}</div>
+                <div className="text-2xl font-bold">{crisisSummary?.summary.total || 0}</div>
                 <p className="text-xs text-muted-foreground">
-                  {crisisData?.summary.critical || 0} critical
+                  {crisisSummary?.summary.critical || 0} critical
                 </p>
               </CardContent>
             </Card>
@@ -169,7 +163,7 @@ export function SocialCommandCenter({ businessId }: SocialCommandCenterProps) {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {multiBrandMetrics?.brands.map((brand: any) => (
+                {multiBrand?.brands.map((brand: any) => (
                   <div key={brand.brandId} className="flex items-center justify-between p-4 border rounded-lg">
                     <div className="flex items-center gap-3">
                       <div
@@ -209,11 +203,11 @@ export function SocialCommandCenter({ businessId }: SocialCommandCenterProps) {
               <CardDescription>Real-time monitoring and threat detection</CardDescription>
             </CardHeader>
             <CardContent>
-              {crisisData?.alerts.length === 0 ? (
+              {crisisSummary?.alerts.length === 0 ? (
                 <p className="text-sm text-muted-foreground">No active alerts. All systems normal.</p>
               ) : (
                 <div className="space-y-3">
-                  {crisisData?.alerts.map((alert: any, idx: number) => (
+                  {crisisSummary?.alerts.map((alert: any, idx: number) => (
                     <div key={idx} className="flex items-start gap-3 p-3 border rounded-lg">
                       <Badge
                         variant={
@@ -252,7 +246,7 @@ export function SocialCommandCenter({ businessId }: SocialCommandCenterProps) {
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {platformSummary?.platforms.map((platform: any) => (
+                {crossPlatform?.platforms.map((platform: any) => (
                   <div key={platform.name} className="flex items-center justify-between p-3 border rounded-lg">
                     <div className="flex items-center gap-3">
                       <Badge variant={platform.connected ? "default" : "secondary"}>

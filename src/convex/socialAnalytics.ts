@@ -7,10 +7,27 @@ import { Id } from "./_generated/dataModel";
  */
 export const getEngagementMetrics = query({
   args: {
-    businessId: v.id("businesses"),
+    businessId: v.optional(v.id("businesses")),
     timeRange: v.optional(v.union(v.literal("7d"), v.literal("30d"), v.literal("90d"), v.literal("1y"))),
   },
   handler: async (ctx, args) => {
+    // Guest/public: no business context → return empty metrics
+    if (!args.businessId) {
+      return {
+        totalPosts: 0,
+        postsWithMetrics: 0,
+        totalImpressions: 0,
+        totalEngagements: 0,
+        totalClicks: 0,
+        totalShares: 0,
+        totalComments: 0,
+        totalLikes: 0,
+        engagementRate: 0,
+        avgImpressions: 0,
+        avgEngagements: 0,
+      };
+    }
+
     const now = Date.now();
     const timeRangeMs: Record<string, number> = {
       "7d": 7 * 24 * 60 * 60 * 1000,
@@ -22,7 +39,7 @@ export const getEngagementMetrics = query({
 
     const posts = await ctx.db
       .query("socialPosts")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId!))
       .filter((q) => q.gte(q.field("_creationTime"), cutoff))
       .collect();
 
@@ -69,10 +86,23 @@ export const getEngagementMetrics = query({
  */
 export const getPostROI = query({
   args: {
-    businessId: v.id("businesses"),
+    businessId: v.optional(v.id("businesses")),
     timeRange: v.optional(v.union(v.literal("7d"), v.literal("30d"), v.literal("90d"), v.literal("1y"))),
   },
   handler: async (ctx, args) => {
+    // Guest/public: no business context → return empty
+    if (!args.businessId) {
+      return {
+        posts: [],
+        summary: {
+          totalPosts: 0,
+          totalCost: 0,
+          totalRevenue: 0,
+          overallROI: 0,
+        },
+      };
+    }
+
     const now = Date.now();
     const timeRangeMs: Record<string, number> = {
       "7d": 7 * 24 * 60 * 60 * 1000,
@@ -84,7 +114,7 @@ export const getPostROI = query({
 
     const posts = await ctx.db
       .query("socialPosts")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId!))
       .filter((q) => q.gte(q.field("_creationTime"), cutoff))
       .collect();
 
@@ -135,10 +165,22 @@ export const getPostROI = query({
  */
 export const getAudienceGrowth = query({
   args: {
-    businessId: v.id("businesses"),
+    businessId: v.optional(v.id("businesses")),
     timeRange: v.optional(v.union(v.literal("7d"), v.literal("30d"), v.literal("90d"), v.literal("1y"))),
   },
   handler: async (ctx, args) => {
+    // Guest/public: no business context → return empty
+    if (!args.businessId) {
+      return {
+        growthData: [],
+        summary: {
+          totalNewFollowers: 0,
+          avgDailyGrowth: 0,
+          growthRate: 0,
+        },
+      };
+    }
+
     const now = Date.now();
     const timeRangeMs: Record<string, number> = {
       "7d": 7 * 24 * 60 * 60 * 1000,
@@ -151,7 +193,7 @@ export const getAudienceGrowth = query({
 
     const posts = await ctx.db
       .query("socialPosts")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId!))
       .filter((q) => q.gte(q.field("_creationTime"), cutoff))
       .collect();
 
@@ -198,16 +240,29 @@ export const getAudienceGrowth = query({
  */
 export const generateInsights = query({
   args: {
-    businessId: v.id("businesses"),
+    businessId: v.optional(v.id("businesses")),
   },
   handler: async (ctx, args) => {
+    // Guest/public: no business context → return empty
+    if (!args.businessId) {
+      return {
+        insights: [],
+        summary: {
+          totalInsights: 0,
+          highPriority: 0,
+          mediumPriority: 0,
+          lowPriority: 0,
+        },
+      };
+    }
+
     // Get recent posts (last 30 days)
     const now = Date.now();
     const thirtyDaysAgo = now - (30 * 24 * 60 * 60 * 1000);
 
     const posts = await ctx.db
       .query("socialPosts")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId!))
       .filter((q) => q.gte(q.field("_creationTime"), thirtyDaysAgo))
       .collect();
 
@@ -342,10 +397,15 @@ export const generateInsights = query({
  */
 export const getPlatformBreakdown = query({
   args: {
-    businessId: v.id("businesses"),
+    businessId: v.optional(v.id("businesses")),
     timeRange: v.optional(v.union(v.literal("7d"), v.literal("30d"), v.literal("90d"), v.literal("1y"))),
   },
   handler: async (ctx, args) => {
+    // Guest/public: no business context → return empty
+    if (!args.businessId) {
+      return [];
+    }
+
     const now = Date.now();
     const timeRangeMs: Record<string, number> = {
       "7d": 7 * 24 * 60 * 60 * 1000,
@@ -357,7 +417,7 @@ export const getPlatformBreakdown = query({
 
     const posts = await ctx.db
       .query("socialPosts")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId!))
       .filter((q) => q.gte(q.field("_creationTime"), cutoff))
       .collect();
 
@@ -411,14 +471,26 @@ export const getPlatformBreakdown = query({
 });
 
 /**
- * Get multi-brand performance comparison
+ * Get multi-brand performance comparison (guest-safe)
  */
 export const getMultiBrandMetrics = query({
   args: {
-    businessId: v.id("businesses"),
-    timeRange: v.optional(v.union(v.literal("7d"), v.literal("30d"), v.literal("90d"), v.literal("1y"))),
+    // Make businessId optional for guest/public views
+    businessId: v.optional(v.id("businesses")),
+    timeRange: v.optional(
+      v.union(v.literal("7d"), v.literal("30d"), v.literal("90d"), v.literal("1y"))
+    ),
   },
   handler: async (ctx, args) => {
+    // Guest/public: no business context → return empty/defaults
+    if (!args.businessId) {
+      return {
+        brands: [],
+        totals: { posts: 0, impressions: 0, engagements: 0, clicks: 0, shares: 0, comments: 0, likes: 0 },
+        timeRange: args.timeRange || "30d",
+      };
+    }
+
     const now = Date.now();
     const timeRangeMs: Record<string, number> = {
       "7d": 7 * 24 * 60 * 60 * 1000,
@@ -431,14 +503,14 @@ export const getMultiBrandMetrics = query({
     // Get all brands for this business
     const brands = await ctx.db
       .query("brands")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId!))
       .filter((q) => q.eq(q.field("isActive"), true))
       .collect();
 
     // Get all posts in time range
     const posts = await ctx.db
       .query("socialPosts")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId!))
       .filter((q) => q.gte(q.field("_creationTime"), cutoff))
       .collect();
 
@@ -504,14 +576,27 @@ export const getMultiBrandMetrics = query({
 });
 
 /**
- * Get cross-platform performance summary
+ * Get cross-platform performance summary (guest-safe)
  */
 export const getCrossPlatformSummary = query({
   args: {
-    businessId: v.id("businesses"),
-    timeRange: v.optional(v.union(v.literal("7d"), v.literal("30d"), v.literal("90d"), v.literal("1y"))),
+    // Make businessId optional for guest/public views
+    businessId: v.optional(v.id("businesses")),
+    timeRange: v.optional(
+      v.union(v.literal("7d"), v.literal("30d"), v.literal("90d"), v.literal("1y"))
+    ),
   },
   handler: async (ctx, args) => {
+    // Guest/public: no business context → return empty/defaults
+    if (!args.businessId) {
+      return {
+        platforms: [],
+        totalConnected: 0,
+        totalPosts: 0,
+        timeRange: args.timeRange || "30d",
+      };
+    }
+
     const now = Date.now();
     const timeRangeMs: Record<string, number> = {
       "7d": 7 * 24 * 60 * 60 * 1000,
@@ -523,14 +608,14 @@ export const getCrossPlatformSummary = query({
 
     const posts = await ctx.db
       .query("socialPosts")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId!))
       .filter((q) => q.gte(q.field("_creationTime"), cutoff))
       .collect();
 
     // Get connected accounts
     const accounts = await ctx.db
       .query("socialAccounts")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId!))
       .filter((q) => q.eq(q.field("isActive"), true))
       .collect();
 
