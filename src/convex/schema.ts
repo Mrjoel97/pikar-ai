@@ -1990,6 +1990,22 @@ const schema = defineSchema({
     .index("by_business", ["businessId"])
     .index("by_status", ["status"])
     .index("by_playbook_key", ["playbookKey"]),
+
+  emailEvents: defineTable({
+    campaignId: v.id("emailCampaigns"),
+    recipientEmail: v.string(),
+    eventType: v.union(
+      v.literal("sent"),
+      v.literal("opened"),
+      v.literal("clicked"),
+      v.literal("bounced"),
+      v.literal("unsubscribed")
+    ),
+    metadata: v.optional(v.any()),
+    timestamp: v.number(),
+  })
+    .index("by_campaign", ["campaignId"])
+    .index("by_recipient", ["recipientEmail"]),
 });
 
 export default schema;

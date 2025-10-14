@@ -48,6 +48,7 @@ import type * as diagnostics from "../diagnostics.js";
 import type * as docProcessing from "../docProcessing.js";
 import type * as docs from "../docs.js";
 import type * as docsInternal from "../docsInternal.js";
+import type * as emailAnalytics from "../emailAnalytics.js";
 import type * as emailConfig from "../emailConfig.js";
 import type * as emailDraftAgent from "../emailDraftAgent.js";
 import type * as emailDraftAgentData from "../emailDraftAgentData.js";
@@ -175,6 +176,7 @@ declare const fullApi: ApiFromModules<{
   docProcessing: typeof docProcessing;
   docs: typeof docs;
   docsInternal: typeof docsInternal;
+  emailAnalytics: typeof emailAnalytics;
   emailConfig: typeof emailConfig;
   emailDraftAgent: typeof emailDraftAgent;
   emailDraftAgentData: typeof emailDraftAgentData;

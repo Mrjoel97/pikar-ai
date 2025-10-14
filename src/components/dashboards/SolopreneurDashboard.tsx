@@ -3318,6 +3318,22 @@ Renamed to avoid duplicate identifier collisions elsewhere in the file */
         <RoiDashboard businessId={business?._id} userId={user?._id} />
       </div>
 
+      {/* Add Email Campaign Analytics section after existing sections */}
+      <Card className="neu-raised">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Mail className="h-5 w-5" />
+            Email Campaign Analytics
+          </CardTitle>
+          <CardDescription>
+            Track performance of your email campaigns
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <EmailCampaignAnalytics businessId={businessId} />
+        </CardContent>
+      </Card>
+
       {/* Add Calendar Dialog */}
       <Dialog open={showCalendar} onOpenChange={setShowCalendar}>
         <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
