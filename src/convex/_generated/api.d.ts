@@ -53,6 +53,7 @@ import type * as emailConfig from "../emailConfig.js";
 import type * as emailDraftAgent from "../emailDraftAgent.js";
 import type * as emailDraftAgentData from "../emailDraftAgentData.js";
 import type * as emailDrafts from "../emailDrafts.js";
+import type * as emailTracking from "../emailTracking.js";
 import type * as emails from "../emails.js";
 import type * as emailsActions from "../emailsActions.js";
 import type * as enterpriseMetrics from "../enterpriseMetrics.js";
@@ -181,6 +182,7 @@ declare const fullApi: ApiFromModules<{
   emailDraftAgent: typeof emailDraftAgent;
   emailDraftAgentData: typeof emailDraftAgentData;
   emailDrafts: typeof emailDrafts;
+  emailTracking: typeof emailTracking;
   emails: typeof emails;
   emailsActions: typeof emailsActions;
   enterpriseMetrics: typeof enterpriseMetrics;

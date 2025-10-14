@@ -117,11 +117,63 @@ export const sendTestEmail = action({
   },
 });
 
+// Helper: Generate tracking pixel URL for email opens
+function generateTrackingPixelUrl(
+  baseUrl: string,
+  campaignId: string,
+  recipientEmail: string
+): string {
+  const params = new URLSearchParams({
+    c: campaignId,
+    e: Buffer.from(recipientEmail).toString("base64"),
+  });
+  return `${baseUrl}/api/email/track/open?${params.toString()}`;
+}
+
+// Helper: Wrap links with click tracking proxy
+function wrapLinksWithTracking(
+  html: string,
+  baseUrl: string,
+  campaignId: string,
+  recipientEmail: string
+): string {
+  const emailB64 = Buffer.from(recipientEmail).toString("base64");
+  
+  // Replace all href attributes with tracking proxy
+  return html.replace(
+    /href="([^"]+)"/g,
+    (match, url) => {
+      // Skip unsubscribe links and tracking pixels
+      if (url.includes("/api/unsubscribe") || url.includes("/api/email/track")) {
+        return match;
+      }
+      
+      const trackingUrl = `${baseUrl}/api/email/track/click?c=${encodeURIComponent(
+        campaignId
+      )}&e=${encodeURIComponent(emailB64)}&u=${encodeURIComponent(url)}`;
+      
+      return `href="${trackingUrl}"`;
+    }
+  );
+}
+
+// Helper: Inject tracking pixel into HTML email
+function injectTrackingPixel(html: string, pixelUrl: string): string {
+  // Insert tracking pixel before closing body tag
+  const pixel = `<img src="${pixelUrl}" width="1" height="1" alt="" style="display:none;" />`;
+  
+  if (html.includes("</body>")) {
+    return html.replace("</body>", `${pixel}</body>`);
+  }
+  
+  // Fallback: append to end
+  return html + pixel;
+}
+
 // Internal action: Perform campaign send
 export const sendCampaignInternal = internalAction({
   args: { campaignId: v.id("emails") },
   handler: async (ctx, { campaignId }) => {
-    // Get campaign details
     const campaign = await ctx.runQuery("emails:getCampaignById" as any, { 
       campaignId 
     });
@@ -131,20 +183,17 @@ export const sendCampaignInternal = internalAction({
       return;
     }
 
-    // Idempotency check - don't reprocess if already sending/sent
     if (campaign.status === "sending" || campaign.status === "sent") {
       console.log(`Campaign ${campaignId} already processed (${campaign.status})`);
       return;
     }
 
     try {
-      // Mark as sending
       await ctx.runMutation("emails:updateCampaignStatus" as any, {
         campaignId,
         status: "sending"
       });
 
-      // Get recipients
       const recipients = campaign.recipients ||
         (campaign.audienceListId
           ? await ctx.runQuery("contacts:getListRecipientEmailsInternal" as any, {
@@ -167,6 +216,13 @@ export const sendCampaignInternal = internalAction({
       const RESEND_KEY: string | undefined = (cfg?.resendApiKey as string | undefined) || process.env.RESEND_API_KEY;
       const devSafeEmails = process.env.DEV_SAFE_EMAILS === "true";
       const resend: Resend | null = RESEND_KEY ? new Resend(RESEND_KEY) : null;
+      
+      // Get public base URL for tracking
+      const publicBaseUrl: string =
+        (cfg?.publicBaseUrl as string | undefined) ||
+        process.env.VITE_PUBLIC_BASE_URL ||
+        "";
+
       const sendIds: string[] = [];
       let successCount = 0;
       let lastError: string | undefined;
@@ -187,16 +243,43 @@ export const sendCampaignInternal = internalAction({
         return;
       }
 
-      // Batch send with retry logic (supports stub mode when DEV_SAFE_EMAILS and no RESEND_API_KEY)
       for (const email of recipients) {
         try {
           const targetEmail = devSafeEmails ? "test@resend.dev" : email;
+          
+          // Prepare HTML with tracking
+          let htmlContent = campaign.htmlContent || campaign.body || "";
+          
+          if (publicBaseUrl && !devSafeEmails) {
+            // Add tracking pixel
+            const pixelUrl = generateTrackingPixelUrl(
+              publicBaseUrl,
+              String(campaignId),
+              email
+            );
+            htmlContent = injectTrackingPixel(htmlContent, pixelUrl);
+            
+            // Wrap links with click tracking
+            htmlContent = wrapLinksWithTracking(
+              htmlContent,
+              publicBaseUrl,
+              String(campaignId),
+              email
+            );
+          }
 
           if (!resend) {
-            // Stub path: simulate successful send
             const stubId = `stub_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
             sendIds.push(stubId);
             successCount++;
+            
+            // Record sent event
+            await ctx.runMutation("emailTracking:recordEmailEvent" as any, {
+              campaignId,
+              recipientEmail: email,
+              eventType: "sent",
+            });
+            
             await new Promise((resolve) => setTimeout(resolve, 50));
             continue;
           }
@@ -205,8 +288,12 @@ export const sendCampaignInternal = internalAction({
             from: campaign.fromEmail || cfg?.fromEmail || "noreply@pikar.ai",
             to: [targetEmail],
             subject: campaign.subject,
-            html: campaign.htmlContent || campaign.body || "",
+            html: htmlContent,
             reply_to: campaign.fromEmail || cfg?.replyTo || cfg?.fromEmail || "noreply@pikar.ai",
+            tags: [
+              { name: "campaign_id", value: String(campaignId) },
+              { name: "business_id", value: String(campaign.businessId) },
+            ],
           });
 
           if (error) {
@@ -215,22 +302,27 @@ export const sendCampaignInternal = internalAction({
           } else if (data?.id) {
             sendIds.push(data.id);
             successCount++;
+            
+            // Record sent event
+            await ctx.runMutation("emailTracking:recordEmailEvent" as any, {
+              campaignId,
+              recipientEmail: email,
+              eventType: "sent",
+              metadata: { resendId: data.id },
+            });
           }
 
-          // Small delay between sends to avoid rate limits
           await new Promise((resolve) => setTimeout(resolve, 100));
         } catch (err: any) {
           lastError = `Exception: ${err.message}`;
           console.error(`Exception sending to ${email}:`, err);
 
-          // Simple backoff on transient errors
           if (err.message?.includes("rate") || err.message?.includes("timeout")) {
             await new Promise((resolve) => setTimeout(resolve, 2000));
           }
         }
       }
 
-      // Update final status
       const finalStatus = successCount > 0 ? "sent" : "failed";
       await ctx.runMutation("emails:appendSendIdsAndComplete" as any, {
         campaignId,
@@ -239,7 +331,6 @@ export const sendCampaignInternal = internalAction({
         lastError
       });
 
-      // Ensure audit log includes businessId
       await ctx.runMutation("audit:write" as any, {
         businessId: campaign.businessId,
         action: "campaign_sent",
@@ -249,7 +340,8 @@ export const sendCampaignInternal = internalAction({
           recipientCount: recipients.length,
           successCount,
           finalStatus,
-          devSafeEmails
+          devSafeEmails,
+          trackingEnabled: !!publicBaseUrl
         }
       });
 
@@ -264,7 +356,6 @@ export const sendCampaignInternal = internalAction({
         lastError: err.message
       });
 
-      // Ensure audit log includes businessId
       await ctx.runMutation("audit:write" as any, {
         businessId: campaign?.businessId,
         action: "campaign_failed",
