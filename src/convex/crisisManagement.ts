@@ -1,4 +1,3 @@
-
 import { v } from "convex/values";
 import { query, mutation, internalMutation, internalAction } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
@@ -8,15 +7,22 @@ import { Id } from "./_generated/dataModel";
  */
 export const detectCrisis = query({
   args: {
-    businessId: v.id("businesses"),
-    timeWindow: v.number(), // minutes
+    businessId: v.optional(v.id("businesses")),
+    timeWindow: v.optional(v.number()), // minutes
   },
   handler: async (ctx, args) => {
-    const { businessId, timeWindow } = args;
+    // Guest/public: no business context → return empty
+    if (!args.businessId) {
+      return {
+        alerts: [],
+        summary: { total: 0, critical: 0, high: 0, medium: 0 },
+      };
+    }
+
+    const { businessId, timeWindow = 60 } = args;
 
     const cutoff = Date.now() - timeWindow * 60 * 1000;
 
-    // Get recent crisis alerts
     const alerts = await ctx.db
       .query("crisisAlerts")
       .withIndex("by_business", (q) => q.eq("businessId", businessId))
@@ -48,10 +54,15 @@ export const detectCrisis = query({
  */
 export const getCrisisHistory = query({
   args: {
-    businessId: v.id("businesses"),
+    businessId: v.optional(v.id("businesses")),
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
+    // Guest/public: no business context → return empty
+    if (!args.businessId) {
+      return [];
+    }
+
     const { businessId, limit = 50 } = args;
 
     const alerts = await ctx.db
@@ -127,22 +138,25 @@ export const updateCrisisAlert = mutation({
  */
 export const getCrisisTemplates = query({
   args: {
-    businessId: v.id("businesses"),
+    businessId: v.optional(v.id("businesses")),
   },
   handler: async (ctx, args) => {
     // Return predefined crisis response templates
     return [
       {
         type: "negative_sentiment",
-        template: "We sincerely apologize for any inconvenience. We're investigating this matter and will provide an update shortly.",
+        template:
+          "We sincerely apologize for any inconvenience. We're investigating this matter and will provide an update shortly.",
       },
       {
         type: "viral_negative",
-        template: "We're aware of the concerns being raised and take them very seriously. Our team is working on a comprehensive response.",
+        template:
+          "We're aware of the concerns being raised and take them very seriously. Our team is working on a comprehensive response.",
       },
       {
         type: "engagement_spike",
-        template: "Thank you for the overwhelming response! We're monitoring the situation closely.",
+        template:
+          "Thank you for the overwhelming response! We're monitoring the situation closely.",
       },
     ];
   },

@@ -17,28 +17,29 @@ export function SocialCommandCenter({ businessId }: SocialCommandCenterProps) {
   const [timeRange, setTimeRange] = useState<"7d" | "30d" | "90d">("30d");
   const [refreshKey, setRefreshKey] = useState(0);
 
-  // Fetch crisis alerts
+  // Compute args for queries (skip when no businessId)
+  const crisisArgs = businessId ? { businessId, timeWindow: 60 } : undefined;
+  const metricsArgs = businessId ? { businessId, timeRange } : undefined;
+
+  // Fetch crisis alerts (will be skipped if args are undefined)
   const crisisData = useQuery(
     api.crisisManagement.detectCrisis,
-    businessId ? { businessId, timeWindow: 60 } : undefined
+    crisisArgs
   );
 
-  // Fetch multi-brand metrics
+  // Fetch multi-brand metrics (skipped if args undefined)
   const multiBrandMetrics = useQuery(
     api.socialAnalytics.getMultiBrandMetrics,
-    businessId ? { businessId, timeRange } : undefined
+    metricsArgs
   );
 
-  // Fetch cross-platform summary
+  // Fetch cross-platform summary (skipped if args undefined)
   const platformSummary = useQuery(
     api.socialAnalytics.getCrossPlatformSummary,
-    businessId ? { businessId, timeRange } : undefined
+    metricsArgs
   );
 
-  const handleRefresh = () => {
-    setRefreshKey((prev) => prev + 1);
-  };
-
+  // If no businessId, render sign-in prompt after hooks
   if (!businessId) {
     return (
       <Card>
@@ -48,6 +49,10 @@ export function SocialCommandCenter({ businessId }: SocialCommandCenterProps) {
       </Card>
     );
   }
+
+  const handleRefresh = () => {
+    setRefreshKey((prev) => prev + 1);
+  };
 
   const criticalAlerts = crisisData?.alerts.filter((a: any) => a.severity === "critical") || [];
   const highAlerts = crisisData?.alerts.filter((a: any) => a.severity === "high") || [];
