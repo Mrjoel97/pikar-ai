@@ -1,15 +1,24 @@
 import { v } from "convex/values";
 import { query, mutation, internalAction } from "./_generated/server";
-import { Id } from "./_generated/dataModel";
 
 export const getRegionalMetrics = query({
   args: {
-    businessId: v.id("businesses"),
-    region: v.string(),
-    unit: v.string(),
+    businessId: v.optional(v.id("businesses")),
+    region: v.optional(v.string()),
+    unit: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const { businessId, region, unit } = args;
+    // Guest/public: no business context → return defaults
+    if (!args.businessId) {
+      return {
+        revenue: 0,
+        efficiency: 0,
+        complianceScore: 94,
+        riskScore: 12,
+      };
+    }
+    
+    const { businessId } = args;
 
     const kpi = await ctx.db
       .query("dashboardKpis")
@@ -42,20 +51,27 @@ export const getRegionalMetrics = query({
 
 export const getMetricsTrend = query({
   args: {
-    businessId: v.id("businesses"),
-    region: v.string(),
-    unit: v.string(),
-    metric: v.string(),
-    days: v.number(),
+    businessId: v.optional(v.id("businesses")),
+    region: v.optional(v.string()),
+    unit: v.optional(v.string()),
+    metric: v.optional(v.string()),
+    days: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const { businessId, metric, days } = args;
+    // Guest/public: no business context → return empty trend
+    if (!args.businessId) {
+      return [];
+    }
+
+    const { businessId, metric } = args;
+    // Default days to 12 if not provided or invalid
+    const d = typeof args.days === "number" && !Number.isNaN(args.days) ? args.days : 12;
 
     const snapshots = await ctx.db
       .query("dashboardKpis")
       .withIndex("by_business_and_date", (q) => q.eq("businessId", businessId))
       .order("desc")
-      .take(days);
+      .take(d);
 
     const values = snapshots.map((snap) => {
       switch (metric) {
