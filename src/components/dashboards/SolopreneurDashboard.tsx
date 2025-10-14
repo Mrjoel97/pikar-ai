@@ -23,7 +23,7 @@ import {
 import { useAuth } from "@/hooks/use-auth";
 import CampaignComposer from "@/components/email/CampaignComposer";
 import { motion } from "framer-motion";
-import { FileText } from "lucide-react";
+import { FileText, Mail } from "lucide-react";
 import { InvoiceComposer } from "@/components/invoices/InvoiceComposer";
 import { ContentCalendar } from "@/components/calendar/ContentCalendar";
 import { RoiDashboard } from "@/components/dashboards/RoiDashboard";
