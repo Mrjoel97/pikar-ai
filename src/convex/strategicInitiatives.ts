@@ -9,11 +9,16 @@ import { Id } from "./_generated/dataModel";
 
 // Get all strategic initiatives for a business with resource allocation
 export const listStrategicInitiatives = query({
-  args: { businessId: v.id("businesses") },
+  args: { businessId: v.optional(v.id("businesses")) },
   handler: async (ctx, args) => {
+    // Guest/public: no business context → return empty array
+    if (!args.businessId) {
+      return []; // guest-safe: no business context on public routes like /auth
+    }
+    
     const initiatives = await ctx.db
       .query("initiatives")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId!))
       .collect();
 
     // Enrich with resource allocation data
@@ -21,19 +26,19 @@ export const listStrategicInitiatives = query({
       initiatives.map(async (initiative) => {
         const workflows = await ctx.db
           .query("workflows")
-          .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+          .withIndex("by_business", (q) => q.eq("businessId", args.businessId!))
           .filter((q) => q.eq(q.field("status"), "active"))
           .collect();
 
         const agents = await ctx.db
           .query("aiAgents")
-          .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+          .withIndex("by_business", (q) => q.eq("businessId", args.businessId!))
           .filter((q) => q.eq(q.field("isActive"), true))
           .collect();
 
         const tasks = await ctx.db
           .query("tasks")
-          .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+          .withIndex("by_business", (q) => q.eq("businessId", args.businessId!))
           .filter((q) => q.eq(q.field("status"), "in_progress"))
           .collect();
 
@@ -54,26 +59,35 @@ export const listStrategicInitiatives = query({
 
 // Get resource allocation summary across all initiatives
 export const getResourceAllocation = query({
-  args: { businessId: v.id("businesses") },
+  args: { businessId: v.optional(v.id("businesses")) },
   handler: async (ctx, args) => {
+    // Guest/public: no business context → return default allocation
+    if (!args.businessId) {
+      return {
+        workflows: { active: 0, total: 0, utilization: 0 },
+        agents: { active: 0, total: 0, utilization: 0 },
+        workflowRuns: { running: 0, succeeded: 0, failed: 0, successRate: 0 },
+        tasks: { active: 0, completed: 0, completionRate: 0 },
+      };
+    }
     const workflows = await ctx.db
       .query("workflows")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId!))
       .collect();
 
     const agents = await ctx.db
       .query("aiAgents")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId!))
       .collect();
 
     const workflowRuns = await ctx.db
       .query("workflowRuns")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId!))
       .collect();
 
     const tasks = await ctx.db
       .query("tasks")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId!))
       .collect();
 
     // Calculate resource utilization
@@ -122,10 +136,19 @@ export const getResourceAllocation = query({
 // Get strategic KPIs and metrics
 export const getStrategicKpis = query({
   args: { 
-    businessId: v.id("businesses"),
+    businessId: v.optional(v.id("businesses")),
     timeRange: v.optional(v.union(v.literal("7d"), v.literal("30d"), v.literal("90d"))),
   },
   handler: async (ctx, args) => {
+    // Guest/public: no business context → return default KPIs
+    if (!args.businessId) {
+      return {
+        revenue: { total: 0, average: 0, trend: "stable" as const },
+        automation: { totalRuns: 0, successRate: 0, trend: "stable" as const },
+        activity: { total: 0, average: 0, trend: "stable" as const },
+        timeRange: args.timeRange || "30d",
+      };
+    }
     const timeRange = args.timeRange || "30d";
     const daysAgo = timeRange === "7d" ? 7 : timeRange === "30d" ? 30 : 90;
     const cutoffTime = Date.now() - daysAgo * 24 * 60 * 60 * 1000;
@@ -133,21 +156,21 @@ export const getStrategicKpis = query({
     // Get recent workflow runs
     const recentRuns = await ctx.db
       .query("workflowRuns")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId!))
       .filter((q) => q.gte(q.field("startedAt"), cutoffTime))
       .collect();
 
     // Get recent revenue events
     const revenueEvents = await ctx.db
       .query("revenueEvents")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId!))
       .filter((q) => q.gte(q.field("timestamp"), cutoffTime))
       .collect();
 
     // Get recent audit logs for activity tracking
     const auditLogs = await ctx.db
       .query("audit_logs")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId!))
       .filter((q) => q.gte(q.field("createdAt"), cutoffTime))
       .collect();
 
@@ -307,11 +330,19 @@ export const createStrategicInitiative = mutation({
 
 // Get cross-initiative insights
 export const getCrossInitiativeInsights = query({
-  args: { businessId: v.id("businesses") },
+  args: { businessId: v.optional(v.id("businesses")) },
   handler: async (ctx, args) => {
+    // Guest/public: no business context → return default insights
+    if (!args.businessId) {
+      return {
+        summary: { totalInitiatives: 0, active: 0, completed: 0, completionRate: 0 },
+        resources: { totalWorkflows: 0, totalAgents: 0, activeWorkflows: 0, activeAgents: 0 },
+        initiatives: [],
+      };
+    }
     const initiatives = await ctx.db
       .query("initiatives")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId!))
       .collect();
 
     const activeInitiatives = initiatives.filter((i) => i.status === "active");
@@ -320,12 +351,12 @@ export const getCrossInitiativeInsights = query({
     // Get all workflows and agents
     const workflows = await ctx.db
       .query("workflows")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId!))
       .collect();
 
     const agents = await ctx.db
       .query("aiAgents")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId!))
       .collect();
 
     return {

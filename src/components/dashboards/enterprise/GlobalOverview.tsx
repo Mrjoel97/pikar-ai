@@ -15,8 +15,8 @@ type Props = {
   setRegion: (v: string) => void;
   unit: string;
   setUnit: (v: string) => void;
-  onRunDiagnostics: () => Promise<void>;
-  onEnforceGovernance: () => Promise<void>;
+  onRunDiagnostics: () => Promise<void> | void;
+  onEnforceGovernance: () => Promise<void> | void;
   slaSummaryText?: string | null;
 };
 
@@ -33,6 +33,18 @@ export function GlobalOverview({
   onEnforceGovernance,
   slaSummaryText,
 }: Props) {
+  // Early out on public/guest views to avoid Convex queries
+  if (!businessId) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Global Overview</CardTitle>
+          <CardDescription>Sign in to view enterprise metrics</CardDescription>
+        </CardHeader>
+      </Card>
+    );
+  }
+
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [lastUpdate, setLastUpdate] = useState<number>(Date.now());
 
