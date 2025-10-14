@@ -655,3 +655,62 @@ export const getCrossPlatformSummary = query({
     };
   },
 });
+
+export const getSolopreneurSocialMetrics = query({
+  args: {
+    businessId: v.id("businesses"),
+    days: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    // Pull all posts for the business via index; keep simple and fast
+    const posts: any[] = await ctx.db
+      .query("socialPosts")
+      .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId))
+      .order("desc")
+      .collect();
+
+    // Compute metrics with safe fallbacks
+    const engagementOf = (p: any) =>
+      (p.likes ?? p.metrics?.likes ?? 0) +
+      (p.comments ?? p.metrics?.comments ?? 0) +
+      (p.shares ?? p.metrics?.shares ?? 0);
+
+    const totalPosts = posts.length;
+    const totalEngagement = posts.reduce((sum, p) => sum + engagementOf(p), 0);
+    const avgEngagement = totalPosts > 0 ? Math.round((totalEngagement / totalPosts) * 10) / 10 : 0;
+
+    const platformMetrics = posts.reduce((acc: Record<string, { posts: number; engagement: number }>, p: any) => {
+      const platforms: string[] = Array.isArray(p.platforms) ? p.platforms : [];
+      const eng = engagementOf(p);
+      platforms.forEach((pf) => {
+        if (!acc[pf]) acc[pf] = { posts: 0, engagement: 0 };
+        acc[pf].posts += 1;
+        acc[pf].engagement += eng;
+      });
+      return acc;
+    }, {});
+
+    const topPosts = posts
+      .slice()
+      .sort((a, b) => engagementOf(b) - engagementOf(a))
+      .slice(0, 5)
+      .map((p) => ({
+        _id: p._id,
+        content: String(p.content ?? "").slice(0, 140),
+        platforms: Array.isArray(p.platforms) ? p.platforms : [],
+        engagement: engagementOf(p),
+        publishedAt: p.publishedAt ?? p.scheduledAt ?? p._creationTime,
+      }));
+
+    return {
+      summary: {
+        totalPosts,
+        totalEngagement,
+        avgEngagement,
+        reach: posts.reduce((sum, p) => sum + (p.reach ?? p.metrics?.reach ?? 0), 0),
+      },
+      platformMetrics,
+      topPosts,
+    };
+  },
+});

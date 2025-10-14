@@ -28,6 +28,9 @@ import { InvoiceComposer } from "@/components/invoices/InvoiceComposer";
 import { ContentCalendar } from "@/components/calendar/ContentCalendar";
 import { RoiDashboard } from "@/components/dashboards/RoiDashboard";
 import { ArrowUp, ArrowDown, Minus } from "lucide-react";
+import { SocialPerformance } from "@/components/dashboards/solopreneur/SocialPerformance";
+import { CustomerSegmentation } from "@/components/dashboards/solopreneur/CustomerSegmentation";
+import type { Id } from "@/convex/_generated/dataModel";
 /* removed unused Alert imports */
 
 import type { SolopreneurDashboardProps } from "@/types/dashboard";

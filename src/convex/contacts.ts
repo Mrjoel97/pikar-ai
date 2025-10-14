@@ -526,3 +526,83 @@ async function createListIfNeeded(ctx: any, params: { businessId: Id<"businesses
   });
   return listId;
 }
+
+// Add segmentation query
+export const getContactSegments = query({
+  args: { businessId: v.id("businesses") },
+  handler: async (ctx, args) => {
+    const contacts = await ctx.db
+      .query("contacts")
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .collect();
+    
+    // Segment by status
+    const byStatus = contacts.reduce((acc, c) => {
+      acc[c.status] = (acc[c.status] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+    
+    // Segment by tags
+    const byTag = contacts.reduce((acc, c) => {
+      (c.tags || []).forEach(tag => {
+        acc[tag] = (acc[tag] || 0) + 1;
+      });
+      return acc;
+    }, {} as Record<string, number>);
+    
+    // Engagement segments
+    const now = Date.now();
+    const thirtyDays = 30 * 24 * 60 * 60 * 1000;
+    const ninetyDays = 90 * 24 * 60 * 60 * 1000;
+    
+    const engagementSegments = {
+      active: contacts.filter(c => c.lastEngagedAt && (now - c.lastEngagedAt) < thirtyDays).length,
+      dormant: contacts.filter(c => c.lastEngagedAt && (now - c.lastEngagedAt) >= thirtyDays && (now - c.lastEngagedAt) < ninetyDays).length,
+      inactive: contacts.filter(c => !c.lastEngagedAt || (now - c.lastEngagedAt) >= ninetyDays).length,
+    };
+    
+    return {
+      total: contacts.length,
+      byStatus,
+      byTag,
+      engagementSegments,
+    };
+  },
+});
+
+// Add filtered contacts query
+export const getContactsBySegment = query({
+  args: {
+    businessId: v.id("businesses"),
+    segmentType: v.union(v.literal("status"), v.literal("tag"), v.literal("engagement")),
+    segmentValue: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const contacts = await ctx.db
+      .query("contacts")
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .collect();
+    
+    let filtered = contacts;
+    
+    if (args.segmentType === "status") {
+      filtered = contacts.filter(c => c.status === args.segmentValue);
+    } else if (args.segmentType === "tag") {
+      filtered = contacts.filter(c => c.tags?.includes(args.segmentValue));
+    } else if (args.segmentType === "engagement") {
+      const now = Date.now();
+      const thirtyDays = 30 * 24 * 60 * 60 * 1000;
+      const ninetyDays = 90 * 24 * 60 * 60 * 1000;
+      
+      if (args.segmentValue === "active") {
+        filtered = contacts.filter(c => c.lastEngagedAt && (now - c.lastEngagedAt) < thirtyDays);
+      } else if (args.segmentValue === "dormant") {
+        filtered = contacts.filter(c => c.lastEngagedAt && (now - c.lastEngagedAt) >= thirtyDays && (now - c.lastEngagedAt) < ninetyDays);
+      } else if (args.segmentValue === "inactive") {
+        filtered = contacts.filter(c => !c.lastEngagedAt || (now - c.lastEngagedAt) >= ninetyDays);
+      }
+    }
+    
+    return filtered.slice(0, 100); // Limit to 100 for performance
+  },
+});
