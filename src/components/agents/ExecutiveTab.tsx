@@ -8,8 +8,29 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertCircle, Brain, Send, Zap, Calendar, TrendingUp, Copy, BookOpen } from "lucide-react";
+import { 
+  AlertCircle, 
+  Brain, 
+  Send, 
+  Zap, 
+  Calendar, 
+  TrendingUp, 
+  Copy, 
+  BookOpen,
+  Download,
+  History,
+  FileText,
+  Clock
+} from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import { Progress } from "@/components/ui/progress";
 
 export default function ExecutiveTab() {
   const { user } = useAuth();
@@ -28,8 +49,17 @@ export default function ExecutiveTab() {
     correlationId?: string;
   } | null>(null);
 
+  // Rate limiting state
+  const [lastAskTime, setLastAskTime] = useState<number>(0);
+  const [cooldownRemaining, setCooldownRemaining] = useState<number>(0);
+  const RATE_LIMIT_MS = 8000; // 8 seconds between requests
+
+  // Transcript drawer state
+  const [transcriptOpen, setTranscriptOpen] = useState(false);
+
   const currentBiz = useQuery(api.businesses.currentUserBusiness, {});
   const execRouter = useAction(api.agentRouter.execRouter);
+  const createWorkflowFromIdea = useMutation(api.workflows.createQuickFromIdea as any);
   const agentProfile = useQuery(
     api.aiAgents.getAgentProfile as any,
     currentBiz?._id && user?._id
@@ -60,6 +90,23 @@ export default function ExecutiveTab() {
     setChatHistory(newHistory);
     localStorage.setItem("exec_chat_history", JSON.stringify(newHistory));
   };
+
+  // Rate limiting countdown effect
+  useEffect(() => {
+    if (lastAskTime === 0) return;
+    
+    const interval = setInterval(() => {
+      const elapsed = Date.now() - lastAskTime;
+      const remaining = Math.max(0, RATE_LIMIT_MS - elapsed);
+      setCooldownRemaining(remaining);
+      
+      if (remaining === 0) {
+        clearInterval(interval);
+      }
+    }, 100);
+
+    return () => clearInterval(interval);
+  }, [lastAskTime]);
 
   // Helper: transient error detector
   const isTransientError = (err: unknown): boolean => {
@@ -97,7 +144,18 @@ export default function ExecutiveTab() {
   const handleAsk = async () => {
     if (!question.trim() || !currentBiz?._id || isAsking) return;
 
+    // Check rate limit
+    const now = Date.now();
+    const timeSinceLastAsk = now - lastAskTime;
+    if (timeSinceLastAsk < RATE_LIMIT_MS) {
+      const remainingSeconds = Math.ceil((RATE_LIMIT_MS - timeSinceLastAsk) / 1000);
+      toast.error(`Please wait ${remainingSeconds}s before asking again`);
+      return;
+    }
+
     setIsAsking(true);
+    setLastAskTime(now);
+    
     try {
       const response = await execRouter({
         mode: "summarizeIdeas",
@@ -206,6 +264,60 @@ export default function ExecutiveTab() {
     toast.success("Answer copied to clipboard");
   };
 
+  const handleUseAsWorkflow = async (entry: typeof chatHistory[0]) => {
+    if (!currentBiz?._id) {
+      toast.error("Please sign in to create workflows");
+      return;
+    }
+
+    try {
+      const ideaText = `${entry.question}\n\n${entry.answer}`;
+      await createWorkflowFromIdea({
+        businessId: currentBiz._id,
+        ideaText,
+        title: entry.question.slice(0, 80),
+      });
+      toast.success("Workflow created from conversation");
+    } catch (error: any) {
+      toast.error(error?.message || "Failed to create workflow");
+    }
+  };
+
+  const exportTranscript = () => {
+    try {
+      const exportData = chatHistory.map(entry => ({
+        timestamp: new Date(entry.timestamp).toISOString(),
+        question: entry.question,
+        answer: entry.answer,
+        contextUsed: entry.contextUsed || 0,
+      }));
+
+      const jsonContent = JSON.stringify(exportData, null, 2);
+      const blob = new Blob([jsonContent], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `executive-transcript-${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      
+      toast.success("Transcript exported successfully");
+    } catch (error) {
+      toast.error("Failed to export transcript");
+    }
+  };
+
+  const clearHistory = () => {
+    saveHistory([]);
+    toast.success("Conversation history cleared");
+  };
+
+  const cooldownProgress = cooldownRemaining > 0 
+    ? ((RATE_LIMIT_MS - cooldownRemaining) / RATE_LIMIT_MS) * 100 
+    : 100;
+
   return (
     <div className="space-y-6">
       {/* Executive Profile Summary */}
@@ -272,7 +384,18 @@ export default function ExecutiveTab() {
       {/* Ask My Executive */}
       <Card>
         <CardHeader>
-          <CardTitle>Ask My Executive</CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle>Ask My Executive</CardTitle>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setTranscriptOpen(true)}
+              className="flex items-center gap-2"
+            >
+              <History className="h-4 w-4" />
+              Transcript ({chatHistory.length})
+            </Button>
+          </div>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex gap-2">
@@ -282,15 +405,35 @@ export default function ExecutiveTab() {
               onChange={(e) => setQuestion(e.target.value)}
               className="flex-1"
               rows={2}
+              disabled={isAsking || cooldownRemaining > 0}
             />
             <Button 
               onClick={handleAsk}
-              disabled={!question.trim() || isAsking}
+              disabled={!question.trim() || isAsking || cooldownRemaining > 0}
               className="bg-emerald-600 hover:bg-emerald-700"
             >
-              <Send className="h-4 w-4" />
+              {isAsking ? (
+                <>Thinking...</>
+              ) : cooldownRemaining > 0 ? (
+                <div className="flex items-center gap-1">
+                  <Clock className="h-4 w-4" />
+                  {Math.ceil(cooldownRemaining / 1000)}s
+                </div>
+              ) : (
+                <Send className="h-4 w-4" />
+              )}
             </Button>
           </div>
+
+          {/* Rate limit progress bar */}
+          {cooldownRemaining > 0 && (
+            <div className="space-y-1">
+              <Progress value={cooldownProgress} className="h-1" />
+              <p className="text-xs text-muted-foreground">
+                Rate limit cooldown: {Math.ceil(cooldownRemaining / 1000)}s remaining
+              </p>
+            </div>
+          )}
 
           {/* Quick Actions */}
           <div className="flex flex-wrap gap-2">
@@ -299,6 +442,7 @@ export default function ExecutiveTab() {
               size="sm"
               onClick={() => handleQuickAction("proposeNextAction")}
               className="flex items-center gap-1"
+              disabled={cooldownRemaining > 0}
             >
               <Zap className="h-3 w-3" />
               Next Best Action
@@ -308,6 +452,7 @@ export default function ExecutiveTab() {
               size="sm"
               onClick={() => handleQuickAction("planWeek")}
               className="flex items-center gap-1"
+              disabled={cooldownRemaining > 0}
             >
               <Calendar className="h-3 w-3" />
               Plan Week
@@ -317,6 +462,7 @@ export default function ExecutiveTab() {
               size="sm"
               onClick={() => handleQuickAction("createCapsule")}
               className="flex items-center gap-1"
+              disabled={cooldownRemaining > 0}
             >
               <TrendingUp className="h-3 w-3" />
               Create Capsule
@@ -325,15 +471,121 @@ export default function ExecutiveTab() {
         </CardContent>
       </Card>
 
-      {/* Chat History with Context Display */}
-      {chatHistory.length > 0 ? (
+      {/* Transcript Drawer */}
+      <Sheet open={transcriptOpen} onOpenChange={setTranscriptOpen}>
+        <SheetContent side="right" className="w-full sm:max-w-2xl overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              Conversation Transcript
+            </SheetTitle>
+            <SheetDescription>
+              Your complete conversation history with the Executive Assistant
+            </SheetDescription>
+          </SheetHeader>
+
+          <div className="mt-6 space-y-4">
+            {/* Export and Clear Actions */}
+            <div className="flex items-center justify-between gap-2 pb-4 border-b">
+              <div className="text-sm text-muted-foreground">
+                {chatHistory.length} conversation{chatHistory.length !== 1 ? 's' : ''}
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={exportTranscript}
+                  disabled={chatHistory.length === 0}
+                  className="flex items-center gap-2"
+                >
+                  <Download className="h-4 w-4" />
+                  Export
+                </Button>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={clearHistory}
+                  disabled={chatHistory.length === 0}
+                >
+                  Clear All
+                </Button>
+              </div>
+            </div>
+
+            {/* Conversation History */}
+            {chatHistory.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground">
+                <FileText className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                <p>No conversations yet</p>
+                <p className="text-sm">Start by asking a question above</p>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {chatHistory.map((entry, index) => (
+                  <div key={index} className="border-l-2 border-emerald-200 pl-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <Badge variant="outline" className="text-xs">
+                        {new Date(entry.timestamp).toLocaleString()}
+                      </Badge>
+                      {entry.contextUsed !== undefined && entry.contextUsed > 0 && (
+                        <Badge variant="secondary" className="text-xs flex items-center gap-1">
+                          <BookOpen className="h-3 w-3" />
+                          {entry.contextUsed} context source{entry.contextUsed > 1 ? "s" : ""}
+                        </Badge>
+                      )}
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <div>
+                        <p className="text-sm font-medium text-muted-foreground mb-1">Question:</p>
+                        <p className="text-sm bg-muted/50 p-3 rounded-md">{entry.question}</p>
+                      </div>
+                      
+                      <div>
+                        <p className="text-sm font-medium text-muted-foreground mb-1">Answer:</p>
+                        <p className="text-sm bg-white p-3 rounded-md border whitespace-pre-wrap">
+                          {entry.answer}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => copyAnswer(entry.answer)}
+                        className="flex items-center gap-1"
+                      >
+                        <Copy className="h-3 w-3" />
+                        Copy
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleUseAsWorkflow(entry)}
+                        className="flex items-center gap-1"
+                      >
+                        <FileText className="h-3 w-3" />
+                        Use as Workflow
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      {/* Recent Conversations Preview (kept for backward compatibility) */}
+      {chatHistory.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle>Recent Conversations</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-4 max-h-96 overflow-y-auto">
-              {chatHistory.map((entry, index) => (
+              {chatHistory.slice(0, 3).map((entry, index) => (
                 <div key={index} className="border-l-2 border-emerald-200 pl-4 space-y-2">
                   <div className="flex items-center justify-between">
                     <Badge variant="outline" className="text-xs">
@@ -362,17 +614,16 @@ export default function ExecutiveTab() {
                   </div>
                 </div>
               ))}
-            </div>
-          </CardContent>
-        </Card>
-      ) : (
-        <Card>
-          <CardHeader>
-            <CardTitle>Recent Conversations</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="rounded-md border bg-white p-4 text-sm text-muted-foreground">
-              No conversations yet. Ask a question above or try a Quick Action like "Next Best Action" to get started.
+              {chatHistory.length > 3 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setTranscriptOpen(true)}
+                  className="w-full"
+                >
+                  View all {chatHistory.length} conversations
+                </Button>
+              )}
             </div>
           </CardContent>
         </Card>
