@@ -3564,6 +3564,9 @@ Renamed to avoid duplicate identifier collisions elsewhere in the file */
         </Card>
       </div>
 
+      {/* Add: Customer Segmentation widget */}
+      <CustomerSegmentation businessId={businessId} />
+
       {isAuthed && (
         <div className="fixed bottom-6 right-6 z-40">
           <Button

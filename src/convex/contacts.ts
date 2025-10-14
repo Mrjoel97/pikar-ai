@@ -606,3 +606,105 @@ export const getContactsBySegment = query({
     return filtered.slice(0, 100); // Limit to 100 for performance
   },
 });
+
+/**
+ * Auto-segment contacts based on engagement behavior
+ * Segments: "highly_engaged", "moderately_engaged", "low_engaged", "inactive"
+ */
+export const autoSegmentContacts = internalMutation({
+  args: { businessId: v.id("businesses") },
+  handler: async (ctx, args) => {
+    const contacts = await ctx.db
+      .query("contacts")
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .collect();
+
+    const now = Date.now();
+    const thirtyDaysAgo = now - 30 * 24 * 60 * 60 * 1000;
+    const sixtyDaysAgo = now - 60 * 24 * 60 * 60 * 1000;
+
+    for (const contact of contacts) {
+      const lastEngaged = contact.lastEngagedAt || contact.createdAt;
+      let segmentTag = "inactive";
+
+      if (lastEngaged > thirtyDaysAgo) {
+        segmentTag = "highly_engaged";
+      } else if (lastEngaged > sixtyDaysAgo) {
+        segmentTag = "moderately_engaged";
+      } else if (lastEngaged > now - 90 * 24 * 60 * 60 * 1000) {
+        segmentTag = "low_engaged";
+      }
+
+      // Add segment tag if not already present
+      const currentTags = contact.tags || [];
+      const behaviorTags = currentTags.filter(
+        (t) => !["highly_engaged", "moderately_engaged", "low_engaged", "inactive"].includes(t)
+      );
+      const newTags = [...behaviorTags, segmentTag];
+
+      await ctx.db.patch(contact._id, { tags: newTags });
+    }
+
+    return { segmented: contacts.length };
+  },
+});
+
+/**
+ * Get contacts by segment for campaign targeting
+ * Align engagement branch to actual lastEngagedAt windows (active/dormant/inactive)
+ */
+export const getContactsBySegmentForCampaign = query({
+  args: {
+    businessId: v.id("businesses"),
+    segmentType: v.union(v.literal("status"), v.literal("tag"), v.literal("engagement")),
+    segmentValue: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const contacts = await ctx.db
+      .query("contacts")
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .collect();
+
+    let filtered = contacts;
+
+    if (args.segmentType === "status") {
+      filtered = contacts.filter((c) => c.status === args.segmentValue);
+    } else if (args.segmentType === "tag") {
+      filtered = contacts.filter((c) => (c.tags ?? []).includes(args.segmentValue));
+    } else if (args.segmentType === "engagement") {
+      // Use lastEngagedAt windows to match getContactSegments UI:
+      // active: <30d, dormant: 30-90d, inactive: >=90d or missing
+      const now = Date.now();
+      const thirtyDays = 30 * 24 * 60 * 60 * 1000;
+      const ninetyDays = 90 * 24 * 60 * 60 * 1000;
+
+      if (args.segmentValue === "active") {
+        filtered = contacts.filter((c) => c.lastEngagedAt && (now - c.lastEngagedAt) < thirtyDays);
+      } else if (args.segmentValue === "dormant") {
+        filtered = contacts.filter(
+          (c) => c.lastEngagedAt && (now - c.lastEngagedAt) >= thirtyDays && (now - c.lastEngagedAt) < ninetyDays
+        );
+      } else if (args.segmentValue === "inactive") {
+        filtered = contacts.filter((c) => !c.lastEngagedAt || (now - c.lastEngagedAt) >= ninetyDays);
+      } else {
+        filtered = [];
+      }
+    }
+
+    return filtered.map((c) => c.email);
+  },
+});
+
+/**
+ * Internal helper to list all business ids (used by daily auto-segmentation action)
+ */
+export const listBusinessIds = internalQuery({
+  args: {},
+  handler: async (ctx) => {
+    const ids: Array<Id<"businesses">> = [];
+    for await (const b of ctx.db.query("businesses")) {
+      ids.push(b._id);
+    }
+    return ids;
+  },
+});

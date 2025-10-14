@@ -53,4 +53,12 @@ crons.interval(
   {}
 );
 
+// Add auto-segmentation job to run daily
+crons.interval(
+  "auto-segment contacts",
+  { hours: 24 },
+  "contactsActions:autoSegmentAll" as any,
+  {}
+);
+
 export default crons;

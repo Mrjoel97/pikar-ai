@@ -61,6 +61,11 @@ export function CampaignComposer({ businessId, onClose, onCreated, defaultSchedu
   const [directRecipients, setDirectRecipients] = useState("");
   const [testEmail, setTestEmail] = useState("");
 
+  // Segmentation state (new)
+  const [useSegmentation, setUseSegmentation] = useState(false);
+  const [segmentType, setSegmentType] = useState<"status" | "tag" | "engagement">("tag");
+  const [segmentValue, setSegmentValue] = useState("");
+
   // CSV Import state
   const [csvDialogOpen, setCsvDialogOpen] = useState(false);
   const [csvText, setCsvText] = useState("");
@@ -84,6 +89,13 @@ export function CampaignComposer({ businessId, onClose, onCreated, defaultSchedu
   const sendTestEmail = useAction(api.emailsActions.sendTestEmail);
   const bulkUploadCsv = useMutation(api.contacts.bulkUploadCsv);
   const navigate = useNavigate();
+
+  // Fetch segments and (conditionally) segment emails (new)
+  const segments = useQuery(api.contacts.getContactSegments as any, { businessId });
+  const segmentEmails = useQuery(
+    api.contacts.getContactsBySegmentForCampaign as any,
+    useSegmentation && segmentValue ? { businessId, segmentType, segmentValue } : "skip"
+  );
 
   // Fetch workspace email configuration summary (guest-safe; returns null if unauthenticated or unset)
   const emailSummary = useQuery(api.emailConfig.getForBusinessSummary, {});
@@ -280,14 +292,26 @@ export function CampaignComposer({ businessId, onClose, onCreated, defaultSchedu
       return;
     }
 
-    if (audienceType === "direct" && !directRecipients.trim()) {
-      toast.error("Please provide recipients");
-      return;
-    }
-
-    if (audienceType === "list" && !selectedListId) {
-      toast.error("Please select a contact list");
-      return;
+    // Segmentation validation (new)
+    if (useSegmentation) {
+      if (!segmentValue) {
+        toast.error("Select a segment to target");
+        return;
+      }
+      if (!Array.isArray(segmentEmails) || segmentEmails.length === 0) {
+        toast.error("No contacts found for the selected segment");
+        return;
+      }
+    } else {
+      // Original audience validations
+      if (audienceType === "direct" && !directRecipients.trim()) {
+        toast.error("Please provide recipients");
+        return;
+      }
+      if (audienceType === "list" && !selectedListId) {
+        toast.error("Please select a contact list");
+        return;
+      }
     }
 
     // Validate A/B test if enabled
@@ -299,9 +323,11 @@ export function CampaignComposer({ businessId, onClose, onCreated, defaultSchedu
     }
 
     try {
-      const recipients = audienceType === "direct" 
-        ? directRecipients.split(",").map(email => email.trim()).filter(Boolean)
-        : [];
+      const recipients = useSegmentation
+        ? (segmentEmails || [])
+        : audienceType === "direct"
+          ? directRecipients.split(",").map((email) => email.trim()).filter(Boolean)
+          : [];
 
       await createCampaign({
         businessId,
@@ -312,20 +338,22 @@ export function CampaignComposer({ businessId, onClose, onCreated, defaultSchedu
         previewText: formData.previewText,
         body: formData.body,
         recipients,
-        audienceType,
-        audienceListId: audienceType === "list" ? selectedListId : undefined,
+        audienceType: useSegmentation ? "direct" : audienceType,
+        audienceListId: !useSegmentation && audienceType === "list" ? selectedListId : undefined,
         buttons: formData.buttons.map(({ text, url }) => ({ text, url })),
         scheduledAt: defaultScheduledAt ?? Date.now(),
         enableAbTest: enableAb,
         variantB: enableAb ? variantB : undefined,
       });
 
-      if (enableAb && variantB.subject && variantB.body) {
-        toast.success("Campaign with A/B test scheduled successfully!");
-      } else {
-        toast.success("Campaign scheduled successfully!");
-      }
-      
+      toast.success(
+        useSegmentation
+          ? "Campaign scheduled successfully to selected segment!"
+          : enableAb && variantB.subject && variantB.body
+            ? "Campaign with A/B test scheduled successfully!"
+            : "Campaign scheduled successfully!"
+      );
+
       onCreated?.();
       onClose();
     } catch (error: any) {
@@ -334,7 +362,7 @@ export function CampaignComposer({ businessId, onClose, onCreated, defaultSchedu
   };
 
   return (
-    <div className="space-y-6 max-w-2xl mx-auto">
+    <div className="space-y-6">
       {/* Add Load from Draft button at the top */}
       <div className="flex justify-between items-center">
         <Dialog open={draftDialogOpen} onOpenChange={setDraftDialogOpen}>
@@ -619,121 +647,67 @@ export function CampaignComposer({ businessId, onClose, onCreated, defaultSchedu
 
       <Separator />
 
-      <div className="space-y-4">
-        <Label htmlFor="body">Email Content</Label>
-        <Textarea
-          id="body"
-          value={formData.body}
-          onChange={(e) => handleInputChange("body", e.target.value)}
-          placeholder="Write your email content here..."
-          rows={8}
-        />
-      </div>
-
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <Label>Call-to-Action Buttons (optional)</Label>
-          <Button variant="outline" size="sm" onClick={addButton}>
-            <Plus className="h-4 w-4 mr-1" />
-            Add Button
-          </Button>
+      {/* Segmentation (optional) */}
+      <div className="space-y-3">
+        <Label>Segmentation (optional)</Label>
+        <div className="flex items-center gap-3">
+          <Switch checked={useSegmentation} onCheckedChange={setUseSegmentation} />
+          <span className="text-sm text-muted-foreground">Target a saved segment instead of manual recipients or list</span>
         </div>
 
-        {formData.buttons.map((button, index) => (
-          <Card key={index}>
-            <CardContent className="pt-4">
-              <div className="grid grid-cols-2 gap-2">
-                <Input
-                  value={button.text}
-                  onChange={(e) => handleButtonChange(index, "text", e.target.value)}
-                  placeholder="Button text"
-                />
-                <Input
-                  value={button.url}
-                  onChange={(e) => handleButtonChange(index, "url", e.target.value)}
-                  placeholder="https://..."
-                />
-              </div>
-              <div className="flex justify-end mt-2">
-                <Button variant="ghost" size="sm" onClick={() => removeButton(index)}>
-                  Remove
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      <Separator />
-
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <Label>A/B Testing</Label>
-            <p className="text-sm text-muted-foreground mt-1">
-              Test two versions to see which performs better
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <Switch checked={enableAb} onCheckedChange={setEnableAb} />
-            <span className="text-sm text-muted-foreground">{enableAb ? "Enabled" : "Disabled"}</span>
-          </div>
-        </div>
-        {enableAb && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm">Variant B</CardTitle>
-              <CardDescription>
-                Create an alternative version to test against your original (Variant A).
-                Recipients will be split 50/50 between variants.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
+        {useSegmentation && (
+          <div className="space-y-3 rounded-lg border p-3">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <div>
-                <Label htmlFor="subjectB">Subject (B)</Label>
-                <Input
-                  id="subjectB"
-                  value={variantB.subject}
-                  onChange={(e) => setVariantB((p) => ({ ...p, subject: e.target.value }))}
-                  placeholder="Your variant B subject"
-                />
+                <Label className="text-xs">Segment Type</Label>
+                <select
+                  value={segmentType}
+                  onChange={(e) => setSegmentType(e.target.value as any)}
+                  className="w-full border rounded p-2 text-sm"
+                >
+                  <option value="status">Status</option>
+                  <option value="tag">Tag</option>
+                  <option value="engagement">Engagement</option>
+                </select>
               </div>
-              <div>
-                <Label htmlFor="bodyB">Body (B)</Label>
-                <Textarea
-                  id="bodyB"
-                  value={variantB.body}
-                  onChange={(e) => setVariantB((p) => ({ ...p, body: e.target.value }))}
-                  placeholder="Variant B email content..."
-                  rows={6}
-                />
+
+              <div className="md:col-span-2">
+                <Label className="text-xs">Segment</Label>
+                <select
+                  value={segmentValue}
+                  onChange={(e) => setSegmentValue(e.target.value)}
+                  className="w-full border rounded p-2 text-sm"
+                >
+                  <option value="">Select...</option>
+                  {segmentType === "status" &&
+                    Object.keys(segments?.byStatus || {}).map((k) => (
+                      <option key={k} value={k}>
+                        {k} ({(segments?.byStatus as any)?.[k]})
+                      </option>
+                    ))}
+                  {segmentType === "tag" &&
+                    Object.keys(segments?.byTag || {}).map((k) => (
+                      <option key={k} value={k}>
+                        {k} ({(segments?.byTag as any)?.[k]})
+                      </option>
+                    ))}
+                  {segmentType === "engagement" &&
+                    Object.keys(segments?.engagementSegments || {}).map((k) => (
+                      <option key={k} value={k}>
+                        {k} ({(segments?.engagementSegments as any)?.[k]})
+                      </option>
+                    ))}
+                </select>
               </div>
-              <Alert>
-                <AlertDescription className="text-xs">
-                  <strong>Note:</strong> Both variants will use the same sender info, buttons, and audience.
-                  Results will be tracked automatically and you can view them in the Experiments dashboard.
-                </AlertDescription>
-              </Alert>
-            </CardContent>
-          </Card>
+            </div>
+
+            {Array.isArray(segmentEmails) && (
+              <div className="text-xs text-muted-foreground">
+                📊 {segmentEmails.length} contacts in this segment
+              </div>
+            )}
+          </div>
         )}
-      </div>
-
-      <Separator />
-
-      <div className="space-y-4">
-        <Label>Test & Send</Label>
-        <div className="flex gap-2">
-          <Input
-            value={testEmail}
-            onChange={(e) => setTestEmail(e.target.value)}
-            placeholder="test@example.com"
-            className="flex-1"
-          />
-          <Button variant="outline" onClick={handleSendTest}>
-            Send Test
-          </Button>
-        </div>
       </div>
 
       <div className="flex justify-end gap-2 pt-4">
@@ -742,7 +716,15 @@ export function CampaignComposer({ businessId, onClose, onCreated, defaultSchedu
         </Button>
         <Button 
           onClick={handleScheduleCampaign}
-          disabled={hasSenderIssues || !formData.subject || !formData.body || (audienceType === "direct" && !directRecipients.trim()) || (audienceType === "list" && !selectedListId)}
+          disabled={
+            hasSenderIssues ||
+            !formData.subject ||
+            !formData.body ||
+            (useSegmentation
+              ? (!segmentValue || !Array.isArray(segmentEmails) || segmentEmails.length === 0)
+              : ((audienceType === "direct" && !directRecipients.trim()) ||
+                (audienceType === "list" && !selectedListId)))
+          }
         >
           Schedule Campaign
         </Button>
