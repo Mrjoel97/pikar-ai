@@ -99,13 +99,13 @@ export const completeOnboardingStep = mutation({
 
     if (!checklist) throw new Error("Onboarding checklist not found");
 
-    const updatedSteps = checklist.steps.map((step) =>
+    const updatedSteps = checklist.steps.map((step: any) =>
       step.id === args.stepId
         ? { ...step, completed: true, completedAt: Date.now() }
         : step
     );
 
-    const completedCount = updatedSteps.filter((s) => s.completed).length;
+    const completedCount = updatedSteps.filter((s: any) => s.completed).length;
     const allCompleted = completedCount === updatedSteps.length;
 
     await ctx.db.patch(checklist._id, {
@@ -153,7 +153,7 @@ export const resetOnboarding = mutation({
 
     if (!checklist) throw new Error("Onboarding checklist not found");
 
-    const resetSteps = checklist.steps.map((step) => ({
+    const resetSteps = checklist.steps.map((step: any) => ({
       ...step,
       completed: false,
       completedAt: undefined,

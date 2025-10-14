@@ -248,6 +248,38 @@ export const execRouter: any = action({
 
       case "createCapsule": {
         try {
+          // Create execution record first
+          const executionRecord = await (ctx as any).runMutation(
+            "playbookExecutions:createExecution" as any,
+            {
+              businessId,
+              playbookKey: "weekly_momentum_capsule",
+              playbookVersion: "v1.0",
+              triggeredBy: userId,
+            }
+          );
+
+          const executionId = executionRecord.executionId;
+
+          // Record initial step
+          await (ctx as any).runMutation(
+            "playbookExecutions:addExecutionStep" as any,
+            {
+              executionId,
+              stepName: "Execution initialized",
+              stepStatus: "completed",
+            }
+          );
+
+          // Update status to running
+          await (ctx as any).runMutation(
+            "playbookExecutions:updateExecutionStatus" as any,
+            {
+              executionId,
+              status: "running",
+            }
+          );
+
           // Resolve absolute base URL for server-side fetch
           const baseUrl =
             process.env.VITE_PUBLIC_BASE_URL ||
@@ -255,23 +287,103 @@ export const execRouter: any = action({
             process.env.BASE_URL;
 
           if (!baseUrl) {
-            throw new Error("Public base URL not configured (VITE_PUBLIC_BASE_URL / PUBLIC_BASE_URL / BASE_URL)");
+            await (ctx as any).runMutation(
+              "playbookExecutions:addExecutionStep" as any,
+              {
+                executionId,
+                stepName: "Configuration error",
+                stepStatus: "failed",
+                stepError:
+                  "Public base URL not configured (VITE_PUBLIC_BASE_URL / PUBLIC_BASE_URL / BASE_URL)",
+              }
+            );
+            await (ctx as any).runMutation(
+              "playbookExecutions:updateExecutionStatus" as any,
+              {
+                executionId,
+                status: "failed",
+                error:
+                  "Public base URL not configured (VITE_PUBLIC_BASE_URL / PUBLIC_BASE_URL / BASE_URL)",
+              }
+            );
+            throw new Error(
+              "Public base URL not configured (VITE_PUBLIC_BASE_URL / PUBLIC_BASE_URL / BASE_URL)"
+            );
           }
 
-          const response = await fetch(`${baseUrl}/api/playbooks/weekly_momentum_capsule/trigger`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ businessId }),
-          });
+          await (ctx as any).runMutation(
+            "playbookExecutions:addExecutionStep" as any,
+            {
+              executionId,
+              stepName: "Triggering playbook",
+              stepStatus: "running",
+            }
+          );
+
+          const response = await fetch(
+            `${baseUrl}/api/playbooks/weekly_momentum_capsule/trigger`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ businessId }),
+            }
+          );
 
           if (!response.ok) {
+            const errorText = await response.text().catch(() => "Unknown error");
+
+            await (ctx as any).runMutation(
+              "playbookExecutions:addExecutionStep" as any,
+              {
+                executionId,
+                stepName: "Playbook error",
+                stepStatus: "failed",
+                stepError: `HTTP ${response.status}: ${errorText}`,
+              }
+            );
+
+            await (ctx as any).runMutation(
+              "playbookExecutions:updateExecutionStatus" as any,
+              {
+                executionId,
+                status: "failed",
+                error: `Playbook failed: ${response.status} - ${errorText}`,
+              }
+            );
             throw new Error(`Playbook failed: ${response.status}`);
           }
+
+          const result = await response.json().catch(() => ({}));
+
+          // Record success step
+          await (ctx as any).runMutation(
+            "playbookExecutions:addExecutionStep" as any,
+            {
+              executionId,
+              stepName: "Playbook completed",
+              stepStatus: "completed",
+              stepResult:
+                typeof result === "object"
+                  ? { ok: true, ...result }
+                  : { ok: true, result },
+            }
+          );
+
+          // Update status to completed
+          await (ctx as any).runMutation(
+            "playbookExecutions:updateExecutionStatus" as any,
+            {
+              executionId,
+              status: "completed",
+              result,
+            }
+          );
 
           return {
             success: true,
             message: "Weekly capsule created successfully",
             timeSaved: 45,
+            executionId,
           };
         } catch (error: unknown) {
           return {

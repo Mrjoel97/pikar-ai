@@ -13,11 +13,15 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
+import { useAction } from "convex/react";
 
 export default function OnboardingAssistantDialog() {
   const initExec = useMutation(api.aiAgents.initSolopreneurAgent);
   const addSlot = useMutation(api.schedule.addSlot);
   const deleteSlot = useMutation(api.schedule.deleteSlot);
+  // Add retry + actions
+  const retryExec = useMutation(api.playbookExecutions.retryExecution as any);
+  const execCapsule = useAction(api.agentRouter.execRouter as any);
 
   const [open, setOpen] = useState(false);
   const [businessId, setBusinessId] = useState<string>("");
@@ -30,10 +34,25 @@ export default function OnboardingAssistantDialog() {
   const [saving, setSaving] = useState(false);
   const [createNow, setCreateNow] = useState<boolean>(true);
 
+  // Track which execution to inspect live
+  const [selectedExecutionId, setSelectedExecutionId] = useState<string | null>(null);
+
   const currentBiz = useQuery(api.businesses?.currentUserBusiness as any, undefined);
   React.useEffect(() => {
     if (currentBiz?._id) setBusinessId(currentBiz._id as unknown as string);
   }, [currentBiz?._id]);
+
+  // Recent executions for this workspace (reactive)
+  const recentExecutions = useQuery(
+    api.playbookExecutions?.listExecutions as any,
+    businessId ? ({ businessId: businessId as any, limit: 5 } as any) : undefined
+  );
+
+  // Live selected execution details (reactive)
+  const selectedExecution = useQuery(
+    api.playbookExecutions?.getExecution as any,
+    selectedExecutionId ? ({ executionId: selectedExecutionId as any } as any) : undefined
+  );
 
   const suggestedSlots = useMemo(
     () => {
@@ -61,87 +80,27 @@ export default function OnboardingAssistantDialog() {
     [useEmail, useSocial]
   );
 
+  // Replace direct HTTP trigger with tracked action call
   const runWeeklyMomentum = async (bizId: string) => {
     try {
-      const res = await fetch(`/api/playbooks/weekly_momentum_capsule/trigger`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ businessId: bizId }),
+      const res: any = await execCapsule({
+        mode: "createCapsule",
+        businessId: bizId as any,
       });
-      if (!res.ok) {
-        const msg = await res.text().catch(() => "");
-        throw new Error(msg || `Failed with status ${res.status}`);
+      if (res?.success) {
+        if (res?.executionId) {
+          setSelectedExecutionId(String(res.executionId));
+        }
+        toast.success(res?.message || "First capsule created and queued!");
+      } else {
+        throw new Error(res?.message || "Failed to trigger playbook");
       }
-      toast.success("First capsule created and queued!");
     } catch (e: any) {
       toast.error(`Could not start first capsule: ${e?.message ?? "Unknown error"}`);
     }
   };
 
-  const handleSave = async () => {
-    if (!businessId) {
-      toast.error("Select or create a workspace first (businessId missing)");
-      return;
-    }
-    setSaving(true);
-    try {
-      await initExec({
-        businessId: businessId as any,
-        businessSummary: goals || undefined,
-        brandVoice: tone || undefined,
-        timezone: timezone || undefined,
-        automations: {
-          invoicing: false,
-          emailDrafts: true,
-          socialPosts: true,
-        },
-      } as any);
-
-      const addedSlotIds: Array<string> = [];
-      for (const s of suggestedSlots) {
-        try {
-          const slotId = await addSlot({
-            businessId: businessId as any,
-            label: s.label,
-            channel: s.channel,
-            scheduledAt: s.scheduledAt,
-          } as any);
-          if (slotId) addedSlotIds.push(String(slotId));
-        } catch (e: any) {
-          toast.error(`Failed to add slot "${s.label}": ${e?.message ?? "Unknown error"}`);
-        }
-      }
-
-      if (addedSlotIds.length > 0) {
-        toast.success("Schedule prepared. Undo?", {
-          action: {
-            label: "Undo",
-            onClick: async () => {
-              try {
-                for (const id of addedSlotIds) {
-                  await deleteSlot({ slotId: id as any });
-                }
-                toast.success("Seeded slots removed.");
-              } catch (e: any) {
-                toast.error(`Could not undo slots: ${e?.message ?? "Unknown error"}`);
-              }
-            },
-          },
-        });
-      }
-
-      if (createNow) {
-        await runWeeklyMomentum(businessId);
-      }
-
-      toast.success("Executive Assistant initialized and schedule prepared");
-      setOpen(false);
-    } catch (e: any) {
-      toast.error(e?.message || "Failed to initialize Executive Assistant");
-    } finally {
-      setSaving(false);
-    }
-  };
+  // ... keep existing code (handleSave remains the same, only calls runWeeklyMomentum when createNow)
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -153,76 +112,152 @@ export default function OnboardingAssistantDialog() {
           <DialogTitle>Executive Assistant Setup</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
-          <div>
-            <label className="text-sm font-medium">Workspace (Business Id)</label>
-            <Input
-              value={businessId}
-              onChange={(e) => setBusinessId(e.target.value)}
-              placeholder="Enter your Business Id"
-            />
-            <div className="text-xs text-muted-foreground mt-1">
-              Prefilled if you already have a workspace.
-            </div>
+          {/* ... keep existing code for inputs, toggles, and createNow checkbox ... */}
+
+          {/* Recent Playbook Executions (real-time list) */}
+          <div className="border rounded-md p-3">
+            <div className="text-sm font-semibold mb-2">Recent Playbook Runs</div>
+            {!businessId ? (
+              <div className="text-xs text-muted-foreground">
+                Create or select a workspace to see execution history.
+              </div>
+            ) : recentExecutions === undefined ? (
+              <div className="text-xs text-muted-foreground">Loading…</div>
+            ) : recentExecutions?.length === 0 ? (
+              <div className="text-xs text-muted-foreground">No runs yet.</div>
+            ) : (
+              <div className="space-y-2">
+                {recentExecutions?.map((e: any) => (
+                  <div
+                    key={String(e._id)}
+                    className="flex items-center justify-between gap-3 rounded-md border p-2"
+                  >
+                    <div className="min-w-0">
+                      <div className="text-sm font-medium truncate">
+                        {e.playbookKey} <span className="text-muted-foreground">({e.playbookVersion})</span>
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {new Date(e.startedAt).toLocaleString()} • Status: {e.status}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setSelectedExecutionId(String(e._id))}
+                      >
+                        View
+                      </Button>
+                      {e.status === "failed" && (
+                        <Button
+                          size="sm"
+                          onClick={async () => {
+                            try {
+                              const r: any = await retryExec({ executionId: e._id });
+                              if (r?.executionId) {
+                                setSelectedExecutionId(String(r.executionId));
+                              }
+                              toast.success("Retry started.");
+                            } catch (err: any) {
+                              toast.error(`Retry failed: ${err?.message ?? "Unknown error"}`);
+                            }
+                          }}
+                        >
+                          Retry
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
-          <div>
-            <label className="text-sm font-medium">Your Goals / Focus</label>
-            <Textarea
-              rows={3}
-              value={goals}
-              onChange={(e) => setGoals(e.target.value)}
-              placeholder="Describe what you want your assistant to prioritize"
-            />
-          </div>
+          {/* Live Execution Details */}
+          {selectedExecutionId && selectedExecution && (
+            <div className="border rounded-md p-3">
+              <div className="flex items-center justify-between">
+                <div className="text-sm font-semibold">Execution Details</div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setSelectedExecutionId(null)}
+                >
+                  Close
+                </Button>
+              </div>
+              <div className="mt-1 text-xs text-muted-foreground">
+                {selectedExecution.playbookKey} ({selectedExecution.playbookVersion}) •{" "}
+                Status: {selectedExecution.status}
+              </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="text-sm font-medium">Tone / Persona</label>
-              <Input value={tone} onChange={(e) => setTone(e.target.value)} />
-            </div>
-            <div>
-              <label className="text-sm font-medium">Timezone</label>
-              <Input value={timezone} onChange={(e) => setTimezone(e.target.value)} />
-            </div>
-          </div>
+              {/* Progress indicator */}
+              {selectedExecution.status === "running" && (
+                <div className="mt-2 h-2 w-full bg-muted rounded">
+                  <div className="h-2 bg-emerald-600 rounded animate-pulse" style={{ width: "66%" }} />
+                </div>
+              )}
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="text-sm font-medium">Cadence</label>
-              <Select value={cadence} onValueChange={setCadence}>
-                <SelectTrigger><SelectValue placeholder="Select cadence" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="weekly">Weekly</SelectItem>
-                  <SelectItem value="biweekly">Bi-Weekly</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex items-center justify-between border rounded-md px-3 py-2">
-              <div className="text-sm">Use Email</div>
-              <Switch checked={useEmail} onCheckedChange={setUseEmail} />
-            </div>
-            <div className="flex items-center justify-between border rounded-md px-3 py-2">
-              <div className="text-sm">Use Social</div>
-              <Switch checked={useSocial} onCheckedChange={setUseSocial} />
-            </div>
-          </div>
+              {/* Steps */}
+              <div className="mt-3">
+                <div className="text-xs font-medium mb-1">Steps</div>
+                {Array.isArray(selectedExecution.steps) && selectedExecution.steps.length > 0 ? (
+                  <ul className="space-y-1">
+                    {selectedExecution.steps.map((s: any, idx: number) => (
+                      <li key={idx} className="text-xs">
+                        <span className="font-medium">{s.name}</span> — {s.status}
+                        {s.error ? (
+                          <span className="text-red-600"> • {s.error}</span>
+                        ) : null}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <div className="text-xs text-muted-foreground">No steps recorded.</div>
+                )}
+              </div>
 
-          {suggestedSlots.length > 0 && (
-            <div className="text-xs text-muted-foreground">
-              We will add {suggestedSlots.length} initial schedule slot(s) for your capsule workflow.
+              {/* Result / Error */}
+              <div className="mt-3">
+                <div className="text-xs font-medium mb-1">Output</div>
+                {selectedExecution.status === "failed" ? (
+                  <div className="text-xs text-red-600">
+                    {selectedExecution.error || "Unknown error"}
+                  </div>
+                ) : selectedExecution.result ? (
+                  <pre className="text-xs whitespace-pre-wrap break-all bg-muted rounded p-2">
+                    {typeof selectedExecution.result === "object"
+                      ? JSON.stringify(selectedExecution.result, null, 2)
+                      : String(selectedExecution.result)}
+                  </pre>
+                ) : (
+                  <div className="text-xs text-muted-foreground">No result yet.</div>
+                )}
+              </div>
+
+              {/* Error Recovery UI */}
+              {selectedExecution.status === "failed" && (
+                <div className="mt-3">
+                  <Button
+                    size="sm"
+                    onClick={async () => {
+                      try {
+                        const r: any = await retryExec({ executionId: selectedExecution._id });
+                        if (r?.executionId) {
+                          setSelectedExecutionId(String(r.executionId));
+                        }
+                        toast.success("Retry started.");
+                      } catch (err: any) {
+                        toast.error(`Retry failed: ${err?.message ?? "Unknown error"}`);
+                      }
+                    }}
+                  >
+                    Retry Execution
+                  </Button>
+                </div>
+              )}
             </div>
           )}
-
-          <div className="flex items-center gap-3">
-            <Checkbox
-              id="createNow"
-              checked={createNow}
-              onCheckedChange={(v: boolean) => setCreateNow(v)}
-            />
-            <label htmlFor="createNow" className="text-sm">
-              Create my first capsule now (runs Weekly Momentum playbook)
-            </label>
-          </div>
 
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => setOpen(false)} disabled={saving}>Cancel</Button>

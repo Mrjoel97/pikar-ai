@@ -544,7 +544,7 @@ export const getContactSegments = query({
     
     // Segment by tags
     const byTag = contacts.reduce((acc, c) => {
-      (c.tags || []).forEach(tag => {
+      (c.tags || []).forEach((tag: string) => {
         acc[tag] = (acc[tag] || 0) + 1;
       });
       return acc;

@@ -258,22 +258,17 @@ export const addReaction = mutation({
     const message = await ctx.db.get(args.messageId);
     if (!message) throw new Error("Message not found");
 
-    const reactions = message.reactions || [];
-    const existingReaction = reactions.find(
-      r => r.userId === user._id && r.emoji === args.emoji
-    );
+    const hasReaction = message.reactions.some((r: any) => r.userId === user._id && r.emoji === args.emoji);
 
-    if (existingReaction) {
+    if (hasReaction) {
       // Remove reaction if already exists
       await ctx.db.patch(args.messageId, {
-        reactions: reactions.filter(
-          r => !(r.userId === user._id && r.emoji === args.emoji)
-        ),
+        reactions: message.reactions.filter((r: any) => !(r.userId === user._id && r.emoji === args.emoji)),
       });
     } else {
       // Add new reaction
       await ctx.db.patch(args.messageId, {
-        reactions: [...reactions, { userId: user._id, emoji: args.emoji }],
+        reactions: [...message.reactions, { userId: user._id, emoji: args.emoji }],
       });
     }
 

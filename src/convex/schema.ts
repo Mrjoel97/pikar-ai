@@ -1959,6 +1959,37 @@ const schema = defineSchema({
   })
     .index("by_business", ["businessId"])
     .index("by_status", ["status"]),
+
+  playbookExecutions: defineTable({
+    businessId: v.id("businesses"),
+    playbookKey: v.string(),
+    playbookVersion: v.string(),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("running"),
+      v.literal("completed"),
+      v.literal("failed"),
+      v.literal("cancelled")
+    ),
+    triggeredBy: v.optional(v.id("users")),
+    input: v.optional(v.any()),
+    steps: v.array(
+      v.object({
+        name: v.string(),
+        status: v.union(v.literal("pending"), v.literal("running"), v.literal("completed"), v.literal("failed")),
+        result: v.optional(v.any()),
+        error: v.optional(v.string()),
+        timestamp: v.number(),
+      })
+    ),
+    startedAt: v.number(),
+    completedAt: v.optional(v.number()),
+    error: v.optional(v.string()),
+    result: v.optional(v.any()),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_status", ["status"])
+    .index("by_playbook_key", ["playbookKey"]),
 });
 
 export default schema;

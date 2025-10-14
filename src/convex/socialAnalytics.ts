@@ -627,18 +627,20 @@ export const getCrossPlatformSummary = query({
 
     // Mark connected platforms
     for (const account of accounts) {
-      if (platformSummary[account.platform]) {
-        platformSummary[account.platform].connected = true;
+      const platform = account.platform as "twitter" | "linkedin" | "facebook";
+      if (platformSummary[platform]) {
+        platformSummary[platform].connected = true;
       }
     }
 
     // Aggregate post metrics by platform
     for (const post of posts) {
       if (post.performanceMetrics) {
-        for (const platform of post.platforms) {
-          if (platformSummary[platform]) {
-            platformSummary[platform].posts++;
-            platformSummary[platform].engagement += post.performanceMetrics.engagements || 0;
+        for (const platformRaw of post.platforms) {
+          const platformKey2 = platformRaw as "twitter" | "linkedin" | "facebook";
+          if (platformSummary[platformKey2]) {
+            platformSummary[platformKey2].posts++;
+            platformSummary[platformKey2].engagement += (post.performanceMetrics?.engagements || 0);
           }
         }
       }

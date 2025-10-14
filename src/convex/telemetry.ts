@@ -151,7 +151,7 @@ export const getTeamPerformanceMetrics = query({
     
     // Calculate metrics per user
     const teamMetrics = await Promise.all(
-      teamMemberIds.map(async (userId) => {
+      teamMemberIds.map(async (userId: any) => {
         const user = await ctx.db.get(userId);
         
         // Count workflow runs created by user
@@ -212,13 +212,12 @@ export const getTeamPerformanceMetrics = query({
     );
 
     // Sort by contributions (descending)
-    teamMetrics.sort((a, b) => b.contributions - a.contributions);
+    teamMetrics.sort((a: any, b: any) => b.contributions - a.contributions);
 
-    // Calculate summary
     const summary = {
-      totalContributions: teamMetrics.reduce((sum, m) => sum + m.contributions, 0),
-      totalApprovals: teamMetrics.reduce((sum, m) => sum + m.approvals, 0),
-      totalTasks: teamMetrics.reduce((sum, m) => sum + m.tasks, 0),
+      totalContributions: teamMetrics.reduce((sum: number, m: any) => sum + m.contributions, 0),
+      totalApprovals: teamMetrics.reduce((sum: number, m: any) => sum + m.approvals, 0),
+      totalTasks: teamMetrics.reduce((sum: number, m: any) => sum + m.tasks, 0),
     };
 
     return {

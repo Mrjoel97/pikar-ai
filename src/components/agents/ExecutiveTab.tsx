@@ -31,6 +31,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { Progress } from "@/components/ui/progress";
+import PlaybookExecutionTracker from "./PlaybookExecutionTracker";
 
 export default function ExecutiveTab() {
   const { user } = useAuth();
@@ -52,6 +53,7 @@ export default function ExecutiveTab() {
   // Rate limiting state
   const [lastAskTime, setLastAskTime] = useState<number>(0);
   const [cooldownRemaining, setCooldownRemaining] = useState<number>(0);
+  const [activeExecutionId, setActiveExecutionId] = useState<any>(null);
   const RATE_LIMIT_MS = 8000; // 8 seconds between requests
 
   // Transcript drawer state
@@ -208,6 +210,13 @@ export default function ExecutiveTab() {
       if (mode === "createCapsule") {
         const ok = !!(response as any)?.success;
         const correlationId = (response as any)?.correlationId;
+        const executionId = (response as any)?.executionId;
+        
+        // Set active execution for tracking
+        if (executionId) {
+          setActiveExecutionId(executionId);
+        }
+        
         if (ok) {
           const saved =
             typeof (response as any)?.timeSaved === "number" ? (response as any).timeSaved : undefined;
@@ -379,6 +388,14 @@ export default function ExecutiveTab() {
             </Button>
           </div>
         </Alert>
+      )}
+
+      {/* Active Execution Tracker */}
+      {activeExecutionId && (
+        <PlaybookExecutionTracker
+          executionId={activeExecutionId}
+          onRetry={(newExecutionId) => setActiveExecutionId(newExecutionId)}
+        />
       )}
 
       {/* Ask My Executive */}

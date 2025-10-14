@@ -165,7 +165,7 @@ export const listTemplatesWithSmartOrdering = query({
     let filtered = allTemplates;
     if (args.category) {
       filtered = filtered.filter((t) => 
-        t.tags?.some((tag) => tag.toLowerCase().includes(args.category!.toLowerCase()))
+        t.tags?.some((tag: string) => tag.toLowerCase().includes(args.category!.toLowerCase()))
       );
     }
     if (args.search) {
@@ -173,7 +173,7 @@ export const listTemplatesWithSmartOrdering = query({
       filtered = filtered.filter((t) => 
         t.name.toLowerCase().includes(searchLower) ||
         t.description?.toLowerCase().includes(searchLower) ||
-        t.tags?.some((tag) => tag.toLowerCase().includes(searchLower))
+        t.tags?.some((tag: string) => tag.toLowerCase().includes(searchLower))
       );
     }
 
@@ -210,7 +210,7 @@ export const listTemplatesWithSmartOrdering = query({
       }
 
       // 5. Industry match - 150 points
-      if (userIndustry && template.tags?.some((tag) => 
+      if (userIndustry && template.tags?.some((tag: string) => 
         tag.toLowerCase().includes(userIndustry)
       )) {
         score += 150;
