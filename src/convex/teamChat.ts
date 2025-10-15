@@ -13,6 +13,7 @@ export const sendMessage = mutation({
       name: v.string(),
       url: v.string(),
       type: v.string(),
+      size: v.optional(v.number()),
     }))),
   },
   handler: async (ctx, args) => {
@@ -43,11 +44,24 @@ export const sendMessage = mutation({
       channelId: args.channelId,
       recipientUserId: args.recipientUserId,
       content: args.content,
+      parentMessageId: undefined,
       attachments: args.attachments,
       createdAt: Date.now(),
       editedAt: undefined,
       reactions: [],
     });
+
+    // Send notification for direct messages
+    if (args.recipientUserId && args.recipientUserId !== user._id) {
+      await ctx.runMutation("internal:notifications:sendIfPermitted" as any, {
+        userId: args.recipientUserId,
+        businessId: args.businessId,
+        type: "assignment",
+        title: "New direct message",
+        message: `${user.name}: ${args.content.slice(0, 50)}${args.content.length > 50 ? '...' : ''}`,
+        priority: "medium",
+      });
+    }
 
     // Audit log
     await ctx.runMutation("audit:write" as any, {
@@ -62,6 +76,83 @@ export const sendMessage = mutation({
     });
 
     return messageId;
+  },
+});
+
+// Add: shared attachment validator
+const chatAttachment = v.object({
+  name: v.string(),
+  url: v.string(),
+  type: v.string(),
+  size: v.optional(v.number()),
+});
+
+// Add: Reply to a message (thread)
+export const sendReply = mutation({
+  args: {
+    businessId: v.id("businesses"),
+    parentMessageId: v.id("teamMessages"),
+    content: v.string(),
+    attachments: v.optional(v.array(chatAttachment)),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("email", (q) => q.eq("email", identity.email!))
+      .unique();
+    if (!user) throw new Error("User not found");
+
+    const parent = await ctx.db.get(args.parentMessageId);
+    if (!parent) throw new Error("Parent message not found");
+    if (parent.businessId !== args.businessId) {
+      throw new Error("Parent message does not belong to this business");
+    }
+
+    const now = Date.now();
+    const replyId = await ctx.db.insert("teamMessages", {
+      businessId: args.businessId,
+      senderId: user._id,
+      channelId: parent.channelId ?? undefined,
+      recipientUserId: parent.recipientUserId ?? undefined,
+      content: args.content,
+      parentMessageId: args.parentMessageId,
+      attachments: args.attachments ?? [],
+      reactions: [],
+      createdAt: now,
+      editedAt: undefined,
+    });
+
+    // Notify DM recipient (if this thread is a DM)
+    if (parent.recipientUserId) {
+      const currentUserId = user._id;
+      const notifyUserId =
+        parent.recipientUserId === currentUserId ? parent.senderId : parent.recipientUserId;
+
+      const preview =
+        args.content.length > 120 ? `${args.content.slice(0, 117)}...` : args.content;
+
+      await ctx.db.insert("notifications", {
+        businessId: args.businessId,
+        userId: notifyUserId,
+        type: "system_alert",
+        title: `New reply from ${user.name ?? "Teammate"}`,
+        message: preview,
+        data: {
+          parentMessageId: args.parentMessageId,
+          replyMessageId: replyId,
+          channelId: parent.channelId ?? null,
+          dm: true,
+        },
+        isRead: false,
+        priority: "low",
+        createdAt: now,
+      });
+    }
+
+    return replyId;
   },
 });
 
@@ -299,5 +390,79 @@ export const listTeamMembers = query({
     );
 
     return members.filter(Boolean);
+  },
+});
+
+// Add: List thread replies (reactive)
+export const getThreadReplies = query({
+  args: {
+    parentMessageId: v.id("teamMessages"),
+  },
+  handler: async (ctx, args) => {
+    const replies = await ctx.db
+      .query("teamMessages")
+      .withIndex("by_parent", (q) => q.eq("parentMessageId", args.parentMessageId))
+      .collect();
+
+    // Default asc by _creationTime; keep as-is
+    return replies;
+  },
+});
+
+// Optional: DM send with notification (use on frontend if desired)
+export const sendMessageWithNotify = mutation({
+  args: {
+    businessId: v.id("businesses"),
+    channelId: v.optional(v.id("teamChannels")),
+    recipientUserId: v.optional(v.id("users")),
+    content: v.string(),
+    attachments: v.optional(v.array(chatAttachment)),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("email", (q) => q.eq("email", identity.email!))
+      .unique();
+    if (!user) throw new Error("User not found");
+
+    const now = Date.now();
+    const messageId = await ctx.db.insert("teamMessages", {
+      businessId: args.businessId,
+      senderId: user._id,
+      channelId: args.channelId ?? undefined,
+      recipientUserId: args.recipientUserId ?? undefined,
+      content: args.content,
+      attachments: args.attachments ?? [],
+      reactions: [],
+      createdAt: now,
+      editedAt: undefined,
+    });
+
+    // Notify DM recipient
+    if (args.recipientUserId) {
+      const preview =
+        args.content.length > 120 ? `${args.content.slice(0, 117)}...` : args.content;
+
+      await ctx.db.insert("notifications", {
+        businessId: args.businessId,
+        userId: args.recipientUserId,
+        type: "system_alert",
+        title: `New message from ${user.name ?? "Teammate"}`,
+        message: preview,
+        data: {
+          messageId,
+          channelId: args.channelId ?? null,
+          dm: true,
+        },
+        isRead: false,
+        priority: "low",
+        createdAt: now,
+      });
+    }
+
+    return messageId;
   },
 });

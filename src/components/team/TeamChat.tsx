@@ -19,7 +19,10 @@ import {
   Smile,
   Edit2,
   Trash2,
-  MessageSquare 
+  MessageSquare,
+  Paperclip,
+  Reply,
+  X
 } from "lucide-react";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -37,7 +40,12 @@ export function TeamChat({ businessId }: TeamChatProps) {
   const [newChannelName, setNewChannelName] = useState("");
   const [newChannelDesc, setNewChannelDesc] = useState("");
   const [createChannelOpen, setCreateChannelOpen] = useState(false);
+  const [replyingTo, setReplyingTo] = useState<any>(null);
+  const [uploadingFile, setUploadingFile] = useState(false);
+  const [attachments, setAttachments] = useState<Array<{ name: string; url: string; type: string; size?: number }>>([]);
+  const [expandedThreads, setExpandedThreads] = useState<Set<string>>(new Set());
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Queries
   const channels = useQuery(api.teamChat.listChannels, { businessId });
@@ -53,9 +61,11 @@ export function TeamChat({ businessId }: TeamChatProps) {
 
   // Mutations
   const sendMessage = useMutation(api.teamChat.sendMessage);
+  const sendReply = useMutation(api.teamChat.sendReply);
   const createChannel = useMutation(api.teamChat.createChannel);
   const deleteMessage = useMutation(api.teamChat.deleteMessage);
   const addReaction = useMutation(api.teamChat.addReaction);
+  const generateUploadUrl = useMutation(api.files.generateUploadUrl);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -69,27 +79,86 @@ export function TeamChat({ businessId }: TeamChatProps) {
     }
   }, [channels, selectedChannelId, activeTab]);
 
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("File size must be less than 10MB");
+      return;
+    }
+
+    setUploadingFile(true);
+    try {
+      const { uploadUrl, storageId } = await generateUploadUrl();
+      
+      const uploadResult = await fetch(uploadUrl, {
+        method: "POST",
+        body: file,
+      });
+
+      if (!uploadResult.ok) throw new Error("Upload failed");
+
+      const fileUrl = uploadUrl.split('?')[0];
+      
+      setAttachments([...attachments, {
+        name: file.name,
+        url: fileUrl,
+        type: file.type,
+        size: file.size,
+      }]);
+      
+      toast.success("File uploaded successfully");
+    } catch (error: any) {
+      toast.error(`Failed to upload file: ${error.message}`);
+    } finally {
+      setUploadingFile(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
   const handleSendMessage = async () => {
-    if (!messageInput.trim()) return;
+    if (!messageInput.trim() && attachments.length === 0) return;
 
     try {
-      if (activeTab === "channels" && selectedChannelId) {
+      if (replyingTo) {
+        await sendReply({
+          businessId,
+          parentMessageId: replyingTo._id,
+          content: messageInput,
+          attachments: attachments.length > 0 ? attachments : undefined,
+        });
+        setReplyingTo(null);
+      } else if (activeTab === "channels" && selectedChannelId) {
         await sendMessage({
           businessId,
           channelId: selectedChannelId,
           content: messageInput,
+          attachments: attachments.length > 0 ? attachments : undefined,
         });
       } else if (activeTab === "direct" && selectedUserId) {
         await sendMessage({
           businessId,
           recipientUserId: selectedUserId,
           content: messageInput,
+          attachments: attachments.length > 0 ? attachments : undefined,
         });
       }
       setMessageInput("");
+      setAttachments([]);
     } catch (error: any) {
       toast.error(`Failed to send message: ${error.message}`);
     }
+  };
+
+  const toggleThread = (messageId: string) => {
+    const newExpanded = new Set(expandedThreads);
+    if (newExpanded.has(messageId)) {
+      newExpanded.delete(messageId);
+    } else {
+      newExpanded.add(messageId);
+    }
+    setExpandedThreads(newExpanded);
   };
 
   const handleCreateChannel = async () => {
@@ -275,61 +344,96 @@ export function TeamChat({ businessId }: TeamChatProps) {
         <ScrollArea className="flex-1 p-4">
           <div className="space-y-4">
             {messages?.map((msg: any) => (
-              <div key={msg._id} className="flex gap-3 group">
-                <Avatar className="h-8 w-8">
-                  <AvatarFallback className="text-xs">
-                    {getInitials(msg.senderName)}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex-1">
-                  <div className="flex items-baseline gap-2">
-                    <span className="font-semibold text-sm">{msg.senderName}</span>
-                    <span className="text-xs text-muted-foreground">
-                      {new Date(msg.createdAt).toLocaleTimeString()}
-                    </span>
-                    {msg.editedAt && (
-                      <Badge variant="outline" className="text-xs">
-                        edited
-                      </Badge>
-                    )}
-                  </div>
-                  <p className="text-sm mt-1">{msg.content}</p>
-                  
-                  {/* Reactions */}
-                  {msg.reactions && msg.reactions.length > 0 && (
-                    <div className="flex gap-1 mt-2">
-                      {msg.reactions.map((reaction: any, idx: number) => (
-                        <Button
-                          key={idx}
-                          variant="outline"
-                          size="sm"
-                          className="h-6 px-2 text-xs"
-                          onClick={() => handleReaction(msg._id, reaction.emoji)}
-                        >
-                          {reaction.emoji}
-                        </Button>
-                      ))}
+              <div key={msg._id} className="space-y-2">
+                <div className="flex gap-3 group">
+                  <Avatar className="h-8 w-8">
+                    <AvatarFallback className="text-xs">
+                      {getInitials(msg.senderName)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1">
+                    <div className="flex items-baseline gap-2">
+                      <span className="font-semibold text-sm">{msg.senderName}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {new Date(msg.createdAt).toLocaleTimeString()}
+                      </span>
+                      {msg.editedAt && (
+                        <Badge variant="outline" className="text-xs">
+                          edited
+                        </Badge>
+                      )}
                     </div>
-                  )}
+                    {msg.parentMessageId && (
+                      <div className="text-xs text-muted-foreground mb-1">
+                        Replying to a message
+                      </div>
+                    )}
+                    <p className="text-sm mt-1">{msg.content}</p>
+                    
+                    {/* Attachments */}
+                    {msg.attachments && msg.attachments.length > 0 && (
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        {msg.attachments.map((att: any, idx: number) => (
+                          <a
+                            key={idx}
+                            href={att.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-2 px-3 py-2 bg-muted rounded text-xs hover:bg-muted/80"
+                          >
+                            <Paperclip className="h-3 w-3" />
+                            <span>{att.name}</span>
+                            {att.size && <span className="text-muted-foreground">({(att.size / 1024).toFixed(1)}KB)</span>}
+                          </a>
+                        ))}
+                      </div>
+                    )}
+                    
+                    {/* Reactions */}
+                    {msg.reactions && msg.reactions.length > 0 && (
+                      <div className="flex gap-1 mt-2">
+                        {msg.reactions.map((reaction: any, idx: number) => (
+                          <Button
+                            key={idx}
+                            variant="outline"
+                            size="sm"
+                            className="h-6 px-2 text-xs"
+                            onClick={() => handleReaction(msg._id, reaction.emoji)}
+                          >
+                            {reaction.emoji}
+                          </Button>
+                        ))}
+                      </div>
+                    )}
 
-                  {/* Actions */}
-                  <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-1 mt-1">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-6 px-2"
-                      onClick={() => handleReaction(msg._id, "👍")}
-                    >
-                      <Smile className="h-3 w-3" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-6 px-2"
-                      onClick={() => handleDeleteMessage(msg._id)}
-                    >
-                      <Trash2 className="h-3 w-3" />
-                    </Button>
+                    {/* Actions */}
+                    <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-1 mt-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 px-2"
+                        onClick={() => setReplyingTo(msg)}
+                      >
+                        <Reply className="h-3 w-3 mr-1" />
+                        Reply
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 px-2"
+                        onClick={() => handleReaction(msg._id, "👍")}
+                      >
+                        <Smile className="h-3 w-3" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 px-2"
+                        onClick={() => handleDeleteMessage(msg._id)}
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -340,7 +444,57 @@ export function TeamChat({ businessId }: TeamChatProps) {
 
         {/* Input */}
         <div className="p-4 border-t">
+          {replyingTo && (
+            <div className="mb-2 p-2 bg-muted rounded flex items-center justify-between">
+              <div className="flex items-center gap-2 text-sm">
+                <Reply className="h-4 w-4" />
+                <span>Replying to {replyingTo.senderName}</span>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setReplyingTo(null)}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
+          
+          {attachments.length > 0 && (
+            <div className="mb-2 flex flex-wrap gap-2">
+              {attachments.map((att, idx) => (
+                <div key={idx} className="flex items-center gap-2 px-3 py-2 bg-muted rounded text-xs">
+                  <Paperclip className="h-3 w-3" />
+                  <span>{att.name}</span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-4 w-4 p-0"
+                    onClick={() => setAttachments(attachments.filter((_, i) => i !== idx))}
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+          
           <div className="flex gap-2">
+            <input
+              ref={fileInputRef}
+              type="file"
+              className="hidden"
+              onChange={handleFileUpload}
+              accept="image/*,application/pdf,.doc,.docx,.txt"
+            />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploadingFile}
+            >
+              <Paperclip className="h-4 w-4" />
+            </Button>
             <Input
               value={messageInput}
               onChange={(e) => setMessageInput(e.target.value)}
@@ -351,13 +505,15 @@ export function TeamChat({ businessId }: TeamChatProps) {
                 }
               }}
               placeholder={
-                activeTab === "channels"
+                replyingTo
+                  ? "Type your reply..."
+                  : activeTab === "channels"
                   ? `Message #${channels?.find((c: { _id: string; name: string }) => c._id === selectedChannelId)?.name || "channel"}`
                   : `Message ${teamMembers?.find((m: { _id: string; name: string }) => m._id === selectedUserId)?.name || "user"}`
               }
               className="flex-1"
             />
-            <Button onClick={handleSendMessage} disabled={!messageInput.trim()}>
+            <Button onClick={handleSendMessage} disabled={!messageInput.trim() && attachments.length === 0}>
               <Send className="h-4 w-4" />
             </Button>
           </div>

@@ -85,6 +85,19 @@ export const transcribeAudio = action({
   },
 });
 
+// Return a signed URL for downloading a stored file (for chat attachments)
+export const getFileUrl = action({
+  args: { fileId: v.id("_storage") },
+  handler: async (ctx, args) => {
+    const url = await ctx.storage.getUrl(args.fileId);
+    if (!url) {
+      // If the file doesn't exist or URL can't be generated, return a null-ish string
+      return { url: "" };
+    }
+    return { url };
+  },
+});
+
 // Provide the expected export name used by the frontend
 export const generateUploadUrl = action({
   args: {},

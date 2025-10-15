@@ -1821,21 +1821,33 @@ const schema = defineSchema({
     channelId: v.optional(v.id("teamChannels")),
     recipientUserId: v.optional(v.id("users")),
     content: v.string(),
-    attachments: v.optional(v.array(v.object({
-      name: v.string(),
-      url: v.string(),
-      type: v.string(),
-    }))),
-    reactions: v.array(v.object({
-      userId: v.id("users"),
-      emoji: v.string(),
-    })),
+    // Add parent thread reference
+    parentMessageId: v.optional(v.id("teamMessages")),
+    // Add optional size for attachments to match usage in sendMessage/sendReply
+    attachments: v.optional(
+      v.array(
+        v.object({
+          name: v.string(),
+          url: v.string(),
+          type: v.string(),
+          size: v.optional(v.number()),
+        }),
+      ),
+    ),
+    reactions: v.array(
+      v.object({
+        userId: v.id("users"),
+        emoji: v.string(),
+      }),
+    ),
     createdAt: v.number(),
     editedAt: v.optional(v.number()),
   })
     .index("by_business", ["businessId"])
     .index("by_business_and_channel", ["businessId", "channelId"])
-    .index("by_sender", ["senderId"]),
+    .index("by_sender", ["senderId"])
+    // New index to support fetching thread replies efficiently
+    .index("by_parent", ["parentMessageId"]),
 
   teamGoals: defineTable({
     businessId: v.id("businesses"),
