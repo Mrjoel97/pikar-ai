@@ -121,7 +121,7 @@ export function CollaborationFeed({ businessId }: CollaborationFeedProps) {
               <SelectItem value="all">All members</SelectItem>
               {teamMembers &&
                 teamMembers !== "skip" &&
-                teamMembers.map((member) => (
+                teamMembers.map((member: any) => (
                   <SelectItem key={member.id} value={member.id}>
                     {member.name}
                   </SelectItem>
@@ -142,7 +142,7 @@ export function CollaborationFeed({ businessId }: CollaborationFeedProps) {
               <SelectItem value="all">All types</SelectItem>
               {activityTypes &&
                 activityTypes !== "skip" &&
-                activityTypes.map((type) => (
+                activityTypes.map((type: any) => (
                   <SelectItem key={type.value} value={type.value}>
                     {type.label}
                   </SelectItem>
@@ -162,7 +162,7 @@ export function CollaborationFeed({ businessId }: CollaborationFeedProps) {
               No activities found. {searchTerm && "Try adjusting your search."}
             </div>
           ) : (
-            activities.map((activity) => (
+            activities.map((activity: any) => (
               <div
                 key={activity.id}
                 className="flex gap-3 p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors"
@@ -200,7 +200,7 @@ export function CollaborationFeed({ businessId }: CollaborationFeedProps) {
                   />
                   {activity.mentions && activity.mentions.length > 0 && (
                     <div className="flex gap-1 mt-2">
-                      {activity.mentions.map((mention, idx) => (
+                      {activity.mentions.map((mention: string, idx: number) => (
                         <Badge key={idx} variant="secondary" className="text-xs">
                           @{mention}
                         </Badge>

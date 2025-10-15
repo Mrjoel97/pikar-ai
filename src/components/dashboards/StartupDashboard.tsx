@@ -59,6 +59,7 @@ import { GoalsDashboardWidget } from "./startup/GoalsDashboardWidget";
 import { GoalsTracker } from "@/components/team/GoalsTracker";
 import { ApprovalWorkflow } from "@/components/social/ApprovalWorkflow";
 import { CollaborationFeed } from "./startup/CollaborationFeed";
+import { WorkflowAssignments } from "./startup/WorkflowAssignments";
 
 export function StartupDashboard({ 
   business, 
@@ -362,6 +363,31 @@ const pendingApprovals = useQuery(
 
       {/* Team Performance - Now using sub-component */}
       <TeamPerformance teamPerformance={teamPerformance} isGuest={isGuest} />
+
+      {/* Workflow Assignments & Tracking Section - NEW */}
+      {!isGuest && business?._id && (
+        <section className="mb-6">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <Users className="h-5 w-5" />
+                    Workflow Assignments & Tracking
+                  </CardTitle>
+                  <CardDescription>Manage task assignments and team workload</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <WorkflowAssignments 
+                businessId={business._id as Id<"businesses">} 
+                userId={business._id as Id<"users">}
+              />
+            </CardContent>
+          </Card>
+        </section>
+      )}
 
       {/* Approval Health Card - Add after Team Performance section */}
       {!isGuest && approvalMetrics && (
