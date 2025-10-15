@@ -69,4 +69,12 @@ crons.interval(
   {}
 );
 
+// Add auto-escalation check to existing cron jobs
+crons.interval(
+  "governance-auto-escalation",
+  { hours: 1 }, // Run every hour
+  "governanceAutomation:checkAndAutoEscalate" as any,
+  {}
+);
+
 export default crons;

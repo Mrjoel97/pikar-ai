@@ -307,6 +307,100 @@ export const escalateViolation = mutation({
 });
 
 /**
+ * Auto-escalate violations based on threshold rules
+ * - If businessId is provided, processes that business
+ * - If omitted, scans all businesses
+ */
+export const checkAndAutoEscalate = internalMutation({
+  args: {
+    businessId: v.optional(v.id("businesses")),
+  },
+  handler: async (ctx, args) => {
+    let totalEscalated = 0;
+
+    const processBusiness = async (bizId: Id<"businesses">) => {
+      // Load settings per business
+      const settings = await ctx.db
+        .query("governanceAutomationSettings")
+        .withIndex("by_business", (q) => q.eq("businessId", bizId))
+        .first();
+
+      if (!settings) return 0;
+
+      const threshold = settings.escalationRules.threshold;
+      const escalateTo = settings.escalationRules.escalateTo;
+
+      // Get all workflows for this business
+      const workflows = await ctx.db
+        .query("workflows")
+        .withIndex("by_business", (q) => q.eq("businessId", bizId))
+        .collect();
+
+      // Count violations by type per workflow
+      const violationCounts: Record<
+        string,
+        { workflowId: Id<"workflows">; count: number; types: string[] }
+      > = {};
+
+      for (const workflow of workflows) {
+        if (workflow.governanceHealth?.issues && workflow.governanceHealth.issues.length > 0) {
+          const key = workflow._id;
+          if (!violationCounts[key]) {
+            violationCounts[key] = { workflowId: workflow._id, count: 0, types: [] };
+          }
+          violationCounts[key].count = workflow.governanceHealth.issues.length;
+          violationCounts[key].types = workflow.governanceHealth.issues;
+        }
+      }
+
+      let escalatedCount = 0;
+
+      // Check if any workflow exceeds threshold
+      for (const [, data] of Object.entries(violationCounts)) {
+        if (data.count >= threshold) {
+          // Check if already escalated (pending)
+          const existing = await ctx.db
+            .query("governanceEscalations")
+            .withIndex("by_workflow", (q) => q.eq("workflowId", data.workflowId))
+            .filter((q) => q.eq(q.field("status"), "pending"))
+            .first();
+
+          if (!existing) {
+            // Create escalation
+            await ctx.db.insert("governanceEscalations", {
+              businessId: bizId,
+              workflowId: data.workflowId,
+              violationType: data.types.join(", "),
+              count: data.count,
+              escalatedTo: escalateTo,
+              status: "pending",
+              notes: `Auto-escalated: ${data.count} violations exceed threshold of ${threshold}`,
+              createdAt: Date.now(),
+            });
+
+            escalatedCount++;
+          }
+        }
+      }
+
+      return escalatedCount;
+    };
+
+    if (args.businessId) {
+      totalEscalated += await processBusiness(args.businessId);
+    } else {
+      // Process all businesses
+      const businesses = await ctx.db.query("businesses").collect();
+      for (const b of businesses) {
+        totalEscalated += await processBusiness(b._id as Id<"businesses">);
+      }
+    }
+
+    return { escalated: totalEscalated };
+  },
+});
+
+/**
  * Get pending and resolved escalations
  * Guest-safe: returns [] when businessId is not provided
  */
@@ -331,13 +425,29 @@ export const getEscalations = query({
       ? escalations.filter((e) => e.status === args.status)
       : escalations;
 
-    // Enrich with workflow details
+    // Get automation settings for SLA calculation
+    const settings = await ctx.db
+      .query("governanceAutomationSettings")
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId!))
+      .first();
+
+    const escalationSlaHours = 48; // Default 48 hours for escalation resolution
+
+    // Enrich with workflow details and SLA tracking
     const enriched = await Promise.all(
       filtered.map(async (esc) => {
         const workflow = await ctx.db.get(esc.workflowId);
+        const now = Date.now();
+        const slaDeadline = esc.createdAt + escalationSlaHours * 60 * 60 * 1000;
+        const isOverdue = esc.status === "pending" && now > slaDeadline;
+        const hoursRemaining = Math.max(0, Math.round((slaDeadline - now) / (60 * 60 * 1000)));
+
         return {
           ...esc,
           workflowName: workflow?.name || "Unknown",
+          slaDeadline,
+          isOverdue,
+          hoursRemaining,
         };
       })
     );

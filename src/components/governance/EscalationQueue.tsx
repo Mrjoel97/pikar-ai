@@ -44,6 +44,10 @@ export function EscalationQueue({ businessId }: EscalationQueueProps) {
     return <div>Loading escalations...</div>;
   }
 
+  // Separate overdue and on-time escalations
+  const overdueEscalations = escalations.filter((e: any) => e.isOverdue);
+  const onTimeEscalations = escalations.filter((e: any) => !e.isOverdue);
+
   return (
     <Card>
       <CardHeader>
@@ -53,6 +57,11 @@ export function EscalationQueue({ businessId }: EscalationQueueProps) {
         </CardTitle>
         <CardDescription>
           {escalations.length} pending escalation{escalations.length !== 1 ? "s" : ""}
+          {overdueEscalations.length > 0 && (
+            <Badge variant="destructive" className="ml-2">
+              {overdueEscalations.length} overdue
+            </Badge>
+          )}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -66,17 +75,32 @@ export function EscalationQueue({ businessId }: EscalationQueueProps) {
             {escalations.map((escalation: any) => (
               <div
                 key={escalation._id}
-                className="p-4 border rounded-lg space-y-2 hover:bg-accent/50 transition-colors"
+                className={`p-4 border rounded-lg space-y-2 hover:bg-accent/50 transition-colors ${
+                  escalation.isOverdue ? "border-red-500 bg-red-50" : ""
+                }`}
               >
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
                       <h4 className="font-semibold">{escalation.workflowName}</h4>
                       <Badge variant="destructive">{escalation.violationType}</Badge>
+                      {escalation.isOverdue && (
+                        <Badge variant="destructive" className="bg-red-600">
+                          Overdue
+                        </Badge>
+                      )}
                     </div>
                     <p className="text-sm text-muted-foreground">
                       Escalated to: {escalation.escalatedTo}
                     </p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <Clock className="h-3 w-3 text-muted-foreground" />
+                      <span className="text-xs text-muted-foreground">
+                        {escalation.isOverdue
+                          ? `Overdue by ${Math.abs(escalation.hoursRemaining)}h`
+                          : `${escalation.hoursRemaining}h remaining`}
+                      </span>
+                    </div>
                     {escalation.notes && (
                       <p className="text-sm mt-2 text-muted-foreground italic">
                         "{escalation.notes}"
@@ -115,6 +139,20 @@ export function EscalationQueue({ businessId }: EscalationQueueProps) {
                         </DialogDescription>
                       </DialogHeader>
                       <div className="space-y-4">
+                        <div className="p-3 bg-muted rounded-md text-sm">
+                          <div className="font-medium mb-1">Escalation Details</div>
+                          <div className="text-muted-foreground">
+                            <div>Workflow: {escalation.workflowName}</div>
+                            <div>Violation: {escalation.violationType}</div>
+                            <div>
+                              Status: {escalation.isOverdue ? (
+                                <span className="text-red-600 font-medium">Overdue</span>
+                              ) : (
+                                <span className="text-green-600">On Time</span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
                         <Textarea
                           placeholder="Describe the resolution..."
                           value={resolution}

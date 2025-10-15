@@ -163,6 +163,15 @@ export function GovernanceAutomationSettings({ businessId }: GovernanceAutomatio
           </div>
         </div>
 
+        {/* SLA Information */}
+        <div className="p-4 bg-muted rounded-lg space-y-2">
+          <h4 className="text-sm font-semibold">Escalation SLA</h4>
+          <p className="text-xs text-muted-foreground">
+            Escalations must be resolved within <strong>48 hours</strong> of creation.
+            Overdue escalations will be highlighted in the queue.
+          </p>
+        </div>
+
         <Button onClick={handleSave} className="w-full">
           <Save className="h-4 w-4 mr-2" />
           Save Settings
