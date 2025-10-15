@@ -58,6 +58,7 @@ import { CampaignList } from "./startup/CampaignList";
 import { GoalsDashboardWidget } from "./startup/GoalsDashboardWidget";
 import { GoalsTracker } from "@/components/team/GoalsTracker";
 import { ApprovalWorkflow } from "@/components/social/ApprovalWorkflow";
+import { CollaborationFeed } from "./startup/CollaborationFeed";
 
 export function StartupDashboard({ 
   business, 
@@ -556,32 +557,18 @@ const pendingApprovals = useQuery(
       </section>
 
       {/* Collaboration Feed */}
-      <section className="mb-6">
-        <h2 className="text-lg font-semibold mb-3">Collaboration Feed</h2>
-        <div className="space-y-2">
+      <Card>
+        <CardHeader>
+          <CardTitle>Team Collaboration</CardTitle>
+        </CardHeader>
+        <CardContent>
           {isGuest ? (
-            <>
-              <div className="text-sm text-muted-foreground">Demo: New campaign drafted "October Promo".</div>
-              <div className="text-sm text-muted-foreground">Demo: Approval assigned to Alex for Workflow A.</div>
-              <div className="text-sm text-muted-foreground">Demo: KPI snapshot updated.</div>
-            </>
-          ) : !recentActivity ? (
-            <div className="text-sm text-muted-foreground">Loading…</div>
-          ) : recentActivity.length === 0 ? (
-            <div className="text-sm text-muted-foreground">No recent activity.</div>
+            <LockedRibbon label="Team collaboration is Startup+" />
           ) : (
-            recentActivity.slice(0, 8).map((it: any) => (
-              <div key={it.id} className="flex items-center justify-between border rounded-md p-2">
-                <div className="text-sm">
-                  <span className="font-medium">{it.type === "notification" ? "Notification" : "Workflow run"}</span>
-                  <span className="text-muted-foreground"> • {it.title}</span>
-                </div>
-                <span className="text-xs text-slate-500">{new Date(it.createdAt).toLocaleString()}</span>
-              </div>
-            ))
+            <CollaborationFeed businessId={business._id as Id<"businesses">} />
           )}
-        </div>
-      </section>
+        </CardContent>
+      </Card>
 
       {/* A/B Summary cards */}
       <section className="mb-4">
