@@ -373,7 +373,7 @@ const pendingApprovals = useQuery(
           <CardDescription>Manage team task assignments and workload</CardDescription>
         </CardHeader>
         <CardContent>
-          <WorkflowAssignments businessId={businessId} />
+          <WorkflowAssignments businessId={businessId} userId={undefined as any} />
         </CardContent>
       </Card>
 

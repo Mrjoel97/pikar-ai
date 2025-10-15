@@ -175,7 +175,7 @@ export function RevenueAttribution({ businessId }: RevenueAttributionProps) {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {attributionReport.channels.map((channel) => (
+                {attributionReport.channels.map((channel: any) => (
                   <div key={channel.channel} className="space-y-2">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
@@ -222,7 +222,7 @@ export function RevenueAttribution({ businessId }: RevenueAttributionProps) {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {channelROI.channels.map((channel) => (
+                {channelROI.channels.map((channel: any) => (
                   <div key={channel.channel} className="p-4 border rounded-lg space-y-2">
                     <div className="flex items-center justify-between">
                       <Badge className={CHANNEL_COLORS[channel.channel] || "bg-gray-500"}>
