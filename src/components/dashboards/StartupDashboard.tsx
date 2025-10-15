@@ -57,6 +57,7 @@ import { GrowthMetrics } from "./startup/GrowthMetrics";
 import { CampaignList } from "./startup/CampaignList";
 import { GoalsDashboardWidget } from "./startup/GoalsDashboardWidget";
 import { GoalsTracker } from "@/components/team/GoalsTracker";
+import { ApprovalWorkflow } from "@/components/social/ApprovalWorkflow";
 
 export function StartupDashboard({ 
   business, 
@@ -653,7 +654,7 @@ const pendingApprovals = useQuery(
         </section>
       )}
 
-      {/* Social Media Hub Section - NEW */}
+      {/* Social Post Approval Workflow Section - NEW */}
       {!isGuest && business?._id && (
         <section className="mb-6">
           <Card>
@@ -661,119 +662,23 @@ const pendingApprovals = useQuery(
               <div className="flex items-center justify-between">
                 <div>
                   <CardTitle className="flex items-center gap-2">
-                    <Twitter className="h-5 w-5" />
-                    Social Media Hub
+                    <Check className="h-5 w-5" />
+                    Social Post Approvals
                   </CardTitle>
                   <CardDescription>
-                    Multi-platform scheduler with AI-powered content suggestions
+                    Review and approve scheduled social media posts
                   </CardDescription>
                 </div>
-                <Button size="sm" onClick={() => nav("/social")}>
-                  Open Full Manager
-                </Button>
               </div>
             </CardHeader>
-            <CardContent className="space-y-4">
-              {/* Quick Stats */}
-              <div className="grid grid-cols-3 gap-4">
-                <div className="border rounded-lg p-3">
-                  <div className="text-sm text-muted-foreground">Scheduled Posts</div>
-                  <div className="text-2xl font-bold">
-                    {upcomingPosts?.length || 0}
-                  </div>
-                </div>
-                <div className="border rounded-lg p-3">
-                  <div className="text-sm text-muted-foreground">Connected Platforms</div>
-                  <div className="text-2xl font-bold">
-                    {connectedAccounts?.length || 0}/3
-                  </div>
-                </div>
-                <div className="border rounded-lg p-3">
-                  <div className="text-sm text-muted-foreground">Posts This Month</div>
-                  <div className="text-2xl font-bold">
-                    {isGuest ? 12 : 0}
-                  </div>
-                </div>
-              </div>
-
-              {/* Quick Post Composer */}
-              <div className="border-t pt-4">
-                <h3 className="font-medium mb-3">Quick Post</h3>
-                <PostComposer
-                  businessId={business._id as Id<"businesses">}
-                  userId={business._id as unknown as Id<"users">}
-                  onPostCreated={() => {
-                    toast.success("Post created successfully!");
-                  }}
-                />
-              </div>
-
-              {/* Upcoming Posts Preview */}
-              {upcomingPosts && upcomingPosts.length > 0 && (
-                <div className="border-t pt-4">
-                  <h3 className="font-medium mb-3">Upcoming Posts</h3>
-                  <div className="space-y-2">
-                    {upcomingPosts.slice(0, 3).map((post: any) => (
-                      <div key={post._id} className="flex items-center justify-between p-2 border rounded">
-                        <div className="flex-1 min-w-0">
-                          <div className="text-sm font-medium truncate">{post.content}</div>
-                          <div className="text-xs text-muted-foreground">
-                            {new Date(post.scheduledAt!).toLocaleString()}
-                          </div>
-                        </div>
-                        <div className="flex gap-1 ml-2">
-                          {post.platforms.map((platform: string) => {
-                            const Icon = platform === "twitter" ? Twitter : 
-                                       platform === "linkedin" ? Linkedin : Facebook;
-                            return <Icon key={platform} className="h-4 w-4 text-muted-foreground" />;
-                          })}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* AI Features Badge */}
-              <div className="border-t pt-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Sparkles className="h-4 w-4 text-emerald-600" />
-                    <span className="text-sm font-medium">AI Features Available</span>
-                  </div>
-                  <div className="flex gap-2">
-                    <Badge variant="secondary">Content Generation</Badge>
-                    <Badge variant="secondary">Hashtag Suggestions</Badge>
-                    <Badge variant="secondary">Optimal Timing</Badge>
-                  </div>
-                </div>
-              </div>
-
-              {/* 30-Day Social Media Analytics */}
-              <div className="border-t pt-4">
-                <h3 className="font-medium mb-3">Analytics (Last 30 Days)</h3>
-                <div className="grid grid-cols-3 gap-3">
-                  <div className="border rounded-lg p-3">
-                    <div className="text-xs text-muted-foreground">Total Posts</div>
-                    <div className="text-xl font-bold">{isGuest ? 24 : upcomingPosts?.length || 0}</div>
-                    <div className="text-xs text-emerald-600">+12% vs prev</div>
-                  </div>
-                  <div className="border rounded-lg p-3">
-                    <div className="text-xs text-muted-foreground">Engagement</div>
-                    <div className="text-xl font-bold">{isGuest ? "3.2k" : "0"}</div>
-                    <div className="text-xs text-emerald-600">+8% vs prev</div>
-                  </div>
-                  <div className="border rounded-lg p-3">
-                    <div className="text-xs text-muted-foreground">Reach</div>
-                    <div className="text-xl font-bold">{isGuest ? "12.5k" : "0"}</div>
-                    <div className="text-xs text-emerald-600">+15% vs prev</div>
-                  </div>
-                </div>
-              </div>
+            <CardContent>
+              <ApprovalWorkflow businessId={business._id as Id<"businesses">} />
             </CardContent>
           </Card>
         </section>
       )}
+
+      {/* Social Media Hub Section - NEW */}
 
       {/* Pending Approvals */}
       <section>
