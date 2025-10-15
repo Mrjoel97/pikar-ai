@@ -2018,6 +2018,53 @@ const schema = defineSchema({
   })
     .index("by_campaign", ["campaignId"])
     .index("by_recipient", ["recipientEmail"]),
+
+  // Customer Journey Stages
+  customerJourneyStages: defineTable({
+    businessId: v.id("businesses"),
+    contactId: v.id("contacts"),
+    stage: v.union(
+      v.literal("awareness"),
+      v.literal("consideration"),
+      v.literal("decision"),
+      v.literal("retention"),
+      v.literal("advocacy")
+    ),
+    enteredAt: v.number(),
+    exitedAt: v.optional(v.number()),
+    metadata: v.optional(v.any()),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_contact", ["contactId"])
+    .index("by_business_and_stage", ["businessId", "stage"])
+    .index("by_contact_and_stage", ["contactId", "stage"]),
+
+  // Customer Journey Transitions
+  customerJourneyTransitions: defineTable({
+    businessId: v.id("businesses"),
+    contactId: v.id("contacts"),
+    fromStage: v.union(
+      v.literal("awareness"),
+      v.literal("consideration"),
+      v.literal("decision"),
+      v.literal("retention"),
+      v.literal("advocacy"),
+      v.literal("none")
+    ),
+    toStage: v.union(
+      v.literal("awareness"),
+      v.literal("consideration"),
+      v.literal("decision"),
+      v.literal("retention"),
+      v.literal("advocacy")
+    ),
+    transitionedAt: v.number(),
+    triggeredBy: v.optional(v.string()), // "manual", "automation", "email_open", etc.
+    metadata: v.optional(v.any()),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_contact", ["contactId"])
+    .index("by_business_and_date", ["businessId", "transitionedAt"]),
 });
 
 export default schema;

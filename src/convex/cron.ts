@@ -61,4 +61,12 @@ crons.interval(
   {}
 );
 
+/* Auto-advance customer journeys daily */
+crons.interval(
+  "auto-advance-journeys",
+  { hours: 24 },
+  "customerJourney:autoAdvanceJourneys" as any,
+  {}
+);
+
 export default crons;

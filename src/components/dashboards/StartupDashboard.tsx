@@ -60,6 +60,7 @@ import { GoalsTracker } from "@/components/team/GoalsTracker";
 import { ApprovalWorkflow } from "@/components/social/ApprovalWorkflow";
 import { CollaborationFeed } from "./startup/CollaborationFeed";
 import { WorkflowAssignments } from "./startup/WorkflowAssignments";
+import { CustomerJourneyMap } from "./startup/CustomerJourneyMap";
 
 export function StartupDashboard({ 
   business, 
@@ -364,29 +365,28 @@ const pendingApprovals = useQuery(
       {/* Team Performance - Now using sub-component */}
       <TeamPerformance teamPerformance={teamPerformance} isGuest={isGuest} />
 
-      {/* Workflow Assignments & Tracking Section - NEW */}
-      {!isGuest && business?._id && (
-        <section className="mb-6">
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="flex items-center gap-2">
-                    <Users className="h-5 w-5" />
-                    Workflow Assignments & Tracking
-                  </CardTitle>
-                  <CardDescription>Manage task assignments and team workload</CardDescription>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <WorkflowAssignments 
-                businessId={business._id as Id<"businesses">} 
-                userId={business._id as Id<"users">}
-              />
-            </CardContent>
-          </Card>
-        </section>
+      {/* Workflow Assignments & Tracking */}
+      <Card className="col-span-full">
+        <CardHeader>
+          <CardTitle>Workflow Assignments & Tracking</CardTitle>
+          <CardDescription>Manage team task assignments and workload</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <WorkflowAssignments businessId={businessId} />
+        </CardContent>
+      </Card>
+
+      {/* Customer Journey Mapping */}
+      {!isGuest && businessId && (
+        <Card className="col-span-full">
+          <CardHeader>
+            <CardTitle>Customer Journey Mapping</CardTitle>
+            <CardDescription>Track and visualize customer progression through stages</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <CustomerJourneyMap businessId={businessId as Id<"businesses">} />
+          </CardContent>
+        </Card>
       )}
 
       {/* Approval Health Card - Add after Team Performance section */}
