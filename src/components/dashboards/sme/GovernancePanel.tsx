@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { GovernanceScoreCard } from "@/components/governance/GovernanceScoreCard";
+import { PolicyManagement } from "@/components/governance/PolicyManagement";
 import { AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { Id } from "@/convex/_generated/dataModel";
@@ -161,6 +162,14 @@ export function GovernancePanel({
           </Card>
         </div>
       </section>
+
+      {/* Add Policy Management Section */}
+      {businessId && !isGuest && (
+        <section className="mt-6">
+          <h2 className="text-lg font-semibold mb-3">Policy Management</h2>
+          <PolicyManagement businessId={businessId} />
+        </section>
+      )}
 
       {/* Governance & Audit data hooks */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">

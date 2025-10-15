@@ -2090,6 +2090,61 @@ const schema = defineSchema({
   })
     .index("by_business_and_timestamp", ["businessId", "timestamp"])
     .index("by_contact_and_timestamp", ["contactId", "timestamp"]),
+
+  // Policy Management System
+  policies: defineTable({
+    businessId: v.id("businesses"),
+    title: v.string(),
+    description: v.string(),
+    category: v.string(),
+    content: v.string(),
+    version: v.string(),
+    status: v.union(v.literal("draft"), v.literal("active"), v.literal("deprecated")),
+    severity: v.union(v.literal("low"), v.literal("medium"), v.literal("high"), v.literal("critical")),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_status", ["status"])
+    .index("by_business_and_status", ["businessId", "status"]),
+
+  policyVersions: defineTable({
+    policyId: v.id("policies"),
+    version: v.string(),
+    content: v.string(),
+    changeNotes: v.string(),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+  })
+    .index("by_policy", ["policyId"]),
+
+  policyApprovals: defineTable({
+    businessId: v.id("businesses"),
+    policyId: v.id("policies"),
+    requestedBy: v.id("users"),
+    status: v.union(v.literal("pending"), v.literal("approved"), v.literal("rejected")),
+    approvedBy: v.optional(v.id("users")),
+    approvedAt: v.optional(v.number()),
+    comments: v.optional(v.string()),
+    createdAt: v.number(),
+  })
+    .index("by_business_and_status", ["businessId", "status"])
+    .index("by_policy", ["policyId"]),
+
+  policyExceptions: defineTable({
+    businessId: v.id("businesses"),
+    policyId: v.id("policies"),
+    reason: v.string(),
+    status: v.union(v.literal("active"), v.literal("expired"), v.literal("revoked")),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    expiresAt: v.optional(v.number()),
+    revokedAt: v.optional(v.number()),
+    revokedBy: v.optional(v.id("users")),
+  })
+    .index("by_business_and_status", ["businessId", "status"])
+    .index("by_policy", ["policyId"]),
 });
 
 export default schema;
