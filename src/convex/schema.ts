@@ -2065,6 +2065,31 @@ const schema = defineSchema({
     .index("by_business", ["businessId"])
     .index("by_contact", ["contactId"])
     .index("by_business_and_date", ["businessId", "transitionedAt"]),
+
+  // Revenue Attribution: Touchpoints and Conversions
+  revenueTouchpoints: defineTable({
+    businessId: v.id("businesses"),
+    contactId: v.id("contacts"),
+    channel: v.string(), // "email" | "social" | "paid" | "referral" | "organic" | "direct"
+    campaignId: v.optional(v.string()),
+    metadata: v.optional(v.any()),
+    timestamp: v.number(),
+  })
+    .index("by_contact_and_business", ["contactId", "businessId"])
+    .index("by_business_and_timestamp", ["businessId", "timestamp"]),
+
+  revenueConversions: defineTable({
+    businessId: v.id("businesses"),
+    contactId: v.id("contacts"),
+    revenue: v.number(),
+    conversionType: v.string(),
+    touchpointCount: v.number(),
+    attributions: v.record(v.string(), v.record(v.string(), v.number())), // model -> channel -> revenue
+    metadata: v.optional(v.any()),
+    timestamp: v.number(),
+  })
+    .index("by_business_and_timestamp", ["businessId", "timestamp"])
+    .index("by_contact_and_timestamp", ["contactId", "timestamp"]),
 });
 
 export default schema;

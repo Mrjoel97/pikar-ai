@@ -61,6 +61,7 @@ import { ApprovalWorkflow } from "@/components/social/ApprovalWorkflow";
 import { CollaborationFeed } from "./startup/CollaborationFeed";
 import { WorkflowAssignments } from "./startup/WorkflowAssignments";
 import { CustomerJourneyMap } from "./startup/CustomerJourneyMap";
+import { RevenueAttribution } from "./startup/RevenueAttribution";
 
 export function StartupDashboard({ 
   business, 
@@ -377,14 +378,25 @@ const pendingApprovals = useQuery(
       </Card>
 
       {/* Customer Journey Mapping */}
-      {!isGuest && businessId && (
+      <Card className="col-span-full">
+        <CardHeader>
+          <CardTitle>Customer Journey Mapping</CardTitle>
+          <CardDescription>Track and visualize customer progression through stages</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <CustomerJourneyMap businessId={businessId} />
+        </CardContent>
+      </Card>
+
+      {/* Revenue Attribution */}
+      {!isGuest && business?._id && (
         <Card className="col-span-full">
           <CardHeader>
-            <CardTitle>Customer Journey Mapping</CardTitle>
-            <CardDescription>Track and visualize customer progression through stages</CardDescription>
+            <CardTitle>Revenue Attribution</CardTitle>
+            <CardDescription>Multi-touch attribution and channel ROI analysis</CardDescription>
           </CardHeader>
           <CardContent>
-            <CustomerJourneyMap businessId={businessId as Id<"businesses">} />
+            <RevenueAttribution businessId={business._id as Id<"businesses">} />
           </CardContent>
         </Card>
       )}
