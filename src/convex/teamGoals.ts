@@ -159,6 +159,53 @@ export const updateProgress = mutation({
       timestamp: Date.now(),
     });
 
+    // Send milestone notification if goal is near completion or completed
+    const progress = goal.targetValue > 0 ? (args.currentValue / goal.targetValue) * 100 : 0;
+    
+    if (isCompleted) {
+      // Notify assigned users (or the creator if none assigned) about completion
+      const recipients: Id<"users">[] =
+        Array.isArray(goal.assignedTo) && goal.assignedTo.length > 0
+          ? goal.assignedTo
+          : [goal.createdBy];
+      for (const userId of recipients) {
+        await ctx.db.insert("notifications", {
+          businessId: goal.businessId,
+          userId,
+          type: "workflow_completion",
+          title: "🎉 Goal Completed!",
+          message: `"${goal.title}" has been completed!`,
+          data: { goalId: String(args.goalId) },
+          isRead: false,
+          priority: "high",
+          createdAt: Date.now(),
+        });
+      }
+    } else if (progress >= 75 && goal.currentValue < goal.targetValue) {
+      // Notify about milestone (75% completion)
+      const previousProgress = goal.targetValue > 0 ? (goal.currentValue / goal.targetValue) * 100 : 0;
+      if (previousProgress < 75) {
+        // Notify assigned users (or the creator if none assigned)
+        const recipients: Id<"users">[] =
+          Array.isArray(goal.assignedTo) && goal.assignedTo.length > 0
+            ? goal.assignedTo
+            : [goal.createdBy];
+        for (const userId of recipients) {
+          await ctx.db.insert("notifications", {
+            businessId: goal.businessId,
+            userId,
+            type: "system_alert",
+            title: "🎯 Goal Milestone Reached",
+            message: `"${goal.title}" is now ${Math.round(progress)}% complete!`,
+            data: { goalId: String(args.goalId) },
+            isRead: false,
+            priority: "medium",
+            createdAt: Date.now(),
+          });
+        }
+      }
+    }
+
     // Audit log
     await ctx.runMutation("audit:write" as any, {
       businessId: goal.businessId,
@@ -306,6 +353,110 @@ export const getGoalsSummary = query({
       completed: completed.length,
       overdue: overdue.length,
       averageProgress: Math.round(totalProgress),
+    };
+  },
+});
+
+// Add: Get team member contributions for goals
+export const getTeamContributions = query({
+  args: { 
+    businessId: v.id("businesses"),
+    days: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return [];
+
+    const days = args.days || 30;
+    const cutoff = Date.now() - (days * 24 * 60 * 60 * 1000);
+
+    // Get all goal updates in the time period
+    const updates = await ctx.db
+      .query("goalUpdates")
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .filter((q) => q.gte(q.field("timestamp"), cutoff))
+      .collect();
+
+    // Group by user
+    const contributionMap = new Map<string, {
+      userId: string;
+      userName: string;
+      updateCount: number;
+      totalProgress: number;
+      goalsContributed: Set<string>;
+    }>();
+
+    for (const update of updates) {
+      const user = await ctx.db.get(update.updatedBy);
+      const userName = user && 'name' in user && user.name ? user.name : "Unknown";
+      const userId = String(update.updatedBy);
+
+      if (!contributionMap.has(userId)) {
+        contributionMap.set(userId, {
+          userId,
+          userName,
+          updateCount: 0,
+          totalProgress: 0,
+          goalsContributed: new Set(),
+        });
+      }
+
+      const contrib = contributionMap.get(userId)!;
+      contrib.updateCount++;
+      contrib.totalProgress += (update.newValue - update.previousValue);
+      contrib.goalsContributed.add(String(update.goalId));
+    }
+
+    // Convert to array
+    return Array.from(contributionMap.values()).map(c => ({
+      userId: c.userId,
+      userName: c.userName,
+      updateCount: c.updateCount,
+      totalProgress: Math.round(c.totalProgress),
+      goalsContributed: c.goalsContributed.size,
+    })).sort((a, b) => b.updateCount - a.updateCount);
+  },
+});
+
+// Add: Get goals dashboard summary with milestones
+export const getDashboardSummary = query({
+  args: { businessId: v.id("businesses") },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return null;
+
+    const goals = await ctx.db
+      .query("teamGoals")
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .collect();
+
+    const active = goals.filter(g => g.status === "active");
+    const completed = goals.filter(g => g.status === "completed");
+    const overdue = active.filter(g => g.deadline && g.deadline < Date.now());
+
+    // Calculate milestones (goals near completion)
+    const nearCompletion = active.filter(g => {
+      const progress = g.targetValue > 0 ? (g.currentValue / g.targetValue) * 100 : 0;
+      return progress >= 75 && progress < 100;
+    });
+
+    // Recent completions (last 7 days)
+    const weekAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
+    const recentCompletions = completed.filter(g => g.updatedAt >= weekAgo);
+
+    return {
+      total: goals.length,
+      active: active.length,
+      completed: completed.length,
+      overdue: overdue.length,
+      nearCompletion: nearCompletion.length,
+      recentCompletions: recentCompletions.length,
+      topGoals: active.slice(0, 3).map(g => ({
+        _id: g._id,
+        title: g.title,
+        progress: g.targetValue > 0 ? Math.min(100, Math.round((g.currentValue / g.targetValue) * 100)) : 0,
+        deadline: g.deadline,
+      })),
     };
   },
 });

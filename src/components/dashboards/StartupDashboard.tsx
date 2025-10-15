@@ -55,6 +55,8 @@ import type { StartupDashboardProps } from "@/types/dashboard";
 import { TeamPerformance } from "./startup/TeamPerformance";
 import { GrowthMetrics } from "./startup/GrowthMetrics";
 import { CampaignList } from "./startup/CampaignList";
+import { GoalsDashboardWidget } from "./startup/GoalsDashboardWidget";
+import { GoalsTracker } from "@/components/team/GoalsTracker";
 
 export function StartupDashboard({ 
   business, 
@@ -395,6 +397,31 @@ const pendingApprovals = useQuery(
             </div>
           </CardContent>
         </Card>
+      )}
+
+      {/* Shared Goals Tracking Section - NEW */}
+      {!isGuest && business?._id && (
+        <section className="mb-6">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <Target className="h-5 w-5" />
+                    Team Goals Progress
+                  </CardTitle>
+                  <CardDescription>Track shared objectives and team contributions</CardDescription>
+                </div>
+                <Button size="sm" variant="outline" onClick={() => nav("/goals")}>
+                  View All Goals
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <GoalsDashboardWidget businessId={business._id as Id<"businesses">} />
+            </CardContent>
+          </Card>
+        </section>
       )}
 
       {/* KPI Trends */}
