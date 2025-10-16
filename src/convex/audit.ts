@@ -1,4 +1,4 @@
-import { internalMutation, query, mutation } from "./_generated/server";
+import { internalMutation, internalQuery, query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import { api } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
@@ -315,5 +315,197 @@ export const listRecent = query({
       .take(pageLimit);
 
     return logs;
+  },
+});
+
+/**
+ * Advanced audit search with filtering by date range, user, action type, entity type
+ */
+export const searchAuditLogs = query({
+  args: {
+    businessId: v.optional(v.id("businesses")),
+    startDate: v.optional(v.number()),
+    endDate: v.optional(v.number()),
+    userId: v.optional(v.id("users")),
+    action: v.optional(v.string()),
+    entityType: v.optional(v.string()),
+    searchTerm: v.optional(v.string()),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    // Guest-safe early return
+    if (!args.businessId) {
+      return [];
+    }
+
+    const takeLimit = Math.max(1, Math.min(args.limit ?? 100, 500));
+
+    // Fetch logs by business
+    let logs = await ctx.db
+      .query("audit_logs")
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId!))
+      .order("desc")
+      .take(takeLimit * 2); // Fetch more for filtering
+
+    // Apply filters
+    if (args.startDate) {
+      logs = logs.filter((l) => l.createdAt >= args.startDate!);
+    }
+    if (args.endDate) {
+      logs = logs.filter((l) => l.createdAt <= args.endDate!);
+    }
+    if (args.userId) {
+      logs = logs.filter((l) => l.userId === args.userId);
+    }
+    if (args.action) {
+      logs = logs.filter((l) => l.action === args.action);
+    }
+    if (args.entityType) {
+      logs = logs.filter((l) => l.entityType === args.entityType);
+    }
+    if (args.searchTerm) {
+      const term = args.searchTerm.toLowerCase();
+      logs = logs.filter((l) => {
+        const detailsStr = JSON.stringify(l.details || {}).toLowerCase();
+        return (
+          l.action.toLowerCase().includes(term) ||
+          l.entityType.toLowerCase().includes(term) ||
+          l.entityId.toLowerCase().includes(term) ||
+          detailsStr.includes(term)
+        );
+      });
+    }
+
+    return logs.slice(0, takeLimit);
+  },
+});
+
+/**
+ * Get unique action types for a business (for filter dropdowns)
+ */
+export const getActionTypes = query({
+  args: { businessId: v.optional(v.id("businesses")) },
+  handler: async (ctx, args) => {
+    if (!args.businessId) return [];
+
+    const logs = await ctx.db
+      .query("audit_logs")
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId!))
+      .take(1000);
+
+    const actions = new Set(logs.map((l) => l.action));
+    return Array.from(actions).sort();
+  },
+});
+
+/**
+ * Get unique entity types for a business (for filter dropdowns)
+ */
+export const getEntityTypes = query({
+  args: { businessId: v.optional(v.id("businesses")) },
+  handler: async (ctx, args) => {
+    if (!args.businessId) return [];
+
+    const logs = await ctx.db
+      .query("audit_logs")
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId!))
+      .take(1000);
+
+    const entities = new Set(logs.map((l) => l.entityType));
+    return Array.from(entities).sort();
+  },
+});
+
+/**
+ * Schedule an audit report to be generated and emailed
+ */
+export const scheduleAuditReport = mutation({
+  args: {
+    businessId: v.id("businesses"),
+    frequency: v.union(v.literal("daily"), v.literal("weekly"), v.literal("monthly")),
+    format: v.union(v.literal("csv"), v.literal("pdf")),
+    filters: v.optional(v.object({
+      startDate: v.optional(v.number()),
+      endDate: v.optional(v.number()),
+      action: v.optional(v.string()),
+      entityType: v.optional(v.string()),
+    })),
+    recipients: v.array(v.string()), // email addresses
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Unauthorized");
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("email", (q) => q.eq("email", identity.email!))
+      .unique();
+    if (!user) throw new Error("User not found");
+
+    const business = await ctx.db.get(args.businessId);
+    if (!business) throw new Error("Business not found");
+    if (business.ownerId !== user._id && !business.teamMembers.includes(user._id)) {
+      throw new Error("Not authorized");
+    }
+
+    // Store scheduled report configuration
+    const scheduleId = await ctx.db.insert("auditReportSchedules", {
+      businessId: args.businessId,
+      frequency: args.frequency,
+      format: args.format,
+      filters: args.filters ?? {},
+      recipients: args.recipients,
+      createdBy: user._id,
+      createdAt: Date.now(),
+      lastRun: null,
+      nextRun: Date.now() + (args.frequency === "daily" ? 86400000 : args.frequency === "weekly" ? 604800000 : 2592000000),
+      active: true,
+    });
+
+    // Audit log
+    await ctx.db.insert("audit_logs", {
+      businessId: args.businessId,
+      userId: user._id,
+      action: "audit_report_scheduled",
+      entityType: "audit_report_schedule",
+      entityId: scheduleId,
+      details: { frequency: args.frequency, format: args.format },
+      createdAt: Date.now(),
+    });
+
+    return scheduleId;
+  },
+});
+
+// Add helper to compute the next run time based on frequency
+function computeNextRun(freq: "daily" | "weekly" | "monthly", from: number): number {
+  if (freq === "daily") return from + 24 * 60 * 60 * 1000;
+  if (freq === "weekly") return from + 7 * 24 * 60 * 60 * 1000;
+  // monthly (approx 30 days)
+  return from + 30 * 24 * 60 * 60 * 1000;
+}
+
+// Internal: list audit schedules due to run (guest-inaccessible, used by cron/action)
+export const listDueSchedules = internalQuery({
+  args: {},
+  handler: async (ctx) => {
+    const now = Date.now();
+    // Avoid relying on a specific index name; keep it robust
+    const schedules = await ctx.db.query("auditReportSchedules").take(1000);
+    return schedules
+      .filter((s: any) => s.active === true && typeof s.nextRun === "number" && s.nextRun <= now)
+      .slice(0, 200);
+  },
+});
+
+// Internal: mark a schedule as run, updating lastRun and nextRun
+export const markScheduleRun = internalMutation({
+  args: { scheduleId: v.id("auditReportSchedules") },
+  handler: async (ctx, { scheduleId }) => {
+    const sched: any = await ctx.db.get(scheduleId);
+    if (!sched) return;
+    const now = Date.now();
+    const next = computeNextRun(sched.frequency as any, now);
+    await ctx.db.patch(scheduleId, { lastRun: now, nextRun: next });
   },
 });

@@ -728,6 +728,28 @@ export function EnterpriseDashboard({
           <Card>
             <CardContent className="p-4 flex items-center justify-between">
               <div>
+                <div className="text-sm font-medium">Data Warehouse</div>
+                <div className="text-xs text-muted-foreground">ETL & data integration</div>
+              </div>
+              <Button size="sm" variant="outline" onClick={() => nav("/enterprise/data-warehouse")}>
+                Manage
+              </Button>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4 flex items-center justify-between">
+              <div>
+                <div className="text-sm font-medium">Security Dashboard</div>
+                <div className="text-xs text-muted-foreground">Threats & compliance</div>
+              </div>
+              <Button size="sm" variant="outline" onClick={() => nav("/enterprise/security")}>
+                Open
+              </Button>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4 flex items-center justify-between">
+              <div>
                 <div className="text-sm font-medium">Feature Flags</div>
                 <div className="text-xs text-muted-foreground">Manage rollout</div>
               </div>

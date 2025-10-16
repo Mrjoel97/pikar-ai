@@ -1,4 +1,6 @@
 import { cronJobs } from "convex/server";
+import { api } from "./_generated/api";
+import { internal } from "./_generated/api";
 
 const crons = cronJobs();
 
@@ -74,6 +76,61 @@ crons.interval(
   "governance-auto-escalation",
   { hours: 1 }, // Run every hour
   "governanceAutomation:checkAndAutoEscalate" as any,
+  {}
+);
+
+crons.interval(
+  "audit report scheduler",
+  { hours: 1 },
+  "auditActions:processAuditSchedules" as any,
+  {}
+);
+
+// Add vendor renewal alerts check (daily)
+crons.interval(
+  "vendor-renewal-alerts",
+  { hours: 24 },
+  "vendors:checkRenewalAlerts" as any,
+  {}
+);
+
+// Data Warehouse: Check for due syncs every hour
+crons.interval(
+  "data-warehouse-sync-check",
+  { hours: 1 },
+  "dataWarehouse:checkDueSyncs" as any,
+  {}
+);
+
+// Security: Threat detection every 15 minutes
+crons.interval(
+  "security-threat-detection",
+  { minutes: 15 },
+  "enterpriseSecurity:detectThreats" as any,
+  {}
+);
+
+// Security: Check certification expiry daily
+crons.interval(
+  "security-cert-expiry-check",
+  { hours: 24 },
+  "enterpriseSecurity:checkCertificationExpiry" as any,
+  {}
+);
+
+// Update portfolio metrics hourly
+crons.interval(
+  "update-portfolio-metrics",
+  { hours: 1 },
+  "portfolioManagement:updatePortfolioMetrics" as any,
+  {}
+);
+
+// Add digest email notifications (daily at 8 AM)
+crons.interval(
+  "send-digest-emails",
+  { hours: 24 },
+  "notifications:sendDigestEmails" as any,
   {}
 );
 

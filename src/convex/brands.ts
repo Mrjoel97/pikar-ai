@@ -247,3 +247,135 @@ export const getDefaultBrand = query({
     return brand;
   },
 });
+
+/**
+ * Query: Get brand-specific analytics
+ */
+export const getBrandAnalytics = query({
+  args: {
+    businessId: v.optional(v.id("businesses")),
+    brandId: v.optional(v.id("brands")),
+    timeRange: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    if (!args.businessId) {
+      return {
+        posts: 0,
+        impressions: 0,
+        engagements: 0,
+        engagementRate: 0,
+        topPosts: [],
+      };
+    }
+
+    // Get social posts for this brand
+    let postsQuery = ctx.db
+      .query("socialPosts")
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId!));
+
+    const posts = await postsQuery.collect();
+    
+    // Filter by brand if specified
+    const brandPosts = args.brandId
+      ? posts.filter((p: any) => (p as any).brandId && (p as any).brandId === args.brandId)
+      : posts;
+
+    const totalImpressions = brandPosts.reduce(
+      (sum, p) => sum + (p.performanceMetrics?.impressions || 0),
+      0
+    );
+    const totalEngagements = brandPosts.reduce(
+      (sum, p) => sum + (p.performanceMetrics?.engagements || 0),
+      0
+    );
+
+    return {
+      posts: brandPosts.length,
+      impressions: totalImpressions,
+      engagements: totalEngagements,
+      engagementRate: totalImpressions > 0 ? (totalEngagements / totalImpressions) * 100 : 0,
+      topPosts: brandPosts
+        .sort((a, b) => (b.performanceMetrics?.engagements || 0) - (a.performanceMetrics?.engagements || 0))
+        .slice(0, 5)
+        .map((p) => ({
+          postId: p._id,
+          content: p.content.substring(0, 100),
+          engagements: p.performanceMetrics?.engagements || 0,
+        })),
+    };
+  },
+});
+
+/**
+ * Query: Compare brand performance
+ */
+export const compareBrandPerformance = query({
+  args: {
+    businessId: v.optional(v.id("businesses")),
+    timeRange: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    if (!args.businessId) {
+      return [];
+    }
+
+    const brands = await ctx.db
+      .query("brands")
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId!))
+      .collect();
+
+    const comparison = [];
+
+    for (const brand of brands) {
+      const analytics = await ctx.runQuery("brands:getBrandAnalytics" as any, {
+        businessId: args.businessId,
+        brandId: brand._id,
+        timeRange: args.timeRange,
+      });
+
+      comparison.push({
+        brandId: brand._id,
+        brandName: brand.name,
+        ...analytics,
+      });
+    }
+
+    return comparison;
+  },
+});
+
+/**
+ * Query: Get brand asset library
+ */
+export const getBrandAssets = query({
+  args: {
+    businessId: v.optional(v.id("businesses")),
+    brandId: v.optional(v.id("brands")),
+  },
+  handler: async (ctx, args) => {
+    if (!args.businessId) {
+      return [];
+    }
+
+    const brand = args.brandId ? await ctx.db.get(args.brandId) : null;
+
+    // Return brand assets (logos, colors, guidelines)
+    return [
+      {
+        type: "logo",
+        url: brand?.logoUrl || "",
+        name: "Primary Logo",
+      },
+      {
+        type: "color",
+        value: brand?.primaryColor || "#000000",
+        name: "Primary Color",
+      },
+      {
+        type: "color",
+        value: brand?.secondaryColor || "#666666",
+        name: "Secondary Color",
+      },
+    ];
+  },
+});

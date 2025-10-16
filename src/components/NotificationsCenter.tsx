@@ -41,6 +41,7 @@ export function NotificationsCenter({ disabled }: Props) {
   );
   const markOne = useConvexMutation(api.notifications.markMyNotificationRead);
   const markAll = useConvexMutation(api.notifications.markAllMyNotificationsRead);
+  const handleNotificationAction = useConvexMutation(api.notifications.handleNotificationAction);
 
   const businesses = useConvexQuery(api.businesses.getUserBusinesses, disabled ? "skip" : {});
   const businessId = Array.isArray(businesses) && businesses[0]?._id ? businesses[0]._id : null;
@@ -411,6 +412,46 @@ export function NotificationsCenter({ disabled }: Props) {
                           </div>
                         </div>
                         <div className="flex flex-col gap-2 items-end">
+                          {/* Add inline action buttons for approval notifications */}
+                          {notification.type === "approval" && !notification.isRead && (
+                            <div className="flex gap-2">
+                              <Button
+                                size="sm"
+                                variant="default"
+                                className="bg-green-600 hover:bg-green-700"
+                                onClick={async () => {
+                                  try {
+                                    await handleNotificationAction({
+                                      notificationId: notification._id,
+                                      action: "approve",
+                                    });
+                                    toast.success("Approved");
+                                  } catch (e: any) {
+                                    toast.error(e.message || "Failed to approve");
+                                  }
+                                }}
+                              >
+                                Approve
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                onClick={async () => {
+                                  try {
+                                    await handleNotificationAction({
+                                      notificationId: notification._id,
+                                      action: "reject",
+                                    });
+                                    toast.success("Rejected");
+                                  } catch (e: any) {
+                                    toast.error(e.message || "Failed to reject");
+                                  }
+                                }}
+                              >
+                                Reject
+                              </Button>
+                            </div>
+                          )}
                           {/* Actions */}
                           <div className="flex flex-col gap-2 items-end">
                             {notification.link && (

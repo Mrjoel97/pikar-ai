@@ -31,13 +31,13 @@ export function Sidebar({
 
   return (
     <aside 
-      className="hidden md:flex fixed left-0 top-0 bottom-0 w-72 bg-gradient-to-b from-emerald-900 to-emerald-800 text-white"
+      className="hidden md:flex fixed left-0 top-0 bottom-0 w-72 bg-gradient-to-b from-emerald-900 to-emerald-800 text-white overflow-y-auto"
       style={bgStyle}
     >
       <div className="flex flex-col h-full w-full p-4">
         {/* Logo Section */}
         {logoUrl && (
-          <div className="mb-4 flex justify-center">
+          <div className="mb-4 flex justify-center flex-shrink-0">
             <img 
               src={logoUrl} 
               alt="Company Logo" 
@@ -50,7 +50,7 @@ export function Sidebar({
         )}
 
         {/* Search */}
-        <div className="mb-4">
+        <div className="mb-4 flex-shrink-0">
           <Input
             aria-label="Search navigation"
             placeholder="Search..."
@@ -59,42 +59,39 @@ export function Sidebar({
         </div>
 
         {/* Menu label */}
-        <div className="text-[11px] uppercase tracking-wider text-emerald-200/80 mb-2">
+        <div className="text-[11px] uppercase tracking-wider text-emerald-200/80 mb-2 flex-shrink-0">
           Menu
         </div>
 
-        {/* Nav items */}
-        <nav className="space-y-1 overflow-y-auto pr-1">
+        {/* Nav items - scrollable */}
+        <nav className="space-y-1 overflow-y-auto pr-1 flex-1 min-h-0">
           {items.map((item) => (
             <button
               key={`${item.label}-${item.to}`}
               onClick={() => onNavigate(item.to)}
-              className="w-full flex items-center gap-3 px-3 py-2 rounded-md hover:bg-white/10 transition"
+              className="w-full flex items-center gap-3 px-3 py-2 rounded-md hover:bg-white/10 transition touch-manipulation active:scale-95"
             >
-              <item.icon className="h-4 w-4" />
-              <span className="text-sm">{item.label}</span>
+              <item.icon className="h-4 w-4 flex-shrink-0" />
+              <span className="text-sm truncate">{item.label}</span>
             </button>
           ))}
         </nav>
 
-        {/* Spacer */}
-        <div className="flex-1" />
-
         {/* Bottom section: user + logout */}
-        <div className="space-y-2">
+        <div className="space-y-2 flex-shrink-0 mt-4">
           <div className="bg-white/10 rounded-lg p-3">
             <div className="text-sm font-medium truncate">
               {userDisplay || "User"}
             </div>
             {planLabel && (
-              <div className="text-xs text-emerald-100/80">{planLabel}</div>
+              <div className="text-xs text-emerald-100/80 truncate">{planLabel}</div>
             )}
           </div>
           <button
             onClick={onLogout}
-            className="w-full flex items-center gap-2 px-3 py-2 rounded-md bg-white/10 hover:bg-white/15 transition"
+            className="w-full flex items-center gap-2 px-3 py-2 rounded-md bg-white/10 hover:bg-white/15 transition touch-manipulation active:scale-95"
           >
-            <LogOut className="h-4 w-4" />
+            <LogOut className="h-4 w-4 flex-shrink-0" />
             <span className="text-sm">Logout</span>
           </button>
         </div>
@@ -106,13 +103,13 @@ export function Sidebar({
             e.preventDefault();
             onNavigate("/learning-hub");
           }}
-          className="flex items-center gap-2 px-3 py-2 rounded-md text-sm hover:bg-accent hover:text-accent-foreground"
+          className="flex items-center gap-2 px-3 py-2 rounded-md text-sm hover:bg-accent hover:text-accent-foreground touch-manipulation active:scale-95 flex-shrink-0"
           data-testid="sidebar-learninghub-link"
           aria-label="Open Learning Hub"
           role="button"
         >
-          <span className="i-lucide-graduation-cap w-4 h-4" />
-          <span>Learning Hub</span>
+          <span className="i-lucide-graduation-cap w-4 h-4 flex-shrink-0" />
+          <span className="truncate">Learning Hub</span>
         </a>
 
         {/* Settings Shortcut */}
@@ -122,13 +119,13 @@ export function Sidebar({
             e.preventDefault();
             onNavigate("/settings");
           }}
-          className="flex items-center gap-2 px-3 py-2 rounded-md text-sm hover:bg-accent hover:text-accent-foreground"
+          className="flex items-center gap-2 px-3 py-2 rounded-md text-sm hover:bg-accent hover:text-accent-foreground touch-manipulation active:scale-95 flex-shrink-0"
           data-testid="sidebar-settings-link"
           aria-label="Open settings"
           role="button"
         >
-          <span className="i-lucide-settings w-4 h-4" />
-          <span>Settings</span>
+          <span className="i-lucide-settings w-4 h-4 flex-shrink-0" />
+          <span className="truncate">Settings</span>
         </a>
       </div>
     </aside>

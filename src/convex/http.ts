@@ -142,53 +142,69 @@ http.route({
 http.route({
   path: "/api/audit/export",
   method: "GET",
-  handler: httpAction(async (ctx, request) => {
-    const url = new URL(request.url);
+  handler: httpAction(async (ctx, req) => {
+    const url = new URL(req.url);
     const businessId = url.searchParams.get("businessId");
-    
+    const startDate = url.searchParams.get("startDate");
+    const endDate = url.searchParams.get("endDate");
+    const action = url.searchParams.get("action") || undefined;
+    const entityType = url.searchParams.get("entityType") || undefined;
+    const limit = Number(url.searchParams.get("limit") || "1000");
+
     if (!businessId) {
-      return new Response("Missing businessId parameter", { status: 400 });
+      return new Response("Missing businessId", { status: 400 });
     }
 
-    const logs = await ctx.runQuery(internal.audit.listForBusiness, { 
-      businessId: businessId as any 
-    });
+    const args: any = {
+      businessId,
+      startDate: startDate ? Number(startDate) : undefined,
+      endDate: endDate ? Number(endDate) : undefined,
+      action,
+      entityType,
+      limit: isNaN(limit) ? 1000 : Math.min(Math.max(limit, 1), 2000),
+    };
 
-    // Enhanced CSV with both legacy and structured fields
-    const csvLines = [
-      // Header with both legacy and new structured fields
-      "timestamp,user,action,details,entityType,entityId,structured_details"
-    ];
+    const logs: Array<any> = await (ctx as any).runQuery("audit:searchAuditLogs" as any, args);
 
-    for (const log of logs) {
-      const timestamp = new Date(log._creationTime).toISOString();
-      const user = log.userId || "system";
-      const action = log.action || "unknown";
-      const legacyDetails = typeof log.details === "string" ? log.details : JSON.stringify(log.details || {});
-      const entityType = log.entityType || "";
-      const entityId = log.entityId || "";
-      const structuredDetails = JSON.stringify(log.details || {});
-      
-      // CSV escape function
-      const csvEscape = (str: string) => `"${str.replace(/"/g, '""')}"`;
-      
-      csvLines.push([
-        csvEscape(timestamp),
-        csvEscape(user),
-        csvEscape(action),
-        csvEscape(legacyDetails),
-        csvEscape(entityType),
-        csvEscape(entityId),
-        csvEscape(structuredDetails),
-      ].join(","));
+    const headers = ["createdAt", "action", "entityType", "entityId", "userId", "details"];
+    const esc = (v: any) => {
+      const s =
+        v === null || v === undefined
+          ? ""
+          : typeof v === "string"
+          ? v
+          : typeof v === "number"
+          ? String(v)
+          : JSON.stringify(v);
+      const needsQuotes = s.includes(",") || s.includes('"') || s.includes("\n");
+      const doubled = s.replace(/"/g, '""');
+      return needsQuotes ? `"${doubled}"` : doubled;
+    };
+
+    const lines: string[] = [headers.join(",")];
+    for (const r of logs) {
+      lines.push(
+        [
+          r.createdAt,
+          r.action,
+          r.entityType,
+          r.entityId ?? "",
+          r.userId ?? "",
+          r.details ? JSON.stringify(r.details) : "",
+        ]
+          .map(esc)
+          .join(","),
+      );
     }
 
-    const csv = csvLines.join("\n");
-    
+    const csv = lines.join("\n");
+    const disposition = `attachment; filename="audit_${new Date().toISOString().slice(0, 10)}.csv"`;
     return new Response(csv, {
+      status: 200,
       headers: {
-        "Content-Type": "text/csv",
-        "Content-Disposition": `attachment; filename="audit_export_${businessId}_${Date.now()}.csv"`,
+        "Content-Type": "text/csv; charset=utf-8",
+        "Content-Disposition": disposition,
+        "Cache-Control": "no-store",
       },
     });
   }),

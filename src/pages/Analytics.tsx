@@ -6,6 +6,7 @@ import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
+import { exportData, formatters } from "@/lib/exportUtils";
 
 export default function AnalyticsPage() {
   const navigate = useNavigate();
@@ -104,63 +105,22 @@ export default function AnalyticsPage() {
     </div>
   );
 
-  // Add: CSV export builder and downloader
-  const buildCsvAndDownload = ({
-    stats,
-    period,
-    revenueSeries,
-    efficiencySeries,
-  }: {
-    stats: Array<{ label: string; value: number }>;
-    period: "7d" | "30d" | "90d";
-    revenueSeries: number[];
-    efficiencySeries: number[];
-  }) => {
-    const lines: string[] = [];
-    lines.push("Section,Metric,Label,Value");
-    // Summary block
-    for (const s of stats) {
-      lines.push(`Summary,${s.label},,${s.value}`);
-    }
-    // Series block
-    lines.push("");
-    lines.push("Series,Name,Index,Value");
-    const maxLen = Math.max(revenueSeries.length, efficiencySeries.length);
-    for (let i = 0; i < maxLen; i++) {
-      if (i < revenueSeries.length) {
-        lines.push(`Series,Revenue,${i + 1},${revenueSeries[i]}`);
-      }
-      if (i < efficiencySeries.length) {
-        lines.push(`Series,Efficiency,${i + 1},${efficiencySeries[i]}`);
-      }
-    }
-    lines.push("");
-    lines.push(`Meta,Period,,${period}`);
-
-    const csv = lines.join("\n");
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `analytics_export_${period}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  };
-
-  // Add: handler
-  const handleExportCsv = () => {
+  // Add: universal export
+  const handleExport = (format: "csv" | "xlsx" | "pdf") => {
     try {
-      buildCsvAndDownload({
-        stats,
-        period,
-        revenueSeries,
-        efficiencySeries,
+      exportData({
+        filename: `analytics_${period}`,
+        format,
+        columns: [
+          { key: "label", label: "Metric" },
+          { key: "value", label: "Value" },
+        ],
+        data: stats,
+        title: "Analytics Overview",
+        subtitle: `Period: ${period}`,
       });
-      toast.success("CSV exported");
     } catch (e: any) {
-      toast.error(e?.message || "Failed to export CSV");
+      toast.error(e?.message || "Export failed");
     }
   };
 
@@ -172,8 +132,10 @@ export default function AnalyticsPage() {
           <p className="text-sm text-muted-foreground">Overview metrics.</p>
         </div>
         {/* Header actions */}
-        <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={handleExportCsv}>Export CSV</Button>
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button variant="outline" onClick={() => handleExport("csv")}>Export CSV</Button>
+          <Button variant="outline" onClick={() => handleExport("xlsx")}>Export Excel</Button>
+          <Button variant="outline" onClick={() => handleExport("pdf")}>Export PDF</Button>
           <Button variant="outline" onClick={() => navigate("/pricing")}>View Plans</Button>
         </div>
       </div>

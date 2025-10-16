@@ -28,20 +28,38 @@ export function SocialCommandCenter({ businessId }: SocialCommandCenterProps) {
     );
   }
 
-  // Now safe to call hooks with guaranteed businessId
+  // Map time range to minutes for crisis time window
+  const timeWindowMinutes =
+    timeRange === "7d" ? 7 * 24 * 60 : timeRange === "90d" ? 90 * 24 * 60 : 30 * 24 * 60;
+
+  // Multi-brand metrics use selected timeRange
   const multiBrand = useQuery(
     api.socialAnalytics.getMultiBrandMetrics,
-    { businessId, timeRange: "30d" as const }
+    { businessId, timeRange }
   );
 
+  // Cross-platform summary uses selected timeRange
   const crossPlatform = useQuery(
     api.socialAnalytics.getCrossPlatformSummary,
-    { businessId, timeRange: "30d" as const }
+    { businessId, timeRange }
   );
 
+  // Crisis detection uses time window mapped from timeRange (minutes)
   const crisisSummary = useQuery(
     api.crisisManagement.detectCrisis,
-    { businessId, timeWindow: 24 }
+    { businessId, timeWindow: timeWindowMinutes }
+  );
+
+  // NEW: Fetch crisis playbooks
+  const playbooks = useQuery(
+    api.crisisManagement.getCrisisPlaybooks,
+    { businessId }
+  );
+
+  // NEW: Fetch resolution tracking
+  const resolutionTracking = useQuery(
+    api.crisisManagement.getCrisisResolutionTracking,
+    { businessId }
   );
 
   const handleRefresh = () => {
@@ -99,6 +117,8 @@ export function SocialCommandCenter({ businessId }: SocialCommandCenterProps) {
           <TabsTrigger value="brands">Multi-Brand</TabsTrigger>
           <TabsTrigger value="crisis">Crisis Management</TabsTrigger>
           <TabsTrigger value="platforms">Platforms</TabsTrigger>
+          <TabsTrigger value="playbooks">Playbooks</TabsTrigger>
+          <TabsTrigger value="resolution">Resolution Tracking</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-4">
@@ -264,6 +284,73 @@ export function SocialCommandCenter({ businessId }: SocialCommandCenterProps) {
                         <p className="font-medium">{platform.avgEngagement}</p>
                       </div>
                     </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="playbooks" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Crisis Response Playbooks</CardTitle>
+              <CardDescription>Pre-defined response strategies for different crisis types</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {playbooks?.map((playbook: any) => (
+                  <div key={playbook.id} className="border rounded-lg p-4">
+                    <div className="flex items-start justify-between mb-3">
+                      <div>
+                        <h3 className="font-semibold">{playbook.name}</h3>
+                        <p className="text-sm text-muted-foreground">Duration: {playbook.estimatedDuration}</p>
+                      </div>
+                      <Badge>{playbook.crisisType}</Badge>
+                    </div>
+                    <div className="space-y-2">
+                      <p className="text-sm font-medium">Response Steps:</p>
+                      <ol className="list-decimal list-inside space-y-1 text-sm text-muted-foreground">
+                        {playbook.steps.map((step: string, idx: number) => (
+                          <li key={idx}>{step}</li>
+                        ))}
+                      </ol>
+                      <div className="mt-3">
+                        <p className="text-sm font-medium">Stakeholders:</p>
+                        <div className="flex gap-2 mt-1">
+                          {playbook.stakeholders.map((s: string) => (
+                            <Badge key={s} variant="outline">{s}</Badge>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="resolution" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Crisis Resolution Tracking</CardTitle>
+              <CardDescription>Track resolution times and outcomes</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {resolutionTracking?.map((track: any) => (
+                  <div key={track.alertId} className="flex items-center justify-between p-3 border rounded-lg">
+                    <div>
+                      <p className="font-medium">{track.type.replace(/_/g, " ").toUpperCase()}</p>
+                      <p className="text-sm text-muted-foreground">
+                        Status: {track.status} | 
+                        {track.timeToResolve ? ` Resolved in ${Math.floor(track.timeToResolve / (60 * 60 * 1000))}h` : " In progress"}
+                      </p>
+                    </div>
+                    <Badge variant={track.status === "resolved" ? "default" : "secondary"}>
+                      {track.severity}
+                    </Badge>
                   </div>
                 ))}
               </div>

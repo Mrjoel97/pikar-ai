@@ -134,6 +134,126 @@ export const recordMetricSnapshot = mutation({
 });
 
 /**
+ * Query: Get real-time regional sync status
+ */
+export const getRegionalSyncStatus = query({
+  args: {
+    businessId: v.optional(v.id("businesses")),
+  },
+  handler: async (ctx, args) => {
+    if (!args.businessId) {
+      return {
+        regions: [],
+        overallHealth: "healthy" as const,
+      };
+    }
+
+    // Check last sync time for each region
+    const regions = ["global", "na", "eu", "apac"];
+    const syncStatus = [];
+
+    for (const region of regions) {
+      const lastSnapshot = await ctx.db
+        .query("dashboardKpis")
+        .withIndex("by_business_and_date", (q) => q.eq("businessId", args.businessId!))
+        .order("desc")
+        .first();
+
+      const lastSyncTime = lastSnapshot?._creationTime || 0;
+      const timeSinceSync = Date.now() - lastSyncTime;
+      const isHealthy = timeSinceSync < 5 * 60 * 1000; // 5 minutes
+
+      syncStatus.push({
+        region,
+        lastSyncTime,
+        status: isHealthy ? "synced" : "delayed",
+        latencyMs: timeSinceSync,
+      });
+    }
+
+    const overallHealth = syncStatus.every((s) => s.status === "synced") ? "healthy" : "degraded";
+
+    return {
+      regions: syncStatus,
+      overallHealth,
+    };
+  },
+});
+
+/**
+ * Query: Get regional failover indicators
+ */
+export const getRegionalFailoverStatus = query({
+  args: {
+    businessId: v.optional(v.id("businesses")),
+  },
+  handler: async (ctx, args) => {
+    if (!args.businessId) {
+      return {
+        primaryRegion: "na",
+        failoverRegion: "eu",
+        failoverActive: false,
+        regions: [],
+      };
+    }
+
+    // Mock failover status - in production, this would check actual infrastructure
+    return {
+      primaryRegion: "na",
+      failoverRegion: "eu",
+      failoverActive: false,
+      regions: [
+        { region: "na", status: "active", uptime: 99.99 },
+        { region: "eu", status: "standby", uptime: 99.98 },
+        { region: "apac", status: "standby", uptime: 99.97 },
+      ],
+    };
+  },
+});
+
+/**
+ * Query: Cross-region data consistency checks
+ */
+export const checkDataConsistency = query({
+  args: {
+    businessId: v.optional(v.id("businesses")),
+  },
+  handler: async (ctx, args) => {
+    if (!args.businessId) {
+      return {
+        consistent: true,
+        issues: [],
+        lastCheck: Date.now(),
+      };
+    }
+
+    const issues = [];
+    
+    // Check for data discrepancies across regions
+    const snapshots = await ctx.db
+      .query("dashboardKpis")
+      .withIndex("by_business_and_date", (q) => q.eq("businessId", args.businessId!))
+      .order("desc")
+      .take(10);
+
+    // Simple consistency check: ensure recent data exists
+    if (snapshots.length === 0) {
+      issues.push({
+        type: "missing_data",
+        severity: "high",
+        message: "No recent snapshots found",
+      });
+    }
+
+    return {
+      consistent: issues.length === 0,
+      issues,
+      lastCheck: Date.now(),
+    };
+  },
+});
+
+/**
  * Internal Action: Collect metrics for all businesses (scheduled via cron)
  */
 export const collectAllBusinessMetrics = internalAction({

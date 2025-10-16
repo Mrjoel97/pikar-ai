@@ -26,6 +26,7 @@ import type * as aiAgents from "../aiAgents.js";
 import type * as approvalAnalytics from "../approvalAnalytics.js";
 import type * as approvals from "../approvals.js";
 import type * as audit from "../audit.js";
+import type * as auditActions from "../auditActions.js";
 import type * as auth_emailOtp from "../auth/emailOtp.js";
 import type * as auth from "../auth.js";
 import type * as billing from "../billing.js";
@@ -45,6 +46,8 @@ import type * as cron from "../cron.js";
 import type * as customApis from "../customApis.js";
 import type * as customerJourney from "../customerJourney.js";
 import type * as data_playbooksSeed from "../data/playbooksSeed.js";
+import type * as dataWarehouse from "../dataWarehouse.js";
+import type * as departmentBudgets from "../departmentBudgets.js";
 import type * as departmentKpis from "../departmentKpis.js";
 import type * as diagnostics from "../diagnostics.js";
 import type * as docProcessing from "../docProcessing.js";
@@ -59,6 +62,7 @@ import type * as emailTracking from "../emailTracking.js";
 import type * as emails from "../emails.js";
 import type * as emailsActions from "../emailsActions.js";
 import type * as enterpriseMetrics from "../enterpriseMetrics.js";
+import type * as enterpriseSecurity from "../enterpriseSecurity.js";
 import type * as enterpriseSupport from "../enterpriseSupport.js";
 import type * as entitlements from "../entitlements.js";
 import type * as evals from "../evals.js";
@@ -101,6 +105,7 @@ import type * as playbookExecutions from "../playbookExecutions.js";
 import type * as playbookVersions from "../playbookVersions.js";
 import type * as playbooks from "../playbooks.js";
 import type * as policyManagement from "../policyManagement.js";
+import type * as portfolioManagement from "../portfolioManagement.js";
 import type * as revenueAttribution from "../revenueAttribution.js";
 import type * as riskAnalytics from "../riskAnalytics.js";
 import type * as roiCalculations from "../roiCalculations.js";
@@ -108,6 +113,7 @@ import type * as saml from "../saml.js";
 import type * as samlActions from "../samlActions.js";
 import type * as schedule from "../schedule.js";
 import type * as scim from "../scim.js";
+import type * as search from "../search.js";
 import type * as seed from "../seed.js";
 import type * as socialAnalytics from "../socialAnalytics.js";
 import type * as socialContentAgent_analytics from "../socialContentAgent/analytics.js";
@@ -130,12 +136,14 @@ import type * as templatesData from "../templatesData.js";
 import type * as users from "../users.js";
 import type * as utils from "../utils.js";
 import type * as vectors from "../vectors.js";
+import type * as vendors from "../vendors.js";
 import type * as webhooks from "../webhooks.js";
 import type * as webhooksActions from "../webhooksActions.js";
 import type * as workflowAssignments from "../workflowAssignments.js";
 import type * as workflowHandoffs from "../workflowHandoffs.js";
 import type * as workflowTemplates from "../workflowTemplates.js";
 import type * as workflows from "../workflows.js";
+import type * as workforceAnalytics from "../workforceAnalytics.js";
 
 /**
  * A utility for referencing Convex functions in your app's API.
@@ -159,6 +167,7 @@ declare const fullApi: ApiFromModules<{
   approvalAnalytics: typeof approvalAnalytics;
   approvals: typeof approvals;
   audit: typeof audit;
+  auditActions: typeof auditActions;
   "auth/emailOtp": typeof auth_emailOtp;
   auth: typeof auth;
   billing: typeof billing;
@@ -178,6 +187,8 @@ declare const fullApi: ApiFromModules<{
   customApis: typeof customApis;
   customerJourney: typeof customerJourney;
   "data/playbooksSeed": typeof data_playbooksSeed;
+  dataWarehouse: typeof dataWarehouse;
+  departmentBudgets: typeof departmentBudgets;
   departmentKpis: typeof departmentKpis;
   diagnostics: typeof diagnostics;
   docProcessing: typeof docProcessing;
@@ -192,6 +203,7 @@ declare const fullApi: ApiFromModules<{
   emails: typeof emails;
   emailsActions: typeof emailsActions;
   enterpriseMetrics: typeof enterpriseMetrics;
+  enterpriseSecurity: typeof enterpriseSecurity;
   enterpriseSupport: typeof enterpriseSupport;
   entitlements: typeof entitlements;
   evals: typeof evals;
@@ -234,6 +246,7 @@ declare const fullApi: ApiFromModules<{
   playbookVersions: typeof playbookVersions;
   playbooks: typeof playbooks;
   policyManagement: typeof policyManagement;
+  portfolioManagement: typeof portfolioManagement;
   revenueAttribution: typeof revenueAttribution;
   riskAnalytics: typeof riskAnalytics;
   roiCalculations: typeof roiCalculations;
@@ -241,6 +254,7 @@ declare const fullApi: ApiFromModules<{
   samlActions: typeof samlActions;
   schedule: typeof schedule;
   scim: typeof scim;
+  search: typeof search;
   seed: typeof seed;
   socialAnalytics: typeof socialAnalytics;
   "socialContentAgent/analytics": typeof socialContentAgent_analytics;
@@ -263,12 +277,14 @@ declare const fullApi: ApiFromModules<{
   users: typeof users;
   utils: typeof utils;
   vectors: typeof vectors;
+  vendors: typeof vendors;
   webhooks: typeof webhooks;
   webhooksActions: typeof webhooksActions;
   workflowAssignments: typeof workflowAssignments;
   workflowHandoffs: typeof workflowHandoffs;
   workflowTemplates: typeof workflowTemplates;
   workflows: typeof workflows;
+  workforceAnalytics: typeof workforceAnalytics;
 }>;
 export declare const api: FilterApi<
   typeof fullApi,

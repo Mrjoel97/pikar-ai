@@ -7,6 +7,8 @@ import { MarketingDashboard } from "@/components/departments/MarketingDashboard"
 import { SalesDashboard } from "@/components/departments/SalesDashboard";
 import { OpsDashboard } from "@/components/departments/OpsDashboard";
 import { FinanceDashboard } from "@/components/departments/FinanceDashboard";
+import { BudgetDashboard } from "@/components/departments/BudgetDashboard";
+import { VendorManagement } from "@/components/vendors/VendorManagement";
 import { ComplianceReportGenerator } from "@/components/compliance/ComplianceReportGenerator";
 import { ReportLibrary } from "@/components/compliance/ReportLibrary";
 import { Id } from "@/convex/_generated/dataModel";
@@ -37,6 +39,7 @@ export function DepartmentTabs({ businessId, isGuest, kpiDoc }: DepartmentTabsPr
           <TabsTrigger value="operations">Operations</TabsTrigger>
           <TabsTrigger value="finance">Finance</TabsTrigger>
           <TabsTrigger value="compliance">Compliance</TabsTrigger>
+          <TabsTrigger value="vendors">Vendors</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-4">
@@ -135,6 +138,10 @@ export function DepartmentTabs({ businessId, isGuest, kpiDoc }: DepartmentTabsPr
             {businessId && <ReportLibrary businessId={businessId} />}
           </div>
         </TabsContent>
+
+        <TabsContent value="vendors" className="space-y-4">
+          <VendorManagement businessId={businessId} isGuest={isGuest} />
+        </TabsContent>
       </Tabs>
 
       {/* Detailed Department Dashboards */}
@@ -145,11 +152,13 @@ export function DepartmentTabs({ businessId, isGuest, kpiDoc }: DepartmentTabsPr
         </CardHeader>
         <CardContent>
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid w-full grid-cols-4">
+            <TabsList className="grid w-full grid-cols-6">
               <TabsTrigger value="marketing">Marketing</TabsTrigger>
               <TabsTrigger value="sales">Sales</TabsTrigger>
               <TabsTrigger value="ops">Ops</TabsTrigger>
               <TabsTrigger value="finance">Finance</TabsTrigger>
+              <TabsTrigger value="budget">Budget</TabsTrigger>
+              <TabsTrigger value="vendors">Vendors</TabsTrigger>
             </TabsList>
             
             <TabsContent value="marketing" className="mt-6">
@@ -166,6 +175,14 @@ export function DepartmentTabs({ businessId, isGuest, kpiDoc }: DepartmentTabsPr
             
             <TabsContent value="finance" className="mt-6">
               <FinanceDashboard businessId={businessId} isGuest={isGuest} />
+            </TabsContent>
+
+            <TabsContent value="budget" className="mt-6">
+              <BudgetDashboard businessId={businessId} isGuest={isGuest} />
+            </TabsContent>
+
+            <TabsContent value="vendors" className="mt-6">
+              <VendorManagement businessId={businessId} isGuest={isGuest} />
             </TabsContent>
           </Tabs>
         </CardContent>

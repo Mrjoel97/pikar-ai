@@ -9,6 +9,7 @@ import { AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { Id } from "@/convex/_generated/dataModel";
 import { withMutationErrorHandling } from "@/lib/dashboardErrorHandling";
+import { AuditSearchPanel } from "@/components/audit/AuditSearchPanel";
 
 /**
  * Props for the GovernancePanel component
@@ -168,6 +169,14 @@ export function GovernancePanel({
         <section className="mt-6">
           <h2 className="text-lg font-semibold mb-3">Policy Management</h2>
           <PolicyManagement businessId={businessId} />
+        </section>
+      )}
+
+      {/* Add Audit Search Panel */}
+      {businessId && !isGuest && (
+        <section className="mt-6">
+          <h2 className="text-lg font-semibold mb-3">Audit Trail Search & Export</h2>
+          <AuditSearchPanel businessId={businessId} />
         </section>
       )}
 

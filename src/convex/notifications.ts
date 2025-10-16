@@ -719,3 +719,153 @@ export const sendIfPermitted = internalMutation({
     return { sent: true };
   },
 });
+
+// Add: Send digest email notifications (scheduled)
+export const sendDigestEmails = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    // Get all users with digest enabled
+    const allPrefs = await ctx.db.query("notificationPreferences").collect();
+    const digestUsers = allPrefs.filter((p) => (p as any).digestEnabled);
+
+    for (const pref of digestUsers) {
+      const user = await ctx.db.get(pref.userId);
+      if (!user?.email) continue;
+
+      // Get unread notifications from last 24 hours
+      const oneDayAgo = Date.now() - 24 * 60 * 60 * 1000;
+      const unread = await ctx.db
+        .query("notifications")
+        .withIndex("by_user", (q) => q.eq("userId", pref.userId))
+        .filter((q) =>
+          q.and(
+            q.eq(q.field("isRead"), false),
+            q.gte(q.field("createdAt"), oneDayAgo)
+          )
+        )
+        .collect();
+
+      if (unread.length === 0) continue;
+
+      // Group by type
+      const grouped = unread.reduce((acc: any, n) => {
+        acc[n.type] = (acc[n.type] || 0) + 1;
+        return acc;
+      }, {});
+
+      // TODO: Send actual email via Resend
+      console.log(`Digest for ${user.email}: ${JSON.stringify(grouped)}`);
+    }
+
+    return { sent: digestUsers.length };
+  },
+});
+
+// Add: Request browser push permission
+export const requestPushPermission = mutation({
+  args: {
+    subscription: v.any(), // PushSubscription object
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+
+    const user = await ctx.db
+      .query("users")
+      .filter((q) => q.eq(q.field("email"), identity.email))
+      .first();
+    if (!user) throw new Error("User not found");
+
+    // Store push subscription
+    const existing = await ctx.db
+      .query("pushSubscriptions")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .first();
+
+    if (existing) {
+      await ctx.db.patch(existing._id, {
+        subscription: args.subscription,
+        updatedAt: Date.now(),
+      });
+      return existing._id;
+    }
+
+    return await ctx.db.insert("pushSubscriptions", {
+      userId: user._id,
+      subscription: args.subscription,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+  },
+});
+
+// Add: Send push notification
+export const sendPushNotification = internalMutation({
+  args: {
+    userId: v.id("users"),
+    title: v.string(),
+    body: v.string(),
+    data: v.optional(v.any()),
+  },
+  handler: async (ctx, args) => {
+    const subscriptions = await ctx.db
+      .query("pushSubscriptions")
+      .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .collect();
+
+    // TODO: Integrate with Web Push API (requires VAPID keys)
+    console.log(`Push to ${subscriptions.length} devices: ${args.title}`);
+    
+    return { sent: subscriptions.length };
+  },
+});
+
+// Add: Handle inline notification action
+export const handleNotificationAction = mutation({
+  args: {
+    notificationId: v.id("notifications"),
+    action: v.union(v.literal("approve"), v.literal("reject"), v.literal("dismiss")),
+    comment: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+
+    const notification = await ctx.db.get(args.notificationId);
+    if (!notification) throw new Error("Notification not found");
+
+    const user = await ctx.db
+      .query("users")
+      .filter((q) => q.eq(q.field("email"), identity.email))
+      .first();
+    if (!user || notification.userId !== user._id) {
+      throw new Error("Unauthorized");
+    }
+
+    // Mark as read
+    await ctx.db.patch(args.notificationId, {
+      isRead: true,
+      readAt: Date.now(),
+    });
+
+    // Handle action based on notification type
+    if (notification.type === "approval" && notification.data?.approvalId) {
+      const approvalId = notification.data.approvalId as any;
+      if (args.action === "approve") {
+        await ctx.db.patch(approvalId, {
+          status: "approved",
+          approvedBy: user._id,
+          approvedAt: Date.now(),
+        });
+      } else if (args.action === "reject") {
+        await ctx.db.patch(approvalId, {
+          status: "rejected",
+          reviewedBy: user._id,
+          /* removed rejectedAt: not present in schema */
+        });
+      }
+    }
+
+    return { success: true, action: args.action };
+  },
+});

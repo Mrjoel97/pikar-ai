@@ -2145,6 +2145,384 @@ const schema = defineSchema({
   })
     .index("by_business_and_status", ["businessId", "status"])
     .index("by_policy", ["policyId"]),
+
+  // Audit Report Schedules
+  auditReportSchedules: defineTable({
+    businessId: v.id("businesses"),
+    frequency: v.union(v.literal("daily"), v.literal("weekly"), v.literal("monthly")),
+    format: v.union(v.literal("csv"), v.literal("pdf")),
+    filters: v.object({
+      startDate: v.optional(v.number()),
+      endDate: v.optional(v.number()),
+      action: v.optional(v.string()),
+      entityType: v.optional(v.string()),
+    }),
+    recipients: v.array(v.string()),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    lastRun: v.union(v.number(), v.null()),
+    nextRun: v.number(),
+    active: v.boolean(),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_next_run", ["nextRun", "active"]),
+
+  // Department Budget Tracking
+  departmentBudgets: defineTable({
+    businessId: v.id("businesses"),
+    department: v.string(),
+    fiscalYear: v.number(),
+    amount: v.number(),
+    notes: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_business_and_year", ["businessId", "fiscalYear"]),
+
+  departmentBudgetActuals: defineTable({
+    businessId: v.id("businesses"),
+    department: v.string(),
+    fiscalYear: v.number(),
+    amount: v.number(),
+    date: v.number(),
+    category: v.string(),
+    description: v.optional(v.string()),
+    createdAt: v.number(),
+  })
+    .index("by_business_and_year", ["businessId", "fiscalYear"])
+    .index("by_business", ["businessId"]),
+
+  departmentBudgetForecasts: defineTable({
+    businessId: v.id("businesses"),
+    department: v.string(),
+    fiscalYear: v.number(),
+    forecastAmount: v.number(),
+    reason: v.string(),
+    createdAt: v.number(),
+    createdBy: v.string(),
+  }).index("by_business_and_year", ["businessId", "fiscalYear"]),
+
+  vendors: defineTable({
+    businessId: v.id("businesses"),
+    name: v.string(),
+    category: v.string(),
+    status: v.union(v.literal("active"), v.literal("inactive"), v.literal("pending")),
+    contactName: v.string(),
+    contactEmail: v.string(),
+    contactPhone: v.optional(v.string()),
+    contractStart: v.number(),
+    contractEnd: v.number(),
+    contractValue: v.number(),
+    performanceScore: v.number(),
+    riskLevel: v.union(v.literal("low"), v.literal("medium"), v.literal("high")),
+    lastReviewDate: v.number(),
+    notes: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_business_and_contractEnd", ["businessId", "contractEnd"]),
+
+  vendorPerformanceMetrics: defineTable({
+    businessId: v.id("businesses"),
+    vendorId: v.id("vendors"),
+    onTimeDelivery: v.number(),
+    qualityScore: v.number(),
+    responsiveness: v.number(),
+    costEfficiency: v.number(),
+    overallScore: v.number(),
+    notes: v.optional(v.string()),
+    recordedAt: v.number(),
+    recordedBy: v.string(),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_vendor", ["vendorId"]),
+
+  // Enterprise Data Warehouse Integration
+  dataWarehouseSources: defineTable({
+    businessId: v.id("businesses"),
+    name: v.string(),
+    type: v.union(
+      v.literal("postgresql"),
+      v.literal("mysql"),
+      v.literal("mongodb"),
+      v.literal("snowflake"),
+      v.literal("bigquery"),
+      v.literal("redshift"),
+      v.literal("custom")
+    ),
+    connectionString: v.optional(v.string()), // Encrypted in production
+    credentials: v.optional(v.any()), // Encrypted credentials
+    syncSchedule: v.string(), // Cron expression
+    status: v.union(
+      v.literal("connected"),
+      v.literal("syncing"),
+      v.literal("error"),
+      v.literal("disconnected")
+    ),
+    lastSyncTime: v.optional(v.number()),
+    nextSyncTime: v.optional(v.number()),
+    config: v.optional(v.any()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_status", ["status"])
+    .index("by_next_sync", ["nextSyncTime"]),
+
+  dataWarehouseJobs: defineTable({
+    businessId: v.id("businesses"),
+    sourceId: v.id("dataWarehouseSources"),
+    jobType: v.union(
+      v.literal("full_sync"),
+      v.literal("incremental_sync"),
+      v.literal("validation"),
+      v.literal("quality_check")
+    ),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("running"),
+      v.literal("completed"),
+      v.literal("failed")
+    ),
+    startTime: v.number(),
+    endTime: v.optional(v.number()),
+    recordsProcessed: v.number(),
+    recordsFailed: v.number(),
+    errors: v.optional(v.array(v.string())),
+    metadata: v.optional(v.any()),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_source", ["sourceId"])
+    .index("by_status", ["status"]),
+
+  dataQualityMetrics: defineTable({
+    businessId: v.id("businesses"),
+    sourceId: v.id("dataWarehouseSources"),
+    metricType: v.union(
+      v.literal("completeness"),
+      v.literal("accuracy"),
+      v.literal("consistency"),
+      v.literal("timeliness"),
+      v.literal("validity")
+    ),
+    score: v.number(), // 0-100
+    issues: v.array(v.string()),
+    recommendations: v.array(v.string()),
+    timestamp: v.number(),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_source", ["sourceId"])
+    .index("by_timestamp", ["timestamp"]),
+
+  dataConnectors: defineTable({
+    businessId: v.id("businesses"),
+    name: v.string(),
+    type: v.string(),
+    config: v.any(),
+    schema: v.optional(v.any()),
+    isActive: v.boolean(),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_active", ["isActive"]),
+
+  // Advanced Security & Compliance
+  securityIncidents: defineTable({
+    businessId: v.id("businesses"),
+    type: v.union(
+      v.literal("data_breach"),
+      v.literal("unauthorized_access"),
+      v.literal("malware"),
+      v.literal("phishing"),
+      v.literal("ddos"),
+      v.literal("insider_threat"),
+      v.literal("other")
+    ),
+    severity: v.union(
+      v.literal("critical"),
+      v.literal("high"),
+      v.literal("medium"),
+      v.literal("low")
+    ),
+    status: v.union(
+      v.literal("open"),
+      v.literal("investigating"),
+      v.literal("contained"),
+      v.literal("resolved"),
+      v.literal("closed")
+    ),
+    title: v.string(),
+    description: v.string(),
+    detectedAt: v.number(),
+    resolvedAt: v.optional(v.number()),
+    affectedSystems: v.array(v.string()),
+    mitigation: v.optional(v.string()),
+    assignedTo: v.optional(v.id("users")),
+    createdBy: v.id("users"),
+    updatedAt: v.number(),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_status", ["status"])
+    .index("by_severity", ["severity"]),
+
+  threatDetectionAlerts: defineTable({
+    businessId: v.id("businesses"),
+    alertType: v.union(
+      v.literal("suspicious_login"),
+      v.literal("unusual_activity"),
+      v.literal("policy_violation"),
+      v.literal("anomaly_detected"),
+      v.literal("vulnerability_found")
+    ),
+    severity: v.union(
+      v.literal("critical"),
+      v.literal("high"),
+      v.literal("medium"),
+      v.literal("low")
+    ),
+    source: v.string(),
+    details: v.any(),
+    isAcknowledged: v.boolean(),
+    acknowledgedBy: v.optional(v.id("users")),
+    acknowledgedAt: v.optional(v.number()),
+    createdAt: v.number(),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_acknowledged", ["isAcknowledged"])
+    .index("by_severity", ["severity"]),
+
+  complianceCertifications: defineTable({
+    businessId: v.id("businesses"),
+    certType: v.union(
+      v.literal("SOC2"),
+      v.literal("ISO27001"),
+      v.literal("GDPR"),
+      v.literal("HIPAA"),
+      v.literal("PCI_DSS"),
+      v.literal("other")
+    ),
+    status: v.union(
+      v.literal("active"),
+      v.literal("pending"),
+      v.literal("expired"),
+      v.literal("in_renewal")
+    ),
+    issueDate: v.number(),
+    expiryDate: v.number(),
+    auditor: v.string(),
+    documents: v.array(v.id("_storage")),
+    notes: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_status", ["status"])
+    .index("by_expiry", ["expiryDate"]),
+
+  securityAudits: defineTable({
+    businessId: v.id("businesses"),
+    auditType: v.union(
+      v.literal("access_control"),
+      v.literal("data_protection"),
+      v.literal("network_security"),
+      v.literal("compliance_check"),
+      v.literal("vulnerability_scan")
+    ),
+    scope: v.string(),
+    findings: v.array(v.any()),
+    recommendations: v.array(v.string()),
+    riskScore: v.number(), // 0-100
+    completedAt: v.number(),
+    completedBy: v.optional(v.id("users")),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_completed", ["completedAt"]),
+
+  // Global Initiative Portfolio Management (Enterprise tier)
+  portfolioMetrics: defineTable({
+    businessId: v.id("businesses"),
+    totalBudget: v.number(),
+    totalSpent: v.number(),
+    overallHealth: v.union(
+      v.literal("healthy"),
+      v.literal("warning"),
+      v.literal("critical"),
+      v.literal("unknown")
+    ),
+    lastUpdated: v.number(),
+  }).index("by_business", ["businessId"]),
+
+  initiativeDependencies: defineTable({
+    businessId: v.id("businesses"),
+    sourceInitiativeId: v.id("initiatives"),
+    targetInitiativeId: v.id("initiatives"),
+    dependencyType: v.union(
+      v.literal("blocks"),
+      v.literal("requires"),
+      v.literal("related")
+    ),
+    description: v.optional(v.string()),
+    status: v.union(v.literal("active"), v.literal("resolved")),
+    createdAt: v.number(),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_source", ["sourceInitiativeId"])
+    .index("by_target", ["targetInitiativeId"]),
+
+  resourceAllocations: defineTable({
+    businessId: v.id("businesses"),
+    initiativeId: v.id("initiatives"),
+    resourceType: v.string(),
+    allocatedAmount: v.number(),
+    capacity: v.number(),
+    unit: v.string(),
+    startDate: v.number(),
+    endDate: v.optional(v.number()),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_initiative", ["initiativeId"]),
+
+  portfolioRisks: defineTable({
+    businessId: v.id("businesses"),
+    initiativeId: v.optional(v.id("initiatives")),
+    riskType: v.string(),
+    description: v.string(),
+    impact: v.number(),
+    probability: v.number(),
+    mitigationStrategy: v.optional(v.string()),
+    status: v.union(v.literal("active"), v.literal("mitigated"), v.literal("accepted")),
+    identifiedAt: v.number(),
+    resolvedAt: v.optional(v.number()),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_initiative", ["initiativeId"]),
+
+  // Add new tables for enhanced notifications and search
+  pushSubscriptions: defineTable({
+    userId: v.id("users"),
+    subscription: v.any(), // PushSubscription object
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_user", ["userId"]),
+
+  savedSearches: defineTable({
+    userId: v.id("users"),
+    name: v.string(),
+    query: v.string(),
+    entityTypes: v.optional(v.array(v.string())),
+    filters: v.optional(v.any()),
+    createdAt: v.number(),
+  }).index("by_user", ["userId"]),
+
+  searchHistory: defineTable({
+    userId: v.id("users"),
+    query: v.string(),
+    entityTypes: v.optional(v.array(v.string())),
+    resultCount: v.number(),
+    searchedAt: v.number(),
+  }).index("by_user", ["userId"]),
 });
 
 export default schema;

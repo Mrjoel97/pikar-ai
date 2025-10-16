@@ -37,6 +37,22 @@ const ApiBuilderPage = React.lazy(() => import("./pages/ApiBuilder"));
 const SupportPage = React.lazy(() => import("./pages/Support"));
 const TestRunnerPage = React.lazy(() => import("./pages/TestRunner"));
 
+const DataWarehouseManager = React.lazy(() =>
+  import("./components/enterprise/DataWarehouseManager").then((m) => ({
+    default: m.DataWarehouseManager,
+  }))
+);
+const SecurityDashboard = React.lazy(() =>
+  import("./components/enterprise/SecurityDashboard").then((m) => ({
+    default: m.SecurityDashboard,
+  }))
+);
+const PortfolioDashboard = React.lazy(() =>
+  import("./components/enterprise/PortfolioDashboard").then((m) => ({
+    default: m.PortfolioDashboard,
+  }))
+);
+
 class ErrorBoundary extends Component<
   { children: React.ReactNode },
   { hasError: boolean; error?: any }
@@ -346,6 +362,30 @@ createRoot(document.getElementById("root")!).render(
               <Route
                 path="/src/components/dashboards/SolopreneurDashboard.tsx"
                 element={<Navigate to="/dashboard" replace />}
+              />
+              <Route
+                path="/enterprise/data-warehouse"
+                element={
+                  <React.Suspense fallback={<div className="p-6 text-sm">Loading…</div>}>
+                    <DataWarehouseManager />
+                  </React.Suspense>
+                }
+              />
+              <Route
+                path="/enterprise/security"
+                element={
+                  <React.Suspense fallback={<div className="p-6 text-sm">Loading…</div>}>
+                    <SecurityDashboard />
+                  </React.Suspense>
+                }
+              />
+              <Route
+                path="/enterprise/portfolio"
+                element={
+                  <React.Suspense fallback={<div className="p-6 text-sm">Loading…</div>}>
+                    <PortfolioDashboard />
+                  </React.Suspense>
+                }
               />
               <Route path="*" element={<NotFound />} />
             </Routes>

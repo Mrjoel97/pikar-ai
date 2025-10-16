@@ -79,6 +79,24 @@ export function GlobalOverview({
     businessId ? { businessId, region, unit } : undefined
   );
 
+  // Fetch sync status
+  const syncStatus = useQuery(
+    api.enterpriseMetrics.getRegionalSyncStatus,
+    businessId ? { businessId } : undefined
+  );
+
+  // Fetch failover status
+  const failoverStatus = useQuery(
+    api.enterpriseMetrics.getRegionalFailoverStatus,
+    businessId ? { businessId } : undefined
+  );
+
+  // Fetch consistency checks
+  const consistencyCheck = useQuery(
+    api.enterpriseMetrics.checkDataConsistency,
+    businessId ? { businessId } : undefined
+  );
+
   // Fetch trend data for sparklines
   const revenueTrend = useQuery(
     api.enterpriseMetrics.getMetricsTrend,
@@ -165,6 +183,19 @@ export function GlobalOverview({
             >
               <RefreshCw className={`h-3 w-3 ${autoRefresh ? "animate-spin" : ""}`} />
             </Button>
+            <Badge variant={syncStatus?.overallHealth === "healthy" ? "default" : "destructive"} className="text-xs">
+              {syncStatus?.overallHealth === "healthy" ? "Synced" : "Delayed"}
+            </Badge>
+            {failoverStatus?.failoverActive && (
+              <Badge variant="destructive" className="text-xs">
+                Failover Active
+              </Badge>
+            )}
+            {consistencyCheck && !consistencyCheck.consistent && (
+              <Badge variant="destructive" className="text-xs">
+                Consistency Issues
+              </Badge>
+            )}
           </div>
         </div>
         <div className="flex items-center gap-2">

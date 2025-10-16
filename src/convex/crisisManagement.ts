@@ -163,6 +163,167 @@ export const getCrisisTemplates = query({
 });
 
 /**
+ * Query: Get crisis response playbooks
+ */
+export const getCrisisPlaybooks = query({
+  args: {
+    businessId: v.optional(v.id("businesses")),
+    crisisType: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    // Return predefined crisis response playbooks
+    const playbooks = [
+      {
+        id: "negative_sentiment",
+        name: "Negative Sentiment Response",
+        crisisType: "negative_sentiment",
+        steps: [
+          "Acknowledge the concern publicly within 1 hour",
+          "Investigate the root cause internally",
+          "Prepare a detailed response with solutions",
+          "Post official statement on all channels",
+          "Monitor sentiment for 48 hours",
+          "Follow up with affected customers",
+        ],
+        stakeholders: ["PR Team", "Customer Support", "Executive Team"],
+        estimatedDuration: "24-48 hours",
+      },
+      {
+        id: "viral_negative",
+        name: "Viral Negative Content",
+        crisisType: "viral_negative",
+        steps: [
+          "Activate crisis response team immediately",
+          "Notify executive leadership",
+          "Prepare holding statement within 30 minutes",
+          "Coordinate with legal team",
+          "Draft comprehensive response",
+          "Execute multi-channel communication plan",
+          "Monitor and respond to ongoing discussions",
+        ],
+        stakeholders: ["Executive Team", "Legal", "PR Team", "Social Media Team"],
+        estimatedDuration: "48-72 hours",
+      },
+      {
+        id: "engagement_spike",
+        name: "Unusual Engagement Spike",
+        crisisType: "engagement_spike",
+        steps: [
+          "Identify the source of spike",
+          "Assess if positive or negative",
+          "Prepare response strategy",
+          "Engage with audience appropriately",
+          "Monitor for escalation",
+        ],
+        stakeholders: ["Social Media Team", "Marketing Team"],
+        estimatedDuration: "12-24 hours",
+      },
+    ];
+
+    if (args.crisisType) {
+      return playbooks.filter((p) => p.crisisType === args.crisisType);
+    }
+
+    return playbooks;
+  },
+});
+
+/**
+ * Mutation: Send stakeholder notifications
+ */
+export const notifyStakeholders = mutation({
+  args: {
+    businessId: v.id("businesses"),
+    alertId: v.id("crisisAlerts"),
+    stakeholders: v.array(v.string()),
+    message: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const user = await ctx.auth.getUserIdentity();
+    if (!user) throw new Error("Unauthorized");
+
+    const alert = await ctx.db.get(args.alertId);
+    if (!alert) throw new Error("Alert not found");
+
+    // Create notifications for each stakeholder
+    const actorUser = await ctx.db
+      .query("users")
+      .withIndex("email", (q) => q.eq("email", user.email!))
+      .first();
+
+    let notified = 0;
+    if (actorUser) {
+      for (const stakeholder of args.stakeholders) {
+        await ctx.db.insert("notifications", {
+          businessId: args.businessId,
+          userId: actorUser._id,
+          type: "system_alert",
+          title: `Crisis Alert: ${alert.type}`,
+          message: args.message,
+          data: {
+            kind: "crisis_notification",
+            alertId: args.alertId,
+            severity: alert.severity,
+            stakeholder,
+          },
+          isRead: false,
+          priority: alert.severity === "critical" ? "high" : "medium",
+          createdAt: Date.now(),
+        });
+        notified++;
+      }
+    }
+
+    // Log the notification
+    await ctx.db.insert("audit_logs", {
+      businessId: args.businessId,
+      action: "crisis_stakeholders_notified",
+      entityType: "crisis_alert",
+      entityId: args.alertId,
+      details: {
+        stakeholders: args.stakeholders,
+        message: args.message,
+      },
+      createdAt: Date.now(),
+    });
+
+    return { success: true, notified };
+  },
+});
+
+/**
+ * Query: Get crisis resolution tracking
+ */
+export const getCrisisResolutionTracking = query({
+  args: {
+    businessId: v.optional(v.id("businesses")),
+    alertId: v.optional(v.id("crisisAlerts")),
+  },
+  handler: async (ctx, args) => {
+    if (!args.businessId) {
+      return [];
+    }
+
+    let query = ctx.db
+      .query("crisisAlerts")
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId!));
+
+    const alerts = await query.collect();
+
+    return alerts.map((alert) => ({
+      alertId: alert._id,
+      type: alert.type,
+      severity: alert.severity,
+      status: alert.status,
+      createdAt: alert.createdAt,
+      resolvedAt: alert.resolvedAt,
+      timeToResolve: alert.resolvedAt ? alert.resolvedAt - alert.createdAt : null,
+      resolution: alert.resolution,
+    }));
+  },
+});
+
+/**
  * Internal: Auto-create crisis alerts from detection for a single business
  */
 export const autoCreateCrisisAlerts = internalMutation({
