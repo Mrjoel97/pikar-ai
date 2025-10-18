@@ -925,3 +925,5 @@ function CRMSyncCard({ businessId }: { businessId: string }) {
     </div>
   );
 }
+
+export default StartupDashboard;

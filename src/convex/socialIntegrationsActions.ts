@@ -1,7 +1,75 @@
 "use node";
 
 import { v } from "convex/values";
+import { internal } from "./_generated/api";
 import { internalAction } from "./_generated/server";
+
+// Widen platform union to include meta, youtube, google; add explicit types to silence TS7022/TS7023
+export const initiateOAuth: any = internalAction({
+  args: {
+    platform: v.union(
+      v.literal("twitter"),
+      v.literal("linkedin"),
+      v.literal("meta"),
+      v.literal("youtube"),
+      v.literal("google")
+    ),
+    businessId: v.id("businesses"),
+    redirectUri: v.optional(v.string()),
+  },
+  handler: async (ctx, args): Promise<{ authUrl: string }> => {
+    const config: any = await ctx.runQuery(internal.socialApiConfigs.getConfigForAuth, {
+      businessId: args.businessId,
+      platform: args.platform,
+    });
+
+    if (!config) {
+      throw new Error(
+        `No active API configuration found for ${args.platform}. Please contact your administrator.`
+      );
+    }
+
+    const callbackUrl =
+      args.redirectUri ||
+      config.callbackUrl ||
+      `${process.env.CONVEX_SITE_URL}/auth/callback/${args.platform}`;
+
+    let authUrl: string;
+    switch (args.platform) {
+      case "twitter":
+        authUrl = `https://twitter.com/i/oauth2/authorize?response_type=code&client_id=${config.clientId}&redirect_uri=${encodeURIComponent(
+          callbackUrl
+        )}&scope=tweet.read%20tweet.write%20users.read&state=${args.businessId}`;
+        break;
+      case "linkedin":
+        authUrl = `https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=${config.clientId}&redirect_uri=${encodeURIComponent(
+          callbackUrl
+        )}&scope=w_member_social%20r_liteprofile&state=${args.businessId}`;
+        break;
+      case "meta":
+        authUrl = `https://www.facebook.com/v18.0/dialog/oauth?client_id=${config.clientId}&redirect_uri=${encodeURIComponent(
+          callbackUrl
+        )}&scope=pages_manage_posts,pages_read_engagement,instagram_basic,instagram_content_publish&state=${args.businessId}`;
+        break;
+      case "youtube":
+        authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${config.clientId}&redirect_uri=${encodeURIComponent(
+          callbackUrl
+        )}&response_type=code&scope=https://www.googleapis.com/auth/youtube.upload%20https://www.googleapis.com/auth/youtube&state=${args.businessId}`;
+        break;
+      case "google":
+        authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${config.clientId}&redirect_uri=${encodeURIComponent(
+          callbackUrl
+        )}&response_type=code&scope=openid%20email%20profile&state=${args.businessId}`;
+        break;
+      default:
+        throw new Error(`Unsupported platform: ${args.platform}`);
+    }
+
+    return {
+      authUrl,
+    };
+  },
+});
 
 /**
  * Helper function for retry logic with exponential backoff

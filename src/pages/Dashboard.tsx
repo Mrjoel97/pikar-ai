@@ -16,7 +16,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 // Add: lazy-loaded tier dashboards (code-splitting)
 const SolopreneurDashboard = lazy(() =>
   import("@/components/dashboards/SolopreneurDashboard").then((m) => ({
-    default: m.SolopreneurDashboard,
+    default: m.default,
   })),
 );
 const StartupDashboard = lazy(() =>
@@ -181,7 +181,7 @@ export default function Dashboard() {
 
     switch (effectiveTier) {
       case "solopreneur":
-        return <SolopreneurDashboard {...props} />;
+        return React.createElement(SolopreneurDashboard as any, props);
       case "startup":
         return <StartupDashboard {...props} />;
       case "sme":
@@ -189,7 +189,7 @@ export default function Dashboard() {
       case "enterprise":
         return <EnterpriseDashboard {...props} />;
       default:
-        return <SolopreneurDashboard {...props} />;
+        return React.createElement(SolopreneurDashboard as any, props);
     }
   };
 

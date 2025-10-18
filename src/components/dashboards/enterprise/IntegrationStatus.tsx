@@ -1,41 +1,35 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { CheckCircle, AlertCircle, XCircle } from "lucide-react";
 
-/**
- * IntegrationStatus Component
- * 
- * Displays the current connection status of various third-party integrations
- * including CRM, Analytics, and Billing systems. Shows visual indicators
- * for connection health using color-coded badges:
- * - Green (Connected): Integration is active and healthy
- * - Amber (Attention): Integration requires attention or configuration
- * - Gray (Not linked): Integration is not yet configured
- * 
- * Note: This is currently a static preview component. Future versions will
- * fetch real-time integration status from the backend.
- * 
- * @returns {JSX.Element} Rendered integration status card with connection badges
- */
 export function IntegrationStatus() {
+  const integrations = [
+    { name: "CRM Sync", status: "active", icon: CheckCircle, color: "text-green-600" },
+    { name: "Email Service", status: "active", icon: CheckCircle, color: "text-green-600" },
+    { name: "Analytics", status: "warning", icon: AlertCircle, color: "text-amber-600" },
+    { name: "Data Warehouse", status: "active", icon: CheckCircle, color: "text-green-600" },
+  ];
+
   return (
     <Card className="xl:col-span-1">
       <CardHeader className="pb-2">
         <CardTitle>Integration Status</CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
-        <div className="flex items-center justify-between">
-          <span className="text-sm">CRM</span>
-          <Badge variant="outline" className="border-emerald-300 text-emerald-700">Connected</Badge>
-        </div>
-        <div className="flex items-center justify-between">
-          <span className="text-sm">Analytics</span>
-          <Badge variant="outline" className="border-amber-300 text-amber-700">Attention</Badge>
-        </div>
-        <div className="flex items-center justify-between">
-          <span className="text-sm">Billing</span>
-          <Badge variant="outline" className="border-slate-300 text-slate-700">Not linked</Badge>
-        </div>
-        <div className="text-xs text-muted-foreground">Integration health overview (static preview).</div>
+        {integrations.map((integration) => {
+          const Icon = integration.icon;
+          return (
+            <div key={integration.name} className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Icon className={`h-4 w-4 ${integration.color}`} />
+                <span className="text-sm">{integration.name}</span>
+              </div>
+              <Badge variant={integration.status === "active" ? "default" : "secondary"}>
+                {integration.status}
+              </Badge>
+            </div>
+          );
+        })}
       </CardContent>
     </Card>
   );

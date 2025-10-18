@@ -8,7 +8,7 @@ import { api } from "@/convex/_generated/api";
 import { toast } from "sonner";
 import { useState, useEffect, type ChangeEvent } from "react";
 import { useMemo } from "react";
-import { Play, BarChart3, Clock, Webhook, Search } from "lucide-react";
+import { Search, Play, Clock, Webhook, BarChart3 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
@@ -22,6 +22,8 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { isGuestMode, getSelectedTier } from "@/lib/guestUtils";
 import { getAllBuiltInTemplates } from "@/lib/templatesClient";
+import { WorkflowCard } from "@/components/workflows/WorkflowCard";
+import { PipelineEditor } from "@/components/workflows/PipelineEditor";
 
 type FormDataState = {
   name: string;
@@ -1023,7 +1025,6 @@ export default function WorkflowsPage() {
         />
       </div>
 
-      {/* Workflows list with suspense and skeleton */}
       <Suspense fallback={
         <div className="grid gap-4">
           {Array.from({ length: 6 }).map((_, i) => (
@@ -1040,7 +1041,6 @@ export default function WorkflowsPage() {
         </div>
       }>
         {!workflows ? (
-          // Loading skeleton
           <div className="grid gap-4">
             {Array.from({ length: 6 }).map((_, i) => (
               <Card key={i} className="p-4">
@@ -1062,300 +1062,39 @@ export default function WorkflowsPage() {
           <>
             <div className="grid gap-4">
               {workflows.page?.map((workflow: any) => (
-                <Card key={workflow._id} className="p-4">
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        {getTriggerIcon(workflow.trigger.type)}
-                        <CardTitle className="text-lg">{workflow.name}</CardTitle>
-                        {workflow.template && <Badge variant="secondary">Template</Badge>}
-                      </div>
-                      <div className="flex gap-2">
-                        <Button size="sm" variant="outline" onClick={() => handleSimulate(workflow)}>
-                          Simulate
-                        </Button>
-                        <Button size="sm" variant="outline" onClick={() => handleComplianceCheck(workflow)}>
-                          Check Compliance
-                        </Button>
-                        <Button size="sm" variant="outline" onClick={() => handleEstimateRoi(workflow)}>
-                          Estimate ROI
-                        </Button>
-                        <Button size="sm" variant="outline" onClick={() => setSelectedWorkflow(workflow._id)}>
-                          <BarChart3 className="h-4 w-4 mr-1" />
-                          Executions
-                        </Button>
-                        <Button size="sm" variant="outline" onClick={() => toggleExpand(workflow)}>
-                          {expanded[workflow._id] ? "Hide" : "Pipeline"}
-                        </Button>
-                      </div>
-                    </div>
-                    {workflow.description && (
-                      <CardDescription>{workflow.description}</CardDescription>
-                    )}
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                      <span>Steps: {workflow.pipeline?.length ?? 0}</span>
-                      <span>Trigger: {workflow.trigger.type}</span>
-                      {workflow.trigger.cron && <span>Schedule: {workflow.trigger.cron}</span>}
-                      {workflow.trigger.eventKey && <span>Event: {workflow.trigger.eventKey}</span>}
-                      {workflow.approval.required && <span>Approval Required</span>}
-                    </div>
-                    {/* ROI badge */}
-                    <div className="mt-2">
-                      {(() => {
-                        const roi = estimateRoiBadge(workflow);
-                        return <Badge variant={roi.variant}>{roi.label}</Badge>;
-                      })()}
-                    </div>
-                    {/* Add: Handoff Health indicator */}
-                    {(() => {
-                      const issues = getHandoffIssues(workflow);
-                      const tier = (businesses?.[0]?.tier as string | undefined);
-                      const label = (tier === "sme" || tier === "enterprise") ? "Governance Health" : "Handoff Health";
-                      if (issues.length === 0) {
-                        return (
-                          <div className="mt-2">
-                            <Badge variant="secondary" className="text-xs">{label}: Good</Badge>
-                          </div>
-                        );
-                      }
-                      return (
-                        <div className="mt-2 flex flex-wrap gap-1">
-                          <Badge variant="destructive" className="text-xs">{label}: Needs Attention</Badge>
-                          {issues.map((it, i) => (
-                            <Badge key={i} variant="outline" className="text-xs">{it}</Badge>
-                          ))}
-                        </div>
-                      );
-                    })()}
-                    {workflow.tags?.length > 0 && (
-                      <div className="flex gap-1 mt-2">
-                        {(workflow.tags ?? []).map((tag: string) => (
-                          <Badge key={tag} variant="outline" className="text-xs">{tag}</Badge>
-                        ))}
-                      </div>
-                    )}
-                    {/* Roles as clickable chips */}
-                    {(() => {
-                      const roles = extractApproverRoles(workflow);
-                      if (!roles.length) return null;
-                      return (
-                        <div className="mt-2 flex flex-wrap items-center gap-1">
-                          {roles.map((r) => (
-                            <Button
-                              key={r}
-                              size="sm"
-                              variant={roleFilter === r ? "default" : "outline"}
-                              className="h-7"
-                              onClick={() => setRoleFilter(r)}
-                            >
-                              {r}
-                            </Button>
-                          ))}
-                        </div>
-                      );
-                    })()}
-                  </CardContent>
-
+                <div key={workflow._id}>
+                  <WorkflowCard
+                    workflow={workflow}
+                    businesses={businesses}
+                    expanded={expanded[workflow._id] || false}
+                    editedPipeline={editedPipelines[workflow._id]}
+                    onToggleExpand={() => toggleExpand(workflow)}
+                    onSimulate={() => handleSimulate(workflow._id)}
+                    onComplianceCheck={() => handleComplianceCheck(workflow._id)}
+                    onEstimateRoi={() => handleEstimateRoi(workflow._id)}
+                    onViewExecutions={() => setSelectedWorkflow(workflow._id)}
+                    onSavePipeline={() => savePipeline(workflow)}
+                    onEditPipeline={(pipeline) => setEditedPipelines(prev => ({ ...prev, [workflow._id]: pipeline }))}
+                    roleFilter={roleFilter}
+                    onRoleFilterChange={setRoleFilter}
+                  />
+                  
                   {expanded[workflow._id] && (
-                    <div className="border-t pt-3 space-y-2">
-                      {/* Add: Inline prompt + Quick-add for startup */}
-                      {(() => {
-                        const tier = (businesses?.[0]?.tier as string | undefined);
-                        if (tier !== "startup") return null;
-                        const issues = getHandoffIssues(editedPipelines[workflow._id]
-                          ? { ...workflow, pipeline: editedPipelines[workflow._id] }
-                          : workflow
-                        );
-                        if (issues.length === 0) return null;
-                        return (
-                          <div className="p-2 rounded border bg-muted/30">
-                            <div className="text-sm font-medium mb-2">Recommended fixes</div>
-                            <div className="flex flex-wrap items-center gap-2">
-                              <Button size="sm" variant="outline" onClick={() => addApprovalAtEnd(workflow)}>Add Approval</Button>
-                              <Button size="sm" variant="outline" onClick={() => addDelayAtEnd(workflow, 60)}>Add SLA Delay (60m)</Button>
-                              {!workflow.description || !String(workflow.description).trim() ? (
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={async () => {
-                                    try {
-                                      await upsertWorkflow({
-                                        id: workflow._id,
-                                        businessId: workflow.businessId,
-                                        name: workflow.name,
-                                        description: "Standardized startup workflow with approval and SLA buffer.",
-                                        trigger: workflow.trigger,
-                                        approval: workflow.approval,
-                                        pipeline: editedPipelines[workflow._id] ?? workflow.pipeline,
-                                        template: !!workflow.template,
-                                        tags: workflow.tags || [],
-                                      } as any);
-                                      toast.success("Added default description");
-                                    } catch (e: any) {
-                                      toast.error(e?.message || "Failed to set description");
-                                    }
-                                  }}
-                                >
-                                  Add Default Description
-                                </Button>
-                              ) : null}
-                            </div>
-                          </div>
-                        );
-                      })()}
-
-                      {(() => {
-                        const tier = (businesses?.[0]?.tier as string | undefined);
-                        if (tier !== "sme" && tier !== "enterprise") return null;
-                        const working = editedPipelines[workflow._id]
-                          ? { ...workflow, pipeline: editedPipelines[workflow._id] }
-                          : workflow;
-
-                        const issues = getGovernanceIssues(working, tier);
-                        if (issues.length === 0) return null;
-
-                        // Count approvals to decide whether to show second approval quick-add for Enterprise
-                        const approvalsCount = (working.pipeline || []).filter((s: any) => (s?.kind || s?.type) === "approval").length;
-                        const needSecondApproval = tier === "enterprise" && approvalsCount < 2;
-
-                        const minDelay = tier === "enterprise" ? 60 : 30;
-
-                        return (
-                          <div className="p-2 rounded border bg-muted/30">
-                            <div className="text-sm font-medium mb-2">Recommended fixes</div>
-                            <div className="flex flex-wrap items-center gap-2">
-                              <Button size="sm" variant="outline" onClick={() => addApprovalAtEnd(workflow)}>Add Approval</Button>
-                              {needSecondApproval && (
-                                <Button size="sm" variant="outline" onClick={() => addSecondApprovalAtEnd(workflow)}>Add Second Approval</Button>
-                              )}
-                              <Button size="sm" variant="outline" onClick={() => addDelayAtEnd(workflow, minDelay)}>
-                                Add SLA Delay ({minDelay}m)
-                              </Button>
-                              {!workflow.description || !String(workflow.description).trim() ? (
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={async () => {
-                                    try {
-                                      await upsertWorkflow({
-                                        id: workflow._id,
-                                        businessId: workflow.businessId,
-                                        name: workflow.name,
-                                        description: tier === "enterprise"
-                                          ? "Enterprise governed workflow with dual approval and SLA."
-                                          : "SME governed workflow with approval and SLA.",
-                                        trigger: workflow.trigger,
-                                        approval: workflow.approval,
-                                        pipeline: editedPipelines[workflow._id] ?? workflow.pipeline,
-                                        template: !!workflow.template,
-                                        tags: workflow.tags || [],
-                                      } as any);
-                                      toast.success("Added default description");
-                                    } catch (e: any) {
-                                      toast.error(e?.message || "Failed to set description");
-                                    }
-                                  }}
-                                >
-                                  Add Default Description
-                                </Button>
-                              ) : null}
-                            </div>
-                          </div>
-                        );
-                      })()}
-
-                      {(editedPipelines[workflow._id] ?? workflow.pipeline).map((step: any, idx: number) => {
-                        return (
-                          <div key={idx} className="flex items-center justify-between p-2 border rounded">
-                            <div className="text-sm">
-                              <div className="font-medium capitalize">{getStepKind(step)}</div>
-                              {getStepKind(step) === "branch" && (
-                                <div className="text-xs text-muted-foreground">
-                                  IF {step?.condition?.metric} {step?.condition?.op} {String(step?.condition?.value)} THEN → {step?.onTrueNext} ELSE → {step?.onFalseNext}
-                                </div>
-                              )}
-                              {getStepKind(step) === "approval" && (
-                                <div className="text-xs text-muted-foreground">Approver: {step?.approverRole || step?.config?.approverRole || "manager"}</div>
-                              )}
-                              {getStepKind(step) === "delay" && (
-                                <div className="text-xs text-muted-foreground">Delay: {step?.delayMinutes || step?.config?.delayMinutes || 0} min</div>
-                              )}
-                            </div>
-                            <div className="mt-1 flex flex-wrap items-center gap-2">
-                              <Input
-                                className="h-8 w-64"
-                                placeholder="Step title (optional)"
-                                value={step?.title || ""}
-                                onChange={(e: ChangeEvent<HTMLInputElement>) => setStepField(workflow, idx, { title: e.target.value })}
-                              />
-                              {getStepKind(step) === "approval" && (
-                                <Input
-                                  className="h-8 w-56"
-                                  placeholder="Approver role"
-                                  value={step?.approverRole || step?.config?.approverRole || ""}
-                                  onChange={(e: ChangeEvent<HTMLInputElement>) => setStepField(workflow, idx, { approverRole: e.target.value })}
-                                />
-                              )}
-                              {getStepKind(step) === "delay" && (
-                                <Input
-                                  type="number"
-                                  className="h-8 w-40"
-                                  placeholder="Delay minutes"
-                                  value={String(step?.delayMinutes ?? step?.config?.delayMinutes ?? 0)}
-                                  onChange={(e: ChangeEvent<HTMLInputElement>) => setStepField(workflow, idx, { delayMinutes: parseInt(e.target.value) || 0 })}
-                                />
-                              )}
-                            </div>
-                            {getStepKind(step) === "agent" && (
-                              <div className="flex items-center gap-2">
-                                <Switch checked={!!step?.mmrRequired} onCheckedChange={(v: boolean) => toggleMMR(workflow, idx, !!v)} id={`mmr-${workflow._id}-${idx}`} />
-                                <Label htmlFor={`mmr-${workflow._id}-${idx}`}>Require human review</Label>
-                              </div>
-                            )}
-                            <div className="flex items-center gap-1">
-                              <Button size="sm" variant="outline" onClick={() => addStep(workflow, idx, "agent")}>+Agent</Button>
-                              <Button size="sm" variant="outline" onClick={() => addStep(workflow, idx, "approval")}>+Approval</Button>
-                              <Button size="sm" variant="outline" onClick={() => addStep(workflow, idx, "delay")}>+Delay</Button>
-                              <Button size="sm" variant="outline" onClick={() => addStep(workflow, idx, "branch")}>+Branch</Button>
-                              <Button size="sm" variant="outline" onClick={() => moveStep(workflow, idx, -1)}>Up</Button>
-                              <Button size="sm" variant="outline" onClick={() => moveStep(workflow, idx, 1)}>Down</Button>
-                              <Button size="sm" variant="destructive" onClick={() => removeStep(workflow, idx)}>Remove</Button>
-                            </div>
-                          </div>
-                        );
-                      })}
-                      {/* Top-level quick-add toolbar */}
-                      <div className="flex flex-wrap gap-2 pt-1">
-                        <Button size="sm" variant="outline" onClick={() => addApprovalAtEnd(workflow)}>Add Approval</Button>
-                        {(() => {
-                          const tier = (businesses?.[0]?.tier as string | undefined);
-                          if (tier === "enterprise") {
-                            return (
-                              <Button size="sm" variant="outline" onClick={() => addSecondApprovalAtEnd(workflow)}>
-                                Add Second Approval
-                              </Button>
-                            );
-                          }
-                          return null;
-                        })()}
-                        <Button size="sm" variant="outline" onClick={() => {
-                          const tier = (businesses?.[0]?.tier as string | undefined);
-                          const minDelay = tier === "enterprise" ? 60 : 30;
-                          addDelayAtEnd(workflow, minDelay);
-                        }}>
-                          Add SLA Delay
-                        </Button>
-                        <Button size="sm" onClick={() => savePipeline(workflow)}>Save pipeline</Button>
-                      </div>
-                    </div>
+                    <PipelineEditor
+                      workflow={workflow}
+                      pipeline={editedPipelines[workflow._id] ?? workflow.pipeline}
+                      businesses={businesses}
+                      onUpdatePipeline={(pipeline) => setEditedPipelines(prev => ({ ...prev, [workflow._id]: pipeline }))}
+                      onSave={() => savePipeline(workflow)}
+                      onAddApproval={() => addApprovalAtEnd(workflow)}
+                      onAddSecondApproval={businesses?.[0]?.tier === "enterprise" ? () => addSecondApprovalAtEnd(workflow) : undefined}
+                      onAddDelay={(minutes) => addDelayAtEnd(workflow, minutes)}
+                    />
                   )}
-                </Card>
+                </div>
               ))}
             </div>
             
-            {/* Load more button */}
             {!workflows.isDone && (
               <div className="mt-6 text-center">
                 <Button

@@ -2523,6 +2523,67 @@ const schema = defineSchema({
     resultCount: v.number(),
     searchedAt: v.number(),
   }).index("by_user", ["userId"]),
+
+  // Social Media API Configurations (Admin-managed + Enterprise white-label)
+  socialApiConfigs: defineTable({
+    platform: v.union(
+      v.literal("twitter"),
+      v.literal("linkedin"),
+      v.literal("meta"),
+      v.literal("youtube"),
+      v.literal("google"),
+    ),
+    scope: v.union(v.literal("platform"), v.literal("enterprise")),
+    businessId: v.optional(v.id("businesses")), // Only for enterprise scope
+    clientId: v.string(),
+    clientSecret: v.string(), // Should be encrypted in production
+    callbackUrl: v.optional(v.string()),
+    isActive: v.boolean(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_platform_and_scope", ["platform", "scope"])
+    .index("by_business_and_platform", ["businessId", "platform"])
+    .index("by_scope", ["scope"]),
+
+  // Demo Videos Management
+  demoVideos: defineTable({
+    tier: v.string(), // "solopreneur" | "startup" | "sme" | "enterprise"
+    videoUrl: v.string(),
+    thumbnail: v.optional(v.string()),
+    duration: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_tier", ["tier"]),
+
+  // Documentation FAQs
+  docsFaqs: defineTable({
+    question: v.string(),
+    answer: v.string(),
+    category: v.string(),
+    order: v.number(),
+    isPublished: v.boolean(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_published", ["isPublished"])
+    .index("by_category", ["category"]),
+
+  // Documentation Videos
+  docsVideos: defineTable({
+    title: v.string(),
+    description: v.optional(v.string()),
+    videoUrl: v.string(),
+    thumbnail: v.optional(v.string()),
+    duration: v.optional(v.string()),
+    category: v.string(),
+    order: v.number(),
+    isPublished: v.boolean(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_published", ["isPublished"])
+    .index("by_category", ["category"]),
 });
 
 export default schema;

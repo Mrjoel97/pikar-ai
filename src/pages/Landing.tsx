@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { motion } from "framer-motion";
 import { 
   ArrowRight, 
@@ -12,6 +12,7 @@ import {
   Sparkles,
   CheckCircle,
   Loader2,
+  MessageCircle,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useNavigate } from "react-router";
@@ -38,6 +39,7 @@ const TrustedLogosMarquee = React.lazy(() => import("@/components/landing/Truste
 const FeaturesSection = React.lazy(() => import("@/components/landing/FeaturesSection"));
 const KpiTrendsCard = React.lazy(() => import("@/components/landing/KpiTrendsCard"));
 const ContextualTipsStrip = React.lazy(() => import("@/components/landing/ContextualTipsStrip"));
+const DemoVideoCarousel = React.lazy(() => import("@/components/landing/DemoVideoCarousel"));
 
 export default function Landing() {
   const navigate = useNavigate();
@@ -48,6 +50,9 @@ export default function Landing() {
   const [newsletterSubmitting, setNewsletterSubmitting] = useState(false);
   const [newsletterEmail, setNewsletterEmail] = useState("");
   const [isLoading] = useState(false);
+  const [aiChatOpen, setAiChatOpen] = useState(false);
+  const [chatMessages, setChatMessages] = useState<Array<{ role: "user" | "assistant"; content: string }>>([]);
+  const [chatInput, setChatInput] = useState("");
 
   const scrollTo = (id: string) => {
     const el = document.getElementById(id);
@@ -175,6 +180,25 @@ export default function Landing() {
     navigate(`/dashboard?tier=${selectedTier}`);
   };
 
+  const handleDemoTierSelect = (tier: string) => {
+    setSelectedTier(normalizeTier(tier));
+    navigate(`/dashboard?tier=${tier}`);
+  };
+
+  const handleSendMessage = () => {
+    if (!chatInput.trim()) return;
+    setChatMessages([...chatMessages, { role: "user", content: chatInput }]);
+    setChatInput("");
+    
+    // Simulate AI response
+    setTimeout(() => {
+      setChatMessages((prev) => [
+        ...prev,
+        { role: "assistant", content: "I'm here to help! This is a demo response. In production, this would connect to your AI backend." }
+      ]);
+    }, 1000);
+  };
+
   const handleSubscribe = async (e: React.FormEvent) => {
     e.preventDefault();
     const email = newsletterEmail.trim();
@@ -279,7 +303,7 @@ export default function Landing() {
               </button>
               <button
                 className="text-muted-foreground hover:text-foreground transition-colors"
-                onClick={() => scrollTo("docs")}
+                onClick={() => navigate("/docs")}
                 aria-label="View Docs"
               >
                 Docs
@@ -373,7 +397,7 @@ export default function Landing() {
                         className="justify-start"
                         onClick={() => {
                           setMobileOpen(false);
-                          setTimeout(() => scrollTo("docs"), 50);
+                          navigate("/docs");
                         }}
                         aria-label="View Docs"
                       >
@@ -519,17 +543,180 @@ export default function Landing() {
         </div>
       </section>
 
-      <React.Suspense fallback={<div className="px-4 sm:px-6 lg:px-8 pb-12 sm:pb-16 text-sm text-muted-foreground">Loading partners…</div>}>
+      {/* Trusted Logos - Animated Marquee */}
+      <React.Suspense fallback={<div className="px-4 sm:px-6 lg:px-8 pb-12 sm:pb-16 text-sm text-muted-foreground">Loading logos…</div>}>
         <TrustedLogosMarquee logos={trustedLogos} />
       </React.Suspense>
 
-      <React.Suspense fallback={<div className="px-4 sm:px-6 lg:px-8 py-14 sm:py-20 text-sm text-muted-foreground">Loading features…</div>}>
+      <React.Suspense fallback={<div className="px-4 sm:px-6 lg:px-8 pb-12 sm:pb-16 text-sm text-muted-foreground">Loading features…</div>}>
         <FeaturesSection features={features} />
       </React.Suspense>
 
       <React.Suspense fallback={<div className="px-4 sm:px-6 lg:px-8 py-14 sm:py-20 text-sm text-muted-foreground">Loading KPI trends…</div>}>
         <KpiTrendsCard data={trendData} />
       </React.Suspense>
+
+      {/* Demo Video Carousel */}
+      <React.Suspense fallback={null}>
+        <DemoVideoCarousel
+          open={demoOpen}
+          onOpenChange={setDemoOpen}
+          onSelectTier={handleDemoTierSelect}
+        />
+      </React.Suspense>
+
+      {/* Testimonials Section */}
+      <section className="py-14 sm:py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-background to-accent/5">
+        <div className="max-w-7xl mx-auto">
+          <motion.div
+            initial={{ y: 50, opacity: 0 }}
+            whileInView={{ y: 0, opacity: 1 }}
+            transition={{ duration: 0.8 }}
+            viewport={{ once: true }}
+            className="text-center mb-12 sm:mb-16"
+          >
+            <Badge variant="secondary" className="mb-4 neu-inset">
+              <Users className="h-3 w-3 mr-1" />
+              Trusted by 8,200+ Businesses
+            </Badge>
+            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight mb-3 sm:mb-4">
+              Real Results from Real People
+            </h2>
+            <p className="text-base sm:text-xl text-muted-foreground max-w-2xl mx-auto px-2">
+              See how businesses across industries are transforming with Pikar AI
+            </p>
+          </motion.div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[
+              {
+                name: "Sarah Chen",
+                role: "Founder & CEO",
+                company: "TechFlow SaaS",
+                industry: "SaaS",
+                image: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&h=400&fit=crop",
+                quote: "Pikar AI helped us automate our entire customer onboarding process. We've seen a 340% ROI in just 4 months and saved 20+ hours per week.",
+                tier: "Startup"
+              },
+              {
+                name: "Marcus Johnson",
+                role: "Operations Director",
+                company: "HealthCare Plus",
+                industry: "Healthcare",
+                image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop",
+                quote: "The compliance automation alone is worth it. We maintain 98% compliance scores effortlessly while our team focuses on patient care.",
+                tier: "SME"
+              },
+              {
+                name: "Elena Rodriguez",
+                role: "Marketing Lead",
+                company: "GreenLeaf Organics",
+                industry: "eCommerce",
+                image: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&h=400&fit=crop",
+                quote: "Our social media engagement tripled within 2 months. The AI content creation is phenomenal - it understands our brand voice perfectly.",
+                tier: "Solopreneur"
+              },
+              {
+                name: "David Park",
+                role: "CTO",
+                company: "FinSecure",
+                industry: "Fintech",
+                image: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=400&h=400&fit=crop",
+                quote: "Enterprise-grade security with startup-level agility. The API integration was seamless, and we're processing 10x more transactions.",
+                tier: "Enterprise"
+              },
+              {
+                name: "Priya Sharma",
+                role: "Owner",
+                company: "Wellness Studio",
+                industry: "Fitness & Wellness",
+                image: "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=400&h=400&fit=crop",
+                quote: "As a solo business owner, Pikar AI is like having a full team. Client bookings are up 150%, and I finally have time for myself.",
+                tier: "Solopreneur"
+              },
+              {
+                name: "James Mitchell",
+                role: "VP of Sales",
+                company: "LogiTrans Global",
+                industry: "Logistics",
+                image: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=400&fit=crop",
+                quote: "The workflow automation across departments saved us $2M annually. Our delivery times improved by 35% with better coordination.",
+                tier: "Enterprise"
+              }
+            ].map((testimonial, index) => (
+              <motion.div
+                key={testimonial.name}
+                initial={{ y: 30, opacity: 0 }}
+                whileInView={{ y: 0, opacity: 1 }}
+                transition={{ duration: 0.6, delay: index * 0.1 }}
+                viewport={{ once: true }}
+              >
+                <Card className="neu-raised rounded-2xl border-0 h-full hover:shadow-xl transition-shadow">
+                  <CardContent className="p-6">
+                    <div className="flex items-start gap-4 mb-4">
+                      <img
+                        src={testimonial.image}
+                        alt={testimonial.name}
+                        className="w-14 h-14 rounded-full object-cover neu-raised"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(testimonial.name)}&size=400&background=random`;
+                        }}
+                      />
+                      <div className="flex-1">
+                        <h4 className="font-semibold text-foreground">{testimonial.name}</h4>
+                        <p className="text-sm text-muted-foreground">{testimonial.role}</p>
+                        <p className="text-xs text-muted-foreground">{testimonial.company}</p>
+                      </div>
+                      <Badge variant="outline" className="neu-inset text-xs">
+                        {testimonial.tier}
+                      </Badge>
+                    </div>
+                    
+                    <p className="text-sm text-foreground leading-relaxed mb-3">
+                      "{testimonial.quote}"
+                    </p>
+                    
+                    <div className="flex items-center gap-2 pt-3 border-t border-border/50">
+                      <Badge variant="secondary" className="text-xs neu-inset">
+                        {testimonial.industry}
+                      </Badge>
+                      <div className="flex gap-0.5 ml-auto">
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <span key={star} className="text-amber-500 text-sm">★</span>
+                        ))}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            ))}
+          </div>
+
+          {/* Trust Indicators */}
+          <motion.div
+            initial={{ y: 30, opacity: 0 }}
+            whileInView={{ y: 0, opacity: 1 }}
+            transition={{ duration: 0.8, delay: 0.3 }}
+            viewport={{ once: true }}
+            className="mt-12 text-center"
+          >
+            <div className="flex flex-wrap justify-center items-center gap-6 sm:gap-8">
+              <div className="flex items-center gap-2">
+                <CheckCircle className="h-5 w-5 text-emerald-600" />
+                <span className="text-sm font-medium">4.9/5 Average Rating</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <CheckCircle className="h-5 w-5 text-emerald-600" />
+                <span className="text-sm font-medium">95% Customer Satisfaction</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <CheckCircle className="h-5 w-5 text-emerald-600" />
+                <span className="text-sm font-medium">12k+ Workflows Automated</span>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      </section>
 
       {/* Pricing Section */}
       <section id="pricing" className="py-14 sm:py-20 px-4 sm:px-6 lg:px-8">
@@ -596,7 +783,7 @@ export default function Landing() {
       </section>
 
       {/* CTA Section */}
-      <section className="py-16 px-4 sm:px-6 lg:px-8 bg-gradient-to-r from-primary/10 via-accent/10 to-primary/10">
+      <section className="py-16 px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-emerald-600 via-emerald-700 to-emerald-800">
         <div className="max-w-4xl mx-auto text-center">
           <motion.div
             initial={{ y: 50, opacity: 0 }}
@@ -604,16 +791,16 @@ export default function Landing() {
             transition={{ duration: 0.8 }}
             viewport={{ once: true }}
           >
-            <Target className="h-16 w-16 text-primary mx-auto mb-6" />
-            <h2 className="text-4xl font-bold tracking-tight mb-6">
+            <Target className="h-16 w-16 text-white mx-auto mb-6" />
+            <h2 className="text-4xl font-bold tracking-tight mb-6 text-white">
               Ready to Transform Your Business?
             </h2>
-            <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
+            <p className="text-xl text-emerald-50 mb-8 max-w-2xl mx-auto">
               Join thousands of businesses already using Pikar AI to automate operations, boost productivity, and accelerate growth.
             </p>
             <Button 
               size="lg" 
-              className="w-full sm:w-auto neu-raised rounded-xl bg-primary hover:bg-primary/90 px-8 py-4 text-lg"
+              className="w-full sm:w-auto neu-raised rounded-xl bg-white text-emerald-700 hover:bg-emerald-50 px-8 py-4 text-lg font-semibold shadow-xl"
               onClick={() => openUpgrade()}
               disabled={isLoading}
             >
@@ -741,6 +928,48 @@ export default function Landing() {
           </div>
         </div>
       </footer>
+
+      {/* AI Chat Assistant */}
+      <div className="fixed bottom-6 right-6 z-50">
+        {aiChatOpen ? (
+          <Card className="w-96 h-[500px] flex flex-col shadow-2xl">
+            <CardHeader className="border-b">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg">AI Assistant</CardTitle>
+                <Button variant="ghost" size="sm" onClick={() => setAiChatOpen(false)}>✕</Button>
+              </div>
+            </CardHeader>
+            <CardContent className="flex-1 overflow-y-auto p-4 space-y-4">
+              {chatMessages.map((msg, i) => (
+                <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+                  <div className={`rounded-lg px-4 py-2 max-w-[80%] ${msg.role === "user" ? "bg-primary text-primary-foreground" : "bg-muted"}`}>
+                    {msg.content}
+                  </div>
+                </div>
+              ))}
+            </CardContent>
+            <div className="border-t p-4">
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Ask a question..."
+                  value={chatInput}
+                  onChange={(e) => setChatInput(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleSendMessage()}
+                />
+                <Button onClick={handleSendMessage}>Send</Button>
+              </div>
+            </div>
+          </Card>
+        ) : (
+          <Button
+            size="lg"
+            className="rounded-full h-14 w-14 shadow-lg"
+            onClick={() => setAiChatOpen(true)}
+          >
+            <MessageCircle className="h-6 w-6" />
+          </Button>
+        )}
+      </div>
     </motion.div>
   );
 }

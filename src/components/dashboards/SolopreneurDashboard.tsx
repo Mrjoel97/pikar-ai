@@ -35,13 +35,7 @@ import type { Id } from "@/convex/_generated/dataModel";
 
 import type { SolopreneurDashboardProps } from "@/types/dashboard";
 
-export function SolopreneurDashboard({
-  business,
-  demoData,
-  isGuest,
-  tier,
-  onUpgrade,
-}: SolopreneurDashboardProps) {
+function SolopreneurDashboard() {
   // Provide a relaxed-typing alias for the composer so extra props don't cause TS errors
   const CampaignComposerAny = CampaignComposer as any;
   // Use auth status early to guard queries when not authenticated
@@ -2252,12 +2246,7 @@ Renamed to avoid duplicate identifier collisions elsewhere in the file */
   const [showCalendar, setShowCalendar] = useState(false);
 
   return (
-    <motion.div
-      className="space-y-4"
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.25 }}
-    >
+    <div className="space-y-6">
       {/* Quick actions: Send Newsletter */}
       <div className="flex flex-wrap items-center gap-2">
         <Button
@@ -3401,9 +3390,7 @@ Renamed to avoid duplicate identifier collisions elsewhere in the file */
       </section>
 
       {/* Brain Dump */}
-      {!isGuest && business ? (
-        <BrainDumpSection businessId={String(business?._id || '')} />
-      ) : null}
+      <BrainDumpSection businessId={business._id} />
 
       {/* Help Coach */}
       <section>
@@ -3777,6 +3764,8 @@ Renamed to avoid duplicate identifier collisions elsewhere in the file */
           )}
         </DialogContent>
       </Dialog>
-    </motion.div>
+    </div>
   );
 }
+
+export default SolopreneurDashboard;

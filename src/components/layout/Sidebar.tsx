@@ -95,38 +95,6 @@ export function Sidebar({
             <span className="text-sm">Logout</span>
           </button>
         </div>
-
-        {/* Learning Hub Shortcut */}
-        <a
-          href="/learning-hub"
-          onClick={(e) => {
-            e.preventDefault();
-            onNavigate("/learning-hub");
-          }}
-          className="flex items-center gap-2 px-3 py-2 rounded-md text-sm hover:bg-accent hover:text-accent-foreground touch-manipulation active:scale-95 flex-shrink-0"
-          data-testid="sidebar-learninghub-link"
-          aria-label="Open Learning Hub"
-          role="button"
-        >
-          <span className="i-lucide-graduation-cap w-4 h-4 flex-shrink-0" />
-          <span className="truncate">Learning Hub</span>
-        </a>
-
-        {/* Settings Shortcut */}
-        <a
-          href="/settings"
-          onClick={(e) => {
-            e.preventDefault();
-            onNavigate("/settings");
-          }}
-          className="flex items-center gap-2 px-3 py-2 rounded-md text-sm hover:bg-accent hover:text-accent-foreground touch-manipulation active:scale-95 flex-shrink-0"
-          data-testid="sidebar-settings-link"
-          aria-label="Open settings"
-          role="button"
-        >
-          <span className="i-lucide-settings w-4 h-4 flex-shrink-0" />
-          <span className="truncate">Settings</span>
-        </a>
       </div>
     </aside>
   );

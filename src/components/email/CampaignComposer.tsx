@@ -18,6 +18,12 @@ import { Switch } from "@/components/ui/switch";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useNavigate } from "react-router";
 import { DraftsList } from "./DraftsList";
+import { AudienceSelector } from "./AudienceSelector";
+import { CsvImportDialog } from "./CsvImportDialog";
+import { SegmentationControls } from "./SegmentationControls";
+import { AbTestingControls } from "./AbTestingControls";
+import { SenderConfigAlert } from "./SenderConfigAlert";
+import { ComplianceWarnings } from "./ComplianceWarnings";
 
 type AgentTone = "concise" | "friendly" | "premium";
 type AgentPersona = "maker" | "coach" | "executive";
@@ -363,7 +369,7 @@ export function CampaignComposer({ businessId, onClose, onCreated, defaultSchedu
 
   return (
     <div className="space-y-6">
-      {/* Add Load from Draft button at the top */}
+      {/* Load from Draft button */}
       <div className="flex justify-between items-center">
         <Dialog open={draftDialogOpen} onOpenChange={setDraftDialogOpen}>
           <DialogTrigger asChild>
@@ -384,6 +390,7 @@ export function CampaignComposer({ businessId, onClose, onCreated, defaultSchedu
         </Dialog>
       </div>
 
+      {/* Scheduled badge */}
       {typeof defaultScheduledAt === "number" && (
         <div className="flex items-center gap-2">
           <Badge variant="secondary">
@@ -392,6 +399,7 @@ export function CampaignComposer({ businessId, onClose, onCreated, defaultSchedu
         </div>
       )}
 
+      {/* Agent profile alert */}
       {(agentTone || agentPersona || agentCadence) && (
         <Alert>
           <AlertTitle>Using your Agent Profile</AlertTitle>
@@ -403,57 +411,27 @@ export function CampaignComposer({ businessId, onClose, onCreated, defaultSchedu
         </Alert>
       )}
 
-      {hasSenderIssues && (
-        <div className="mb-4">
-          <Alert variant="destructive">
-            <AlertTitle>Sender configuration required</AlertTitle>
-            <AlertDescription>
-              Please configure your workspace sender before sending:
-              {missingFromEmail ? " From Email" : ""}{missingFromEmail && missingReplyTo ? " and" : ""}{missingReplyTo ? " Reply-To" : ""}.
-              <div className="mt-3">
-                <Button
-                  variant="secondary"
-                  className="bg-emerald-600 text-white hover:bg-emerald-700"
-                  onClick={() => navigate("/settings")}
-                >
-                  Fix sender in Settings
-                </Button>
-              </div>
-            </AlertDescription>
-          </Alert>
-        </div>
-      )}
+      {/* Sender configuration alert */}
+      <SenderConfigAlert
+        show={hasSenderIssues}
+        missingFromEmail={missingFromEmail}
+        missingReplyTo={missingReplyTo}
+        onFix={() => navigate("/settings")}
+      />
 
-      {preflightWarnings.length > 0 && (
-        <Alert variant="destructive">
-          <AlertTitle>Compliance preflight warnings</AlertTitle>
-          <AlertDescription>
-            <ul className="list-disc pl-5 space-y-1">
-              {preflightWarnings.map((w, i) => (
-                <li key={i}>{w}</li>
-              ))}
-            </ul>
-            {/* New: link to docs/learning for guidance */}
-            <div className="mt-3">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  // Prefer client-side navigation if available
-                  try {
-                    navigate("/learning-hub");
-                  } catch {
-                    window.location.href = "/learning-hub";
-                  }
-                }}
-              >
-                Learn about email consent & unsubscribe best practices
-              </Button>
-            </div>
-          </AlertDescription>
-        </Alert>
-      )}
+      {/* Compliance preflight warnings */}
+      <ComplianceWarnings
+        warnings={preflightWarnings}
+        onLearn={() => {
+          try {
+            navigate("/learning-hub");
+          } catch {
+            window.location.href = "/learning-hub";
+          }
+        }}
+      />
 
+      {/* Sender fields */}
       <div className="space-y-4">
         <div className="grid grid-cols-2 gap-4">
           <div>
@@ -507,209 +485,73 @@ export function CampaignComposer({ businessId, onClose, onCreated, defaultSchedu
             placeholder="This appears in email previews"
           />
         </div>
-      </div>
 
-      <Separator />
-
-      <div className="space-y-4">
-        <Label>Audience</Label>
-        <Tabs value={audienceType} onValueChange={(value) => setAudienceType(value as "direct" | "list")}>
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="direct" className="flex items-center gap-2">
-              <Mail className="h-4 w-4" />
-              Direct Recipients
-            </TabsTrigger>
-            <TabsTrigger value="list" className="flex items-center gap-2">
-              <Users className="h-4 w-4" />
-              Contact List
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="direct" className="space-y-2">
-            <Textarea
-              value={directRecipients}
-              onChange={(e) => setDirectRecipients(e.target.value)}
-              placeholder="Enter email addresses separated by commas"
-              rows={3}
-            />
-            <p className="text-sm text-muted-foreground">
-              Recipients: {recipientCount}
-            </p>
-          </TabsContent>
-
-          <TabsContent value="list" className="space-y-4">
-            <div className="flex items-center gap-2">
-              <Select value={selectedListId || ""} onValueChange={(value) => setSelectedListId(value as Id<"contactLists">)}>
-                <SelectTrigger className="flex-1">
-                  <SelectValue placeholder="Select a contact list" />
-                </SelectTrigger>
-                <SelectContent>
-                  {contactLists?.map((list: any) => (
-                    <SelectItem key={list._id} value={list._id}>
-                      {list.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              <Dialog open={csvDialogOpen} onOpenChange={setCsvDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button variant="outline" size="sm">
-                    <Plus className="h-4 w-4 mr-1" />
-                    Import CSV
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-2xl">
-                  <DialogHeader>
-                    <DialogTitle>Import Contacts from CSV</DialogTitle>
-                  </DialogHeader>
-                  <div className="space-y-4">
-                    <div>
-                      <Label htmlFor="csvListName">List Name</Label>
-                      <Input
-                        id="csvListName"
-                        value={csvListName}
-                        onChange={(e) => setCsvListName(e.target.value)}
-                        placeholder="My Contact List"
-                      />
-                    </div>
-
-                    <div>
-                      <Label htmlFor="csvText">CSV Data</Label>
-                      <Textarea
-                        id="csvText"
-                        value={csvText}
-                        onChange={(e) => handleCsvTextChange(e.target.value)}
-                        placeholder="email,name,tags&#10;john@example.com,John Doe,newsletter;customer&#10;jane@example.com,Jane Smith,newsletter"
-                        rows={8}
-                      />
-                      <p className="text-sm text-muted-foreground mt-1">
-                        Expected format: email,name,tags (tags separated by semicolons)
-                      </p>
-                    </div>
-
-                    {csvPreview.length > 0 && (
-                      <Card>
-                        <CardHeader>
-                          <CardTitle className="text-sm">Preview ({csvContacts.length} contacts total)</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="space-y-2">
-                            {csvPreview.map((contact, index) => (
-                              <div key={index} className="flex items-center gap-2 text-sm">
-                                <Badge variant="outline">{contact.email}</Badge>
-                                {contact.name && <span>{contact.name}</span>}
-                                {contact.tags && contact.tags.length > 0 && (
-                                  <div className="flex gap-1">
-                                    {contact.tags.map((tag, i) => (
-                                      <Badge key={i} variant="secondary" className="text-xs">
-                                        {tag}
-                                      </Badge>
-                                    ))}
-                                  </div>
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                        </CardContent>
-                      </Card>
-                    )}
-
-                    <div className="flex justify-end gap-2">
-                      <Button variant="outline" onClick={() => setCsvDialogOpen(false)}>
-                        Cancel
-                      </Button>
-                      <Button onClick={handleCsvImport} disabled={csvContacts.length === 0 || !csvListName.trim()}>
-                        Import {csvContacts.length} Contacts
-                      </Button>
-                    </div>
-                  </div>
-                </DialogContent>
-              </Dialog>
-            </div>
-
-            {selectedList && (
-              <Card>
-                <CardContent className="pt-4">
-                  <div className="flex items-center gap-2">
-                    <Users className="h-4 w-4" />
-                    <span className="font-medium">{selectedList.name}</span>
-                    <Badge variant="secondary">
-                      {selectedList.description}
-                    </Badge>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-          </TabsContent>
-        </Tabs>
-      </div>
-
-      <Separator />
-
-      {/* Segmentation (optional) */}
-      <div className="space-y-3">
-        <Label>Segmentation (optional)</Label>
-        <div className="flex items-center gap-3">
-          <Switch checked={useSegmentation} onCheckedChange={setUseSegmentation} />
-          <span className="text-sm text-muted-foreground">Target a saved segment instead of manual recipients or list</span>
+        <div>
+          <Label htmlFor="body">Email Body</Label>
+          <Textarea
+            id="body"
+            value={formData.body}
+            onChange={(e) => handleInputChange("body", e.target.value)}
+            placeholder="Your email content"
+            rows={10}
+          />
         </div>
-
-        {useSegmentation && (
-          <div className="space-y-3 rounded-lg border p-3">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <div>
-                <Label className="text-xs">Segment Type</Label>
-                <select
-                  value={segmentType}
-                  onChange={(e) => setSegmentType(e.target.value as any)}
-                  className="w-full border rounded p-2 text-sm"
-                >
-                  <option value="status">Status</option>
-                  <option value="tag">Tag</option>
-                  <option value="engagement">Engagement</option>
-                </select>
-              </div>
-
-              <div className="md:col-span-2">
-                <Label className="text-xs">Segment</Label>
-                <select
-                  value={segmentValue}
-                  onChange={(e) => setSegmentValue(e.target.value)}
-                  className="w-full border rounded p-2 text-sm"
-                >
-                  <option value="">Select...</option>
-                  {segmentType === "status" &&
-                    Object.keys(segments?.byStatus || {}).map((k) => (
-                      <option key={k} value={k}>
-                        {k} ({(segments?.byStatus as any)?.[k]})
-                      </option>
-                    ))}
-                  {segmentType === "tag" &&
-                    Object.keys(segments?.byTag || {}).map((k) => (
-                      <option key={k} value={k}>
-                        {k} ({(segments?.byTag as any)?.[k]})
-                      </option>
-                    ))}
-                  {segmentType === "engagement" &&
-                    Object.keys(segments?.engagementSegments || {}).map((k) => (
-                      <option key={k} value={k}>
-                        {k} ({(segments?.engagementSegments as any)?.[k]})
-                      </option>
-                    ))}
-                </select>
-              </div>
-            </div>
-
-            {Array.isArray(segmentEmails) && (
-              <div className="text-xs text-muted-foreground">
-                📊 {segmentEmails.length} contacts in this segment
-              </div>
-            )}
-          </div>
-        )}
       </div>
 
+      <Separator />
+
+      {/* Audience Selector - extracted component */}
+      <AudienceSelector
+        audienceType={audienceType}
+        setAudienceType={setAudienceType}
+        directRecipients={directRecipients}
+        setDirectRecipients={setDirectRecipients}
+        selectedListId={selectedListId}
+        setSelectedListId={setSelectedListId}
+        contactLists={contactLists}
+        selectedList={selectedList}
+        recipientCount={recipientCount}
+        onOpenCsvDialog={() => setCsvDialogOpen(true)}
+      />
+
+      {/* CSV Import Dialog - extracted component */}
+      <CsvImportDialog
+        open={csvDialogOpen}
+        onOpenChange={setCsvDialogOpen}
+        csvText={csvText}
+        onCsvTextChange={handleCsvTextChange}
+        csvListName={csvListName}
+        onCsvListNameChange={setCsvListName}
+        csvPreview={csvPreview}
+        csvContacts={csvContacts}
+        onImport={handleCsvImport}
+      />
+
+      <Separator />
+
+      {/* Segmentation Controls - extracted component */}
+      <SegmentationControls
+        useSegmentation={useSegmentation}
+        setUseSegmentation={setUseSegmentation}
+        segmentType={segmentType}
+        setSegmentType={setSegmentType}
+        segmentValue={segmentValue}
+        setSegmentValue={setSegmentValue}
+        segments={segments}
+        segmentEmails={segmentEmails}
+      />
+
+      <Separator />
+
+      {/* A/B Testing Controls - extracted component */}
+      <AbTestingControls
+        enableAb={enableAb}
+        setEnableAb={setEnableAb}
+        variantB={variantB}
+        setVariantB={setVariantB}
+      />
+
+      {/* Action buttons */}
       <div className="flex justify-end gap-2 pt-4">
         <Button variant="outline" onClick={onClose}>
           Cancel

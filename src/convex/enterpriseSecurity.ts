@@ -326,7 +326,7 @@ export const detectThreats = internalAction({
     for (const business of businesses) {
       // Random threat detection for demo
       if (Math.random() < 0.1) {
-        await ctx.runMutation(internal.enterpriseSecurity.createThreatAlert as any, {
+        await ctx.runMutation("enterpriseSecurity:createThreatAlert" as any, {
           businessId: business._id,
           alertType: "anomaly_detected",
           severity: "medium",
@@ -378,11 +378,11 @@ export const checkCertificationExpiry = internalAction({
     const now = Date.now();
     const thirtyDays = 30 * 24 * 60 * 60 * 1000;
 
-    const certs = await ctx.runQuery(internal.enterpriseSecurity.getAllCertifications as any, {});
+    const certs = await ctx.runQuery("enterpriseSecurity:getAllCertifications" as any, {});
 
     for (const cert of certs) {
       if (cert.status === "active" && cert.expiryDate - now < thirtyDays) {
-        await ctx.runMutation(internal.enterpriseSecurity.updateCertificationStatus as any, {
+        await ctx.runMutation("enterpriseSecurity:updateCertificationStatus" as any, {
           certId: cert._id,
           status: "in_renewal",
         });

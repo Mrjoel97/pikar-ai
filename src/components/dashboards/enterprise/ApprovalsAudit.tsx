@@ -1,68 +1,70 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 
-type Props = {
+interface ApprovalsAuditProps {
   isGuest: boolean;
   approvals: any[] | undefined;
   auditLatest: any[] | undefined;
-  onApprove: (id: string) => Promise<void>;
-  onReject: (id: string) => Promise<void>;
-};
+  onApprove: (id: string) => void;
+  onReject: (id: string) => void;
+}
 
-export function ApprovalsAudit({ isGuest, approvals, auditLatest, onApprove, onReject }: Props) {
+export function ApprovalsAudit({
+  isGuest,
+  approvals,
+  auditLatest,
+  onApprove,
+  onReject,
+}: ApprovalsAuditProps) {
+  if (isGuest) {
+    return (
+      <div className="text-sm text-muted-foreground">
+        Sign in to view approvals and audit trail
+      </div>
+    );
+  }
+
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle>Pending Approvals</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          {isGuest ? (
-            <div className="text-sm text-muted-foreground">Demo: 4 pending enterprise approvals.</div>
-          ) : approvals === undefined ? (
-            <div className="text-sm text-muted-foreground">Loading…</div>
-          ) : approvals.length === 0 ? (
-            <div className="text-sm text-muted-foreground">None pending.</div>
-          ) : (
-            approvals.slice(0, 3).map((a: any) => (
-              <div key={a._id} className="flex items-center justify-between border rounded-md p-2">
-                <span className="text-sm">WF {String(a.workflowId).slice(-6)}</span>
-                <div className="flex items-center gap-2">
-                  <Badge variant="outline">{a.priority}</Badge>
-                  {!isGuest && (
-                    <>
-                      <Button size="sm" variant="outline" onClick={() => onApprove(a._id)}>Approve</Button>
-                      <Button size="sm" variant="destructive" onClick={() => onReject(a._id)}>Reject</Button>
-                    </>
-                  )}
+    <div className="space-y-4">
+      <div>
+        <h4 className="text-sm font-medium mb-2">Pending Approvals</h4>
+        {!approvals || approvals.length === 0 ? (
+          <div className="text-sm text-muted-foreground">No pending approvals</div>
+        ) : (
+          <div className="space-y-2">
+            {approvals.slice(0, 3).map((approval: any) => (
+              <div key={approval._id} className="flex items-center justify-between text-sm">
+                <span className="truncate">{approval.workflowName || "Workflow"}</span>
+                <div className="flex gap-1">
+                  <Button size="sm" variant="outline" onClick={() => onApprove(approval._id)}>
+                    Approve
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => onReject(approval._id)}>
+                    Reject
+                  </Button>
                 </div>
               </div>
-            ))
-          )}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle>Recent Audit</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          {isGuest ? (
-            <div className="text-sm text-muted-foreground">Demo: Policy update, Role change, Integration key rotated.</div>
-          ) : auditLatest === undefined ? (
-            <div className="text-sm text-muted-foreground">Loading…</div>
-          ) : auditLatest.length === 0 ? (
-            <div className="text-sm text-muted-foreground">No recent events.</div>
-          ) : (
-            auditLatest.slice(0, 3).map((e: any) => (
-              <div key={e._id} className="text-xs text-muted-foreground">
-                {new Date(e.createdAt).toLocaleDateString()} — {e.entityType}: {e.action}
+            ))}
+          </div>
+        )}
+      </div>
+      <div>
+        <h4 className="text-sm font-medium mb-2">Recent Audit Events</h4>
+        {!auditLatest || auditLatest.length === 0 ? (
+          <div className="text-sm text-muted-foreground">No recent events</div>
+        ) : (
+          <div className="space-y-1">
+            {auditLatest.map((event: any) => (
+              <div key={event._id} className="flex items-center gap-2 text-xs">
+                <Badge variant="outline" className="text-xs">
+                  {event.action}
+                </Badge>
+                <span className="text-muted-foreground truncate">{event.details}</span>
               </div>
-            ))
-          )}
-        </CardContent>
-      </Card>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

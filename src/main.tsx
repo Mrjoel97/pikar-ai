@@ -37,6 +37,8 @@ const ApiBuilderPage = React.lazy(() => import("./pages/ApiBuilder"));
 const SupportPage = React.lazy(() => import("./pages/Support"));
 const TestRunnerPage = React.lazy(() => import("./pages/TestRunner"));
 
+const DocsPage = React.lazy(() => import("./pages/Docs"));
+
 const DataWarehouseManager = React.lazy(() =>
   import("./components/enterprise/DataWarehouseManager").then((m) => ({
     default: m.DataWarehouseManager,
@@ -384,6 +386,14 @@ createRoot(document.getElementById("root")!).render(
                 element={
                   <React.Suspense fallback={<div className="p-6 text-sm">Loading…</div>}>
                     <PortfolioDashboard />
+                  </React.Suspense>
+                }
+              />
+              <Route
+                path="/docs"
+                element={
+                  <React.Suspense fallback={<div className="p-6 text-sm">Loading…</div>}>
+                    <DocsPage />
                   </React.Suspense>
                 }
               />

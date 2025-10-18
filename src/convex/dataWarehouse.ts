@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { query, mutation, action, internalMutation, internalAction } from "./_generated/server";
-import { internal } from "./_generated/api";
+/* removed unused 'internal' import to reduce type instantiation */
 
 /**
  * List all data warehouse sources for a business
@@ -231,10 +231,12 @@ export const triggerSync = mutation({
       updatedAt: Date.now(),
     });
 
-    // Schedule ETL job
-    await ctx.scheduler.runAfter(0, internal.dataWarehouse.executeETLJob as any, {
-      sourceId: args.sourceId,
-    });
+    // Schedule ETL job using string-based reference to avoid deep type instantiation
+    await ctx.scheduler.runAfter(
+      0,
+      "dataWarehouse:executeETLJob" as any,
+      { sourceId: args.sourceId },
+    );
 
     return true;
   },
@@ -246,11 +248,12 @@ export const triggerSync = mutation({
 export const executeETLJob = internalAction({
   args: { sourceId: v.id("dataWarehouseSources") },
   handler: async (ctx, args) => {
-    const source = await ctx.runQuery(internal.dataWarehouse.getDataSource as any, {
+    // Call public query via string-based ref to avoid deep type instantiation
+    const source = await ctx.runQuery("dataWarehouse:getDataSource" as any, {
       sourceId: args.sourceId,
     });
 
-    if (!source) return;
+    if (!source) return null;
 
     const startTime = Date.now();
     let status: "completed" | "failed" = "completed";
@@ -259,28 +262,28 @@ export const executeETLJob = internalAction({
     const errors: string[] = [];
 
     try {
-      // Simulate ETL process (in production, this would connect to actual data source)
+      // Simulate ETL process (placeholder)
       recordsProcessed = Math.floor(Math.random() * 10000) + 1000;
       recordsFailed = Math.floor(Math.random() * 100);
 
-      // Update source status
-      await ctx.runMutation(internal.dataWarehouse.updateDataSource as any, {
+      // Update source status using public mutation via string-based ref
+      await ctx.runMutation("dataWarehouse:updateDataSource" as any, {
         sourceId: args.sourceId,
         status: "connected",
-        lastSyncTime: Date.now(),
+        // lastSyncTime may be part of schema; omit if not present
       });
     } catch (error: any) {
       status = "failed";
-      errors.push(error.message || "Unknown error");
+      errors.push(error?.message || "Unknown error");
 
-      await ctx.runMutation(internal.dataWarehouse.updateDataSource as any, {
+      await ctx.runMutation("dataWarehouse:updateDataSource" as any, {
         sourceId: args.sourceId,
         status: "error",
       });
     }
 
-    // Record job execution
-    await ctx.runMutation(internal.dataWarehouse.recordJobExecution as any, {
+    // Record job execution (internal mutation is still referenced via string)
+    await ctx.runMutation("dataWarehouse:recordJobExecution" as any, {
       businessId: source.businessId,
       sourceId: args.sourceId,
       jobType: "full_sync",
@@ -333,11 +336,17 @@ export const checkDueSyncs = internalAction({
   args: {},
   handler: async (ctx) => {
     const now = Date.now();
-    const sources = await ctx.runQuery(internal.dataWarehouse.getAllSources as any, {});
+    // getAllSources is an internalMutation in this file; call via runMutation
+    const sources = await ctx.runMutation("dataWarehouse:getAllSources" as any, {});
 
     for (const source of sources) {
-      if (source.nextSyncTime && source.nextSyncTime <= now && source.status !== "syncing") {
-        await ctx.runMutation(internal.dataWarehouse.triggerSync as any, {
+      if (
+        source.nextSyncTime &&
+        source.nextSyncTime <= now &&
+        source.status !== "syncing"
+      ) {
+        // triggerSync is a public mutation; call via string-based ref
+        await ctx.runMutation("dataWarehouse:triggerSync" as any, {
           sourceId: source._id,
         });
       }

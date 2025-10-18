@@ -13,6 +13,7 @@ import { useEffect, useState } from "react";
 import { useQuery } from "convex/react";
 import { useAuth } from "@/hooks/use-auth";
 import { isGuestModeActive } from "@/lib/guestUtils";
+import { useIntersectionObserver } from "@/hooks/use-intersection-observer";
 
 type Props = {
   disabled?: boolean; // hide/disable for guest
@@ -67,6 +68,28 @@ export function NotificationsCenter({ disabled }: Props) {
 
   // Add: SLA-only quick filter state
   const [slaOnlyLocal, setSlaOnlyLocal] = React.useState(false);
+
+  // Add: infinite scroll sentinel using IntersectionObserver for lazy loading pages
+  const [sentinelRef, sentinelVisible] = useIntersectionObserver({ threshold: 0 });
+
+  useEffect(() => {
+    // Auto-load next page when sentinel becomes visible
+    if (
+      !notifications ||
+      (notifications as any) === "skip" ||
+      typeof (notifications as any)?.isDone === "undefined"
+    ) {
+      return;
+    }
+    if (
+      sentinelVisible &&
+      !(notifications as any).isDone &&
+      (notifications as any).continueCursor &&
+      (notifications as any).continueCursor !== notificationsCursor
+    ) {
+      setNotificationsCursor((notifications as any).continueCursor);
+    }
+  }, [sentinelVisible, notifications, notificationsCursor]);
 
   const handleSavePrefs = async () => {
     if (!businessId || !prefsDraft) return;
@@ -494,8 +517,13 @@ export function NotificationsCenter({ disabled }: Props) {
                     </CardContent>
                   </Card>
                 ))}
-                
-                {/* Load more button */}
+
+                {/* Auto-load sentinel for infinite scrolling */}
+                {notifications && !(notifications as any).isDone && (
+                  <div ref={sentinelRef} className="h-2 w-full" aria-hidden="true" />
+                )}
+
+                {/* Load more button fallback */}
                 {!notifications.isDone && (
                   <div className="p-3 border-t">
                     <Button

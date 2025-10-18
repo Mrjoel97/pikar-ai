@@ -6,7 +6,7 @@ import { useState, useMemo, useEffect, useCallback, lazy, Suspense } from "react
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Badge } from "@/components/ui/badge";
-import { useMutation, useQuery as useConvexQuery } from "convex/react";
+import { useMutation } from "convex/react";
 import { toast } from "sonner";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
@@ -14,6 +14,9 @@ import { useNavigate } from "react-router";
 import { Id } from "@/convex/_generated/dataModel";
 import { Shield, AlertTriangle, Globe, Zap, FileText, Palette, Lock } from "lucide-react";
 import { SystemHealthStrip } from "@/components/dashboard/SystemHealthStrip";
+import { GlobalSocialSection } from "./enterprise/GlobalSocialSection";
+import { EnterpriseShortcuts } from "./enterprise/EnterpriseShortcuts";
+import { LockedRibbon } from "./enterprise/LockedRibbon";
 import type { EnterpriseDashboardProps } from "@/types/dashboard";
 import { EnterpriseControls } from "./enterprise/EnterpriseControls";
 import { IntegrationStatus } from "./enterprise/IntegrationStatus";
@@ -33,19 +36,12 @@ const ExperimentCreator = lazy(() =>
     default: m.ExperimentCreator,
   })),
 );
-const GlobalOverview = lazy(() =>
-  import("./enterprise/GlobalOverview").then((m) => ({
-    default: m.GlobalOverview,
-  })),
-);
-const WidgetGrid = lazy(() =>
-  import("./enterprise/WidgetGrid").then((m) => ({ default: m.WidgetGrid })),
-);
-const ApprovalsAudit = lazy(() =>
-  import("./enterprise/ApprovalsAudit").then((m) => ({
-    default: m.ApprovalsAudit,
-  })),
-);
+import { GlobalOverview } from "./enterprise/GlobalOverview";
+import { WidgetGrid } from "./enterprise/WidgetGrid";
+import { ApprovalsAudit } from "./enterprise/ApprovalsAudit";
+import { StrategicInitiatives } from "./enterprise/StrategicInitiatives";
+import { SystemTelemetry } from "./enterprise/SystemTelemetry";
+import { ExecutiveAgentInsights } from "./enterprise/ExecutiveAgentInsights";
 const AdvancedPanels = lazy(() =>
   import("./enterprise/AdvancedPanels").then((m) => ({
     default: m.AdvancedPanels,
@@ -145,27 +141,6 @@ export function EnterpriseDashboard({
     const flag = featureFlags.find((f: any) => f.flagName === flagName);
     return flag?.isEnabled ?? false;
   };
-
-  /**
-   * LockedRibbon Component
-   * 
-   * Displays an overlay indicating a feature is locked and requires an upgrade.
-   * 
-   * @param {Object} props - Component props
-   * @param {string} [props.label="Feature requires upgrade"] - Message to display
-   * @returns {JSX.Element} Rendered locked ribbon overlay
-   */
-  const LockedRibbon = ({ label = "Feature requires upgrade" }: { label?: string }) => (
-    <div className="absolute inset-0 bg-black/5 backdrop-blur-[2px] rounded-lg flex items-center justify-center z-10">
-      <div className="flex items-center gap-2 bg-white/90 px-4 py-2 rounded-full shadow-lg border border-amber-300">
-        <Lock className="h-4 w-4 text-amber-600" />
-        <span className="text-sm font-medium text-amber-700">{label}</span>
-        <Button size="sm" variant="outline" onClick={onUpgrade} className="ml-2">
-          Upgrade
-        </Button>
-      </div>
-    </div>
-  );
 
   /**
    * Generate trend data for sparkline visualizations
@@ -377,18 +352,16 @@ export function EnterpriseDashboard({
       )}
 
       {/* Global Command Center */}
-      <Suspense fallback={<div className="rounded-md border p-4 text-sm text-muted-foreground">Loading overview…</div>}>
-        <GlobalOverview
-          businessId={businessId}
-          region={region}
-          setRegion={setRegion}
-          unit={unit}
-          setUnit={setUnit}
-          onRunDiagnostics={handleRunDiagnostics}
-          onEnforceGovernance={handleEnforceGovernance}
-          slaSummaryText={slaSummaryText}
-        />
-      </Suspense>
+      <GlobalOverview
+        businessId={businessId}
+        region={region}
+        setRegion={setRegion}
+        unit={unit}
+        setUnit={setUnit}
+        onRunDiagnostics={handleRunDiagnostics}
+        onEnforceGovernance={handleEnforceGovernance}
+        slaSummaryText={slaSummaryText}
+      />
 
       {/* Strategic Command Center */}
       <Suspense fallback={<div className="rounded-md border p-4 text-sm text-muted-foreground">Loading strategic center…</div>}>
@@ -402,7 +375,6 @@ export function EnterpriseDashboard({
 
       <Suspense fallback={<div className="rounded-md border p-4 text-sm text-muted-foreground">Loading widgets…</div>}>
         <WidgetGrid
-          hasEnterprise={hasTier("enterprise")}
           widgetOrder={widgetOrder}
           setWidgetOrder={setWidgetOrder}
           widgetsByKey={widgetsByKey}
@@ -410,192 +382,19 @@ export function EnterpriseDashboard({
         />
       </Suspense>
 
-      {/* Global Social Command Center - with feature flag */}
-      <section className="relative">
-        {!globalSocialCommandEnabled && <LockedRibbon label="Global Social Command requires Enterprise tier" />}
-        <div className={!globalSocialCommandEnabled ? "pointer-events-none opacity-50" : ""}>
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <Globe className="h-5 w-5 text-emerald-600" />
-              <h2 className="text-xl font-semibold">Global Social Command Center</h2>
-            </div>
-            <Button size="sm" variant="outline" onClick={() => nav("/social")} disabled={!globalSocialCommandEnabled}>
-              Open Full Manager
-            </Button>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {/* Multi-Brand Management */}
-            <Card className="relative">
-              {!whiteLabelEnabled && <LockedRibbon label="White-label features require Enterprise tier" />}
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <Palette className="h-4 w-4" />
-                  Multi-Brand Management
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Active Brands</span>
-                    <span className="font-semibold">12</span>
-                  </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Connected Platforms</span>
-                    <span className="font-semibold">48</span>
-                  </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Scheduled Posts</span>
-                    <span className="font-semibold">2,341</span>
-                  </div>
-                </div>
-                <Button size="sm" variant="outline" className="w-full" onClick={() => nav("/branding")} disabled={!brandingPortalEnabled}>
-                  Manage Brands
-                </Button>
-              </CardContent>
-            </Card>
-
-            {/* Advanced AI Orchestration */}
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <Zap className="h-4 w-4" />
-                  AI Orchestration
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">AI-Generated Posts</span>
-                    <span className="font-semibold">1,847</span>
-                  </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Avg Engagement</span>
-                    <span className="font-semibold text-green-600">+34%</span>
-                  </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Auto-Optimized</span>
-                    <Badge variant="outline" className="border-emerald-300 text-emerald-700">Active</Badge>
-                  </div>
-                </div>
-                <Button size="sm" variant="outline" className="w-full" onClick={() => nav("/agents")}>
-                  Configure AI Agents
-                </Button>
-              </CardContent>
-            </Card>
-
-            {/* Crisis Management */}
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <AlertTriangle className="h-4 w-4" />
-                  Crisis Management
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Active Alerts</span>
-                    <Badge variant="outline" className="border-green-300 text-green-700">0</Badge>
-                  </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Sentiment Score</span>
-                    <span className="font-semibold text-green-600">94%</span>
-                  </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Response Time</span>
-                    <span className="font-semibold">2.3 min</span>
-                  </div>
-                </div>
-                <Button size="sm" variant="outline" className="w-full" onClick={() => nav("/workflows")}>
-                  Crisis Workflows
-                </Button>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* API Access & White-Label Reporting */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-            <Card className="relative">
-              {!apiWebhooksEnabled && <LockedRibbon label="API & Webhooks require Enterprise tier" />}
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <FileText className="h-4 w-4" />
-                  API Access & Documentation
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <p className="text-sm text-muted-foreground">
-                  Integrate social media management into your existing systems with our comprehensive API.
-                </p>
-                <div className="flex gap-2">
-                  <Button size="sm" variant="outline" onClick={() => nav("/api-docs")} disabled={!apiWebhooksEnabled}>
-                    View API Docs
-                  </Button>
-                  <Button size="sm" variant="outline" onClick={() => nav("/webhooks")} disabled={!apiWebhooksEnabled}>
-                    Webhooks
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="relative">
-              {!whiteLabelEnabled && <LockedRibbon label="White-label reporting requires Enterprise tier" />}
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <Palette className="h-4 w-4" />
-                  White-Label Social Reporting
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <p className="text-sm text-muted-foreground">
-                  Generate branded reports for clients with custom logos, colors, and domains.
-                </p>
-                <div className="flex gap-2">
-                  <Button size="sm" variant="outline" onClick={() => nav("/branding")} disabled={!brandingPortalEnabled}>
-                    Customize Branding
-                  </Button>
-                  <Button size="sm" variant="outline" onClick={() => nav("/analytics")}>
-                    Export Reports
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Global Performance Overview */}
-          <Card className="mt-4">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base">Global Performance Overview</CardTitle>
-              <CardDescription>Cross-brand social media metrics</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="p-3 border rounded-lg">
-                  <div className="text-xs text-muted-foreground mb-1">Total Reach</div>
-                  <div className="text-xl font-bold">12.4M</div>
-                  <div className="text-xs text-green-600">+18% vs last month</div>
-                </div>
-                <div className="p-3 border rounded-lg">
-                  <div className="text-xs text-muted-foreground mb-1">Engagement Rate</div>
-                  <div className="text-xl font-bold">4.7%</div>
-                  <div className="text-xs text-green-600">+0.8% vs last month</div>
-                </div>
-                <div className="p-3 border rounded-lg">
-                  <div className="text-xs text-muted-foreground mb-1">Response Time</div>
-                  <div className="text-xl font-bold">2.3 min</div>
-                  <div className="text-xs text-green-600">-1.2 min vs last month</div>
-                </div>
-                <div className="p-3 border rounded-lg">
-                  <div className="text-xs text-muted-foreground mb-1">ROI</div>
-                  <div className="text-xl font-bold">3.8x</div>
-                  <div className="text-xs text-green-600">+0.4x vs last month</div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </section>
+      <GlobalSocialSection
+        globalSocialCommandEnabled={globalSocialCommandEnabled}
+        whiteLabelEnabled={whiteLabelEnabled}
+        brandingPortalEnabled={brandingPortalEnabled}
+        apiWebhooksEnabled={apiWebhooksEnabled}
+        onOpenSocialManager={() => nav("/social")}
+        onOpenBranding={() => nav("/branding")}
+        onOpenWorkflows={() => nav("/workflows")}
+        onOpenApiDocs={() => nav("/api-docs")}
+        onOpenWebhooks={() => nav("/webhooks")}
+        onOpenAnalytics={() => nav("/analytics")}
+        onUpgrade={onUpgrade}
+      />
 
       {/* Advanced Integrations Hub - Enterprise Enhanced */}
       <section>
@@ -618,73 +417,9 @@ export function EnterpriseDashboard({
         </Suspense>
       </section>
 
-      <section>
-        <h2 className="text-xl font-semibold mb-4">Strategic Initiatives</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {workflows.slice(0, 6).map((workflow: any) => (
-            <Card key={workflow.id}>
-              <CardContent className="p-4">
-                <h3 className="font-medium">{workflow.name}</h3>
-                <p className="text-sm text-muted-foreground mb-2">
-                  Status: {workflow.status}
-                </p>
-                <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
-                  <div
-                    className="bg-emerald-600 h-2 rounded-full"
-                    style={{ width: `${workflow.completionRate}%` }}
-                  />
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  {workflow.completionRate}% complete
-                </p>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </section>
+      <StrategicInitiatives workflows={workflows} />
 
-      <section>
-        <h2 className="text-xl font-semibold mb-4">System Telemetry</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Card>
-            <CardContent className="p-4">
-              <h3 className="font-medium mb-3">Active AI Agents</h3>
-              <div className="space-y-2">
-                {agents.slice(0, 4).map((agent: any) => (
-                  <div key={agent.id} className="flex items-center justify-between">
-                    <span className="text-sm">{agent.name}</span>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-muted-foreground">{agent.efficiency}%</span>
-                      <div className={`w-2 h-2 rounded-full ${
-                        agent.status === 'active' ? 'bg-green-500' : 'bg-gray-400'
-                      }`} />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4">
-              <h3 className="font-medium mb-3">Critical Alerts</h3>
-              <div className="space-y-2">
-                {(demoData?.notifications || [])
-                  .filter((n: any) => n.type === 'urgent' || n.type === 'warning')
-                  .slice(0, 3)
-                  .map((notification: any) => (
-                    <div key={notification.id} className="flex items-center gap-2">
-                      <div className={`w-2 h-2 rounded-full ${
-                        notification.type === 'urgent' ? 'bg-red-500' : 'bg-yellow-500'
-                      }`} />
-                      <span className="text-sm">{notification.message}</span>
-                    </div>
-                  ))
-                }
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </section>
+      <SystemTelemetry agents={agents} demoData={demoData} />
 
       <section>
         <h2 className="text-xl font-semibold mb-4">Enterprise Controls</h2>
@@ -696,135 +431,34 @@ export function EnterpriseDashboard({
               <CardTitle>Approvals & Audit</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <Suspense fallback={<div className="text-sm text-muted-foreground">Loading approvals…</div>}>
-                <ApprovalsAudit
-                  isGuest={isGuest}
-                  approvals={approvals}
-                  auditLatest={auditLatest}
-                  onApprove={handleApprove}
-                  onReject={handleReject}
-                />
-              </Suspense>
+              <ApprovalsAudit
+                isGuest={isGuest}
+                approvals={approvals}
+                auditLatest={auditLatest}
+                onApprove={handleApprove}
+                onReject={handleReject}
+              />
             </CardContent>
           </Card>
         </div>
       </section>
 
-      <section>
-        <h2 className="text-xl font-semibold mb-4">Enterprise Shortcuts</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <Card className="relative">
-            {!brandingPortalEnabled && <LockedRibbon label="Branding Portal requires Enterprise tier" />}
-            <CardContent className="p-4 flex items-center justify-between">
-              <div>
-                <div className="text-sm font-medium">Branding</div>
-                <div className="text-xs text-muted-foreground">White-label customization</div>
-              </div>
-              <Button size="sm" variant="outline" onClick={() => nav("/branding")} disabled={!brandingPortalEnabled}>
-                Customize
-              </Button>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4 flex items-center justify-between">
-              <div>
-                <div className="text-sm font-medium">Data Warehouse</div>
-                <div className="text-xs text-muted-foreground">ETL & data integration</div>
-              </div>
-              <Button size="sm" variant="outline" onClick={() => nav("/enterprise/data-warehouse")}>
-                Manage
-              </Button>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4 flex items-center justify-between">
-              <div>
-                <div className="text-sm font-medium">Security Dashboard</div>
-                <div className="text-xs text-muted-foreground">Threats & compliance</div>
-              </div>
-              <Button size="sm" variant="outline" onClick={() => nav("/enterprise/security")}>
-                Open
-              </Button>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4 flex items-center justify-between">
-              <div>
-                <div className="text-sm font-medium">Feature Flags</div>
-                <div className="text-xs text-muted-foreground">Manage rollout</div>
-              </div>
-              <a href="#feature-flags"><Button size="sm" variant="outline">Open</Button></a>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4 flex items-center justify-between">
-              <div>
-                <div className="text-sm font-medium">Audit Export</div>
-                <div className="text-xs text-muted-foreground">CSV for compliance</div>
-              </div>
-              {business?._id ? (
-                <a href={`/api/audit/export?businessId=${business._id}`} target="_blank" rel="noreferrer">
-                  <Button size="sm" variant="outline">Download</Button>
-                </a>
-              ) : (
-                <Button size="sm" variant="outline" disabled>Download</Button>
-              )}
-            </CardContent>
-          </Card>
-          <Card className="relative">
-            {!scimProvisioningEnabled && <LockedRibbon label="SCIM Provisioning requires Enterprise tier" />}
-            <CardContent className="p-6">
-              <div className="text-sm font-medium">SCIM Provisioning</div>
-              <div className="text-xs text-muted-foreground mt-1">User sync from IdP</div>
-              <Button size="sm" className="mt-4 w-full" onClick={() => nav("/scim-provisioning")} disabled={!scimProvisioningEnabled}>
-                Configure
-              </Button>
-            </CardContent>
-          </Card>
-          <Card className="relative">
-            {!ssoConfigurationEnabled && <LockedRibbon label="SSO Configuration requires Enterprise tier" />}
-            <CardContent className="p-6">
-              <div className="text-sm font-medium">SSO Configuration</div>
-              <div className="text-xs text-muted-foreground mt-1">SAML & OIDC setup</div>
-              <Button size="sm" className="mt-4 w-full" onClick={() => nav("/sso-configuration")} disabled={!ssoConfigurationEnabled}>
-                Configure
-              </Button>
-            </CardContent>
-          </Card>
-          <Card className="relative">
-            {!kmsEncryptionEnabled && <LockedRibbon label="KMS Encryption requires Enterprise tier" />}
-            <CardContent className="p-6">
-              <div className="text-sm font-medium">Encryption (KMS)</div>
-              <div className="text-xs text-muted-foreground mt-1">Secure key management</div>
-              <Button size="sm" className="mt-4 w-full" onClick={() => nav("/kms-configuration")} disabled={!kmsEncryptionEnabled}>
-                Configure
-              </Button>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4 flex items-center justify-between">
-              <div>
-                <div className="text-sm font-medium">Custom APIs</div>
-                <div className="text-xs text-muted-foreground">Build custom endpoints</div>
-              </div>
-              <Button size="sm" variant="outline" onClick={() => nav("/api/builder")}>
-                Open Builder
-              </Button>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4 flex items-center justify-between">
-              <div>
-                <div className="text-sm font-medium">Enterprise Support</div>
-                <div className="text-xs text-muted-foreground">Tickets & training</div>
-              </div>
-              <Button size="sm" variant="outline" onClick={() => nav("/support")}>
-                Open Portal
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-      </section>
+      <EnterpriseShortcuts
+        businessId={business?._id ? String(business._id) : null}
+        brandingPortalEnabled={brandingPortalEnabled}
+        scimProvisioningEnabled={scimProvisioningEnabled}
+        ssoConfigurationEnabled={ssoConfigurationEnabled}
+        kmsEncryptionEnabled={kmsEncryptionEnabled}
+        onOpenBranding={() => nav("/branding")}
+        onOpenDataWarehouse={() => nav("/enterprise/data-warehouse")}
+        onOpenSecurity={() => nav("/enterprise/security")}
+        onOpenScim={() => nav("/scim-provisioning")}
+        onOpenSso={() => nav("/sso-configuration")}
+        onOpenKms={() => nav("/kms-configuration")}
+        onOpenApiBuilder={() => nav("/api/builder")}
+        onOpenSupport={() => nav("/support")}
+        onUpgrade={onUpgrade}
+      />
 
       {!isGuest && business?._id && (
         <section>
@@ -886,52 +520,7 @@ export function EnterpriseDashboard({
       )}
 
       {entAgentsEnabled && Array.isArray(entAgents) && entAgents.length > 0 && (
-        <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
-          {entAgents.map(a => (
-            <Button
-              key={a.agent_key}
-              variant="secondary"
-              className="justify-start"
-              onClick={() => nav(`/agents?agent=${encodeURIComponent(a.agent_key)}`)}
-              title={a.short_desc}
-            >
-              {a.display_name}
-            </Button>
-          ))}
-        </div>
-      )}
-
-      {Array.isArray(entAgents) && entAgents.length > 0 && (
-        <div className="mt-3 flex flex-wrap gap-2">
-          {entAgents.map(a => (
-            <Button
-              key={`tg-${a.agent_key}`}
-              size="sm"
-              variant="outline"
-              onClick={() => nav(`/agents?agent=${encodeURIComponent(a.agent_key)}`)}
-            >
-              Use with {a.display_name}
-            </Button>
-          ))}
-        </div>
-      )}
-
-      {Array.isArray(entAgents) && entAgents[0] && (
-        <Card className="mt-6">
-          <CardHeader>
-            <CardTitle>Executive Agent Insights</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="text-sm text-muted-foreground">
-              {entAgents[0].short_desc}
-            </div>
-            <div>
-              <Button onClick={() => nav(`/agents?agent=${encodeURIComponent(entAgents[0].agent_key)}`)}>
-                Open {entAgents[0].display_name}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+        <ExecutiveAgentInsights entAgents={entAgents} onNavigate={nav} />
       )}
     </div>
   );

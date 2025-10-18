@@ -5,8 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerTrigger, DrawerClose } from "@/components/ui/drawer";
+/* removed unused dialog imports */
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -15,6 +14,11 @@ import { toast } from "sonner";
 import { Pencil, Power, PowerOff, Plus } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import DatasetCreator from "./DatasetCreator";
+import { AgentEditDialog } from "./AgentEditDialog";
+import { PlaybookEditDialog } from "./PlaybookEditDialog";
+import { AgentConfigSection } from "./AgentConfigSection";
+import { AgentVersionsDrawer } from "./AgentVersionsDrawer";
+import { PlaybookVersionsDrawer } from "./PlaybookVersionsDrawer";
 
 type Agent = {
   _id: string;
@@ -1634,320 +1638,27 @@ export function SystemAgentsHub() {
         />
       )}
 
-      <Drawer open={versionsOpen} onOpenChange={setVersionsOpen}>
-        <DrawerContent className="p-4">
-          <DrawerHeader>
-            <DrawerTitle>Agent Versions {selectedAgentKey && `— ${selectedAgentKey}`}</DrawerTitle>
-          </DrawerHeader>
-          <div className="max-h-[50vh] overflow-y-auto border rounded-lg">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Version</TableHead>
-                  <TableHead>Created</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {(agentVersions || []).map((v: any) => (
-                  <TableRow key={String(v._id)}>
-                    <TableCell className="font-mono text-sm">{v.version}</TableCell>
-                    <TableCell>{new Date(v.createdAt || v._creationTime || Date.now()).toLocaleString()}</TableCell>
-                    <TableCell>
-                      <Button size="sm" variant="outline" onClick={() => handleRestoreVersion(String(v._id))}>
-                        Restore
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-          <div className="flex justify-end mt-3">
-            <DrawerClose asChild>
-              <Button variant="outline">Close</Button>
-            </DrawerClose>
-          </div>
-        </DrawerContent>
-      </Drawer>
+      <AgentVersionsDrawer
+        open={versionsOpen}
+        onOpenChange={setVersionsOpen}
+        agentKey={selectedAgentKey}
+        versions={agentVersions || []}
+        onRestore={handleRestoreVersion}
+      />
 
-      {/* Playbook Versions Drawer */}
-      <Drawer open={playbookVersionsOpen} onOpenChange={setPlaybookVersionsOpen}>
-        <DrawerContent className="p-4">
-          <DrawerHeader>
-            <DrawerTitle>Playbook Versions {selectedPlaybookKey && `— ${selectedPlaybookKey}`}</DrawerTitle>
-          </DrawerHeader>
-          <div className="max-h-[50vh] overflow-y-auto border rounded-lg">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Version</TableHead>
-                  <TableHead>Created</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {(playbookVersions || []).map((v: any) => (
-                  <TableRow key={String(v._id)}>
-                    <TableCell className="font-mono text-sm">{v.version}</TableCell>
-                    <TableCell>{new Date(v.createdAt || v._creationTime || Date.now()).toLocaleString()}</TableCell>
-                    <TableCell>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleRestorePlaybookVersion(String(v._id))}
-                      >
-                        Restore
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-          <div className="flex justify-end mt-3">
-            <DrawerClose asChild>
-              <Button variant="outline">Close</Button>
-            </DrawerClose>
-          </div>
-        </DrawerContent>
-      </Drawer>
+      <PlaybookVersionsDrawer
+        open={playbookVersionsOpen}
+        onOpenChange={setPlaybookVersionsOpen}
+        playbookKey={selectedPlaybookKey}
+        versions={playbookVersions || []}
+        onRestore={handleRestorePlaybookVersion}
+      />
     </div>
   );
 }
 
-// Agent Edit Dialog Component
-function AgentEditDialog({ 
-  agent, 
-  onSave, 
-  onClose 
-}: { 
-  agent: Agent; 
-  onSave: (data: Partial<Agent>) => void; 
-  onClose: () => void; 
-}) {
-  const [formData, setFormData] = useState(agent);
+/* moved AgentEditDialog to src/components/admin/AgentEditDialog.tsx */
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    onSave(formData);
-  };
+/* moved PlaybookEditDialog to src/components/admin/PlaybookEditDialog.tsx */
 
-  return (
-    <Dialog open={true} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Edit Agent: {agent.display_name}</DialogTitle>
-        </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="text-sm font-medium">Agent Key</label>
-              <Input
-                value={formData.agent_key}
-                onChange={(e) => setFormData({ ...formData, agent_key: e.target.value })}
-                disabled
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium">Display Name</label>
-              <Input
-                value={formData.display_name}
-                onChange={(e) => setFormData({ ...formData, display_name: e.target.value })}
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="text-sm font-medium">Short Description</label>
-            <Input
-              value={formData.short_desc}
-              onChange={(e) => setFormData({ ...formData, short_desc: e.target.value })}
-            />
-          </div>
-
-          <div>
-            <label className="text-sm font-medium">Long Description</label>
-            <Textarea
-              value={formData.long_desc}
-              onChange={(e) => setFormData({ ...formData, long_desc: e.target.value })}
-              rows={3}
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="text-sm font-medium">Default Model</label>
-              <Input
-                value={formData.default_model}
-                onChange={(e) => setFormData({ ...formData, default_model: e.target.value })}
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium">Confidence Hint</label>
-              <Input
-                type="number"
-                step="0.1"
-                min="0"
-                max="1"
-                value={formData.confidence_hint}
-                onChange={(e) => setFormData({ ...formData, confidence_hint: parseFloat(e.target.value) })}
-              />
-            </div>
-          </div>
-
-          <div className="flex items-center space-x-2">
-            <Switch
-              checked={formData.active}
-              onCheckedChange={(active) => setFormData({ ...formData, active })}
-            />
-            <label className="text-sm font-medium">Active</label>
-          </div>
-
-          <div className="flex justify-end gap-2">
-            <Button type="button" variant="outline" onClick={onClose}>
-              Cancel
-            </Button>
-            <Button type="submit">Save Changes</Button>
-          </div>
-        </form>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-// Playbook Edit Dialog Component
-function PlaybookEditDialog({ 
-  playbook, 
-  onSave, 
-  onClose 
-}: { 
-  playbook: Playbook; 
-  onSave: (data: Partial<Playbook>) => void; 
-  onClose: () => void; 
-}) {
-  const [formData, setFormData] = useState(playbook);
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    onSave(formData);
-  };
-
-  return (
-    <Dialog open={true} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Edit Playbook: {playbook.display_name}</DialogTitle>
-        </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="text-sm font-medium">Playbook Key</label>
-              <Input
-                value={formData.playbook_key}
-                onChange={(e) => setFormData({ ...formData, playbook_key: e.target.value })}
-                disabled
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium">Display Name</label>
-              <Input
-                value={formData.display_name}
-                onChange={(e) => setFormData({ ...formData, display_name: e.target.value })}
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="text-sm font-medium">Version</label>
-            <Input
-              value={formData.version}
-              onChange={(e) => setFormData({ ...formData, version: e.target.value })}
-            />
-          </div>
-
-          <div className="flex items-center space-x-2">
-            <Switch
-              checked={formData.active}
-              onCheckedChange={(active) => setFormData({ ...formData, active })}
-            />
-            <label className="text-sm font-medium">Active</label>
-          </div>
-
-          <div className="flex justify-end gap-2">
-            <Button type="button" variant="outline" onClick={onClose}>
-              Cancel
-            </Button>
-            <Button type="submit">Save Changes</Button>
-          </div>
-        </form>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-// Agent Configuration Section Component
-function AgentConfigSection({ 
-  agentKey, 
-  onConfigChange 
-}: { 
-  agentKey: string; 
-  onConfigChange: () => void; 
-}) {
-  const [useRag, setUseRag] = useState(false);
-  const [useKgraph, setUseKgraph] = useState(false);
-  
-  const agentConfig = useQuery(api.aiAgents.getAgentConfig, { agent_key: agentKey });
-  const updateConfig = useMutation(api.aiAgents.adminUpdateAgentConfig);
-
-  React.useEffect(() => {
-    if (agentConfig) {
-      setUseRag(agentConfig.useRag || false);
-      setUseKgraph(agentConfig.useKgraph || false);
-    }
-  }, [agentConfig]);
-
-  const handleConfigUpdate = async (field: 'useRag' | 'useKgraph', value: boolean) => {
-    try {
-      await updateConfig({
-        agent_key: agentKey,
-        [field]: value,
-      });
-      
-      if (field === 'useRag') setUseRag(value);
-      if (field === 'useKgraph') setUseKgraph(value);
-      
-      toast.success(`${field === 'useRag' ? 'RAG' : 'Knowledge Graph'} ${value ? 'enabled' : 'disabled'}`);
-      onConfigChange();
-    } catch (error) {
-      toast.error(`Failed to update ${field === 'useRag' ? 'RAG' : 'Knowledge Graph'} setting`);
-    }
-  };
-
-  return (
-    <div className="space-y-3">
-      <div className="text-sm font-medium">Agent Capabilities</div>
-      <div className="flex items-center space-x-4">
-        <div className="flex items-center space-x-2">
-          <Switch
-            checked={useRag}
-            onCheckedChange={(checked) => handleConfigUpdate('useRag', checked)}
-          />
-          <label className="text-sm">Enable RAG (Vectors)</label>
-        </div>
-        <div className="flex items-center space-x-2">
-          <Switch
-            checked={useKgraph}
-            onCheckedChange={(checked) => handleConfigUpdate('useKgraph', checked)}
-          />
-          <label className="text-sm">Enable Knowledge Graph</label>
-        </div>
-      </div>
-      {(useRag || useKgraph) && (
-        <div className="text-xs text-muted-foreground">
-          Note: Publishing with these features enabled requires corresponding data to be ingested and evaluations to pass.
-        </div>
-      )}
-    </div>
-  );
-}
+/* moved AgentConfigSection to src/components/admin/AgentConfigSection.tsx */

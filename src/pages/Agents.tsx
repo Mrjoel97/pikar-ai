@@ -91,6 +91,9 @@ import BuilderTab from "@/components/agents/BuilderTab";
 import MonitoringTab from "@/components/agents/MonitoringTab";
 import OnboardingAssistantDialog from "@/components/agents/OnboardingAssistantDialog";
 import ExecutiveTab from "@/components/agents/ExecutiveTab";
+import { ExecutiveSettings } from "@/components/agents/ExecutiveSettings";
+import { AskMyAgentCard } from "@/components/agents/AskMyAgentCard";
+import { AgentHistoryDrawer, AskHistoryEntry } from "@/components/agents/AgentHistoryDrawer";
 
 interface AgentBuilderNode {
   id: string;
@@ -393,237 +396,76 @@ const AgentsPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Executive Settings */}
-        <Card className="border-emerald-200">
-          <CardHeader>
-            <CardTitle className="flex items-center justify-between">
-              <span>Executive Settings</span>
-              {execLastSavedAt && (
-                <span className="text-xs text-gray-500">
-                  Last saved {new Date(execLastSavedAt).toLocaleString()}
-                </span>
-              )}
-            </CardTitle>
-            <CardDescription>
-              Update your Executive Assistant's goals, tone, and cadence. These guide playbooks and suggestions.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <Label className="text-sm">Goals / Focus</Label>
-              <Textarea
-                rows={3}
-                value={execGoals}
-                onChange={(e) => setExecGoals(e.target.value)}
-                placeholder="Describe what you want your assistant to prioritize"
-              />
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label className="text-sm">Tone / Persona</Label>
-                <Input
-                  value={execTone}
-                  onChange={(e) => setExecTone(e.target.value)}
-                  placeholder="e.g., practical, concise, friendly"
-                />
-              </div>
-              <div>
-                <Label className="text-sm">Cadence</Label>
-                <Select value={execCadence} onValueChange={setExecCadence}>
-                  <SelectTrigger><SelectValue placeholder="Select cadence" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="weekly">Weekly</SelectItem>
-                    <SelectItem value="biweekly">Bi-Weekly</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="flex items-center justify-end gap-2">
-              <Button variant="secondary" onClick={() => {
-                setExecGoals("");
-                setExecTone("practical, concise, friendly");
-                setExecCadence("weekly");
-              }}>
-                Reset
-              </Button>
-              <Button onClick={handleSaveExecutiveSettings} disabled={execSaving}>
-                {execSaving ? "Saving..." : "Save"}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+        {/* Executive Settings - extracted component */}
+        <ExecutiveSettings
+          execGoals={execGoals}
+          setExecGoals={setExecGoals}
+          execTone={execTone}
+          setExecTone={setExecTone}
+          execCadence={execCadence}
+          setExecCadence={setExecCadence}
+          execSaving={execSaving}
+          execLastSavedAt={execLastSavedAt}
+          onSave={handleSaveExecutiveSettings}
+          onReset={() => {
+            setExecGoals("");
+            setExecTone("practical, concise, friendly");
+            setExecCadence("weekly");
+          }}
+        />
 
-        {/* Ask My Agent (OpenAI-powered) with History */}
-        <Card className="border-emerald-200">
-          <CardHeader>
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <CardTitle className="flex items-center gap-2">
-                  <Bot className="w-5 h-5 text-emerald-600" />
-                  Ask My Agent
-                </CardTitle>
-                <CardDescription>
-                  Get quick, actionable recommendations summarized by your agent using your context.
-                </CardDescription>
-              </div>
-              <div className="flex items-center gap-2">
-                {/* Phase 5: Dry Run toggle */}
-                <div className="hidden sm:flex items-center gap-2 border rounded-md px-3 py-1.5">
-                  <span className="text-sm">Dry Run</span>
-                  <Switch checked={dryRun} onCheckedChange={setDryRun} />
-                </div>
-                <Button variant="secondary" onClick={() => setAskHistoryOpen(true)}>
-                  <History className="w-4 h-4 mr-2" />
-                  History
-                </Button>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="flex flex-col md:flex-row gap-3">
-              <Input
-                value={ask}
-                onChange={(e) => setAsk(e.target.value)}
-                placeholder="e.g., Draft a retention campaign idea for this week"
-                className="flex-1"
-                disabled={asking}
-              />
-              <Button
-                onClick={handleAsk}
-                disabled={asking || (Date.now() - lastAskAt < ASK_RATE_LIMIT_MS)}
-                className="md:w-40"
-              >
-                {asking
-                  ? "Thinking…"
-                  : (Date.now() - lastAskAt < ASK_RATE_LIMIT_MS)
-                  ? `Wait ${Math.ceil((ASK_RATE_LIMIT_MS - (Date.now() - lastAskAt)) / 1000)}s`
-                  : "Ask"}
-              </Button>
-            </div>
-            {/* Subtext with cooldown + mode */}
-            <div className="text-xs text-gray-500">
-              {dryRun ? "Dry Run is enabled — no backend calls will be made." : "Live mode — responses use your configured model."}
-              {(Date.now() - lastAskAt < ASK_RATE_LIMIT_MS) && " • Cooldown active to prevent rapid asks."}
-            </div>
-            {reply && (
-              <div className="rounded-md border bg-white p-3">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="text-sm font-medium text-gray-700">Answer</div>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleUseAsWorkflow}
-                    >
-                      Use as Workflow
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleScheduleNow}
-                    >
-                      Schedule Now
-                    </Button>
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => {
-                        if (reply) {
-                          navigator.clipboard.writeText(reply).then(
-                            () => toast.success("Answer copied."),
-                            () => toast.error("Failed to copy.")
-                          );
-                        }
-                      }}
-                    >
-                      <Copy className="w-4 h-4 mr-1" />
-                      Copy
-                    </Button>
-                  </div>
-                </div>
-                <div className="text-sm leading-6 whitespace-pre-wrap">{reply}</div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        {/* Ask My Agent - extracted component */}
+        <AskMyAgentCard
+          ask={ask}
+          setAsk={setAsk}
+          reply={reply}
+          asking={asking}
+          dryRun={dryRun}
+          setDryRun={setDryRun}
+          lastAskAt={lastAskAt}
+          rateLimitMs={ASK_RATE_LIMIT_MS}
+          onAsk={handleAsk}
+          onOpenHistory={() => setAskHistoryOpen(true)}
+          onUseAsWorkflow={handleUseAsWorkflow}
+          onScheduleNow={handleScheduleNow}
+          onCopyAnswer={() => {
+            if (reply) {
+              navigator.clipboard.writeText(reply).then(
+                () => toast.success("Answer copied."),
+                () => toast.error("Failed to copy.")
+              );
+            }
+          }}
+        />
 
         {/* History Drawer */}
-        <Sheet open={askHistoryOpen} onOpenChange={setAskHistoryOpen}>
-          <SheetContent side="right" className="w-[420px] sm:w-[540px]">
-            <SheetHeader>
-              <SheetTitle>Conversation History</SheetTitle>
-              <SheetDescription>Your recent questions and summarized answers.</SheetDescription>
-            </SheetHeader>
-            {/* Phase 5: Export control */}
-            <div className="mt-3 flex items-center justify-between">
-              <div className="text-xs text-gray-500">
-                {askHistory.length} entr{askHistory.length === 1 ? "y" : "ies"}
-              </div>
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => {
-                  try {
-                    const jsonl = askHistory
-                      .map((h) => JSON.stringify(h))
-                      .join("\n");
-                    const blob = new Blob([jsonl], { type: "application/jsonl;charset=utf-8" });
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement("a");
-                    a.href = url;
-                    a.download = `agent_history_${new Date().toISOString().replace(/[:.]/g, "-")}.jsonl`;
-                    document.body.appendChild(a);
-                    a.click();
-                    a.remove();
-                    URL.revokeObjectURL(url);
-                    toast.success("Transcript exported.");
-                  } catch {
-                    toast.error("Failed to export transcript.");
-                  }
-                }}
-                disabled={askHistory.length === 0}
-              >
-                <Download className="w-4 h-4 mr-2" />
-                Export
-              </Button>
-            </div>
-            <div className="mt-4 space-y-3">
-              {askHistory.length === 0 ? (
-                <div className="text-sm text-gray-600">No history yet. Ask something to get started.</div>
-              ) : (
-                <div className="space-y-4">
-                  {askHistory.map((h, idx) => (
-                    <div key={idx} className="rounded-md border bg-white p-3">
-                      <div className="text-xs text-gray-500 mb-1">
-                        {new Date(h.at).toLocaleString()}
-                      </div>
-                      <div className="text-sm">
-                        <span className="font-medium">Q:</span> {h.q}
-                      </div>
-                      <div className="text-sm mt-1 whitespace-pre-wrap">
-                        <span className="font-medium">A:</span> {h.a}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-            <div className="mt-4 flex items-center justify-between gap-2">
-              <Button variant="secondary" onClick={() => setAskHistoryOpen(false)}>Close</Button>
-              <Button
-                variant="destructive"
-                onClick={() => {
-                  persistHistory([]);
-                  toast.success("History cleared.");
-                }}
-                disabled={askHistory.length === 0}
-              >
-                <Trash2 className="w-4 h-4 mr-2" />
-                Clear
-              </Button>
-            </div>
-          </SheetContent>
-        </Sheet>
+        <AgentHistoryDrawer
+          open={askHistoryOpen}
+          onOpenChange={setAskHistoryOpen}
+          entries={askHistory as AskHistoryEntry[]}
+          onExport={() => {
+            try {
+              const jsonl = askHistory.map((h) => JSON.stringify(h)).join("\n");
+              const blob = new Blob([jsonl], { type: "application/jsonl;charset=utf-8" });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement("a");
+              a.href = url;
+              a.download = `agent_history_${new Date().toISOString().replace(/[:.]/g, "-")}.jsonl`;
+              document.body.appendChild(a);
+              a.click();
+              a.remove();
+              URL.revokeObjectURL(url);
+              toast.success("Transcript exported.");
+            } catch {
+              toast.error("Failed to export transcript.");
+            }
+          }}
+          onClear={() => {
+            persistHistory([]);
+            toast.success("History cleared.");
+          }}
+          onClose={() => setAskHistoryOpen(false)}
+        />
 
         {/* Main Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">

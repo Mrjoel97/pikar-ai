@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 import { query, mutation, internalMutation } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
-import { internal } from "./_generated/api";
+/* removed unused internal import to avoid deep type instantiation */
 
 /**
  * Get budget allocations for a business
@@ -257,10 +257,10 @@ export const recordActualSpend = mutation({
       createdAt: Date.now(),
     });
 
-    // Check for budget alerts
+    // Check for budget alerts using string-based reference to avoid deep type instantiation
     await ctx.scheduler.runAfter(
       0,
-      internal.departmentBudgets.checkBudgetAlerts,
+      "departmentBudgets:checkBudgetAlerts" as any,
       {
         businessId: args.businessId,
         department: args.department,

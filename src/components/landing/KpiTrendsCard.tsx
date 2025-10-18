@@ -2,62 +2,195 @@ import { motion, useReducedMotion } from "framer-motion";
 import { Card, CardContent } from "@/components/ui/card";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
+import { TrendingUp, Users, DollarSign, Zap, Target, ArrowUpRight } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
 type Trend = { month: string; revenue: number; leads: number; efficiency: number };
 
 export default function KpiTrendsCard({ data }: { data: Array<Trend> }) {
   const shouldReduceMotion = useReducedMotion();
+  
+  const growthMetrics = [
+    {
+      icon: TrendingUp,
+      label: "Revenue Growth",
+      value: "+58%",
+      subtext: "vs last quarter",
+      color: "text-white",
+      bgColor: "bg-gradient-to-br from-emerald-500 to-emerald-600",
+    },
+    {
+      icon: Users,
+      label: "Active Users",
+      value: "8.2k+",
+      subtext: "across all tiers",
+      color: "text-white",
+      bgColor: "bg-gradient-to-br from-emerald-600 to-emerald-700",
+    },
+    {
+      icon: DollarSign,
+      label: "Avg. ROI",
+      value: "340%",
+      subtext: "in first 6 months",
+      color: "text-white",
+      bgColor: "bg-gradient-to-br from-emerald-500 to-emerald-600",
+    },
+    {
+      icon: Zap,
+      label: "Time Saved",
+      value: "15+ hrs",
+      subtext: "per week per user",
+      color: "text-white",
+      bgColor: "bg-gradient-to-br from-emerald-600 to-emerald-700",
+    },
+  ];
+
+  const testimonialStats = [
+    { metric: "95%", label: "Customer Satisfaction" },
+    { metric: "12k+", label: "Workflows Automated" },
+    { metric: "7 min", label: "Avg. Setup Time" },
+  ];
 
   return (
-    <section className="py-14 sm:py-20 px-4 sm:px-6 lg:px-8">
+    <section className="py-16 sm:py-24 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-background via-emerald-50/30 to-background">
       <div className="max-w-7xl mx-auto">
         <motion.div
           initial={{ y: 50, opacity: 0 }}
           whileInView={{ y: 0, opacity: 1 }}
           transition={{ duration: shouldReduceMotion ? 0 : 0.8 }}
           viewport={{ once: true }}
-          className="text-center mb-12 sm:mb-16"
+          className="text-center mb-14 sm:mb-20"
         >
-          <h2 className="text-3xl sm:text-4xl font-bold tracking-tight mb-3 sm:mb-4">
-            KPI Trends Preview
+          <Badge variant="secondary" className="mb-5 neu-inset bg-emerald-100 text-emerald-700 border-emerald-200">
+            <Target className="h-3 w-3 mr-1" />
+            Real Results from Real Businesses
+          </Badge>
+          <h2 className="text-4xl sm:text-5xl font-bold tracking-tight mb-4 sm:mb-6 bg-gradient-to-r from-emerald-600 to-emerald-800 bg-clip-text text-transparent">
+            Transform Your Business Metrics
           </h2>
-          <p className="text-base sm:text-xl text-muted-foreground max-w-2xl mx-auto px-2">
-            A glimpse of how your business trends evolve over time.
+          <p className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto px-2">
+            See how Pikar AI drives measurable growth across key business indicators
           </p>
         </motion.div>
 
-        <Card className="neu-raised rounded-2xl border-0">
-          <CardContent className="p-4 sm:p-6">
-            <ChartContainer
-              config={{
-                revenue: { label: "Revenue", color: "oklch(62% 0.15 30)" },
-                efficiency: { label: "Efficiency", color: "oklch(62% 0.15 150)" },
-              }}
-              className="rounded-xl bg-card/60"
+        {/* Growth Metrics Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 sm:gap-7 mb-10 sm:mb-16">
+          {growthMetrics.map((metric, index) => (
+            <motion.div
+              key={metric.label}
+              initial={{ y: 30, opacity: 0 }}
+              whileInView={{ y: 0, opacity: 1 }}
+              transition={{ duration: shouldReduceMotion ? 0 : 0.6, delay: index * 0.1 }}
+              viewport={{ once: true }}
             >
-              <AreaChart data={data}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="month" />
-                <YAxis />
-                <ChartTooltip content={<ChartTooltipContent />} />
-                <Area
-                  type="monotone"
-                  dataKey="revenue"
-                  stroke="var(--color-revenue)"
-                  fill="var(--color-revenue)"
-                  fillOpacity={0.15}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="efficiency"
-                  stroke="var(--color-efficiency)"
-                  fill="var(--color-efficiency)"
-                  fillOpacity={0.12}
-                />
-              </AreaChart>
-            </ChartContainer>
-          </CardContent>
-        </Card>
+              <Card className={`${metric.bgColor} rounded-2xl border-0 h-full hover:shadow-2xl hover:scale-105 transition-all duration-300 shadow-lg`}>
+                <CardContent className="p-6 sm:p-7">
+                  <div className="bg-white/20 backdrop-blur-sm rounded-xl p-3 w-fit mb-5">
+                    <metric.icon className={`h-6 w-6 ${metric.color}`} />
+                  </div>
+                  <div className="flex items-baseline gap-2 mb-2">
+                    <div className={`text-3xl sm:text-4xl font-bold ${metric.color}`}>{metric.value}</div>
+                    <ArrowUpRight className={`h-5 w-5 ${metric.color}`} />
+                  </div>
+                  <div className={`text-base font-semibold ${metric.color} mb-1`}>{metric.label}</div>
+                  <div className="text-sm text-white/90">{metric.subtext}</div>
+                </CardContent>
+              </Card>
+            </motion.div>
+          ))}
+        </div>
+
+        {/* Compact Chart with Stats */}
+        <div className="grid lg:grid-cols-3 gap-7 items-start">
+          {/* Chart - Takes 2 columns */}
+          <motion.div
+            initial={{ y: 30, opacity: 0 }}
+            whileInView={{ y: 0, opacity: 1 }}
+            transition={{ duration: shouldReduceMotion ? 0 : 0.8, delay: 0.2 }}
+            viewport={{ once: true }}
+            className="lg:col-span-2"
+          >
+            <Card className="neu-raised rounded-2xl border-0 shadow-lg hover:shadow-xl transition-shadow">
+              <CardContent className="p-5 sm:p-7">
+                <div className="mb-5">
+                  <h3 className="text-xl font-bold mb-2 text-emerald-700">Performance Trends</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Revenue & efficiency growth over 6 months
+                  </p>
+                </div>
+                <ChartContainer
+                  config={{
+                    revenue: { label: "Revenue", color: "hsl(160, 84%, 39%)" },
+                    efficiency: { label: "Efficiency", color: "hsl(160, 60%, 50%)" },
+                  }}
+                  className="rounded-xl bg-emerald-50/50 h-[260px] sm:h-[300px]"
+                >
+                  <AreaChart data={data}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#d1fae5" />
+                    <XAxis dataKey="month" stroke="#059669" />
+                    <YAxis stroke="#059669" />
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                    <Area
+                      type="monotone"
+                      dataKey="revenue"
+                      stroke="var(--color-revenue)"
+                      fill="var(--color-revenue)"
+                      fillOpacity={0.2}
+                      strokeWidth={2}
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="efficiency"
+                      stroke="var(--color-efficiency)"
+                      fill="var(--color-efficiency)"
+                      fillOpacity={0.15}
+                      strokeWidth={2}
+                    />
+                  </AreaChart>
+                </ChartContainer>
+              </CardContent>
+            </Card>
+          </motion.div>
+
+          {/* Stats Column */}
+          <motion.div
+            initial={{ y: 30, opacity: 0 }}
+            whileInView={{ y: 0, opacity: 1 }}
+            transition={{ duration: shouldReduceMotion ? 0 : 0.8, delay: 0.3 }}
+            viewport={{ once: true }}
+            className="space-y-5"
+          >
+            {testimonialStats.map((stat, index) => (
+              <Card key={stat.label} className="neu-raised rounded-2xl border-0 shadow-lg hover:shadow-xl transition-shadow bg-gradient-to-br from-emerald-50 to-emerald-100/50">
+                <CardContent className="p-6">
+                  <div className="text-4xl font-bold text-emerald-600 mb-2">{stat.metric}</div>
+                  <div className="text-sm font-medium text-emerald-700">{stat.label}</div>
+                </CardContent>
+              </Card>
+            ))}
+
+            {/* Social Proof */}
+            <Card className="neu-raised rounded-2xl border-0 shadow-lg bg-gradient-to-br from-emerald-500 to-emerald-600">
+              <CardContent className="p-6">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="flex -space-x-2">
+                    {[1, 2, 3, 4].map((i) => (
+                      <div
+                        key={i}
+                        className="h-9 w-9 rounded-full bg-white/30 backdrop-blur-sm border-2 border-white"
+                      />
+                    ))}
+                  </div>
+                  <span className="text-xs font-semibold text-white">+8,200 users</span>
+                </div>
+                <p className="text-sm text-white font-semibold leading-relaxed">
+                  "Pikar AI transformed how we work. Setup took minutes, results came in days."
+                </p>
+                <p className="text-xs text-white/90 mt-3 font-medium">— Sarah K., Startup Founder</p>
+              </CardContent>
+            </Card>
+          </motion.div>
+        </div>
       </div>
     </section>
   );

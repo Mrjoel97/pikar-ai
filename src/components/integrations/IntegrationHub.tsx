@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -35,6 +35,33 @@ export function IntegrationHub({ businessId, tier, isGuest = false }: Integratio
     api.customApis.listCustomApis,
     isGuest ? undefined : { businessId }
   );
+
+  // Fetch social API configurations for current business
+  const configsForBusiness = useQuery(
+    api.socialApiConfigs.listConfigsForBusiness,
+    isGuest ? undefined : { businessId }
+  );
+
+  // Determine social platform configuration status
+  const socialPlatformStatus = useMemo(() => {
+    if (isGuest || !configsForBusiness) return {};
+    
+    const platforms = ["twitter", "linkedin", "meta", "youtube", "google"];
+    const platformConfigs = configsForBusiness.platformConfigs || [];
+    const enterpriseConfigs = configsForBusiness.enterpriseConfigs || [];
+    
+    return platforms.reduce((acc, platform) => {
+      const platformConfig = platformConfigs.find((c: any) => c.platform === platform);
+      const enterpriseConfig = enterpriseConfigs.find((c: any) => c.platform === platform);
+
+      acc[platform] = {
+        configured: !!(enterpriseConfig?.hasCredentials || platformConfig?.hasCredentials),
+        scope: enterpriseConfig?.hasCredentials ? "enterprise" : "platform",
+        active: enterpriseConfig?.isActive ?? platformConfig?.isActive ?? false,
+      };
+      return acc;
+    }, {} as Record<string, { configured: boolean; scope: string; active: boolean }>);
+  }, [configsForBusiness, businessId, isGuest]);
 
   // Aggregate integration stats
   const totalConnections = (crmConnections?.length || 0) + (customApis?.length || 0);
@@ -85,6 +112,32 @@ export function IntegrationHub({ businessId, tier, isGuest = false }: Integratio
 
   return (
     <div className="space-y-6">
+      {/* Social Platform Configuration Status */}
+      {!isGuest && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Social Media API Status</CardTitle>
+            <CardDescription>Platform configuration for your tier</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-2">
+              {Object.entries(socialPlatformStatus).map(([platform, status]: [string, any]) => (
+                <Badge
+                  key={platform}
+                  variant={status.configured && status.active ? "default" : "secondary"}
+                  className="capitalize"
+                >
+                  {platform === "meta" ? "Meta (FB/IG)" : platform}:{" "}
+                  {status.configured
+                    ? `${status.scope} ${status.active ? "✓" : "inactive"}`
+                    : "not configured"}
+                </Badge>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Overview Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <StatCard

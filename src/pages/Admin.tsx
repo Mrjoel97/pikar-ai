@@ -17,6 +17,10 @@ import { Label } from "@/components/ui/label";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { AdminAssistantSection } from "@/components/admin/AdminAssistantSection";
 import { Textarea } from "@/components/ui/textarea"; // may be unused; safe import
+import { EnvironmentSettings } from "@/components/admin/EnvironmentSettings";
+import { SocialApiSettings } from "@/components/admin/SocialApiSettings";
+import DemoVideoManager from "@/components/admin/DemoVideoManager";
+import { DocsContentManager } from "@/components/admin/DocsContentManager";
 
 // Add local types for transcript steps
 export default function AdminPage() {
@@ -391,152 +395,8 @@ export default function AdminPage() {
           </div>
         </div>
 
-        {/* System Health Strip with drill-down tooltips */}
-        <Card>
-          <CardHeader>
-            <CardTitle id="section-system-health" className="flex items-center gap-2">
-              <span>System Health</span>
-              <Drawer open={healthOpen} onOpenChange={setHealthOpen}>
-                <DrawerTrigger asChild>
-                  <Button size="xs" variant="outline">Details</Button>
-                </DrawerTrigger>
-                <DrawerContent>
-                  <DrawerHeader>
-                    <DrawerTitle>System Health Details</DrawerTitle>
-                    <DrawerDescription className="text-sm">
-                      Quick remediation and validation tools.
-                    </DrawerDescription>
-                  </DrawerHeader>
-                  <div className="px-6 pb-6 space-y-4">
-                    <div className="space-y-1">
-                      <div className="font-medium">RESEND</div>
-                      <div className="text-sm text-muted-foreground">
-                        {env?.hasRESEND ? "Configured. You can send emails." : "Missing. Set RESEND_API_KEY in Integrations."}
-                      </div>
-                      <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => {
-                            toast("Opening Settings...");
-                            // Navigate to Settings so admins can run tests from there
-                            window.location.href = "/settings";
-                          }}
-                        >
-                          Open Settings
-                        </Button>
-                      </div>
-                    </div>
-
-                    <Separator />
-
-                    <div className="space-y-1">
-                      <div className="font-medium">Public Base URL</div>
-                      <div className="text-sm text-muted-foreground">
-                        {env?.hasBASE_URL ? "Configured" : "Missing (VITE_PUBLIC_BASE_URL)"}
-                      </div>
-                      <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => {
-                            const base = (import.meta as any)?.env?.VITE_PUBLIC_BASE_URL as string | undefined;
-                            if (base) {
-                              toast.success(`Base URL: ${base}`);
-                              try { window.open(base, "_blank", "noopener,noreferrer"); } catch {}
-                            } else {
-                              toast.error("VITE_PUBLIC_BASE_URL not set in frontend env.");
-                            }
-                          }}
-                        >
-                          Show & Open Base URL
-                        </Button>
-                      </div>
-                    </div>
-
-                    <Separator />
-
-                    <div className="space-y-1">
-                      <div className="font-medium">Operational Signals</div>
-                      <div className="text-sm text-muted-foreground">
-                        Queue depth: {env?.emailQueueDepth ?? 0} • Overdue approvals: {env?.overdueApprovalsCount ?? 0}
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        Cron last processed: {env?.cronLastProcessed ? new Date(env.cronLastProcessed).toLocaleString() : "Unknown"}
-                      </div>
-                    </div>
-                  </div>
-                </DrawerContent>
-              </Drawer>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <TooltipProvider>
-              <div className="flex flex-wrap gap-2">
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Badge variant={env?.hasRESEND ? "outline" : "destructive"}>
-                      RESEND: {env?.hasRESEND ? "Configured" : "Missing"}
-                    </Badge>
-                  </TooltipTrigger>
-                  <TooltipContent className="max-w-xs text-xs">
-                    Ensure RESEND_API_KEY is set. Used for all system and campaign emails.
-                  </TooltipContent>
-                </Tooltip>
-
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Badge variant={env?.hasSALES_INBOX || env?.hasPUBLIC_SALES_INBOX ? "outline" : "destructive"}>
-                      Sales Inbox: {env?.hasSALES_INBOX || env?.hasPUBLIC_SALES_INBOX ? "OK" : "Missing"}
-                    </Badge>
-                  </TooltipTrigger>
-                  <TooltipContent className="max-w-xs text-xs">
-                    Configure SALES_INBOX or PUBLIC_SALES_INBOX to enable sales inquiry routing.
-                  </TooltipContent>
-                </Tooltip>
-
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Badge variant={env?.hasBASE_URL ? "outline" : "destructive"}>
-                      Public Base URL: {env?.hasBASE_URL ? "OK" : "Missing"}
-                    </Badge>
-                  </TooltipTrigger>
-                  <TooltipContent className="max-w-xs text-xs">
-                    Set VITE_PUBLIC_BASE_URL for absolute links in emails and redirects.
-                  </TooltipContent>
-                </Tooltip>
-
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Badge variant={env?.devSafeEmailsEnabled ? "secondary" : "outline"}>
-                      Email Mode: {env?.devSafeEmailsEnabled ? "DEV SAFE (stubbed)" : "Live"}
-                    </Badge>
-                  </TooltipTrigger>
-                  <TooltipContent className="max-w-xs text-xs">
-                    DEV_SAFE_EMAILS=true stubs sends for safety in development environments.
-                  </TooltipContent>
-                </Tooltip>
-              </div>
-            </TooltipProvider>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="p-3 rounded-md border">
-                <div className="text-sm text-muted-foreground">Email Queue Depth</div>
-                <div className="text-xl font-semibold">{kpis.emailQueueDepth}</div>
-              </div>
-              <div className="p-3 rounded-md border">
-                <div className="text-sm text-muted-foreground">Overdue Approvals</div>
-                <div className="text-xl font-semibold">{kpis.overdueApprovals}</div>
-              </div>
-              <div className="p-3 rounded-md border">
-                <div className="text-sm text-muted-foreground">Cron Freshness</div>
-                <div className="text-xs text-muted-foreground">
-                  {env?.cronLastProcessed ? new Date(env.cronLastProcessed).toLocaleString() : "Unknown"}
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        {/* Replace inline System Health section with EnvironmentSettings component */}
+        <EnvironmentSettings env={env} />
 
         {/* KPI Snapshot Row */}
         <div id="section-kpis" className="grid grid-cols-1 md:grid-cols-5 gap-4">
@@ -1098,6 +958,17 @@ export default function AdminPage() {
             <p className="text-sm text-muted-foreground">
               Integration posture derives from System Health. Use quick actions to remediate.
             </p>
+            
+            {/* Social API Settings Section */}
+            <div className="pt-4 border-t">
+              <SocialApiSettings />
+            </div>
+            
+            <Separator className="my-4" />
+            
+            <p className="text-sm text-muted-foreground">
+              Email and system integrations:
+            </p>
             <div className="flex flex-wrap gap-2">
               <Badge variant={env?.hasRESEND ? "outline" : "destructive"}>
                 Resend: {env?.hasRESEND ? "Configured" : "Missing"}
@@ -1277,142 +1148,6 @@ export default function AdminPage() {
           </CardContent>
         </Card>
 
-        {/* Alerts & Incident Console */}
-        <Card>
-          <CardHeader>
-            <CardTitle id="section-alerts">Alerts & Incidents</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <p className="text-sm text-muted-foreground">
-              Create and resolve operational alerts. Scope to a tenant when applicable.
-            </p>
-
-            <div className="grid md:grid-cols-4 gap-3">
-              <div className="space-y-1.5">
-                <div className="text-sm font-medium">Severity</div>
-                <select
-                  className="h-9 rounded-md border bg-background px-3 text-sm"
-                  value={alertSeverity}
-                  onChange={(e) => setAlertSeverity(e.target.value as any)}
-                >
-                  <option value="low">low</option>
-                  <option value="medium">medium</option>
-                  <option value="high">high</option>
-                </select>
-              </div>
-              <div className="space-y-1.5 md:col-span-2">
-                <div className="text-sm font-medium">Title</div>
-                <Input
-                  placeholder="Queue depth high on tenant ABC"
-                  value={alertTitle}
-                  onChange={(e) => setAlertTitle(e.target.value)}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <div className="text-sm font-medium">Scope (Tenant)</div>
-                <select
-                  className="h-9 rounded-md border bg-background px-3 text-sm"
-                  value={selectedTenantId}
-                  onChange={(e) => setSelectedTenantId(e.target.value)}
-                >
-                  <option value="">Global</option>
-                  {(tenants || []).map((t) => (
-                    <option key={t._id} value={t._id}>
-                      {t.name || t._id}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="md:col-span-4">
-                <div className="text-sm font-medium">Description</div>
-                <textarea
-                  className="w-full rounded-md border bg-background px-3 py-2 text-sm"
-                  placeholder="Optional context"
-                  rows={3}
-                  value={alertDesc}
-                  onChange={(e) => setAlertDesc(e.target.value)}
-                />
-              </div>
-              <div className="md:col-span-4 flex justify-end">
-                <Button
-                  size="sm"
-                  onClick={async () => {
-                    if (!alertTitle.trim()) {
-                      toast.error("Enter a title for the alert.");
-                      return;
-                    }
-                    try {
-                      await createAlertMutation({
-                        tenantId: selectedTenantId || undefined,
-                        severity: alertSeverity,
-                        title: alertTitle.trim(),
-                        description: alertDesc || undefined,
-                      } as any);
-                      setAlertTitle("");
-                      setAlertDesc("");
-                      toast.success("Alert created");
-                    } catch (e: any) {
-                      toast.error(e?.message || "Failed to create alert");
-                    }
-                  }}
-                >
-                  Create Alert
-                </Button>
-              </div>
-            </div>
-
-            <div className="rounded-md border overflow-hidden">
-              <div className="grid grid-cols-3 md:grid-cols-6 gap-2 p-3 bg-muted/40 text-xs font-medium">
-                <div>When</div>
-                <div className="hidden md:block">Severity</div>
-                <div>Title</div>
-                <div className="hidden md:block">Status</div>
-                <div className="hidden md:block">Tenant</div>
-                <div className="text-right">Action</div>
-              </div>
-              <Separator />
-              <div className="divide-y">
-                {(alerts || []).map((a) => (
-                  <div key={a._id} className="grid grid-cols-3 md:grid-cols-6 gap-2 p-3 text-sm items-center">
-                    <div className="text-xs text-muted-foreground">
-                      {a.createdAt ? new Date(a.createdAt).toLocaleString() : "—"}
-                    </div>
-                    <div className="hidden md:block">
-                      <Badge variant={a.severity === "high" ? "destructive" : "outline"}>{a.severity}</Badge>
-                    </div>
-                    <div className="truncate">{a.title}</div>
-                    <div className="hidden md:block">{a.status || "open"}</div>
-                    <div className="hidden md:block truncate">
-                      {selectedTenantId ? (tenants || []).find((t) => t._id === selectedTenantId)?.name || selectedTenantId : "—"}
-                    </div>
-                    <div className="text-right">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={async () => {
-                          try {
-                            await resolveAlertMutation({ alertId: a._id } as any);
-                            toast.success("Alert resolved");
-                          } catch (e: any) {
-                            toast.error(e?.message || "Failed to resolve alert");
-                          }
-                        }}
-                      >
-                        Resolve
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-                {(!alerts || alerts.length === 0) && (
-                  <div className="p-3 text-sm text-muted-foreground">
-                    {selectedTenantId ? "No alerts for this tenant." : "No alerts found."}
-                  </div>
-                )}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
         {/* Add the new "Assistant Docs" section */}
         <Card>
           <CardHeader>
@@ -1507,6 +1242,12 @@ export default function AdminPage() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Demo Video Management Section */}
+        <DemoVideoManager />
+
+        {/* Documentation Content Management */}
+        <DocsContentManager />
 
         {/* Audit Explorer (MVP) */}
         <Card>
