@@ -6,7 +6,7 @@ import React, { StrictMode, useEffect, Component } from "react";
 import { createRoot } from "react-dom/client";
 import { MemoryRouter, Route, Routes, useLocation, Navigate, useNavigate } from "react-router";
 import "./index.css";
-const Landing = React.lazy(() => import("./pages/Landing.tsx"));
+import Landing from "./pages/Landing.tsx";
 import NotFound from "./pages/NotFound.tsx";
 import "./types/global.d.ts";
 
@@ -155,11 +155,7 @@ createRoot(document.getElementById("root")!).render(
             <Routes>
               <Route
                 path="/"
-                element={
-                  <React.Suspense fallback={<div className="p-6 text-sm">Loading…</div>}>
-                    <Landing />
-                  </React.Suspense>
-                }
+                element={<Landing />}
               />
               <Route
                 path="/auth"
