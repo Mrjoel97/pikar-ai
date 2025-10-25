@@ -1,13 +1,151 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import type { Id } from "./_generated/dataModel";
+import { Id } from "./_generated/dataModel";
 
-// Send a message to a channel or direct message
+// Get all channels for a business
+export const getChannels = query({
+  args: { businessId: v.id("businesses") },
+  handler: async (ctx, args) => {
+    const channels = await ctx.db
+      .query("teamChannels")
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .collect();
+    return channels;
+  },
+});
+
+// Get messages for a channel with threading support
+export const getMessages = query({
+  args: { 
+    channelId: v.id("teamChannels"),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const limit = args.limit || 50;
+    
+    // Get only top-level messages (no parent)
+    const messages = await ctx.db
+      .query("teamMessages")
+      .withIndex("by_business_and_channel", (q) => 
+        q.eq("businessId", args.channelId).eq("channelId", args.channelId)
+      )
+      .filter((q) => q.eq(q.field("parentMessageId"), undefined))
+      .order("desc")
+      .take(limit);
+
+    // Get sender info for each message
+    const messagesWithUsers = await Promise.all(
+      messages.map(async (msg) => {
+        const sender = await ctx.db.get(msg.senderId);
+        
+        // Get reply count for threading
+        const replies = await ctx.db
+          .query("teamMessages")
+          .withIndex("by_parent", (q) => q.eq("parentMessageId", msg._id))
+          .collect();
+        
+        return {
+          ...msg,
+          sender: sender ? { name: sender.name, email: sender.email } : null,
+          replyCount: replies.length,
+        };
+      })
+    );
+
+    return messagesWithUsers.reverse();
+  },
+});
+
+// Get thread replies for a message
+export const getThreadReplies = query({
+  args: { parentMessageId: v.id("teamMessages") },
+  handler: async (ctx, args) => {
+    const replies = await ctx.db
+      .query("teamMessages")
+      .withIndex("by_parent", (q) => q.eq("parentMessageId", args.parentMessageId))
+      .order("asc")
+      .collect();
+
+    const repliesWithUsers = await Promise.all(
+      replies.map(async (msg) => {
+        const sender = await ctx.db.get(msg.senderId);
+        return {
+          ...msg,
+          sender: sender ? { name: sender.name, email: sender.email } : null,
+        };
+      })
+    );
+
+    return repliesWithUsers;
+  },
+});
+
+// Search messages
+export const searchMessages = query({
+  args: {
+    businessId: v.id("businesses"),
+    searchTerm: v.string(),
+    channelId: v.optional(v.id("teamChannels")),
+  },
+  handler: async (ctx, args) => {
+    let messages = await ctx.db
+      .query("teamMessages")
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .collect();
+
+    // Filter by channel if specified
+    if (args.channelId) {
+      messages = messages.filter((m) => m.channelId === args.channelId);
+    }
+
+    // Search in content
+    const searchLower = args.searchTerm.toLowerCase();
+    const filtered = messages.filter((m) =>
+      m.content.toLowerCase().includes(searchLower)
+    );
+
+    // Get sender info
+    const messagesWithUsers = await Promise.all(
+      filtered.slice(0, 50).map(async (msg) => {
+        const sender = await ctx.db.get(msg.senderId);
+        return {
+          ...msg,
+          sender: sender ? { name: sender.name, email: sender.email } : null,
+        };
+      })
+    );
+
+    return messagesWithUsers;
+  },
+});
+
+// Get users for @mention autocomplete
+export const getUsersForMention = query({
+  args: { businessId: v.id("businesses") },
+  handler: async (ctx, args) => {
+    const business = await ctx.db.get(args.businessId);
+    if (!business) return [];
+
+    const users = await Promise.all(
+      business.teamMembers.map(async (userId) => {
+        const user = await ctx.db.get(userId);
+        return user ? { 
+          _id: user._id, 
+          name: user.name || "Unknown", 
+          email: user.email || "" 
+        } : null;
+      })
+    );
+
+    return users.filter((u) => u !== null);
+  },
+});
+
+// Send a message with @mention detection
 export const sendMessage = mutation({
   args: {
     businessId: v.id("businesses"),
-    channelId: v.optional(v.id("teamChannels")),
-    recipientUserId: v.optional(v.id("users")),
+    channelId: v.id("teamChannels"),
     content: v.string(),
     attachments: v.optional(v.array(v.object({
       name: v.string(),
@@ -24,76 +162,72 @@ export const sendMessage = mutation({
       .query("users")
       .withIndex("email", (q) => q.eq("email", identity.email!))
       .unique();
+
     if (!user) throw new Error("User not found");
 
-    // Validate business membership
-    const business = await ctx.db.get(args.businessId);
-    if (!business) throw new Error("Business not found");
-    
-    const isMember = business.teamMembers.includes(user._id) || business.ownerId === user._id;
-    if (!isMember) throw new Error("Not a team member");
-
-    // Validate message type
-    if (!args.channelId && !args.recipientUserId) {
-      throw new Error("Must specify either channelId or recipientUserId");
-    }
+    // Extract @mentions from content
+    const mentionRegex = /@(\w+)/g;
+    const mentions = [...args.content.matchAll(mentionRegex)].map(m => m[1]);
 
     const messageId = await ctx.db.insert("teamMessages", {
       businessId: args.businessId,
       senderId: user._id,
       channelId: args.channelId,
-      recipientUserId: args.recipientUserId,
       content: args.content,
-      parentMessageId: undefined,
       attachments: args.attachments,
-      createdAt: Date.now(),
-      editedAt: undefined,
       reactions: [],
+      createdAt: Date.now(),
     });
 
-    // Send notification for direct messages
-    if (args.recipientUserId && args.recipientUserId !== user._id) {
-      await ctx.runMutation("internal:notifications:sendIfPermitted" as any, {
-        userId: args.recipientUserId,
-        businessId: args.businessId,
-        type: "assignment",
-        title: "New direct message",
-        message: `${user.name}: ${args.content.slice(0, 50)}${args.content.length > 50 ? '...' : ''}`,
-        priority: "medium",
-      });
+    // Create notifications for @mentions
+    if (mentions.length > 0) {
+      const business = await ctx.db.get(args.businessId);
+      if (business) {
+        for (const mention of mentions) {
+          // Find user by name or email
+          const mentionedUser = await ctx.db
+            .query("users")
+            .filter((q) => 
+              q.or(
+                q.eq(q.field("name"), mention),
+                q.eq(q.field("email"), `${mention}@`)
+              )
+            )
+            .first();
+
+          if (mentionedUser && mentionedUser._id !== user._id) {
+            await ctx.db.insert("notifications", {
+              businessId: args.businessId,
+              userId: mentionedUser._id,
+              type: "assignment",
+              title: "You were mentioned",
+              message: `${user.name || user.email} mentioned you in a message`,
+              data: { messageId, channelId: args.channelId },
+              isRead: false,
+              priority: "medium",
+              createdAt: Date.now(),
+            });
+          }
+        }
+      }
     }
-
-    // Audit log
-    await ctx.runMutation("audit:write" as any, {
-      businessId: args.businessId,
-      action: "message_sent",
-      entityType: "team_message",
-      entityId: String(messageId),
-      details: {
-        channelId: args.channelId,
-        recipientUserId: args.recipientUserId ? String(args.recipientUserId) : undefined,
-      },
-    });
 
     return messageId;
   },
 });
 
-// Add: shared attachment validator
-const chatAttachment = v.object({
-  name: v.string(),
-  url: v.string(),
-  type: v.string(),
-  size: v.optional(v.number()),
-});
-
-// Add: Reply to a message (thread)
+// Send a reply to a message (threaded)
 export const sendReply = mutation({
   args: {
     businessId: v.id("businesses"),
     parentMessageId: v.id("teamMessages"),
     content: v.string(),
-    attachments: v.optional(v.array(chatAttachment)),
+    attachments: v.optional(v.array(v.object({
+      name: v.string(),
+      url: v.string(),
+      type: v.string(),
+      size: v.optional(v.number()),
+    }))),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -103,230 +237,72 @@ export const sendReply = mutation({
       .query("users")
       .withIndex("email", (q) => q.eq("email", identity.email!))
       .unique();
+
     if (!user) throw new Error("User not found");
 
-    const parent = await ctx.db.get(args.parentMessageId);
-    if (!parent) throw new Error("Parent message not found");
-    if (parent.businessId !== args.businessId) {
-      throw new Error("Parent message does not belong to this business");
-    }
+    const parentMessage = await ctx.db.get(args.parentMessageId);
+    if (!parentMessage) throw new Error("Parent message not found");
 
-    const now = Date.now();
+    // Extract @mentions
+    const mentionRegex = /@(\w+)/g;
+    const mentions = [...args.content.matchAll(mentionRegex)].map(m => m[1]);
+
     const replyId = await ctx.db.insert("teamMessages", {
       businessId: args.businessId,
       senderId: user._id,
-      channelId: parent.channelId ?? undefined,
-      recipientUserId: parent.recipientUserId ?? undefined,
-      content: args.content,
+      channelId: parentMessage.channelId,
       parentMessageId: args.parentMessageId,
-      attachments: args.attachments ?? [],
+      content: args.content,
+      attachments: args.attachments,
       reactions: [],
-      createdAt: now,
-      editedAt: undefined,
-    });
-
-    // Notify DM recipient (if this thread is a DM)
-    if (parent.recipientUserId) {
-      const currentUserId = user._id;
-      const notifyUserId =
-        parent.recipientUserId === currentUserId ? parent.senderId : parent.recipientUserId;
-
-      const preview =
-        args.content.length > 120 ? `${args.content.slice(0, 117)}...` : args.content;
-
-      await ctx.db.insert("notifications", {
-        businessId: args.businessId,
-        userId: notifyUserId,
-        type: "system_alert",
-        title: `New reply from ${user.name ?? "Teammate"}`,
-        message: preview,
-        data: {
-          parentMessageId: args.parentMessageId,
-          replyMessageId: replyId,
-          channelId: parent.channelId ?? null,
-          dm: true,
-        },
-        isRead: false,
-        priority: "low",
-        createdAt: now,
-      });
-    }
-
-    return replyId;
-  },
-});
-
-// List messages for a channel or direct conversation
-export const listMessages = query({
-  args: {
-    businessId: v.id("businesses"),
-    channelId: v.optional(v.id("teamChannels")),
-    recipientUserId: v.optional(v.id("users")),
-    limit: v.optional(v.number()),
-  },
-  handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) return [];
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("email", (q) => q.eq("email", identity.email!))
-      .unique();
-    if (!user) return [];
-
-    const limit = args.limit || 50;
-
-    let messages;
-    if (args.channelId) {
-      // Channel messages
-      messages = await ctx.db
-        .query("teamMessages")
-        .withIndex("by_business_and_channel", (q) => 
-          q.eq("businessId", args.businessId).eq("channelId", args.channelId!)
-        )
-        .order("desc")
-        .take(limit);
-    } else if (args.recipientUserId) {
-      // Direct messages between current user and recipient
-      const allMessages = await ctx.db
-        .query("teamMessages")
-        .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
-        .collect();
-
-      messages = allMessages
-        .filter(m => 
-          (m.senderId === user._id && m.recipientUserId === args.recipientUserId) ||
-          (m.senderId === args.recipientUserId && m.recipientUserId === user._id)
-        )
-        .sort((a, b) => b.createdAt - a.createdAt)
-        .slice(0, limit);
-    } else {
-      return [];
-    }
-
-    // Enrich with sender info
-    const enriched = await Promise.all(
-      messages.map(async (msg) => {
-        const sender = await ctx.db.get(msg.senderId);
-        // Type guard: ensure sender exists and has the expected properties
-        const senderName = sender && 'name' in sender && sender.name ? sender.name : "Unknown";
-        const senderEmail = sender && 'email' in sender && sender.email ? sender.email : "";
-        return {
-          ...msg,
-          senderName,
-          senderEmail,
-        };
-      })
-    );
-    return enriched.reverse(); // Return in chronological order
-  },
-});
-
-// Create a channel
-export const createChannel = mutation({
-  args: {
-    businessId: v.id("businesses"),
-    name: v.string(),
-    description: v.optional(v.string()),
-    isPrivate: v.optional(v.boolean()),
-  },
-  handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("email", (q) => q.eq("email", identity.email!))
-      .unique();
-    if (!user) throw new Error("User not found");
-
-    const channelId = await ctx.db.insert("teamChannels", {
-      businessId: args.businessId,
-      name: args.name,
-      description: args.description,
-      isPrivate: args.isPrivate || false,
-      createdBy: user._id,
       createdAt: Date.now(),
     });
 
-    await ctx.runMutation("audit:write" as any, {
-      businessId: args.businessId,
-      action: "channel_created",
-      entityType: "team_channel",
-      entityId: String(channelId),
-      details: { name: args.name },
-    });
+    // Notify parent message author
+    if (parentMessage.senderId !== user._id) {
+      await ctx.db.insert("notifications", {
+        businessId: args.businessId,
+        userId: parentMessage.senderId,
+        type: "assignment",
+        title: "New reply to your message",
+        message: `${user.name || user.email} replied to your message`,
+        data: { messageId: replyId, parentMessageId: args.parentMessageId },
+        isRead: false,
+        priority: "medium",
+        createdAt: Date.now(),
+      });
+    }
 
-    return channelId;
-  },
-});
+    // Create notifications for @mentions
+    if (mentions.length > 0) {
+      for (const mention of mentions) {
+        const mentionedUser = await ctx.db
+          .query("users")
+          .filter((q) => 
+            q.or(
+              q.eq(q.field("name"), mention),
+              q.eq(q.field("email"), `${mention}@`)
+            )
+          )
+          .first();
 
-// List channels for a business
-export const listChannels = query({
-  args: { businessId: v.id("businesses") },
-  handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) return [];
+        if (mentionedUser && mentionedUser._id !== user._id) {
+          await ctx.db.insert("notifications", {
+            businessId: args.businessId,
+            userId: mentionedUser._id,
+            type: "assignment",
+            title: "You were mentioned in a reply",
+            message: `${user.name || user.email} mentioned you in a reply`,
+            data: { messageId: replyId, parentMessageId: args.parentMessageId },
+            isRead: false,
+            priority: "medium",
+            createdAt: Date.now(),
+          });
+        }
+      }
+    }
 
-    const channels = await ctx.db
-      .query("teamChannels")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
-      .order("desc")
-      .collect();
-
-    return channels;
-  },
-});
-
-// Edit a message
-export const editMessage = mutation({
-  args: {
-    messageId: v.id("teamMessages"),
-    content: v.string(),
-  },
-  handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("email", (q) => q.eq("email", identity.email!))
-      .unique();
-    if (!user) throw new Error("User not found");
-
-    const message = await ctx.db.get(args.messageId);
-    if (!message) throw new Error("Message not found");
-    if (message.senderId !== user._id) throw new Error("Not authorized");
-
-    await ctx.db.patch(args.messageId, {
-      content: args.content,
-      editedAt: Date.now(),
-    });
-
-    return { success: true };
-  },
-});
-
-// Delete a message
-export const deleteMessage = mutation({
-  args: { messageId: v.id("teamMessages") },
-  handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("email", (q) => q.eq("email", identity.email!))
-      .unique();
-    if (!user) throw new Error("User not found");
-
-    const message = await ctx.db.get(args.messageId);
-    if (!message) throw new Error("Message not found");
-    if (message.senderId !== user._id) throw new Error("Not authorized");
-
-    await ctx.db.delete(args.messageId);
-
-    return { success: true };
+    return replyId;
   },
 });
 
@@ -344,79 +320,40 @@ export const addReaction = mutation({
       .query("users")
       .withIndex("email", (q) => q.eq("email", identity.email!))
       .unique();
+
     if (!user) throw new Error("User not found");
 
     const message = await ctx.db.get(args.messageId);
     if (!message) throw new Error("Message not found");
 
-    const hasReaction = message.reactions.some((r: any) => r.userId === user._id && r.emoji === args.emoji);
+    // Check if user already reacted with this emoji
+    const existingReaction = message.reactions.find(
+      (r) => r.userId === user._id && r.emoji === args.emoji
+    );
 
-    if (hasReaction) {
-      // Remove reaction if already exists
+    if (existingReaction) {
+      // Remove reaction
       await ctx.db.patch(args.messageId, {
-        reactions: message.reactions.filter((r: any) => !(r.userId === user._id && r.emoji === args.emoji)),
+        reactions: message.reactions.filter(
+          (r) => !(r.userId === user._id && r.emoji === args.emoji)
+        ),
       });
     } else {
-      // Add new reaction
+      // Add reaction
       await ctx.db.patch(args.messageId, {
         reactions: [...message.reactions, { userId: user._id, emoji: args.emoji }],
       });
     }
-
-    return { success: true };
   },
 });
 
-// List team members for direct messaging
-export const listTeamMembers = query({
-  args: { businessId: v.id("businesses") },
-  handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) return [];
-
-    const business = await ctx.db.get(args.businessId);
-    if (!business) return [];
-
-    const members = await Promise.all(
-      [...business.teamMembers, business.ownerId].map(async (userId) => {
-        const user = await ctx.db.get(userId);
-        return user ? {
-          _id: user._id,
-          name: user.name,
-          email: user.email,
-          isOwner: userId === business.ownerId,
-        } : null;
-      })
-    );
-
-    return members.filter(Boolean);
-  },
-});
-
-// Add: List thread replies (reactive)
-export const getThreadReplies = query({
-  args: {
-    parentMessageId: v.id("teamMessages"),
-  },
-  handler: async (ctx, args) => {
-    const replies = await ctx.db
-      .query("teamMessages")
-      .withIndex("by_parent", (q) => q.eq("parentMessageId", args.parentMessageId))
-      .collect();
-
-    // Default asc by _creationTime; keep as-is
-    return replies;
-  },
-});
-
-// Optional: DM send with notification (use on frontend if desired)
-export const sendMessageWithNotify = mutation({
+// Create a new channel
+export const createChannel = mutation({
   args: {
     businessId: v.id("businesses"),
-    channelId: v.optional(v.id("teamChannels")),
-    recipientUserId: v.optional(v.id("users")),
-    content: v.string(),
-    attachments: v.optional(v.array(chatAttachment)),
+    name: v.string(),
+    description: v.optional(v.string()),
+    isPrivate: v.boolean(),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -426,43 +363,70 @@ export const sendMessageWithNotify = mutation({
       .query("users")
       .withIndex("email", (q) => q.eq("email", identity.email!))
       .unique();
+
     if (!user) throw new Error("User not found");
 
-    const now = Date.now();
-    const messageId = await ctx.db.insert("teamMessages", {
+    const channelId = await ctx.db.insert("teamChannels", {
       businessId: args.businessId,
-      senderId: user._id,
-      channelId: args.channelId ?? undefined,
-      recipientUserId: args.recipientUserId ?? undefined,
-      content: args.content,
-      attachments: args.attachments ?? [],
-      reactions: [],
-      createdAt: now,
-      editedAt: undefined,
+      name: args.name,
+      description: args.description,
+      isPrivate: args.isPrivate,
+      createdBy: user._id,
+      createdAt: Date.now(),
     });
 
-    // Notify DM recipient
-    if (args.recipientUserId) {
-      const preview =
-        args.content.length > 120 ? `${args.content.slice(0, 117)}...` : args.content;
+    return channelId;
+  },
+});
 
-      await ctx.db.insert("notifications", {
-        businessId: args.businessId,
-        userId: args.recipientUserId,
-        type: "system_alert",
-        title: `New message from ${user.name ?? "Teammate"}`,
-        message: preview,
-        data: {
-          messageId,
-          channelId: args.channelId ?? null,
-          dm: true,
-        },
-        isRead: false,
-        priority: "low",
-        createdAt: now,
-      });
+// Delete a message
+export const deleteMessage = mutation({
+  args: { messageId: v.id("teamMessages") },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+
+    const message = await ctx.db.get(args.messageId);
+    if (!message) throw new Error("Message not found");
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("email", (q) => q.eq("email", identity.email!))
+      .unique();
+
+    if (!user || message.senderId !== user._id) {
+      throw new Error("Not authorized to delete this message");
     }
 
-    return messageId;
+    await ctx.db.delete(args.messageId);
+  },
+});
+
+// Edit a message
+export const editMessage = mutation({
+  args: {
+    messageId: v.id("teamMessages"),
+    content: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+
+    const message = await ctx.db.get(args.messageId);
+    if (!message) throw new Error("Message not found");
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("email", (q) => q.eq("email", identity.email!))
+      .unique();
+
+    if (!user || message.senderId !== user._id) {
+      throw new Error("Not authorized to edit this message");
+    }
+
+    await ctx.db.patch(args.messageId, {
+      content: args.content,
+      editedAt: Date.now(),
+    });
   },
 });

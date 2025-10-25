@@ -272,3 +272,221 @@ export const getExperimentByIdInternal = internalMutation({
     return await ctx.db.get(args.experimentId);
   },
 });
+
+// Statistical significance calculation using Z-test
+export const calculateStatisticalSignificance = query({
+  args: { experimentId: v.id("experiments") },
+  handler: async (ctx, args) => {
+    const experiment = await ctx.db.get(args.experimentId);
+    if (!experiment) return null;
+
+    const variants = await ctx.db
+      .query("experimentVariants")
+      .withIndex("by_experiment", (q) => q.eq("experimentId", args.experimentId))
+      .collect();
+
+    if (variants.length < 2) return null;
+
+    // Calculate conversion rates and sample sizes
+    const stats = variants.map((v) => ({
+      variantId: v._id,
+      variantKey: v.variantKey,
+      name: v.name,
+      sampleSize: v.metrics.sent,
+      conversions: v.metrics.converted,
+      conversionRate: v.metrics.sent > 0 ? v.metrics.converted / v.metrics.sent : 0,
+    }));
+
+    // Find control (first variant) and compare others
+    const control = stats[0];
+    const comparisons = stats.slice(1).map((variant) => {
+      const p1 = control.conversionRate;
+      const p2 = variant.conversionRate;
+      const n1 = control.sampleSize;
+      const n2 = variant.sampleSize;
+
+      // Pooled proportion
+      const pooledP = (control.conversions + variant.conversions) / (n1 + n2);
+      
+      // Standard error
+      const se = Math.sqrt(pooledP * (1 - pooledP) * (1 / n1 + 1 / n2));
+      
+      // Z-score
+      const zScore = se > 0 ? (p2 - p1) / se : 0;
+      
+      // P-value (two-tailed test)
+      const pValue = 2 * (1 - normalCDF(Math.abs(zScore)));
+      
+      // Confidence interval (95%)
+      const diff = p2 - p1;
+      const ciMargin = 1.96 * se;
+      const confidenceInterval = {
+        lower: diff - ciMargin,
+        upper: diff + ciMargin,
+      };
+
+      // Statistical significance at 95% confidence
+      const isSignificant = pValue < 0.05;
+      
+      // Relative improvement
+      const relativeImprovement = p1 > 0 ? ((p2 - p1) / p1) * 100 : 0;
+
+      return {
+        variantId: variant.variantId,
+        variantKey: variant.variantKey,
+        name: variant.name,
+        zScore,
+        pValue,
+        confidenceInterval,
+        isSignificant,
+        relativeImprovement,
+        sampleSize: n2,
+        conversionRate: p2,
+      };
+    });
+
+    return {
+      control: {
+        variantId: control.variantId,
+        variantKey: control.variantKey,
+        name: control.name,
+        sampleSize: control.sampleSize,
+        conversionRate: control.conversionRate,
+      },
+      comparisons,
+      overallSignificance: comparisons.some((c) => c.isSignificant),
+    };
+  },
+});
+
+// Helper function: Normal CDF approximation
+function normalCDF(x: number): number {
+  const t = 1 / (1 + 0.2316419 * Math.abs(x));
+  const d = 0.3989423 * Math.exp(-x * x / 2);
+  const prob = d * t * (0.3193815 + t * (-0.3565638 + t * (1.781478 + t * (-1.821256 + t * 1.330274))));
+  return x > 0 ? 1 - prob : prob;
+}
+
+// Calculate required sample size
+export const calculateSampleSize = query({
+  args: {
+    baselineRate: v.number(),
+    minimumDetectableEffect: v.number(),
+    confidenceLevel: v.number(),
+    statisticalPower: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const alpha = 1 - args.confidenceLevel / 100;
+    const beta = 1 - args.statisticalPower / 100;
+    
+    const p1 = args.baselineRate / 100;
+    const p2 = p1 * (1 + args.minimumDetectableEffect / 100);
+    
+    // Z-scores for alpha and beta
+    const zAlpha = getZScore(1 - alpha / 2);
+    const zBeta = getZScore(1 - beta);
+    
+    // Sample size calculation
+    const numerator = Math.pow(zAlpha + zBeta, 2) * (p1 * (1 - p1) + p2 * (1 - p2));
+    const denominator = Math.pow(p2 - p1, 2);
+    
+    const sampleSizePerVariant = Math.ceil(numerator / denominator);
+    
+    return {
+      sampleSizePerVariant,
+      totalSampleSize: sampleSizePerVariant * 2,
+      estimatedDays: Math.ceil(sampleSizePerVariant / 100), // Assuming 100 emails/day
+    };
+  },
+});
+
+// Helper function: Get Z-score for probability
+function getZScore(p: number): number {
+  // Approximation of inverse normal CDF
+  if (p === 0.5) return 0;
+  if (p < 0.5) return -getZScore(1 - p);
+  
+  const t = Math.sqrt(-2 * Math.log(1 - p));
+  const c0 = 2.515517;
+  const c1 = 0.802853;
+  const c2 = 0.010328;
+  const d1 = 1.432788;
+  const d2 = 0.189269;
+  const d3 = 0.001308;
+  
+  return t - (c0 + c1 * t + c2 * t * t) / (1 + d1 * t + d2 * t * t + d3 * t * t * t);
+}
+
+// Automated winner determination with statistical validation
+export const determineWinner = action({
+  args: { experimentId: v.id("experiments") },
+  handler: async (ctx, args) => {
+    const experiment = await ctx.runQuery(api.experiments.getExperimentById, {
+      experimentId: args.experimentId,
+    });
+
+    if (!experiment) {
+      throw new Error("Experiment not found");
+    }
+
+    const significance = await ctx.runQuery(api.experiments.calculateStatisticalSignificance, {
+      experimentId: args.experimentId,
+    });
+
+    if (!significance) {
+      return {
+        isSignificant: false,
+        message: "Not enough data for statistical analysis",
+      };
+    }
+
+    // Check if minimum sample size is met
+    const config = experiment.configuration;
+    const allVariantsMeetMinimum = [significance.control, ...significance.comparisons].every(
+      (v) => v.sampleSize >= config.minimumSampleSize
+    );
+
+    if (!allVariantsMeetMinimum) {
+      return {
+        isSignificant: false,
+        message: "Minimum sample size not reached",
+        progress: Math.min(
+          ...significance.comparisons.map((c) => (c.sampleSize / config.minimumSampleSize) * 100)
+        ),
+      };
+    }
+
+    // Find best performing variant
+    const allVariants = [significance.control, ...significance.comparisons];
+    const bestVariant = allVariants.reduce((best, current) =>
+      current.conversionRate > best.conversionRate ? current : best
+    );
+
+    // Check if winner is statistically significant
+    const winnerComparison = significance.comparisons.find(
+      (c) => c.variantId === bestVariant.variantId
+    );
+
+    const isSignificant = winnerComparison ? winnerComparison.isSignificant : false;
+
+    if (isSignificant && experiment.configuration.autoDeclareWinner) {
+      // Auto-declare winner
+      await ctx.runMutation(api.experiments.declareWinner, {
+        experimentId: args.experimentId,
+        winnerVariantId: bestVariant.variantId,
+      });
+    }
+
+    return {
+      isSignificant,
+      winnerId: bestVariant.variantId,
+      bestVariantKey: bestVariant.variantKey,
+      conversionRate: bestVariant.conversionRate * 100,
+      relativeImprovement: winnerComparison?.relativeImprovement || 0,
+      pValue: winnerComparison?.pValue || 1,
+      message: isSignificant
+        ? `Winner: ${bestVariant.name} with ${(bestVariant.conversionRate * 100).toFixed(2)}% conversion rate`
+        : "No statistically significant winner yet",
+    };
+  },
+});

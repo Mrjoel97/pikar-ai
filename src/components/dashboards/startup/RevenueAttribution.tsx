@@ -4,9 +4,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { TrendingUp, DollarSign, Target, BarChart3 } from "lucide-react";
+import { TrendingUp, DollarSign, Target, BarChart3, Route, Activity, TrendingDown } from "lucide-react";
 import { useState } from "react";
 import type { Id } from "@/convex/_generated/dataModel";
+import { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 
 interface RevenueAttributionProps {
   businessId: Id<"businesses">;
@@ -19,6 +20,15 @@ const CHANNEL_COLORS: Record<string, string> = {
   referral: "bg-green-500",
   organic: "bg-teal-500",
   direct: "bg-gray-500",
+};
+
+const CHART_COLORS: Record<string, string> = {
+  email: "#3b82f6",
+  social: "#a855f7",
+  paid: "#f97316",
+  referral: "#10b981",
+  organic: "#14b8a6",
+  direct: "#6b7280",
 };
 
 const MODEL_LABELS: Record<string, string> = {
@@ -47,6 +57,26 @@ export function RevenueAttribution({ businessId }: RevenueAttributionProps) {
   });
 
   const multiTouchComparison = useQuery(api.revenueAttribution.getMultiTouchComparison, {
+    businessId,
+    days,
+  });
+
+  const customerJourneys = useQuery(api.revenueAttribution.getCustomerJourneys, {
+    businessId,
+    days,
+  });
+
+  const channelTrends = useQuery(api.revenueAttribution.getChannelTrends, {
+    businessId,
+    days,
+  });
+
+  const revenueForecast = useQuery(api.revenueAttribution.getRevenueForecast, {
+    businessId,
+    forecastDays: 30,
+  });
+
+  const performanceMetrics = useQuery(api.revenueAttribution.getChannelPerformanceMetrics, {
     businessId,
     days,
   });
@@ -143,27 +173,25 @@ export function RevenueAttribution({ businessId }: RevenueAttributionProps) {
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <BarChart3 className="h-4 w-4" />
-              Avg Revenue
+              <Route className="h-4 w-4" />
+              Avg Journey
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              $
-              {attributionReport.totalConversions > 0
-                ? Math.round(attributionReport.totalRevenue / attributionReport.totalConversions)
-                : 0}
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">Per conversion</p>
+            <div className="text-2xl font-bold">{customerJourneys?.avgTouchpoints || 0}</div>
+            <p className="text-xs text-muted-foreground mt-1">Touchpoints</p>
           </CardContent>
         </Card>
       </div>
 
       <Tabs defaultValue="attribution" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="attribution">Channel Attribution</TabsTrigger>
-          <TabsTrigger value="roi">Channel ROI</TabsTrigger>
-          <TabsTrigger value="comparison">Model Comparison</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-6">
+          <TabsTrigger value="attribution">Attribution</TabsTrigger>
+          <TabsTrigger value="performance">Performance</TabsTrigger>
+          <TabsTrigger value="journeys">Journeys</TabsTrigger>
+          <TabsTrigger value="trends">Trends</TabsTrigger>
+          <TabsTrigger value="forecast">Forecast</TabsTrigger>
+          <TabsTrigger value="comparison">Comparison</TabsTrigger>
         </TabsList>
 
         {/* Channel Attribution Tab */}
@@ -211,10 +239,8 @@ export function RevenueAttribution({ businessId }: RevenueAttributionProps) {
               </div>
             </CardContent>
           </Card>
-        </TabsContent>
 
-        {/* Channel ROI Tab */}
-        <TabsContent value="roi" className="space-y-4">
+          {/* Channel ROI */}
           <Card>
             <CardHeader>
               <CardTitle>Channel ROI Breakdown</CardTitle>
@@ -253,13 +279,200 @@ export function RevenueAttribution({ businessId }: RevenueAttributionProps) {
                     </div>
                   </div>
                 ))}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-                {channelROI.channels.length === 0 && (
+        {/* Channel Performance Tab */}
+        <TabsContent value="performance" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Advanced Channel Metrics</CardTitle>
+              <CardDescription>Detailed performance analysis by channel</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {performanceMetrics?.channels.map((channel: any) => (
+                  <div key={channel.channel} className="p-4 border rounded-lg space-y-3">
+                    <div className="flex items-center justify-between">
+                      <Badge className={CHANNEL_COLORS[channel.channel] || "bg-gray-500"}>
+                        {channel.channel}
+                      </Badge>
+                      <div className="flex items-center gap-2">
+                        <Activity className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-sm font-medium">{channel.conversionRate}% conversion rate</span>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-5 gap-3 text-sm">
+                      <div>
+                        <div className="text-muted-foreground">Touchpoints</div>
+                        <div className="font-semibold">{channel.touchpoints}</div>
+                      </div>
+                      <div>
+                        <div className="text-muted-foreground">Conversions</div>
+                        <div className="font-semibold">{channel.conversions}</div>
+                      </div>
+                      <div>
+                        <div className="text-muted-foreground">Revenue</div>
+                        <div className="font-semibold">${channel.revenue.toLocaleString()}</div>
+                      </div>
+                      <div>
+                        <div className="text-muted-foreground">Avg Revenue</div>
+                        <div className="font-semibold">${channel.avgRevenuePerConversion}</div>
+                      </div>
+                      <div>
+                        <div className="text-muted-foreground">Time to Conv.</div>
+                        <div className="font-semibold">{channel.avgTimeToConversionDays}d</div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Customer Journeys Tab */}
+        <TabsContent value="journeys" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Route className="h-5 w-5" />
+                Top Customer Journey Paths
+              </CardTitle>
+              <CardDescription>Most common paths to conversion</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {customerJourneys?.topPaths.map((journey: any, idx: number) => (
+                  <div key={idx} className="p-4 border rounded-lg space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline">#{idx + 1}</Badge>
+                        <span className="text-sm font-mono">{journey.path}</span>
+                      </div>
+                      <Badge>{journey.count} conversions</Badge>
+                    </div>
+                    <div className="grid grid-cols-3 gap-4 text-sm">
+                      <div>
+                        <div className="text-muted-foreground">Total Revenue</div>
+                        <div className="font-semibold">${journey.revenue.toLocaleString()}</div>
+                      </div>
+                      <div>
+                        <div className="text-muted-foreground">Avg Revenue</div>
+                        <div className="font-semibold">${journey.avgRevenue.toLocaleString()}</div>
+                      </div>
+                      <div>
+                        <div className="text-muted-foreground">Avg Duration</div>
+                        <div className="font-semibold">{journey.avgDurationDays} days</div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+
+                {(!customerJourneys?.topPaths || customerJourneys.topPaths.length === 0) && (
                   <div className="text-center py-8 text-muted-foreground">
-                    No ROI data available yet. Channel costs and revenue will appear here as data is collected.
+                    No customer journey data available yet.
                   </div>
                 )}
               </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Channel Trends Tab */}
+        <TabsContent value="trends" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Revenue Trends by Channel</CardTitle>
+              <CardDescription>Daily revenue performance across channels</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={400}>
+                <AreaChart data={channelTrends?.trends || []}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="date" />
+                  <YAxis />
+                  <Tooltip />
+                  <Legend />
+                  {Object.keys(CHART_COLORS).map((channel) => (
+                    <Area
+                      key={channel}
+                      type="monotone"
+                      dataKey={channel}
+                      stackId="1"
+                      stroke={CHART_COLORS[channel]}
+                      fill={CHART_COLORS[channel]}
+                      name={channel}
+                    />
+                  ))}
+                </AreaChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Revenue Forecast Tab */}
+        <TabsContent value="forecast" className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm">Forecast Confidence</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{revenueForecast?.confidence || 0}%</div>
+                <p className="text-xs text-muted-foreground mt-1">Based on historical data</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm">Revenue Trend</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center gap-2">
+                  {revenueForecast?.trend === "increasing" ? (
+                    <TrendingUp className="h-5 w-5 text-green-600" />
+                  ) : revenueForecast?.trend === "decreasing" ? (
+                    <TrendingDown className="h-5 w-5 text-red-600" />
+                  ) : (
+                    <BarChart3 className="h-5 w-5 text-gray-600" />
+                  )}
+                  <span className="text-2xl font-bold capitalize">{revenueForecast?.trend || "stable"}</span>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm">Avg Daily Revenue</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">${revenueForecast?.recentAvgRevenue?.toLocaleString() || 0}</div>
+                <p className="text-xs text-muted-foreground mt-1">Last 7 days</p>
+              </CardContent>
+            </Card>
+          </div>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>30-Day Revenue Forecast</CardTitle>
+              <CardDescription>Predicted revenue with confidence intervals</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={350}>
+                <LineChart data={revenueForecast?.forecast || []}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="date" />
+                  <YAxis />
+                  <Tooltip />
+                  <Legend />
+                  <Line type="monotone" dataKey="predicted" stroke="#10b981" strokeWidth={2} name="Predicted" />
+                  <Line type="monotone" dataKey="upper" stroke="#3b82f6" strokeDasharray="5 5" name="Upper Bound" />
+                  <Line type="monotone" dataKey="lower" stroke="#ef4444" strokeDasharray="5 5" name="Lower Bound" />
+                </LineChart>
+              </ResponsiveContainer>
             </CardContent>
           </Card>
         </TabsContent>

@@ -356,6 +356,306 @@ export const getFinanceKpis = query({
 });
 
 /**
+ * Cross-Department Analytics
+ * Returns metrics that span multiple departments for holistic insights
+ */
+export const getCrossDepartmentAnalytics = query({
+  args: {
+    businessId: v.id("businesses"),
+    timeRange: v.optional(v.union(
+      v.literal("7d"),
+      v.literal("30d"),
+      v.literal("90d"),
+      v.literal("1y")
+    )),
+  },
+  handler: async (ctx, args) => {
+    return {
+      // Marketing → Sales alignment
+      leadToCustomerConversion: {
+        marketingLeads: 500,
+        salesAcceptedLeads: 350,
+        closedDeals: 85,
+        conversionRate: 17.0,
+        avgTimeToClose: 28,
+      },
+      // Sales → Finance alignment
+      revenueRealization: {
+        bookedRevenue: 425000,
+        recognizedRevenue: 380000,
+        outstandingAR: 45000,
+        realizationRate: 89.4,
+      },
+      // Operations → Finance alignment
+      operationalEfficiency: {
+        totalOpsCost: 125000,
+        unitsProduced: 3500,
+        costPerUnit: 35.71,
+        targetCostPerUnit: 40.0,
+        efficiencyGain: 10.7,
+      },
+      // Resource allocation across departments
+      resourceUtilization: [
+        { department: "Marketing", allocated: 75000, spent: 72000, utilization: 96 },
+        { department: "Sales", allocated: 100000, spent: 95000, utilization: 95 },
+        { department: "Operations", allocated: 125000, spent: 118000, utilization: 94 },
+        { department: "Finance", allocated: 50000, spent: 48000, utilization: 96 },
+      ],
+      // Cross-functional initiatives
+      initiatives: [
+        { name: "Product Launch Q2", departments: ["Marketing", "Sales", "Operations"], progress: 75, budget: 50000, spent: 38000 },
+        { name: "Process Automation", departments: ["Operations", "Finance"], progress: 60, budget: 30000, spent: 18000 },
+      ],
+    };
+  },
+});
+
+/**
+ * Budget Tracking Query
+ * Returns budget vs actual spending by department and category
+ */
+export const getBudgetTracking = query({
+  args: {
+    businessId: v.id("businesses"),
+    timeRange: v.optional(v.union(
+      v.literal("7d"),
+      v.literal("30d"),
+      v.literal("90d"),
+      v.literal("1y")
+    )),
+  },
+  handler: async (ctx, args) => {
+    return {
+      summary: {
+        totalBudget: 500000,
+        totalSpent: 425000,
+        remaining: 75000,
+        utilizationRate: 85.0,
+      },
+      byDepartment: [
+        { department: "Marketing", budget: 100000, spent: 85000, variance: -15, forecast: 95000 },
+        { department: "Sales", budget: 150000, spent: 135000, variance: -10, forecast: 145000 },
+        { department: "Operations", budget: 175000, spent: 155000, variance: -11, forecast: 168000 },
+        { department: "Finance", budget: 75000, spent: 50000, variance: -33, forecast: 60000 },
+      ],
+      byCategory: [
+        { category: "Personnel", budget: 300000, spent: 270000, variance: -10 },
+        { category: "Marketing & Sales", budget: 80000, spent: 75000, variance: -6 },
+        { category: "Operations", budget: 70000, spent: 55000, variance: -21 },
+        { category: "Technology", budget: 30000, spent: 18000, variance: -40 },
+        { category: "Other", budget: 20000, spent: 7000, variance: -65 },
+      ],
+      monthlyTrend: [
+        { month: "Jan", budget: 125000, spent: 105000 },
+        { month: "Feb", budget: 125000, spent: 110000 },
+        { month: "Mar", budget: 125000, spent: 108000 },
+        { month: "Apr", budget: 125000, spent: 102000 },
+      ],
+    };
+  },
+});
+
+/**
+ * Performance Benchmarking Query
+ * Returns department performance vs industry benchmarks
+ */
+export const getPerformanceBenchmarks = query({
+  args: {
+    businessId: v.id("businesses"),
+    industry: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    return {
+      marketing: {
+        metric: "CAC",
+        yourValue: 45,
+        industryAvg: 52,
+        topQuartile: 38,
+        percentile: 65,
+        status: "above_average",
+      },
+      sales: {
+        metric: "Win Rate",
+        yourValue: 24.5,
+        industryAvg: 22.0,
+        topQuartile: 28.0,
+        percentile: 60,
+        status: "above_average",
+      },
+      operations: {
+        metric: "Cycle Time",
+        yourValue: 4.2,
+        industryAvg: 5.1,
+        topQuartile: 3.5,
+        percentile: 70,
+        status: "above_average",
+      },
+      finance: {
+        metric: "Burn Rate Efficiency",
+        yourValue: 18,
+        industryAvg: 15,
+        topQuartile: 20,
+        percentile: 55,
+        status: "average",
+      },
+    };
+  },
+});
+
+/**
+ * Resource Allocation Query
+ * Returns current resource allocation and optimization suggestions
+ */
+export const getResourceAllocation = query({
+  args: {
+    businessId: v.id("businesses"),
+  },
+  handler: async (ctx, args) => {
+    return {
+      currentAllocation: [
+        { department: "Marketing", headcount: 8, budget: 100000, revenue: 320000, roiPerHead: 40000 },
+        { department: "Sales", headcount: 12, budget: 150000, revenue: 850000, roiPerHead: 70833 },
+        { department: "Operations", headcount: 15, budget: 175000, revenue: 0, roiPerHead: 0 },
+        { department: "Finance", headcount: 5, budget: 75000, revenue: 0, roiPerHead: 0 },
+      ],
+      recommendations: [
+        {
+          type: "reallocation",
+          from: "Operations",
+          to: "Sales",
+          amount: 25000,
+          reason: "Sales has highest ROI per dollar spent",
+          expectedImpact: "+$175K revenue",
+        },
+        {
+          type: "hiring",
+          department: "Marketing",
+          role: "Content Specialist",
+          reason: "Content marketing showing 5.2x ROI",
+          expectedImpact: "+$200K revenue",
+        },
+      ],
+      utilizationHeatmap: [
+        { department: "Marketing", week1: 95, week2: 92, week3: 88, week4: 90 },
+        { department: "Sales", week1: 98, week2: 96, week3: 97, week4: 95 },
+        { department: "Operations", week1: 85, week2: 88, week3: 82, week4: 86 },
+        { department: "Finance", week1: 78, week2: 82, week3: 80, week4: 75 },
+      ],
+    };
+  },
+});
+
+/**
+ * Drill-down query for detailed campaign analysis
+ */
+export const getCampaignDrilldown = query({
+  args: {
+    businessId: v.id("businesses"),
+    campaignId: v.optional(v.string()),
+    timeRange: v.optional(v.union(
+      v.literal("7d"),
+      v.literal("30d"),
+      v.literal("90d"),
+      v.literal("1y")
+    )),
+  },
+  handler: async (ctx, args) => {
+    return {
+      campaign: {
+        id: args.campaignId || "campaign_001",
+        name: "Summer Sale 2024",
+        status: "active",
+        startDate: "2024-06-01",
+        endDate: "2024-08-31",
+      },
+      performance: {
+        impressions: 125000,
+        clicks: 3750,
+        ctr: 3.0,
+        conversions: 85,
+        conversionRate: 2.27,
+        revenue: 15600,
+        spend: 3000,
+        roi: 5.2,
+        cpa: 35.29,
+      },
+      byChannel: [
+        { channel: "Email", impressions: 25000, clicks: 1250, conversions: 35, revenue: 6500, spend: 500 },
+        { channel: "Social", impressions: 50000, clicks: 1500, conversions: 30, revenue: 5400, spend: 1200 },
+        { channel: "Paid Search", impressions: 50000, clicks: 1000, conversions: 20, revenue: 3700, spend: 1300 },
+      ],
+      timeline: [
+        { date: "Week 1", impressions: 20000, clicks: 600, conversions: 12, revenue: 2200 },
+        { date: "Week 2", impressions: 28000, clicks: 840, conversions: 18, revenue: 3400 },
+        { date: "Week 3", impressions: 35000, clicks: 1050, conversions: 25, revenue: 4800 },
+        { date: "Week 4", impressions: 42000, clicks: 1260, conversions: 30, revenue: 5200 },
+      ],
+    };
+  },
+});
+
+/**
+ * Drill-down query for detailed deal pipeline analysis
+ */
+export const getDealPipelineDrilldown = query({
+  args: {
+    businessId: v.id("businesses"),
+    stage: v.optional(v.string()),
+    repId: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    return {
+      deals: [
+        { id: "deal_001", name: "Acme Corp", value: 25000, stage: "Proposal", probability: 60, rep: "Sarah Chen", daysInStage: 8, nextAction: "Follow-up call" },
+        { id: "deal_002", name: "TechStart Inc", value: 18000, stage: "Negotiation", probability: 75, rep: "Mike Johnson", daysInStage: 5, nextAction: "Contract review" },
+        { id: "deal_003", name: "Global Systems", value: 42000, stage: "Qualification", probability: 40, rep: "Sarah Chen", daysInStage: 12, nextAction: "Demo scheduled" },
+      ],
+      stageMetrics: {
+        stage: args.stage || "Proposal",
+        totalDeals: 18,
+        totalValue: 225000,
+        avgDealSize: 12500,
+        avgDaysInStage: 9.5,
+        conversionRate: 45,
+      },
+      riskFactors: [
+        { deal: "deal_003", risk: "high", reason: "12 days in stage, no recent activity", recommendation: "Schedule follow-up" },
+      ],
+    };
+  },
+});
+
+/**
+ * Export data mutation for generating reports
+ */
+export const exportDepartmentData = mutation({
+  args: {
+    businessId: v.id("businesses"),
+    department: v.string(),
+    format: v.union(v.literal("csv"), v.literal("json"), v.literal("pdf")),
+    timeRange: v.optional(v.union(
+      v.literal("7d"),
+      v.literal("30d"),
+      v.literal("90d"),
+      v.literal("1y")
+    )),
+  },
+  handler: async (ctx, args) => {
+    // In production, this would generate actual export files
+    // For now, return metadata about the export
+    return {
+      exportId: `export_${Date.now()}`,
+      department: args.department,
+      format: args.format,
+      timeRange: args.timeRange || "30d",
+      status: "completed",
+      downloadUrl: `/api/exports/export_${Date.now()}.${args.format}`,
+      expiresAt: Date.now() + 24 * 60 * 60 * 1000, // 24 hours
+    };
+  },
+});
+
+/**
  * Internal mutation to collect and store department KPI snapshots
  * Called by daily cron job to aggregate real data from workflows, contacts, revenue, etc.
  */

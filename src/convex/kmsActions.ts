@@ -182,3 +182,45 @@ export const decryptData = action({
     return decoder.decode(decrypted);
   },
 });
+
+// Test KMS configuration
+export const testKmsConfig = action({
+  args: { businessId: v.id("businesses") },
+  handler: async (ctx, args): Promise<{ success: boolean; message: string }> => {
+    try {
+      const testData = "KMS Test Data - " + Date.now();
+      
+      // Encrypt test data
+      const encrypted = await ctx.runAction(internal.kmsActions.encryptData, {
+        businessId: args.businessId,
+        plaintext: testData,
+      });
+
+      // Decrypt test data
+      const decrypted = await ctx.runAction(internal.kmsActions.decryptData, {
+        businessId: args.businessId,
+        encryptedData: encrypted.encryptedData,
+        encryptedDek: encrypted.encryptedDek,
+        iv: encrypted.iv,
+        provider: encrypted.provider,
+      });
+
+      if (decrypted === testData) {
+        return {
+          success: true,
+          message: `KMS encryption test successful using ${encrypted.provider.toUpperCase()}`,
+        };
+      } else {
+        return {
+          success: false,
+          message: "Decrypted data does not match original",
+        };
+      }
+    } catch (error: any) {
+      return {
+        success: false,
+        message: error.message || "KMS test failed",
+      };
+    }
+  },
+});

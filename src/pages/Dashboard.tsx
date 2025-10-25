@@ -34,6 +34,7 @@ const EnterpriseDashboard = lazy(() =>
     default: m.EnterpriseDashboard,
   })),
 );
+import { MobileNav } from "@/components/layout/MobileNav";
 
 export default function Dashboard() {
   const { isLoading, isAuthenticated, user, signOut } = useAuth();
@@ -181,7 +182,7 @@ export default function Dashboard() {
 
     switch (effectiveTier) {
       case "solopreneur":
-        return React.createElement(SolopreneurDashboard as any, props);
+        return <SolopreneurDashboard {...props} />;
       case "startup":
         return <StartupDashboard {...props} />;
       case "sme":
@@ -189,7 +190,7 @@ export default function Dashboard() {
       case "enterprise":
         return <EnterpriseDashboard {...props} />;
       default:
-        return React.createElement(SolopreneurDashboard as any, props);
+        return <SolopreneurDashboard {...props} />;
     }
   };
 
@@ -228,6 +229,17 @@ export default function Dashboard() {
         </DialogContent>
       </Dialog>
 
+      {/* Mobile Navigation */}
+      <MobileNav
+        items={effectiveConfig.sidebarItems}
+        userDisplay={userDisplay}
+        planLabel={planLabel}
+        onNavigate={handleNavigation}
+        onLogout={handleLogout}
+        logoUrl={business?.logoUrl}
+      />
+
+      {/* Desktop Sidebar */}
       <Sidebar
         items={effectiveConfig.sidebarItems}
         userDisplay={userDisplay}
@@ -237,7 +249,7 @@ export default function Dashboard() {
         featureHighlights={effectiveConfig.featureHighlights}
       />
 
-      <main className="md:ml-72 p-6">
+      <main className="md:ml-72 p-4 sm:p-6 pt-16 md:pt-6">
         {/* Top actions */}
         <div className="mb-4 flex items-center justify-end gap-2">
           {/* Add Help for guest mode */}

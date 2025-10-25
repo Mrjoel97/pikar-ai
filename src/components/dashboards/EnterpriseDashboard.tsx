@@ -21,6 +21,7 @@ import type { EnterpriseDashboardProps } from "@/types/dashboard";
 import { EnterpriseControls } from "./enterprise/EnterpriseControls";
 import { IntegrationStatus } from "./enterprise/IntegrationStatus";
 import { withMutationErrorHandling } from "@/lib/dashboardErrorHandling";
+import { LazyLoadErrorBoundary } from "@/components/common/LazyLoadErrorBoundary";
 
 // Lazy-load heavy components to reduce initial bundle
 const RoiDashboard = lazy(() =>
@@ -36,31 +37,56 @@ const ExperimentCreator = lazy(() =>
     default: m.ExperimentCreator,
   })),
 );
-import { GlobalOverview } from "./enterprise/GlobalOverview";
-import { WidgetGrid } from "./enterprise/WidgetGrid";
-import { ApprovalsAudit } from "./enterprise/ApprovalsAudit";
-import { StrategicInitiatives } from "./enterprise/StrategicInitiatives";
-import { SystemTelemetry } from "./enterprise/SystemTelemetry";
-import { ExecutiveAgentInsights } from "./enterprise/ExecutiveAgentInsights";
+// Lazy load all heavy components for better code splitting
+const GlobalOverview = lazy(() =>
+  import("./enterprise/GlobalOverview").then((m) => ({
+    default: m.GlobalOverview,
+  }))
+);
+const WidgetGrid = lazy(() =>
+  import("./enterprise/WidgetGrid").then((m) => ({
+    default: m.WidgetGrid,
+  }))
+);
+const ApprovalsAudit = lazy(() =>
+  import("./enterprise/ApprovalsAudit").then((m) => ({
+    default: m.ApprovalsAudit,
+  }))
+);
+const StrategicInitiatives = lazy(() =>
+  import("./enterprise/StrategicInitiatives").then((m) => ({
+    default: m.StrategicInitiatives,
+  }))
+);
+const SystemTelemetry = lazy(() =>
+  import("./enterprise/SystemTelemetry").then((m) => ({
+    default: m.SystemTelemetry,
+  }))
+);
+const ExecutiveAgentInsights = lazy(() =>
+  import("./enterprise/ExecutiveAgentInsights").then((m) => ({
+    default: m.ExecutiveAgentInsights,
+  }))
+);
 const AdvancedPanels = lazy(() =>
   import("./enterprise/AdvancedPanels").then((m) => ({
     default: m.AdvancedPanels,
-  })),
+  }))
 );
 const BrainDumpSection = lazy(() =>
   import("./enterprise/BrainDumpSection").then((m) => ({
     default: m.BrainDumpSection,
-  })),
+  }))
 );
 const SocialCommandCenter = lazy(() =>
   import("./enterprise/SocialCommandCenter").then((m) => ({
     default: m.SocialCommandCenter,
-  })),
+  }))
 );
 const StrategicCommandCenter = lazy(() =>
   import("./enterprise/StrategicCommandCenter").then((m) => ({
     default: m.StrategicCommandCenter,
-  })),
+  }))
 );
 const IntegrationHub = lazy(() =>
   import("@/components/integrations/IntegrationHub").then((m) => ({
@@ -89,13 +115,7 @@ const IntegrationHub = lazy(() =>
  * @param {EnterpriseDashboardProps} props - Component props
  * @returns {JSX.Element} Rendered enterprise dashboard
  */
-export function EnterpriseDashboard({
-  business,
-  demoData,
-  isGuest,
-  tier,
-  onUpgrade,
-}: EnterpriseDashboardProps) {
+export function EnterpriseDashboard() {
   const [region, setRegion] = useState<string>("global");
   const [unit, setUnit] = useState<string>("all");
 
@@ -345,183 +365,74 @@ export function EnterpriseDashboard({
   const globalSocialCommandEnabled = isFeatureEnabled("global_social_command");
 
   return (
-    <div className="space-y-6 p-6">
-      {/* System Health Strip - Enterprise */}
-      {!isGuest && business?._id && (
-        <SystemHealthStrip businessId={business._id} isGuest={isGuest} />
-      )}
-
-      {/* Global Command Center */}
-      <GlobalOverview
-        businessId={businessId}
-        region={region}
-        setRegion={setRegion}
-        unit={unit}
-        setUnit={setUnit}
-        onRunDiagnostics={handleRunDiagnostics}
-        onEnforceGovernance={handleEnforceGovernance}
-        slaSummaryText={slaSummaryText}
-      />
-
-      {/* Strategic Command Center */}
-      <Suspense fallback={<div className="rounded-md border p-4 text-sm text-muted-foreground">Loading strategic center…</div>}>
-        <StrategicCommandCenter businessId={businessId || undefined} />
-      </Suspense>
-
-      {/* Social Command Center */}
-      <Suspense fallback={<div className="rounded-md border p-4 text-sm text-muted-foreground">Loading social center…</div>}>
-        <SocialCommandCenter businessId={businessId} />
-      </Suspense>
-
-      <Suspense fallback={<div className="rounded-md border p-4 text-sm text-muted-foreground">Loading widgets…</div>}>
-        <WidgetGrid
-          widgetOrder={widgetOrder}
-          setWidgetOrder={setWidgetOrder}
-          widgetsByKey={widgetsByKey}
-          onUpgrade={onUpgrade}
-        />
-      </Suspense>
-
-      <GlobalSocialSection
-        globalSocialCommandEnabled={globalSocialCommandEnabled}
-        whiteLabelEnabled={whiteLabelEnabled}
-        brandingPortalEnabled={brandingPortalEnabled}
-        apiWebhooksEnabled={apiWebhooksEnabled}
-        onOpenSocialManager={() => nav("/social")}
-        onOpenBranding={() => nav("/branding")}
-        onOpenWorkflows={() => nav("/workflows")}
-        onOpenApiDocs={() => nav("/api-docs")}
-        onOpenWebhooks={() => nav("/webhooks")}
-        onOpenAnalytics={() => nav("/analytics")}
-        onUpgrade={onUpgrade}
-      />
-
-      {/* Advanced Integrations Hub - Enterprise Enhanced */}
-      <section>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-semibold">Integration Hub</h2>
-          <Button size="sm" variant="outline" onClick={() => nav("/integrations")}>
-            Manage All Integrations
-          </Button>
-        </div>
-        <Suspense fallback={<div className="rounded-md border p-4 text-sm text-muted-foreground">Loading integrations...</div>}>
-          {!isGuest && business?._id ? (
-            <IntegrationHub businessId={business._id} tier={tier} isGuest={isGuest} />
-          ) : (
-            <Card>
-              <CardContent className="p-6 text-center">
-                <p className="text-muted-foreground">Sign in to access the Integration Hub</p>
-              </CardContent>
-            </Card>
-          )}
+    <div className="space-y-6">
+      <LazyLoadErrorBoundary moduleName="Global Overview">
+        <Suspense fallback={<div className="text-muted-foreground">Loading global overview...</div>}>
+          <GlobalOverview />
         </Suspense>
-      </section>
+      </LazyLoadErrorBoundary>
 
-      <StrategicInitiatives workflows={workflows} />
+      <LazyLoadErrorBoundary moduleName="Widget Grid">
+        <Suspense fallback={<div className="text-muted-foreground">Loading widgets...</div>}>
+          <WidgetGrid />
+        </Suspense>
+      </LazyLoadErrorBoundary>
 
-      <SystemTelemetry agents={agents} demoData={demoData} />
+      <div className="grid gap-6 lg:grid-cols-2">
+        <LazyLoadErrorBoundary moduleName="Strategic Command Center">
+          <Suspense fallback={<div className="text-muted-foreground">Loading strategic command...</div>}>
+            <StrategicCommandCenter />
+          </Suspense>
+        </LazyLoadErrorBoundary>
 
-      <section>
-        <h2 className="text-xl font-semibold mb-4">Enterprise Controls</h2>
-        <div className="mt-6 grid grid-cols-1 xl:grid-cols-3 gap-4">
-          <EnterpriseControls hasTier={hasTier} onUpgrade={onUpgrade} />
+        <LazyLoadErrorBoundary moduleName="Social Command Center">
+          <Suspense fallback={<div className="text-muted-foreground">Loading social command...</div>}>
+            <SocialCommandCenter />
+          </Suspense>
+        </LazyLoadErrorBoundary>
+      </div>
+
+      <LazyLoadErrorBoundary moduleName="Approvals & Audit">
+        <Suspense fallback={<div className="text-muted-foreground">Loading approvals...</div>}>
+          <ApprovalsAudit />
+        </Suspense>
+      </LazyLoadErrorBoundary>
+
+      <LazyLoadErrorBoundary moduleName="Strategic Initiatives">
+        <Suspense fallback={<div className="text-muted-foreground">Loading initiatives...</div>}>
+          <StrategicInitiatives />
+        </Suspense>
+      </LazyLoadErrorBoundary>
+
+      <LazyLoadErrorBoundary moduleName="System Telemetry">
+        <Suspense fallback={<div className="text-muted-foreground">Loading telemetry...</div>}>
+          <SystemTelemetry />
+        </Suspense>
+      </LazyLoadErrorBoundary>
+
+      <LazyLoadErrorBoundary moduleName="Executive Agent Insights">
+        <Suspense fallback={<div className="text-muted-foreground">Loading agent insights...</div>}>
+          <ExecutiveAgentInsights />
+        </Suspense>
+      </LazyLoadErrorBoundary>
+
+      <LazyLoadErrorBoundary moduleName="Advanced Panels">
+        <Suspense fallback={<div className="text-muted-foreground">Loading advanced panels...</div>}>
+          <AdvancedPanels />
+        </Suspense>
+      </LazyLoadErrorBoundary>
+
+      <LazyLoadErrorBoundary moduleName="Integration Status">
+        <Suspense fallback={<div className="text-muted-foreground">Loading integration status...</div>}>
           <IntegrationStatus />
-          <Card className="xl:col-span-1">
-            <CardHeader className="pb-2">
-              <CardTitle>Approvals & Audit</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <ApprovalsAudit
-                isGuest={isGuest}
-                approvals={approvals}
-                auditLatest={auditLatest}
-                onApprove={handleApprove}
-                onReject={handleReject}
-              />
-            </CardContent>
-          </Card>
-        </div>
-      </section>
-
-      <EnterpriseShortcuts
-        businessId={business?._id ? String(business._id) : null}
-        brandingPortalEnabled={brandingPortalEnabled}
-        scimProvisioningEnabled={scimProvisioningEnabled}
-        ssoConfigurationEnabled={ssoConfigurationEnabled}
-        kmsEncryptionEnabled={kmsEncryptionEnabled}
-        onOpenBranding={() => nav("/branding")}
-        onOpenDataWarehouse={() => nav("/enterprise/data-warehouse")}
-        onOpenSecurity={() => nav("/enterprise/security")}
-        onOpenScim={() => nav("/scim-provisioning")}
-        onOpenSso={() => nav("/sso-configuration")}
-        onOpenKms={() => nav("/kms-configuration")}
-        onOpenApiBuilder={() => nav("/api/builder")}
-        onOpenSupport={() => nav("/support")}
-        onUpgrade={onUpgrade}
-      />
-
-      {!isGuest && business?._id && (
-        <section>
-          <h2 className="text-xl font-semibold mb-4">Experiment Dashboard</h2>
-          <Card>
-            <CardContent className="p-4">
-              <Suspense fallback={<div className="text-sm text-muted-foreground">Loading experiment dashboard…</div>}>
-                <ExperimentDashboard businessId={business._id as Id<"businesses">} />
-              </Suspense>
-            </CardContent>
-          </Card>
-        </section>
-      )}
-
-      {!isGuest && business?._id ? (
-        <Suspense fallback={<div className="text-sm text-muted-foreground">Loading Brain Dump…</div>}>
-          <BrainDumpSection businessId={String(business._id)} />
         </Suspense>
-      ) : null}
+      </LazyLoadErrorBoundary>
 
-      <Suspense fallback={<div className="text-sm text-muted-foreground">Loading panels…</div>}>
-        <AdvancedPanels
-          isGuest={isGuest}
-          businessId={businessId ? String(businessId) : null}
-          crmConnections={crmConnections}
-          crmConflicts={crmConflicts}
-          onOpenExperiments={() => setShowExperimentCreator(true)}
-          onOpenRoi={() => setShowRoiDashboard(true)}
-          onOpenCrm={() => nav("/crm")}
-        />
-      </Suspense>
-
-      {showExperimentCreator && !isGuest && business?._id && (
-        <Suspense fallback={<div className="text-sm text-muted-foreground p-4">Loading experiment creator…</div>}>
-          <ExperimentCreator
-            businessId={business._id as Id<"businesses">}
-            onComplete={() => setShowExperimentCreator(false)}
-            onCancel={() => setShowExperimentCreator(false)}
-          />
+      <LazyLoadErrorBoundary moduleName="Enterprise Controls">
+        <Suspense fallback={<div className="text-muted-foreground">Loading controls...</div>}>
+          <EnterpriseControls />
         </Suspense>
-      )}
-
-      {showRoiDashboard && !isGuest && business?._id && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-auto">
-            <div className="p-4 border-b flex items-center justify-between">
-              <h2 className="text-xl font-semibold">ROI Dashboard</h2>
-              <Button size="sm" variant="ghost" onClick={() => setShowRoiDashboard(false)}>
-                Close
-              </Button>
-            </div>
-            <div className="p-4">
-              <Suspense fallback={<div className="text-sm text-muted-foreground">Loading ROI analytics…</div>}>
-                <RoiDashboard businessId={business._id} userId={business.ownerId} />
-              </Suspense>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {entAgentsEnabled && Array.isArray(entAgents) && entAgents.length > 0 && (
-        <ExecutiveAgentInsights entAgents={entAgents} onNavigate={nav} />
-      )}
+      </LazyLoadErrorBoundary>
     </div>
   );
 }

@@ -1,47 +1,29 @@
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { Shield, AlertTriangle, CheckCircle, Clock, FileText } from "lucide-react";
+import { Shield, AlertTriangle, CheckCircle, FileText } from "lucide-react";
 import { toast } from "sonner";
 import type { Id } from "@/convex/_generated/dataModel";
-
-// Add local UI types to type map params
-type ThreatAlertUI = {
-  _id: Id<"threatDetectionAlerts">;
-  severity: string;
-  alertType: string;
-  createdAt: number;
-  source: string;
-};
-
-type SecurityIncidentUI = {
-  _id: Id<"securityIncidents">;
-  severity: string;
-  title: string;
-  type: string;
-  status: string;
-};
-
-type CertificationUI = {
-  _id: Id<"complianceCertifications">;
-  certType: string;
-  status: string;
-  issueDate: number;
-  expiryDate: number;
-};
+import { ThreatIntelligenceTab } from "./security/ThreatIntelligenceTab";
+import { AnomalyDetectionTab } from "./security/AnomalyDetectionTab";
+import { IncidentResponseTab } from "./security/IncidentResponseTab";
+import { ComplianceMonitoringTab } from "./security/ComplianceMonitoringTab";
+import { SecurityScoreCard } from "./security/SecurityScoreCard";
 
 export function SecurityDashboard({ businessId }: { businessId?: Id<"businesses"> | null }) {
-  // Guest-safe queries; skip when businessId is not present
   const metrics = useQuery(api.enterpriseSecurity.getSecurityMetrics, businessId ? { businessId } : undefined);
-  const incidents = useQuery(api.enterpriseSecurity.listIncidents, businessId ? { businessId, limit: 10 } : undefined);
   const alerts = useQuery(
     api.enterpriseSecurity.getThreatAlerts,
     businessId ? { businessId, acknowledged: false, limit: 20 } : undefined
   );
-  const certifications = useQuery(api.enterpriseSecurity.getCertifications, businessId ? { businessId } : undefined);
-  const audits = useQuery(api.enterpriseSecurity.getSecurityAudits, businessId ? { businessId, limit: 5 } : undefined);
+
+  const threatIntel = useQuery(api.enterpriseSecurity.getThreatIntelligence, businessId ? { businessId } : undefined);
+  const anomalyDetection = useQuery(api.enterpriseSecurity.getAnomalyDetection, businessId ? { businessId } : undefined);
+  const securityScore = useQuery(api.enterpriseSecurity.getSecurityScore, businessId ? { businessId } : undefined);
+  const incidentWorkflow = useQuery(api.enterpriseSecurity.getIncidentResponseWorkflow, businessId ? { businessId } : undefined);
+  const complianceMonitoring = useQuery(api.enterpriseSecurity.getComplianceMonitoring, businessId ? { businessId } : undefined);
 
   const acknowledgeAlert = useMutation(api.enterpriseSecurity.acknowledgeAlert);
 
@@ -67,7 +49,15 @@ export function SecurityDashboard({ businessId }: { businessId?: Id<"businesses"
     }
   };
 
-  // Early return to avoid rendering feature UI without a business context
+  const getThreatLevelColor = (level: string) => {
+    switch (level) {
+      case "critical": return "bg-red-100 text-red-700 border-red-300";
+      case "high": return "bg-orange-100 text-orange-700 border-orange-300";
+      case "medium": return "bg-yellow-100 text-yellow-700 border-yellow-300";
+      default: return "bg-green-100 text-green-700 border-green-300";
+    }
+  };
+
   if (!businessId) {
     return (
       <Card>
@@ -82,7 +72,6 @@ export function SecurityDashboard({ businessId }: { businessId?: Id<"businesses"
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
@@ -99,192 +88,95 @@ export function SecurityDashboard({ businessId }: { businessId?: Id<"businesses"
         </Button>
       </div>
 
-      {/* Overview Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-2xl font-bold">{metrics?.activeIncidents || 0}</div>
-                <div className="text-xs text-muted-foreground mt-1">Active Incidents</div>
-              </div>
-              <AlertTriangle className="h-8 w-8 text-orange-500" />
-            </div>
-          </CardContent>
-        </Card>
+      <Tabs defaultValue="overview" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="threats">Threat Intelligence</TabsTrigger>
+          <TabsTrigger value="anomalies">Anomaly Detection</TabsTrigger>
+          <TabsTrigger value="incidents">Incident Response</TabsTrigger>
+          <TabsTrigger value="compliance">Compliance</TabsTrigger>
+        </TabsList>
 
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-2xl font-bold">{metrics?.criticalAlerts || 0}</div>
-                <div className="text-xs text-muted-foreground mt-1">Critical Alerts</div>
-              </div>
-              <AlertTriangle className="h-8 w-8 text-red-500" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-2xl font-bold">{metrics?.complianceScore || 0}%</div>
-                <div className="text-xs text-muted-foreground mt-1">Compliance Score</div>
-              </div>
-              <CheckCircle className="h-8 w-8 text-green-500" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-2xl font-bold">
-                  {metrics?.lastAuditDate
-                    ? `${Math.floor((Date.now() - metrics.lastAuditDate) / (1000 * 60 * 60 * 24))}d`
-                    : "N/A"}
-                </div>
-                <div className="text-xs text-muted-foreground mt-1">Since Last Audit</div>
-              </div>
-              <Clock className="h-8 w-8 text-blue-500" />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Threat Alerts */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Unacknowledged Threat Alerts</CardTitle>
-          <CardDescription>Real-time security threat detection</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-2">
-            {alerts?.map((alert: ThreatAlertUI) => (
-              <div
-                key={alert._id}
-                className="flex items-center justify-between p-3 border rounded-lg"
-              >
-                <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <Badge variant="outline" className={getSeverityColor(alert.severity)}>
-                      {alert.severity}
-                    </Badge>
-                    <span className="text-sm font-medium">
-                      {alert.alertType.replace(/_/g, " ")}
-                    </span>
+        <TabsContent value="overview" className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-2xl font-bold">{securityScore?.overallScore || 0}</div>
+                    <div className="text-xs text-muted-foreground mt-1">Security Score</div>
                   </div>
-                  <div className="text-xs text-muted-foreground mt-1">
-                    {new Date(alert.createdAt).toLocaleString()} • {alert.source}
-                  </div>
+                  <Shield className="h-8 w-8 text-blue-500" />
                 </div>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => handleAcknowledge(alert._id)}
-                >
-                  Acknowledge
-                </Button>
-              </div>
-            ))}
-            {(!alerts || alerts.length === 0) && (
-              <div className="text-center py-8 text-sm text-muted-foreground">
-                No unacknowledged alerts
-              </div>
-            )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-2xl font-bold">{metrics?.activeIncidents || 0}</div>
+                    <div className="text-xs text-muted-foreground mt-1">Active Incidents</div>
+                  </div>
+                  <AlertTriangle className="h-8 w-8 text-orange-500" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-2xl font-bold">{metrics?.criticalAlerts || 0}</div>
+                    <div className="text-xs text-muted-foreground mt-1">Critical Alerts</div>
+                  </div>
+                  <AlertTriangle className="h-8 w-8 text-red-500" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-2xl font-bold">{complianceMonitoring?.overallCompliance || 0}%</div>
+                    <div className="text-xs text-muted-foreground mt-1">Compliance Score</div>
+                  </div>
+                  <CheckCircle className="h-8 w-8 text-green-500" />
+                </div>
+              </CardContent>
+            </Card>
           </div>
-        </CardContent>
-      </Card>
 
-      {/* Security Incidents */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Recent Security Incidents</CardTitle>
-          <CardDescription>Incident tracking and management</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-2">
-            {incidents?.map((incident: SecurityIncidentUI) => (
-              <div
-                key={incident._id}
-                className="flex items-center justify-between p-3 border rounded-lg"
-              >
-                <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <Badge variant="outline" className={getSeverityColor(incident.severity)}>
-                      {incident.severity}
-                    </Badge>
-                    <span className="text-sm font-medium">{incident.title}</span>
-                  </div>
-                  <div className="text-xs text-muted-foreground mt-1">
-                    {incident.type.replace(/_/g, " ")} • {incident.status}
-                  </div>
-                </div>
-                <Button size="sm" variant="ghost">
-                  View Details
-                </Button>
-              </div>
-            ))}
-            {(!incidents || incidents.length === 0) && (
-              <div className="text-center py-8 text-sm text-muted-foreground">
-                No recent incidents
-              </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+          <SecurityScoreCard securityScore={securityScore} />
+        </TabsContent>
 
-      {/* Compliance Certifications */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Compliance Certifications</CardTitle>
-          <CardDescription>Track certification status and renewals</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {certifications?.map((cert: CertificationUI) => {
-              const daysUntilExpiry = Math.floor(
-                (cert.expiryDate - Date.now()) / (1000 * 60 * 60 * 24)
-              );
-              const isExpiringSoon = daysUntilExpiry < 90;
+        <TabsContent value="threats" className="space-y-4">
+          <ThreatIntelligenceTab 
+            threatIntel={threatIntel} 
+            getSeverityColor={getSeverityColor}
+            getThreatLevelColor={getThreatLevelColor}
+          />
+        </TabsContent>
 
-              return (
-                <div key={cert._id} className="p-4 border rounded-lg">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="font-medium">{cert.certType}</span>
-                    <Badge
-                      variant="outline"
-                      className={
-                        cert.status === "active"
-                          ? "bg-green-100 text-green-700 border-green-300"
-                          : "bg-yellow-100 text-yellow-700 border-yellow-300"
-                      }
-                    >
-                      {cert.status}
-                    </Badge>
-                  </div>
-                  <div className="text-xs text-muted-foreground space-y-1">
-                    <div>Issued: {new Date(cert.issueDate).toLocaleDateString()}</div>
-                    <div>Expires: {new Date(cert.expiryDate).toLocaleDateString()}</div>
-                    {isExpiringSoon && (
-                      <div className="text-orange-600 font-medium mt-2">
-                        Expires in {daysUntilExpiry} days
-                      </div>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-            {(!certifications || certifications.length === 0) && (
-              <div className="col-span-full text-center py-8 text-sm text-muted-foreground">
-                No certifications tracked
-              </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+        <TabsContent value="anomalies" className="space-y-4">
+          <AnomalyDetectionTab 
+            anomalyDetection={anomalyDetection}
+            getSeverityColor={getSeverityColor}
+          />
+        </TabsContent>
+
+        <TabsContent value="incidents" className="space-y-4">
+          <IncidentResponseTab 
+            incidentWorkflow={incidentWorkflow}
+            getSeverityColor={getSeverityColor}
+          />
+        </TabsContent>
+
+        <TabsContent value="compliance" className="space-y-4">
+          <ComplianceMonitoringTab complianceMonitoring={complianceMonitoring} />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

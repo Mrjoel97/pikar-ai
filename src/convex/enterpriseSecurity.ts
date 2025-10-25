@@ -153,6 +153,291 @@ export const getSecurityMetrics = query({
 });
 
 /**
+ * Get threat intelligence data
+ */
+export const getThreatIntelligence = query({
+  args: { businessId: v.optional(v.id("businesses")) },
+  handler: async (ctx, args) => {
+    if (!args.businessId) {
+      return {
+        threatLevel: "low",
+        activeThreatCampaigns: [],
+        vulnerabilities: [],
+        indicators: [],
+      };
+    }
+
+    const alerts = await ctx.db
+      .query("threatDetectionAlerts")
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId!))
+      .order("desc")
+      .take(100);
+
+    const criticalAlerts = alerts.filter((a) => a.severity === "critical" && !a.isAcknowledged);
+    const highAlerts = alerts.filter((a) => a.severity === "high" && !a.isAcknowledged);
+
+    const threatLevel = 
+      criticalAlerts.length > 5 ? "critical" :
+      criticalAlerts.length > 0 || highAlerts.length > 10 ? "high" :
+      highAlerts.length > 0 ? "medium" : "low";
+
+    // Aggregate threat patterns
+    const threatTypes = alerts.reduce((acc, alert) => {
+      acc[alert.alertType] = (acc[alert.alertType] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+
+    const activeThreatCampaigns = Object.entries(threatTypes)
+      .map(([type, count]) => ({
+        campaignType: type,
+        detectionCount: count,
+        severity: count > 10 ? "high" : count > 5 ? "medium" : "low",
+        firstSeen: alerts.find((a) => a.alertType === type)?.createdAt || Date.now(),
+      }))
+      .sort((a, b) => b.detectionCount - a.detectionCount)
+      .slice(0, 5);
+
+    return {
+      threatLevel,
+      activeThreatCampaigns,
+      vulnerabilities: [],
+      indicators: alerts.slice(0, 10).map((a) => ({
+        type: a.alertType,
+        severity: a.severity,
+        timestamp: a.createdAt,
+      })),
+    };
+  },
+});
+
+/**
+ * Get anomaly detection results
+ */
+export const getAnomalyDetection = query({
+  args: { businessId: v.optional(v.id("businesses")) },
+  handler: async (ctx, args) => {
+    if (!args.businessId) {
+      return {
+        anomalies: [],
+        anomalyScore: 0,
+        baselineMetrics: {},
+      };
+    }
+
+    const alerts = await ctx.db
+      .query("threatDetectionAlerts")
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId!))
+      .order("desc")
+      .take(50);
+
+    // Simple anomaly detection based on alert frequency
+    const now = Date.now();
+    const last24h = alerts.filter((a) => now - a.createdAt < 24 * 60 * 60 * 1000);
+    const last7d = alerts.filter((a) => now - a.createdAt < 7 * 24 * 60 * 60 * 1000);
+
+    const avgDaily = last7d.length / 7;
+    const todayCount = last24h.length;
+    const anomalyScore = avgDaily > 0 ? (todayCount / avgDaily) * 100 : 0;
+
+    const anomalies = last24h
+      .filter((a) => a.severity === "critical" || a.severity === "high")
+      .map((a) => ({
+        _id: a._id,
+        type: a.alertType,
+        severity: a.severity,
+        timestamp: a.createdAt,
+        description: `Unusual ${a.alertType.replace(/_/g, " ")} detected`,
+        score: anomalyScore,
+      }));
+
+    return {
+      anomalies,
+      anomalyScore: Math.round(anomalyScore),
+      baselineMetrics: {
+        avgDailyAlerts: Math.round(avgDaily),
+        todayAlerts: todayCount,
+        deviation: Math.round(anomalyScore - 100),
+      },
+    };
+  },
+});
+
+/**
+ * Calculate security score
+ */
+export const getSecurityScore = query({
+  args: { businessId: v.optional(v.id("businesses")) },
+  handler: async (ctx, args) => {
+    if (!args.businessId) {
+      return {
+        overallScore: 0,
+        categoryScores: {},
+        trend: "stable",
+        recommendations: [],
+      };
+    }
+
+    const incidents = await ctx.db
+      .query("securityIncidents")
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId!))
+      .collect();
+
+    const alerts = await ctx.db
+      .query("threatDetectionAlerts")
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId!))
+      .collect();
+
+    const certs = await ctx.db
+      .query("complianceCertifications")
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId!))
+      .collect();
+
+    // Calculate scores (0-100)
+    const incidentScore = Math.max(0, 100 - incidents.filter((i) => i.status === "open").length * 10);
+    const alertScore = Math.max(0, 100 - alerts.filter((a) => !a.isAcknowledged).length * 5);
+    const complianceScore = certs.length > 0 ? (certs.filter((c) => c.status === "active").length / certs.length) * 100 : 50;
+
+    const overallScore = Math.round((incidentScore + alertScore + complianceScore) / 3);
+
+    return {
+      overallScore,
+      categoryScores: {
+        incidentManagement: incidentScore,
+        threatDetection: alertScore,
+        compliance: Math.round(complianceScore),
+      },
+      trend: overallScore > 75 ? "improving" : overallScore > 50 ? "stable" : "declining",
+      recommendations: [
+        overallScore < 70 ? "Address open security incidents" : null,
+        alertScore < 70 ? "Acknowledge and investigate pending alerts" : null,
+        complianceScore < 80 ? "Renew expiring certifications" : null,
+      ].filter(Boolean) as string[],
+    };
+  },
+});
+
+/**
+ * Get incident response workflow status
+ */
+export const getIncidentResponseWorkflow = query({
+  args: { businessId: v.optional(v.id("businesses")) },
+  handler: async (ctx, args) => {
+    if (!args.businessId) {
+      return {
+        activeWorkflows: [],
+        completedWorkflows: [],
+        avgResponseTime: 0,
+      };
+    }
+
+    const incidents = await ctx.db
+      .query("securityIncidents")
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId!))
+      .order("desc")
+      .take(50);
+
+    const activeWorkflows = incidents
+      .filter((i) => i.status === "open" || i.status === "investigating")
+      .map((i) => ({
+        _id: i._id,
+        title: i.title,
+        status: i.status,
+        severity: i.severity,
+        assignedTo: i.assignedTo,
+        createdAt: i.detectedAt,
+        steps: [
+          { name: "Detection", status: "completed", timestamp: i.detectedAt },
+          { name: "Investigation", status: i.status === "investigating" ? "in_progress" : "pending", timestamp: null },
+          { name: "Containment", status: "pending", timestamp: null },
+          { name: "Resolution", status: "pending", timestamp: null },
+        ],
+      }));
+
+    const completedWorkflows = incidents
+      .filter((i) => i.status === "resolved" || i.status === "closed")
+      .slice(0, 10);
+
+    const responseTimes = completedWorkflows
+      .filter((i) => i.resolvedAt)
+      .map((i) => i.resolvedAt! - i.detectedAt);
+
+    const avgResponseTime = responseTimes.length > 0
+      ? responseTimes.reduce((sum, t) => sum + t, 0) / responseTimes.length
+      : 0;
+
+    return {
+      activeWorkflows,
+      completedWorkflows: completedWorkflows.map((i) => ({
+        _id: i._id,
+        title: i.title,
+        severity: i.severity,
+        responseTime: i.resolvedAt ? i.resolvedAt - i.detectedAt : 0,
+      })),
+      avgResponseTime: Math.round(avgResponseTime / (1000 * 60 * 60)), // Convert to hours
+    };
+  },
+});
+
+/**
+ * Get compliance monitoring status
+ */
+export const getComplianceMonitoring = query({
+  args: { businessId: v.optional(v.id("businesses")) },
+  handler: async (ctx, args) => {
+    if (!args.businessId) {
+      return {
+        overallCompliance: 0,
+        frameworks: [],
+        upcomingAudits: [],
+        violations: [],
+      };
+    }
+
+    const certs = await ctx.db
+      .query("complianceCertifications")
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId!))
+      .collect();
+
+    const audits = await ctx.db
+      .query("securityAudits")
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId!))
+      .order("desc")
+      .take(10);
+
+    const activeCerts = certs.filter((c) => c.status === "active");
+    const overallCompliance = certs.length > 0 ? (activeCerts.length / certs.length) * 100 : 0;
+
+    const frameworks = certs.map((cert) => {
+      const daysUntilExpiry = Math.floor((cert.expiryDate - Date.now()) / (1000 * 60 * 60 * 24));
+      return {
+        _id: cert._id,
+        name: cert.certType,
+        status: cert.status,
+        expiryDate: cert.expiryDate,
+        daysUntilExpiry,
+        complianceLevel: cert.status === "active" ? 100 : 50,
+      };
+    });
+
+    const upcomingAudits = audits
+      .filter((a) => a.scheduledDate && a.scheduledDate > Date.now())
+      .map((a) => ({
+        _id: a._id,
+        auditType: a.auditType,
+        scheduledDate: a.scheduledDate,
+        auditor: a.auditor,
+      }));
+
+    return {
+      overallCompliance: Math.round(overallCompliance),
+      frameworks,
+      upcomingAudits,
+      violations: [],
+    };
+  },
+});
+
+/**
  * Create security incident
  */
 export const createIncident = mutation({

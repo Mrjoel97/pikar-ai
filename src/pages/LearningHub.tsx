@@ -1,328 +1,406 @@
-import { useState, useMemo } from "react";
-import { motion, useReducedMotion } from "framer-motion";
+import { useState } from "react";
+import { useQuery, useMutation } from "convex/react";
+import { api } from "@/convex/_generated/api";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useSearchParams, useNavigate } from "react-router";
+import { Separator } from "@/components/ui/separator";
+import { 
+  BookOpen, 
+  PlayCircle, 
+  CheckCircle, 
+  Award, 
+  Clock, 
+  TrendingUp,
+  Filter,
+  Download,
+  Star
+} from "lucide-react";
 import { toast } from "sonner";
-import { BookOpen, GraduationCap, HelpCircle, MessageCircleQuestion, Bot, Send, Lightbulb, Info, Shield } from "lucide-react";
-import ContextualTipsStrip from "@/components/landing/ContextualTipsStrip";
+import type { Id } from "@/convex/_generated/dataModel";
 
-type Tier = "solopreneur" | "startup" | "sme" | "enterprise";
+export default function LearningHub() {
+  const user = useQuery(api.users.currentUser);
+  const business = useQuery(api.businesses.currentUserBusiness);
+  const tier = business?.tier || "solopreneur";
 
-const TIER_LABELS: Record<Tier, string> = {
-  solopreneur: "Solopreneur",
-  startup: "Startup",
-  sme: "SME",
-  enterprise: "Enterprise",
-};
+  const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [selectedCourse, setSelectedCourse] = useState<Id<"learningCourses"> | null>(null);
+  const [selectedLesson, setSelectedLesson] = useState<string | null>(null);
+  const [showCertificate, setShowCertificate] = useState(false);
 
-const normalizeTier = (param?: string): Tier => {
-  const k = (param || "").toLowerCase();
-  if (k.includes("solo")) return "solopreneur";
-  if (k.includes("start")) return "startup";
-  if (k.includes("sme")) return "sme";
-  if (k.includes("enterprise")) return "enterprise";
-  return "startup";
-};
-
-export default function LearningHubPage() {
-  const shouldReduceMotion = useReducedMotion();
-  const [params, setParams] = useSearchParams();
-  const navigate = useNavigate();
-
-  const initialTier = normalizeTier(params.get("tier") || undefined);
-  const [tier, setTier] = useState<Tier>(initialTier);
-
-  const [aiGuideOpen, setAiGuideOpen] = useState(false);
-  const [gdprTipOpen, setGdprTipOpen] = useState(false);
-  const [learningOpen, setLearningOpen] = useState<null | { id: string; title: string; description: string }>(null);
-  const [aiChatInput, setAiChatInput] = useState("");
-  const [aiMessages, setAiMessages] = useState<Array<{ role: "user" | "assistant"; content: string }>>([
-    { role: "assistant", content: "Hi! I'm your AI Guide. Ask about best practices or where to start by tier." },
-  ]);
-
-  const tips = useMemo(() => {
-    const base = [
-      { phase: "Planning", tip: "Use DTFL to align goals with measurable outcomes.", icon: Lightbulb },
-      { phase: "Scheduling", tip: "Batch work early in week; A/B test send times.", icon: Info },
-      { phase: "Compliance", tip: "Ensure consent and purpose limitation. Log processing.", icon: Shield },
-    ];
-    return base;
-  }, []);
-
-  const learningPaths = useMemo(() => {
-    const map: Record<Tier, Array<{ id: string; title: string; description: string }>> = {
-      solopreneur: [
-        { id: "solo-email-101", title: "Your first newsletter", description: "Build and schedule a simple, on-brand newsletter." },
-        { id: "solo-workflow-basics", title: "1-click workflows", description: "Turn ideas into lightweight, actionable flows." },
-        { id: "solo-micro-analytics", title: "Micro-analytics", description: "Read quick KPIs and apply small weekly improvements." },
-        { id: "solo-social-media", title: "Social Media Basics", description: "Connect accounts, schedule posts, and track engagement across 2 platforms." },
-      ],
-      startup: [
-        { id: "startup-email", title: "Team campaign setup", description: "Coordinate campaigns across roles and approvals." },
-        { id: "startup-automation", title: "Scale workflows", description: "Standardize processes with approvals and guardrails." },
-        { id: "startup-insights", title: "Diagnostics basics", description: "Use analytics to detect bottlenecks and ROI leaks." },
-        { id: "startup-social-collab", title: "Team Social Media", description: "Collaborate on posts, manage approvals, and track performance across 3 platforms." },
-      ],
-      sme: [
-        { id: "sme-compliance", title: "Compliance preflight", description: "Apply policy checks and SLA floors to operations." },
-        { id: "sme-governance", title: "Governance workflows", description: "Enforce multi-approver chains and role diversity." },
-        { id: "sme-exec", title: "Executive summaries", description: "Roll up department metrics and SLA signals." },
-        { id: "sme-social-advanced", title: "Advanced Social Strategy", description: "Multi-brand management, competitor analysis, and ROI tracking across 5 platforms." },
-      ],
-      enterprise: [
-        { id: "ent-governance", title: "Global governance", description: "Regional controls, multi-brand orchestration." },
-        { id: "ent-agents", title: "Agent federation", description: "Coordinate specialized agents with org guardrails." },
-        { id: "ent-observability", title: "Observability and risk", description: "SLA sweeps, alerts, and policy heatmaps." },
-        { id: "ent-social-enterprise", title: "Enterprise Social Command", description: "Global multi-brand social media orchestration with API access and white-label reporting." },
-      ],
-    };
-    return map[tier];
-  }, [tier]);
-
-  const sampleArticles = useMemo(
-    () => [
-      { id: "gdpr", title: "GDPR for Marketers", summary: "Consent, minimization, DSAR basics." },
-      { id: "snap", title: "SNAP Selling Guide", summary: "Simple, iNvaluable, Aligned, Priority." },
-      { id: "dtfl", title: "Design Thinking (DTFL)", summary: "Define, Ideate, Prototype, Validate." },
-      { id: "social-best-practices", title: "Social Media Best Practices", summary: "Optimal posting times, content strategies, and engagement tips." },
-      { id: "social-troubleshooting", title: "Social Media Troubleshooting", summary: "Common issues and solutions for platform connections and posting." },
-    ],
-    [],
+  const courses = useQuery(api.learningContent.listCoursesByTier, { tier });
+  const userProgress = useQuery(
+    api.learningContent.getCourseProgress,
+    user?._id ? { userId: user._id } : "skip"
+  );
+  const selectedCourseData = useQuery(
+    api.learningContent.getCourseById,
+    selectedCourse ? { courseId: selectedCourse } : "skip"
+  );
+  const lessons = useQuery(
+    api.learningContent.getCourseLessons,
+    selectedCourse ? { courseId: selectedCourse } : "skip"
   );
 
-  const handleAiSend = () => {
-    const text = aiChatInput.trim();
-    if (!text) return;
-    setAiMessages((m) => [...m, { role: "user", content: text }]);
-    setAiChatInput("");
-    const reply =
-      text.toLowerCase().includes("governance")
-        ? "Start with a policy checklist, add approver diversity, and set SLA floors per tier."
-        : text.toLowerCase().includes("workflow")
-        ? "Try a 3-step flow: Ingest → Decision/Approval → Action. Add guardrails and observability."
-        : "Iterate in small steps. Use templates by tier and adjust weekly based on KPIs.";
-    setTimeout(() => setAiMessages((m) => [...m, { role: "assistant", content: reply }]), 250);
+  const updateProgress = useMutation(api.learningContent.updateProgress);
+  const completeCourse = useMutation(api.learningContent.completeCourse);
+
+  const categories = ["all", "automation", "ai-agents", "marketing", "analytics", "compliance"];
+
+  const filteredCourses = courses?.filter(course => 
+    selectedCategory === "all" || course.category === selectedCategory
+  );
+
+  const handleLessonComplete = async (lessonId: string, quizScore?: number) => {
+    if (!user?._id || !selectedCourse) return;
+
+    try {
+      await updateProgress({
+        userId: user._id,
+        courseId: selectedCourse,
+        lessonId,
+        completed: true,
+        quizScore,
+      });
+      toast.success("Lesson completed!");
+    } catch (error) {
+      toast.error("Failed to update progress");
+    }
+  };
+
+  const handleCourseComplete = async () => {
+    if (!user?._id || !selectedCourse) return;
+
+    try {
+      await completeCourse({
+        userId: user._id,
+        courseId: selectedCourse,
+      });
+      setShowCertificate(true);
+      toast.success("Congratulations! Course completed!");
+    } catch (error) {
+      toast.error("Failed to complete course");
+    }
+  };
+
+  const getCourseProgress = (courseId: Id<"learningCourses">) => {
+    return userProgress?.find(p => p.courseId === courseId);
   };
 
   return (
-    <div className="min-h-screen">
-      <section className="px-4 sm:px-6 lg:px-8 py-8 border-b">
-        <div className="max-w-7xl mx-auto flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Learning Hub</h1>
-            <p className="text-sm text-muted-foreground">
-              Tier-adapted guides, tips, and assistant to help you ramp quickly.
-            </p>
-          </div>
-          <div className="w-full sm:w-64">
-            <Select
-              value={tier}
-              onValueChange={(v: Tier) => {
-                setTier(v);
-                params.set("tier", v);
-                setParams(params, { replace: true });
-              }}
-            >
-              <SelectTrigger className="neu-inset rounded-xl">
-                <SelectValue placeholder="Select a tier" />
-              </SelectTrigger>
-              <SelectContent className="rounded-xl">
-                <SelectItem value="solopreneur">Solopreneur</SelectItem>
-                <SelectItem value="startup">Startup</SelectItem>
-                <SelectItem value="sme">SME</SelectItem>
-                <SelectItem value="enterprise">Enterprise</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+    <div className="container mx-auto p-6 space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">Learning Hub</h1>
+          <p className="text-muted-foreground">
+            Master Pikar AI with tier-specific courses and certifications
+          </p>
         </div>
-      </section>
+        <Badge variant="outline" className="text-lg px-4 py-2">
+          {tier.charAt(0).toUpperCase() + tier.slice(1)} Tier
+        </Badge>
+      </div>
 
-      <ContextualTipsStrip tips={tips} />
+      {/* Stats Overview */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Enrolled Courses</CardTitle>
+            <BookOpen className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{userProgress?.length || 0}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Completed</CardTitle>
+            <CheckCircle className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {userProgress?.filter(p => p.isCompleted).length || 0}
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Certificates</CardTitle>
+            <Award className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {userProgress?.filter(p => p.isCompleted).length || 0}
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Avg. Progress</CardTitle>
+            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {userProgress && userProgress.length > 0
+                ? Math.round(
+                    userProgress.reduce((acc, p) => acc + p.progressPercentage, 0) /
+                      userProgress.length
+                  )
+                : 0}%
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
-      <section className="py-10 sm:py-14 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto">
-          <motion.div
-            initial={{ y: 40, opacity: 0 }}
-            whileInView={{ y: 0, opacity: 1 }}
-            transition={{ duration: shouldReduceMotion ? 0 : 0.5 }}
-            viewport={{ once: true }}
-            className="text-center mb-8 sm:mb-10"
-          >
-            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">
-              {TIER_LABELS[tier]} Learning Paths
-            </h2>
-            <p className="text-sm sm:text-base text-muted-foreground">
-              Curated, actionable steps for your tier.
-            </p>
-          </motion.div>
+      {/* Category Filter */}
+      <div className="flex items-center gap-2">
+        <Filter className="h-4 w-4 text-muted-foreground" />
+        <div className="flex gap-2">
+          {categories.map(category => (
+            <Button
+              key={category}
+              variant={selectedCategory === category ? "default" : "outline"}
+              size="sm"
+              onClick={() => setSelectedCategory(category)}
+            >
+              {category.charAt(0).toUpperCase() + category.slice(1).replace("-", " ")}
+            </Button>
+          ))}
+        </div>
+      </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {learningPaths.map((lp, idx) => (
-              <motion.div
-                key={lp.id}
-                initial={{ y: 40, opacity: 0 }}
-                whileInView={{ y: 0, opacity: 1 }}
-                transition={{ duration: shouldReduceMotion ? 0 : 0.4, delay: shouldReduceMotion ? 0 : idx * 0.05 }}
-                viewport={{ once: true }}
-              >
-                <Card className="neu-raised rounded-2xl border-0 h-full">
-                  <CardContent className="p-6">
-                    <div className="flex items-center gap-3 mb-4">
-                      <GraduationCap className="h-5 w-5 text-primary" />
-                      <h3 className="text-lg font-semibold">{lp.title}</h3>
+      {/* Course Catalog */}
+      <Tabs defaultValue="catalog" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="catalog">Course Catalog</TabsTrigger>
+          <TabsTrigger value="my-courses">My Courses</TabsTrigger>
+          <TabsTrigger value="certificates">Certificates</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="catalog" className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filteredCourses?.map(course => {
+              const progress = getCourseProgress(course._id);
+              return (
+                <Card key={course._id} className="hover:shadow-lg transition-shadow">
+                  <CardHeader>
+                    <div className="flex items-start justify-between">
+                      <div className="space-y-1">
+                        <CardTitle className="text-lg">{course.title}</CardTitle>
+                        <CardDescription className="line-clamp-2">
+                          {course.description}
+                        </CardDescription>
+                      </div>
+                      {progress?.isCompleted && (
+                        <CheckCircle className="h-5 w-5 text-green-500" />
+                      )}
                     </div>
-                    <p className="text-sm text-muted-foreground mb-6">{lp.description}</p>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Clock className="h-4 w-4" />
+                      {course.estimatedDuration}
+                      <Separator orientation="vertical" className="h-4" />
+                      <BookOpen className="h-4 w-4" />
+                      {course.totalLessons} lessons
+                    </div>
+                    <div className="flex flex-wrap gap-1">
+                      <Badge variant="secondary">{course.difficulty}</Badge>
+                      <Badge variant="outline">{course.category}</Badge>
+                    </div>
+                    {progress && (
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between text-sm">
+                          <span>Progress</span>
+                          <span className="font-medium">
+                            {Math.round(progress.progressPercentage)}%
+                          </span>
+                        </div>
+                        <Progress value={progress.progressPercentage} />
+                      </div>
+                    )}
+                    <Button
+                      className="w-full"
+                      onClick={() => setSelectedCourse(course._id)}
+                    >
+                      {progress ? "Continue Learning" : "Start Course"}
+                    </Button>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        </TabsContent>
+
+        <TabsContent value="my-courses" className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {userProgress?.map(progress => {
+              const course = courses?.find(c => c._id === progress.courseId);
+              if (!course) return null;
+              return (
+                <Card key={progress._id}>
+                  <CardHeader>
+                    <CardTitle>{course.title}</CardTitle>
+                    <CardDescription>
+                      Last accessed: {new Date(progress.lastAccessedAt).toLocaleDateString()}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between text-sm">
+                        <span>Progress</span>
+                        <span className="font-medium">
+                          {Math.round(progress.progressPercentage)}%
+                        </span>
+                      </div>
+                      <Progress value={progress.progressPercentage} />
+                    </div>
                     <div className="flex gap-2">
-                      <Button className="neu-flat rounded-xl" onClick={() => setLearningOpen(lp)}>
-                        Start Path
-                      </Button>
                       <Button
-                        variant="outline"
-                        className="neu-flat rounded-xl"
-                        onClick={() => setGdprTipOpen(true)}
+                        className="flex-1"
+                        onClick={() => setSelectedCourse(course._id)}
                       >
-                        KnowledgeSelector
+                        Continue
                       </Button>
+                      {progress.isCompleted && (
+                        <Button
+                          variant="outline"
+                          onClick={() => {
+                            setSelectedCourse(course._id);
+                            setShowCertificate(true);
+                          }}
+                        >
+                          <Award className="h-4 w-4" />
+                        </Button>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
-              </motion.div>
-            ))}
+              );
+            })}
           </div>
-        </div>
-      </section>
+        </TabsContent>
 
-      <button
-        aria-label="Open AI Guide"
-        className="fixed right-6 z-50 neu-raised rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 transition-colors p-4 bottom-[calc(1.5rem+env(safe-area-inset-bottom))]"
-        onClick={() => setAiGuideOpen(true)}
-      >
-        <MessageCircleQuestion className="h-6 w-6" />
-      </button>
-
-      <Dialog open={aiGuideOpen} onOpenChange={setAiGuideOpen}>
-        <DialogContent className="max-w-2xl w-[92vw] neu-raised rounded-2xl border-0 p-0 overflow-hidden">
-          <DialogHeader className="px-6 pt-6 pb-2">
-            <DialogTitle className="flex items-center gap-2">
-              <Bot className="h-5 w-5 text-primary" />
-              AI Guide
-            </DialogTitle>
-            <DialogDescription>Ask questions about using Pikar by tier.</DialogDescription>
-          </DialogHeader>
-          <div className="px-6 pb-6 flex flex-col gap-3">
-            <div className="h-64 neu-inset rounded-xl overflow-hidden">
-              <ScrollArea className="h-64 p-4">
-                <div className="space-y-3">
-                  {aiMessages.map((m, idx) => (
-                    <div key={idx} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
-                      <div
-                        className={`max-w-[80%] rounded-xl px-3 py-2 text-sm ${
-                          m.role === "user" ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"
-                        }`}
-                      >
-                        {m.content}
-                      </div>
+        <TabsContent value="certificates" className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {userProgress?.filter(p => p.isCompleted).map(progress => {
+              const course = courses?.find(c => c._id === progress.courseId);
+              if (!course) return null;
+              return (
+                <Card key={progress._id} className="border-2 border-emerald-500">
+                  <CardHeader>
+                    <div className="flex items-center gap-2">
+                      <Award className="h-6 w-6 text-emerald-500" />
+                      <CardTitle className="text-lg">Certificate</CardTitle>
                     </div>
-                  ))}
-                </div>
-              </ScrollArea>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div>
+                      <p className="font-medium">{course.title}</p>
+                      <p className="text-sm text-muted-foreground">
+                        Completed: {new Date(progress.completedAt!).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <Button
+                      className="w-full"
+                      variant="outline"
+                      onClick={() => {
+                        setSelectedCourse(course._id);
+                        setShowCertificate(true);
+                      }}
+                    >
+                      <Download className="h-4 w-4 mr-2" />
+                      View Certificate
+                    </Button>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        </TabsContent>
+      </Tabs>
+
+      {/* Course Viewer Dialog */}
+      <Dialog open={!!selectedCourse} onOpenChange={() => setSelectedCourse(null)}>
+        <DialogContent className="max-w-4xl max-h-[90vh]">
+          <DialogHeader>
+            <DialogTitle>{selectedCourseData?.title}</DialogTitle>
+            <DialogDescription>{selectedCourseData?.description}</DialogDescription>
+          </DialogHeader>
+          <ScrollArea className="h-[60vh]">
+            <div className="space-y-4 p-4">
+              {lessons?.map((lesson, index) => {
+                const progress = user?._id ? getCourseProgress(selectedCourse!) : null;
+                const isCompleted = progress?.completedLessons.includes(lesson._id);
+                return (
+                  <Card key={lesson._id}>
+                    <CardHeader>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium text-muted-foreground">
+                            Lesson {lesson.lessonNumber}
+                          </span>
+                          <CardTitle className="text-lg">{lesson.title}</CardTitle>
+                        </div>
+                        {isCompleted && <CheckCircle className="h-5 w-5 text-green-500" />}
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      {lesson.videoUrl && (
+                        <div className="aspect-video bg-muted rounded-lg flex items-center justify-center">
+                          <PlayCircle className="h-12 w-12 text-muted-foreground" />
+                        </div>
+                      )}
+                      <p className="text-sm">{lesson.description}</p>
+                      <Button
+                        onClick={() => handleLessonComplete(lesson._id)}
+                        disabled={isCompleted}
+                      >
+                        {isCompleted ? "Completed" : "Mark as Complete"}
+                      </Button>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
+
+      {/* Certificate Dialog */}
+      <Dialog open={showCertificate} onOpenChange={setShowCertificate}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Course Certificate</DialogTitle>
+          </DialogHeader>
+          <div className="border-4 border-emerald-500 rounded-lg p-8 space-y-6 bg-gradient-to-br from-emerald-50 to-white">
+            <div className="text-center space-y-2">
+              <Award className="h-16 w-16 text-emerald-500 mx-auto" />
+              <h2 className="text-2xl font-bold">Certificate of Completion</h2>
+            </div>
+            <div className="text-center space-y-4">
+              <p className="text-lg">This certifies that</p>
+              <p className="text-2xl font-bold">{user?.name || user?.email}</p>
+              <p className="text-lg">has successfully completed</p>
+              <p className="text-xl font-semibold text-emerald-600">
+                {selectedCourseData?.title}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Issued by Pikar AI Learning Hub
+              </p>
             </div>
             <div className="flex gap-2">
-              <Input
-                placeholder="Ask about features, tips, or troubleshooting…"
-                value={aiChatInput}
-                onChange={(e) => setAiChatInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") handleAiSend();
-                }}
-              />
-              <Button className="neu-flat rounded-xl" onClick={handleAiSend}>
-                <Send className="h-4 w-4" />
+              <Button className="flex-1" variant="outline">
+                <Download className="h-4 w-4 mr-2" />
+                Download PDF
               </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={!!learningOpen} onOpenChange={() => setLearningOpen(null)}>
-        <DialogContent className="max-w-2xl w-[92vw] neu-raised rounded-2xl border-0 p-0 overflow-hidden">
-          <DialogHeader className="px-6 pt-6 pb-3">
-            <DialogTitle className="flex items-center gap-2">
-              <BookOpen className="h-5 w-5 text-primary" />
-              {learningOpen?.title ?? "Learning Path"}
-            </DialogTitle>
-            <DialogDescription>{learningOpen?.description}</DialogDescription>
-          </DialogHeader>
-          <div className="px-6 pb-6 space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="neu-inset rounded-xl p-4">
-                <p className="text-sm font-medium mb-2">Step 1: Preparation</p>
-                <p className="text-sm text-muted-foreground">
-                  Define audience and objectives aligned to {TIER_LABELS[tier]} priorities.
-                </p>
-              </div>
-              <div className="neu-inset rounded-xl p-4">
-                <p className="text-sm font-medium mb-2">Step 2: Configure</p>
-                <p className="text-sm text-muted-foreground">
-                  Select agents, add approvals, and set cadence for your tier.
-                </p>
-              </div>
-              <div className="neu-inset rounded-xl p-4">
-                <p className="text-sm font-medium mb-2">Step 3: Validate</p>
-                <p className="text-sm text-muted-foreground">
-                  Dry-run and review outputs. Iterate quickly with small diffs.
-                </p>
-              </div>
-              <div className="neu-inset rounded-xl p-4">
-                <p className="text-sm font-medium mb-2">Step 4: Launch</p>
-                <p className="text-sm text-muted-foreground">
-                  Schedule or trigger events; track analytics and adjust weekly.
-                </p>
-              </div>
-            </div>
-            <div className="space-y-2">
-              <p className="text-sm font-medium">Notes</p>
-              <Textarea placeholder="Capture insights or action items…" />
-            </div>
-            <div className="flex justify-end">
-              <Button className="neu-flat rounded-xl" onClick={() => setLearningOpen(null)}>
-                Close
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={gdprTipOpen} onOpenChange={setGdprTipOpen}>
-        <DialogContent className="max-w-xl w-[92vw] neu-raised rounded-2xl border-0 p-0 overflow-hidden">
-          <DialogHeader className="px-6 pt-6 pb-2">
-            <DialogTitle className="flex items-center gap-2">
-              <HelpCircle className="h-5 w-5 text-primary" />
-              KnowledgeSelector
-            </DialogTitle>
-            <DialogDescription>
-              Pull relevant knowledge into your flow. Example: GDPR when uploading customer data.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="px-6 pb-6">
-            <div className="space-y-3">
-              {sampleArticles.map((a) => (
-                <div key={a.id} className="neu-inset rounded-xl p-4">
-                  <p className="text-sm font-semibold">{a.title}</p>
-                  <p className="text-sm text-muted-foreground">{a.summary}</p>
-                </div>
-              ))}
-            </div>
-            <div className="mt-4 flex justify-end">
-              <Button className="neu-flat rounded-xl" onClick={() => setGdprTipOpen(false)}>
-                Done
-              </Button>
+              <Button className="flex-1">Share Certificate</Button>
             </div>
           </div>
         </DialogContent>

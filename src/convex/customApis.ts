@@ -210,37 +210,312 @@ export const trackApiCall = internalMutation({
   },
 });
 
-/**
- * Query: Get API analytics
- */
+export const listApis = query({
+  args: { businessId: v.id("businesses") },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("customApis")
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .collect();
+  },
+});
+
+export const getApiById = query({
+  args: { apiId: v.id("customApis") },
+  handler: async (ctx, args) => {
+    return await ctx.db.get(args.apiId);
+  },
+});
+
+export const getApiVersions = query({
+  args: { apiId: v.id("customApis") },
+  handler: async (ctx, args) => {
+    const api = await ctx.db.get(args.apiId);
+    if (!api) throw new Error("API not found");
+    
+    return await ctx.db
+      .query("apiVersions")
+      .withIndex("by_api", (q) => q.eq("apiId", args.apiId))
+      .order("desc")
+      .collect();
+  },
+});
+
 export const getApiAnalytics = query({
+  args: { 
+    apiId: v.id("customApis"),
+    startDate: v.optional(v.number()),
+    endDate: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const now = Date.now();
+    const start = args.startDate || now - 30 * 24 * 60 * 60 * 1000; // 30 days
+    const end = args.endDate || now;
+
+    const calls = await ctx.db
+      .query("apiCallLogs")
+      .withIndex("by_api_and_timestamp", (q) => 
+        q.eq("apiId", args.apiId)
+          .gte("timestamp", start)
+          .lte("timestamp", end)
+      )
+      .collect();
+
+    const totalCalls = calls.length;
+    const successfulCalls = calls.filter(c => c.statusCode >= 200 && c.statusCode < 300).length;
+    const failedCalls = calls.filter(c => c.statusCode >= 400).length;
+    const avgResponseTime = calls.reduce((sum, c) => sum + (c.responseTime || 0), 0) / totalCalls || 0;
+
+    // Group by day
+    const callsByDay: Record<string, number> = {};
+    calls.forEach(call => {
+      const day = new Date(call.timestamp).toISOString().split('T')[0];
+      callsByDay[day] = (callsByDay[day] || 0) + 1;
+    });
+
+    // Group by status code
+    const callsByStatus: Record<number, number> = {};
+    calls.forEach(call => {
+      callsByStatus[call.statusCode] = (callsByStatus[call.statusCode] || 0) + 1;
+    });
+
+    return {
+      totalCalls,
+      successfulCalls,
+      failedCalls,
+      successRate: totalCalls > 0 ? (successfulCalls / totalCalls) * 100 : 0,
+      avgResponseTime,
+      callsByDay,
+      callsByStatus,
+      recentCalls: calls.slice(-100).reverse(),
+    };
+  },
+});
+
+export const createApi = mutation({
   args: {
     businessId: v.id("businesses"),
+    name: v.string(),
+    description: v.optional(v.string()),
+    method: v.union(v.literal("GET"), v.literal("POST"), v.literal("PUT"), v.literal("DELETE")),
+    path: v.string(),
+    convexFunction: v.string(),
+    requiresAuth: v.boolean(),
+    rateLimit: v.optional(v.number()),
+    version: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Unauthorized");
 
-    const apis = await ctx.db
-      .query("customApis")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+    const user = await ctx.db
+      .query("users")
+      .withIndex("email", (q) => q.eq("email", identity.email!))
+      .first();
+    if (!user) throw new Error("User not found");
+
+    const apiId = await ctx.db.insert("customApis", {
+      businessId: args.businessId,
+      name: args.name,
+      description: args.description,
+      method: args.method,
+      path: args.path,
+      convexFunction: args.convexFunction,
+      requiresAuth: args.requiresAuth,
+      rateLimit: args.rateLimit || 100,
+      isActive: true,
+      createdBy: user._id,
+      createdAt: Date.now(),
+      totalCalls: 0,
+      metadata: {
+        version: args.version || "1.0.0",
+      },
+      updatedAt: Date.now(),
+    });
+
+    // Create initial version
+    await ctx.db.insert("apiVersions", {
+      apiId,
+      version: args.version || "1.0.0",
+      convexFunction: args.convexFunction,
+      isActive: true,
+      createdAt: Date.now(),
+      changeNotes: "Initial version",
+    });
+
+    return apiId;
+  },
+});
+
+export const updateApi = mutation({
+  args: {
+    apiId: v.id("customApis"),
+    name: v.optional(v.string()),
+    description: v.optional(v.string()),
+    rateLimit: v.optional(v.number()),
+    isActive: v.optional(v.boolean()),
+    convexFunction: v.optional(v.string()),
+    version: v.optional(v.string()),
+    changeNotes: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const { apiId, version, changeNotes, convexFunction, ...updates } = args;
+    
+    await ctx.db.patch(apiId, {
+      ...updates,
+      updatedAt: Date.now(),
+    });
+
+    // Create new version if convexFunction or version changed
+    if (convexFunction || version) {
+      const api = await ctx.db.get(apiId);
+      if (!api) throw new Error("API not found");
+
+      // Deactivate previous versions
+      const previousVersions = await ctx.db
+        .query("apiVersions")
+        .withIndex("by_api", (q) => q.eq("apiId", apiId))
+        .collect();
+      
+      for (const v of previousVersions) {
+        await ctx.db.patch(v._id, { isActive: false });
+      }
+
+      // Create new version
+      await ctx.db.insert("apiVersions", {
+        apiId,
+        version: version || `${parseFloat(api.metadata?.version || "1.0.0") + 0.1}`,
+        convexFunction: convexFunction || api.convexFunction,
+        isActive: true,
+        createdAt: Date.now(),
+        changeNotes: changeNotes || "Updated API",
+      });
+    }
+
+    return apiId;
+  },
+});
+
+export const deleteApi = mutation({
+  args: { apiId: v.id("customApis") },
+  handler: async (ctx, args) => {
+    await ctx.db.delete(args.apiId);
+    
+    // Delete all versions
+    const versions = await ctx.db
+      .query("apiVersions")
+      .withIndex("by_api", (q) => q.eq("apiId", args.apiId))
+      .collect();
+    
+    for (const version of versions) {
+      await ctx.db.delete(version._id);
+    }
+  },
+});
+
+export const getRateLimitStatus = query({
+  args: { 
+    apiId: v.id("customApis"),
+    clientId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const api = await ctx.db.get(args.apiId);
+    if (!api) throw new Error("API not found");
+
+    const now = Date.now();
+    const oneHour = 60 * 60 * 1000;
+    
+    const recentCalls = await ctx.db
+      .query("apiCallLogs")
+      .withIndex("by_api_and_timestamp", (q) => 
+        q.eq("apiId", args.apiId)
+          .gte("timestamp", now - oneHour)
+      )
+      .filter((q) => q.eq(q.field("clientId"), args.clientId))
       .collect();
 
-    const totalCalls = apis.reduce((sum, api) => sum + (api.totalCalls || 0), 0);
-    const activeEndpoints = apis.filter(api => api.isActive).length;
+    const limit = api.rateLimit || 100;
+    const remaining = Math.max(0, limit - recentCalls.length);
+    const resetTime = now + oneHour;
 
     return {
-      totalCalls,
-      activeEndpoints,
-      totalEndpoints: apis.length,
-      apis: apis.map(api => ({
-        id: api._id,
-        name: api.name,
-        path: api.path,
-        method: api.method,
-        totalCalls: api.totalCalls || 0,
-        isActive: api.isActive,
-      })),
+      limit,
+      remaining,
+      resetTime,
+      used: recentCalls.length,
     };
+  },
+});
+
+export const getApiDocs = query({
+  args: { apiId: v.id("customApis") },
+  handler: async (ctx, args) => {
+    const api = await ctx.db.get(args.apiId);
+    if (!api) throw new Error("API not found");
+
+    const versions = await ctx.db
+      .query("apiVersions")
+      .withIndex("by_api", (q) => q.eq("apiId", args.apiId))
+      .collect();
+
+    return {
+      name: api.name,
+      description: api.description,
+      method: api.method,
+      path: api.path,
+      requiresAuth: api.requiresAuth,
+      rateLimit: api.rateLimit,
+      versions: versions.map(v => ({
+        version: v.version,
+        isActive: v.isActive,
+        changeNotes: v.changeNotes,
+        createdAt: v.createdAt,
+      })),
+      examples: {
+        request: {
+          method: api.method,
+          url: `${process.env.CONVEX_SITE_URL || 'https://your-app.convex.site'}${api.path}`,
+          headers: api.requiresAuth ? {
+            "Authorization": "Bearer YOUR_API_KEY",
+            "Content-Type": "application/json",
+          } : {
+            "Content-Type": "application/json",
+          },
+          body: api.method !== "GET" ? { "example": "data" } : undefined,
+        },
+        response: {
+          status: 200,
+          body: { "success": true, "data": {} },
+        },
+      },
+    };
+  },
+});
+
+export const trackApiUsage = internalMutation({
+  args: {
+    apiId: v.id("customApis"),
+    clientId: v.string(),
+    statusCode: v.number(),
+    responseTime: v.number(),
+    endpoint: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.insert("apiCallLogs", {
+      apiId: args.apiId,
+      clientId: args.clientId,
+      statusCode: args.statusCode,
+      responseTime: args.responseTime,
+      endpoint: args.endpoint,
+      timestamp: Date.now(),
+    });
+
+    // Update total calls counter
+    const api = await ctx.db.get(args.apiId);
+    if (api) {
+      await ctx.db.patch(args.apiId, {
+        totalCalls: (api.totalCalls || 0) + 1,
+      });
+    }
   },
 });

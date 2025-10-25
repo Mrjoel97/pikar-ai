@@ -871,3 +871,59 @@ export const searchBrainDumps = query({
     return rows;
   },
 });
+
+// Get initiatives with voice notes
+export const getInitiativesWithVoiceNotes = query({
+  args: { businessId: v.id("businesses") },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Unauthorized");
+
+    const initiatives = await ctx.db
+      .query("initiatives")
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .collect();
+
+    const initiativesWithNotes = await Promise.all(
+      initiatives.map(async (initiative) => {
+        const voiceNotes = await ctx.db
+          .query("voiceNotes")
+          .withIndex("by_initiative", (q) => q.eq("initiativeId", initiative._id))
+          .collect();
+
+        return {
+          ...initiative,
+          voiceNotesCount: voiceNotes.length,
+          voiceNotes: voiceNotes.slice(0, 3),
+        };
+      })
+    );
+
+    return initiativesWithNotes;
+  },
+});
+
+// Get voice note analytics for initiatives
+export const getInitiativeVoiceNoteAnalytics = query({
+  args: { initiativeId: v.id("initiatives") },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Unauthorized");
+
+    const voiceNotes = await ctx.db
+      .query("voiceNotes")
+      .withIndex("by_initiative", (q) => q.eq("initiativeId", args.initiativeId))
+      .collect();
+
+    const totalNotes = voiceNotes.length;
+    const totalDuration = voiceNotes.reduce((sum, note) => sum + note.duration, 0);
+    const avgDuration = totalNotes > 0 ? totalDuration / totalNotes : 0;
+
+    return {
+      totalNotes,
+      totalDuration,
+      avgDuration,
+      recentNotes: voiceNotes.slice(0, 5),
+    };
+  },
+});

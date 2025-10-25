@@ -8,11 +8,6 @@
  * @module
  */
 
-import type {
-  ApiFromModules,
-  FilterApi,
-  FunctionReference,
-} from "convex/server";
 import type * as activity from "../activity.js";
 import type * as activityFeed from "../activityFeed.js";
 import type * as admin from "../admin.js";
@@ -20,9 +15,13 @@ import type * as adminAssistant from "../adminAssistant.js";
 import type * as adminAuth from "../adminAuth.js";
 import type * as adminAuthData from "../adminAuthData.js";
 import type * as agentDatasets from "../agentDatasets.js";
+import type * as agentMemory from "../agentMemory.js";
 import type * as agentProfile from "../agentProfile.js";
 import type * as agentRouter from "../agentRouter.js";
 import type * as aiAgents from "../aiAgents.js";
+import type * as analyticsEngine from "../analyticsEngine.js";
+import type * as apiSdk from "../apiSdk.js";
+import type * as apiVersions from "../apiVersions.js";
 import type * as approvalAnalytics from "../approvalAnalytics.js";
 import type * as approvals from "../approvals.js";
 import type * as audit from "../audit.js";
@@ -31,6 +30,7 @@ import type * as auth_emailOtp from "../auth/emailOtp.js";
 import type * as auth from "../auth.js";
 import type * as billing from "../billing.js";
 import type * as billingInternal from "../billingInternal.js";
+import type * as brandBuilder from "../brandBuilder.js";
 import type * as branding from "../branding.js";
 import type * as brands from "../brands.js";
 import type * as businesses from "../businesses.js";
@@ -40,12 +40,21 @@ import type * as chunking from "../chunking.js";
 import type * as complianceReports from "../complianceReports.js";
 import type * as contacts from "../contacts.js";
 import type * as contactsActions from "../contactsActions.js";
+import type * as contentCapsules from "../contentCapsules.js";
+import type * as contentCapsulesData from "../contentCapsulesData.js";
 import type * as crisisManagement from "../crisisManagement.js";
 import type * as crmIntegrations from "../crmIntegrations.js";
+import type * as crmSync from "../crmSync.js";
 import type * as cron from "../cron.js";
 import type * as customApis from "../customApis.js";
 import type * as customerJourney from "../customerJourney.js";
+import type * as customerSegmentation from "../customerSegmentation.js";
+import type * as customerSegmentationData from "../customerSegmentationData.js";
 import type * as data_playbooksSeed from "../data/playbooksSeed.js";
+import type * as dataWarehouse_dataExports from "../dataWarehouse/dataExports.js";
+import type * as dataWarehouse_dataQuality from "../dataWarehouse/dataQuality.js";
+import type * as dataWarehouse_dataSources from "../dataWarehouse/dataSources.js";
+import type * as dataWarehouse_etlPipelines from "../dataWarehouse/etlPipelines.js";
 import type * as dataWarehouse from "../dataWarehouse.js";
 import type * as demoVideos from "../demoVideos.js";
 import type * as departmentBudgets from "../departmentBudgets.js";
@@ -76,11 +85,13 @@ import type * as featureFlags from "../featureFlags.js";
 import type * as files from "../files.js";
 import type * as governance from "../governance.js";
 import type * as governanceAutomation from "../governanceAutomation.js";
+import type * as governanceRules from "../governanceRules.js";
 import type * as health from "../health.js";
 import type * as http from "../http.js";
 import type * as init from "../init.js";
 import type * as initiatives from "../initiatives.js";
 import type * as inspector from "../inspector.js";
+import type * as integrationPlatform from "../integrationPlatform.js";
 import type * as invoices from "../invoices.js";
 import type * as invoicesActions from "../invoicesActions.js";
 import type * as kgraph from "../kgraph.js";
@@ -88,6 +99,8 @@ import type * as kms from "../kms.js";
 import type * as kmsActions from "../kmsActions.js";
 import type * as knowledge from "../knowledge.js";
 import type * as kpis from "../kpis.js";
+import type * as learningContent from "../learningContent.js";
+import type * as learningContentActions from "../learningContentActions.js";
 import type * as lib_aiAgents_admin from "../lib/aiAgents/admin.js";
 import type * as lib_aiAgents_config from "../lib/aiAgents/config.js";
 import type * as lib_aiAgents_datasets from "../lib/aiAgents/datasets.js";
@@ -118,6 +131,8 @@ import type * as schedule from "../schedule.js";
 import type * as scim from "../scim.js";
 import type * as search from "../search.js";
 import type * as seed from "../seed.js";
+import type * as setupWizard from "../setupWizard.js";
+import type * as setupWizardData from "../setupWizardData.js";
 import type * as socialAnalytics from "../socialAnalytics.js";
 import type * as socialApiConfigs from "../socialApiConfigs.js";
 import type * as socialContentAgent_analytics from "../socialContentAgent/analytics.js";
@@ -130,6 +145,7 @@ import type * as socialPosts from "../socialPosts.js";
 import type * as socialPostsCron from "../socialPostsCron.js";
 import type * as solopreneur from "../solopreneur.js";
 import type * as strategicInitiatives from "../strategicInitiatives.js";
+import type * as supportTickets from "../supportTickets.js";
 import type * as tasks from "../tasks.js";
 import type * as teamChat from "../teamChat.js";
 import type * as teamGoals from "../teamGoals.js";
@@ -141,6 +157,7 @@ import type * as users from "../users.js";
 import type * as utils from "../utils.js";
 import type * as vectors from "../vectors.js";
 import type * as vendors from "../vendors.js";
+import type * as voiceNotes from "../voiceNotes.js";
 import type * as webhooks from "../webhooks.js";
 import type * as webhooksActions from "../webhooksActions.js";
 import type * as workflowAssignments from "../workflowAssignments.js";
@@ -148,6 +165,12 @@ import type * as workflowHandoffs from "../workflowHandoffs.js";
 import type * as workflowTemplates from "../workflowTemplates.js";
 import type * as workflows from "../workflows.js";
 import type * as workforceAnalytics from "../workforceAnalytics.js";
+
+import type {
+  ApiFromModules,
+  FilterApi,
+  FunctionReference,
+} from "convex/server";
 
 /**
  * A utility for referencing Convex functions in your app's API.
@@ -165,9 +188,13 @@ declare const fullApi: ApiFromModules<{
   adminAuth: typeof adminAuth;
   adminAuthData: typeof adminAuthData;
   agentDatasets: typeof agentDatasets;
+  agentMemory: typeof agentMemory;
   agentProfile: typeof agentProfile;
   agentRouter: typeof agentRouter;
   aiAgents: typeof aiAgents;
+  analyticsEngine: typeof analyticsEngine;
+  apiSdk: typeof apiSdk;
+  apiVersions: typeof apiVersions;
   approvalAnalytics: typeof approvalAnalytics;
   approvals: typeof approvals;
   audit: typeof audit;
@@ -176,6 +203,7 @@ declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   billing: typeof billing;
   billingInternal: typeof billingInternal;
+  brandBuilder: typeof brandBuilder;
   branding: typeof branding;
   brands: typeof brands;
   businesses: typeof businesses;
@@ -185,12 +213,21 @@ declare const fullApi: ApiFromModules<{
   complianceReports: typeof complianceReports;
   contacts: typeof contacts;
   contactsActions: typeof contactsActions;
+  contentCapsules: typeof contentCapsules;
+  contentCapsulesData: typeof contentCapsulesData;
   crisisManagement: typeof crisisManagement;
   crmIntegrations: typeof crmIntegrations;
+  crmSync: typeof crmSync;
   cron: typeof cron;
   customApis: typeof customApis;
   customerJourney: typeof customerJourney;
+  customerSegmentation: typeof customerSegmentation;
+  customerSegmentationData: typeof customerSegmentationData;
   "data/playbooksSeed": typeof data_playbooksSeed;
+  "dataWarehouse/dataExports": typeof dataWarehouse_dataExports;
+  "dataWarehouse/dataQuality": typeof dataWarehouse_dataQuality;
+  "dataWarehouse/dataSources": typeof dataWarehouse_dataSources;
+  "dataWarehouse/etlPipelines": typeof dataWarehouse_etlPipelines;
   dataWarehouse: typeof dataWarehouse;
   demoVideos: typeof demoVideos;
   departmentBudgets: typeof departmentBudgets;
@@ -221,11 +258,13 @@ declare const fullApi: ApiFromModules<{
   files: typeof files;
   governance: typeof governance;
   governanceAutomation: typeof governanceAutomation;
+  governanceRules: typeof governanceRules;
   health: typeof health;
   http: typeof http;
   init: typeof init;
   initiatives: typeof initiatives;
   inspector: typeof inspector;
+  integrationPlatform: typeof integrationPlatform;
   invoices: typeof invoices;
   invoicesActions: typeof invoicesActions;
   kgraph: typeof kgraph;
@@ -233,6 +272,8 @@ declare const fullApi: ApiFromModules<{
   kmsActions: typeof kmsActions;
   knowledge: typeof knowledge;
   kpis: typeof kpis;
+  learningContent: typeof learningContent;
+  learningContentActions: typeof learningContentActions;
   "lib/aiAgents/admin": typeof lib_aiAgents_admin;
   "lib/aiAgents/config": typeof lib_aiAgents_config;
   "lib/aiAgents/datasets": typeof lib_aiAgents_datasets;
@@ -263,6 +304,8 @@ declare const fullApi: ApiFromModules<{
   scim: typeof scim;
   search: typeof search;
   seed: typeof seed;
+  setupWizard: typeof setupWizard;
+  setupWizardData: typeof setupWizardData;
   socialAnalytics: typeof socialAnalytics;
   socialApiConfigs: typeof socialApiConfigs;
   "socialContentAgent/analytics": typeof socialContentAgent_analytics;
@@ -275,6 +318,7 @@ declare const fullApi: ApiFromModules<{
   socialPostsCron: typeof socialPostsCron;
   solopreneur: typeof solopreneur;
   strategicInitiatives: typeof strategicInitiatives;
+  supportTickets: typeof supportTickets;
   tasks: typeof tasks;
   teamChat: typeof teamChat;
   teamGoals: typeof teamGoals;
@@ -286,6 +330,7 @@ declare const fullApi: ApiFromModules<{
   utils: typeof utils;
   vectors: typeof vectors;
   vendors: typeof vendors;
+  voiceNotes: typeof voiceNotes;
   webhooks: typeof webhooks;
   webhooksActions: typeof webhooksActions;
   workflowAssignments: typeof workflowAssignments;
@@ -294,11 +339,15 @@ declare const fullApi: ApiFromModules<{
   workflows: typeof workflows;
   workforceAnalytics: typeof workforceAnalytics;
 }>;
+declare const fullApiWithMounts: typeof fullApi;
+
 export declare const api: FilterApi<
-  typeof fullApi,
+  typeof fullApiWithMounts,
   FunctionReference<any, "public">
 >;
 export declare const internal: FilterApi<
-  typeof fullApi,
+  typeof fullApiWithMounts,
   FunctionReference<any, "internal">
 >;
+
+export declare const components: {};

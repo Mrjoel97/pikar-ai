@@ -30,10 +30,20 @@ import { RoiDashboard } from "@/components/dashboards/RoiDashboard";
 import { ArrowUp, ArrowDown, Minus } from "lucide-react";
 import { SocialPerformance } from "@/components/dashboards/solopreneur/SocialPerformance";
 import { CustomerSegmentation } from "@/components/dashboards/solopreneur/CustomerSegmentation";
+import { VoiceNotes } from "./solopreneur/VoiceNotes";
 import type { Id } from "@/convex/_generated/dataModel";
 /* removed unused Alert imports */
 
 import type { SolopreneurDashboardProps } from "@/types/dashboard";
+import { SolopreneurSetupWizard } from "@/components/onboarding/SolopreneurSetupWizard";
+import React, { lazy, Suspense } from "react";
+import { LazyLoadErrorBoundary } from "@/components/common/LazyLoadErrorBoundary";
+
+// Add lazy loading for heavy components
+const EmailCampaignAnalytics = lazy(() => import("./solopreneur/EmailCampaignAnalytics"));
+const ContentCapsule = lazy(() => import("./solopreneur/ContentCapsule"));
+const CustomerSegmentation = lazy(() => import("./solopreneur/CustomerSegmentation"));
+const SocialPerformance = lazy(() => import("./solopreneur/SocialPerformance"));
 
 function SolopreneurDashboard() {
   // Provide a relaxed-typing alias for the composer so extra props don't cause TS errors
@@ -2245,6 +2255,9 @@ Renamed to avoid duplicate identifier collisions elsewhere in the file */
   // Add state for showing the calendar
   const [showCalendar, setShowCalendar] = useState(false);
 
+  // Add: state for showing the setup wizard
+  const [showSetupWizard, setShowSetupWizard] = useState(false);
+
   return (
     <div className="space-y-6">
       {/* Quick actions: Send Newsletter */}
@@ -3307,24 +3320,29 @@ Renamed to avoid duplicate identifier collisions elsewhere in the file */
         <RoiDashboard businessId={business?._id} userId={user?._id} />
       </div>
 
-      {/* Add Email Campaign Analytics section after existing sections */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Mail className="h-5 w-5" />
-            Email Campaign Analytics
-          </CardTitle>
-          <CardDescription>
-            Track performance of your email campaigns
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <EmailCampaignAnalytics businessId={businessId} />
-        </CardContent>
-      </Card>
+      <LazyLoadErrorBoundary moduleName="Email Campaign Analytics">
+        <Suspense fallback={<div className="text-muted-foreground">Loading email analytics...</div>}>
+          <EmailCampaignAnalytics />
+        </Suspense>
+      </LazyLoadErrorBoundary>
 
-      {/* Social Media Performance */}
-      <SocialPerformance businessId={businessId} />
+      <LazyLoadErrorBoundary moduleName="Content Capsule">
+        <Suspense fallback={<div className="text-muted-foreground">Loading content capsule...</div>}>
+          <ContentCapsule />
+        </Suspense>
+      </LazyLoadErrorBoundary>
+
+      <LazyLoadErrorBoundary moduleName="Customer Segmentation">
+        <Suspense fallback={<div className="text-muted-foreground">Loading customer segments...</div>}>
+          <CustomerSegmentation />
+        </Suspense>
+      </LazyLoadErrorBoundary>
+
+      <LazyLoadErrorBoundary moduleName="Social Performance">
+        <Suspense fallback={<div className="text-muted-foreground">Loading social performance...</div>}>
+          <SocialPerformance />
+        </Suspense>
+      </LazyLoadErrorBoundary>
 
       {/* Add Calendar Dialog */}
       <Dialog open={showCalendar} onOpenChange={setShowCalendar}>
@@ -3764,6 +3782,16 @@ Renamed to avoid duplicate identifier collisions elsewhere in the file */
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Setup Wizard Dialog */}
+      {userId && businessId && (
+        <SolopreneurSetupWizard
+          open={showSetupWizard}
+          onClose={() => setShowSetupWizard(false)}
+          userId={userId}
+          businessId={businessId}
+        />
+      )}
     </div>
   );
 }

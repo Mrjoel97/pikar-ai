@@ -1,217 +1,508 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useAuth } from "@/hooks/use-auth";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
-import { Card, CardContent } from "@/components/ui/card";
-import { CheckCircle2, Circle } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import type { Id } from "@/convex/_generated/dataModel";
+import { 
+  CheckCircle2, 
+  Circle, 
+  Users, 
+  Briefcase, 
+  Calendar, 
+  Award,
+  TrendingUp,
+  Clock,
+  Target,
+  Bell,
+  FileText,
+  Download,
+} from "lucide-react";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 
-interface TeamOnboardingWizardProps {
-  open: boolean;
-  onClose: () => void;
-  userId: Id<"users">;
-  businessId: Id<"businesses">;
-}
+const ROLE_TEMPLATES = [
+  { value: "developer", label: "Developer", icon: "💻", tasks: 4 },
+  { value: "designer", label: "Designer", icon: "🎨", tasks: 4 },
+  { value: "marketing", label: "Marketing", icon: "📢", tasks: 4 },
+  { value: "sales", label: "Sales", icon: "💼", tasks: 4 },
+  { value: "manager", label: "Manager", icon: "👔", tasks: 4 },
+];
 
-export function TeamOnboardingWizard({
-  open,
-  onClose,
-  userId,
-  businessId,
-}: TeamOnboardingWizardProps) {
+const ONBOARDING_STEPS = [
+  { id: 0, title: "Welcome & Profile", description: "Basic information and role assignment" },
+  { id: 1, title: "Company Overview", description: "Mission, values, and culture" },
+  { id: 2, title: "Tools & Access", description: "Set up accounts and permissions" },
+  { id: 3, title: "Team Introductions", description: "Meet your colleagues" },
+  { id: 4, title: "Role Training", description: "Role-specific training materials" },
+  { id: 5, title: "First Tasks", description: "Complete your initial assignments" },
+  { id: 6, title: "Feedback & Questions", description: "Share your experience" },
+  { id: 7, title: "Completion", description: "Receive your certificate" },
+];
+
+const CHART_COLORS = ["#10b981", "#3b82f6", "#f59e0b", "#ef4444", "#8b5cf6"];
+
+export function TeamOnboardingWizard() {
+  const { user, business } = useAuth();
   const [currentStep, setCurrentStep] = useState(0);
-  const [selectedRole, setSelectedRole] = useState<"admin" | "editor" | "viewer" | "custom">("viewer");
+  const [selectedRole, setSelectedRole] = useState("");
+  const [department, setDepartment] = useState("");
+  const [notes, setNotes] = useState("");
+  const [showAnalytics, setShowAnalytics] = useState(false);
 
-  const onboarding = useQuery(api.teamOnboarding.getUserOnboarding, { userId, businessId });
-  const completeStep = useMutation(api.teamOnboarding.completeOnboardingStep);
+  const createSession = useMutation(api.teamOnboarding.createOnboardingSession);
+  const updateProgress = useMutation(api.teamOnboarding.updateOnboardingProgress);
+  const userSession = useQuery(
+    api.teamOnboarding.getUserOnboardingSession,
+    user?._id ? { userId: user._id } : "skip"
+  );
+  const analytics = useQuery(
+    api.teamOnboarding.getOnboardingAnalytics,
+    business?._id ? { businessId: business._id, timeRange: "30d" } : "skip"
+  );
+  const dashboard = useQuery(
+    api.teamOnboarding.getTeamOnboardingDashboard,
+    business?._id ? { businessId: business._id } : "skip"
+  );
 
-  const steps = onboarding?.steps || [
-    { id: "welcome", title: "Welcome", description: "Get started with your team", completed: false },
-    { id: "role", title: "Select Role", description: "Choose your role", completed: false },
-    { id: "permissions", title: "Review Permissions", description: "Confirm your access", completed: false },
-    { id: "first-task", title: "First Task", description: "Complete your first action", completed: false },
-  ];
+  const handleStartOnboarding = async () => {
+    if (!user?._id || !business?._id || !selectedRole) {
+      toast.error("Please select a role to continue");
+      return;
+    }
 
-  const progress = (steps.filter((s: any) => s.completed).length / steps.length) * 100;
+    try {
+      await createSession({
+        businessId: business._id,
+        userId: user._id,
+        role: selectedRole,
+        department: department || undefined,
+        startDate: Date.now(),
+      });
+      toast.success("Onboarding started! Tasks have been assigned.");
+      setCurrentStep(1);
+    } catch (error) {
+      toast.error("Failed to start onboarding");
+      console.error(error);
+    }
+  };
 
-  const handleNext = async () => {
-    if (currentStep < steps.length - 1) {
-      try {
-        await completeStep({
-          userId,
-          businessId,
-          stepId: steps[currentStep].id,
-        });
+  const handleCompleteStep = async () => {
+    if (!userSession?._id) return;
+
+    try {
+      const result = await updateProgress({
+        sessionId: userSession._id,
+        stepCompleted: currentStep,
+        notes: notes || undefined,
+      });
+      
+      toast.success(`Step ${currentStep + 1} completed! ${result.progress}% done.`);
+      setNotes("");
+      
+      if (currentStep < ONBOARDING_STEPS.length - 1) {
         setCurrentStep(currentStep + 1);
-        toast.success("Step completed!");
-      } catch (error: any) {
-        toast.error(error.message || "Failed to complete step");
       }
-    } else {
-      toast.success("Onboarding completed!");
-      onClose();
+    } catch (error) {
+      toast.error("Failed to update progress");
+      console.error(error);
     }
   };
 
-  const handleBack = () => {
-    if (currentStep > 0) {
-      setCurrentStep(currentStep - 1);
-    }
-  };
+  const roleBreakdownData = useMemo(() => {
+    if (!analytics?.roleBreakdown) return [];
+    return Object.entries(analytics.roleBreakdown).map(([role, count]) => ({
+      name: role.charAt(0).toUpperCase() + role.slice(1),
+      value: count as number,
+    }));
+  }, [analytics]);
 
-  const renderStepContent = () => {
-    const step = steps[currentStep];
+  const progressData = useMemo(() => {
+    if (!dashboard?.sessions) return [];
+    return dashboard.sessions.slice(0, 10).map(s => ({
+      name: s.role.substring(0, 3).toUpperCase(),
+      progress: s.progress,
+    }));
+  }, [dashboard]);
 
-    switch (step.id) {
-      case "welcome":
-        return (
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Welcome to the Team!</h3>
-            <p className="text-muted-foreground">
-              We're excited to have you on board. This quick wizard will help you get set up and ready to contribute.
-            </p>
-            <div className="bg-emerald-50 p-4 rounded-lg">
-              <p className="text-sm">
-                <strong>Estimated time:</strong> 5 minutes
+  if (showAnalytics && analytics && dashboard) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-3xl font-bold">Team Onboarding Analytics</h2>
+            <p className="text-muted-foreground">Track onboarding progress and completion rates</p>
+          </div>
+          <Button onClick={() => setShowAnalytics(false)} variant="outline">
+            Back to Wizard
+          </Button>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Sessions</CardTitle>
+              <Users className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{analytics.totalSessions}</div>
+              <p className="text-xs text-muted-foreground">Last 30 days</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Completion Rate</CardTitle>
+              <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{analytics.completionRate.toFixed(1)}%</div>
+              <p className="text-xs text-muted-foreground">
+                {analytics.completedSessions} of {analytics.totalSessions} completed
               </p>
-            </div>
-          </div>
-        );
+            </CardContent>
+          </Card>
 
-      case "role":
-        return (
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Select Your Role</h3>
-            <p className="text-muted-foreground">Choose the role that best fits your responsibilities:</p>
-            <div className="grid grid-cols-2 gap-3">
-              {(["admin", "editor", "viewer", "custom"] as const).map((role) => (
-                <Card
-                  key={role}
-                  className={`cursor-pointer transition-all ${
-                    selectedRole === role ? "border-emerald-600 bg-emerald-50" : ""
-                  }`}
-                  onClick={() => setSelectedRole(role)}
-                >
-                  <CardContent className="p-4">
-                    <h4 className="font-medium capitalize">{role}</h4>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {role === "admin" && "Full access to all features"}
-                      {role === "editor" && "Can edit and approve content"}
-                      {role === "viewer" && "Read-only access"}
-                      {role === "custom" && "Customized permissions"}
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Avg. Progress</CardTitle>
+              <Target className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{analytics.averageProgress}%</div>
+              <p className="text-xs text-muted-foreground">Across all sessions</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Avg. Completion</CardTitle>
+              <Clock className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{analytics.averageCompletionDays} days</div>
+              <p className="text-xs text-muted-foreground">Time to complete</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="grid gap-6 md:grid-cols-2">
+          <Card>
+            <CardHeader>
+              <CardTitle>Role Distribution</CardTitle>
+              <CardDescription>Onboarding sessions by role</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={300}>
+                <PieChart>
+                  <Pie
+                    data={roleBreakdownData}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                    outerRadius={80}
+                    fill="#8884d8"
+                    dataKey="value"
+                  >
+                    {roleBreakdownData.map((_, index) => (
+                      <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Recent Progress</CardTitle>
+              <CardDescription>Latest onboarding sessions</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={progressData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" />
+                  <YAxis />
+                  <Tooltip />
+                  <Bar dataKey="progress" fill="#10b981" />
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+        </div>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Active Onboarding Sessions</CardTitle>
+            <CardDescription>Team members currently onboarding</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {dashboard.sessions.filter(s => s.status === "in_progress").slice(0, 5).map((session) => (
+                <div key={session._id} className="flex items-center justify-between p-4 border rounded-lg">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline">{session.role}</Badge>
+                      {session.department && <Badge variant="secondary">{session.department}</Badge>}
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      Step {session.currentStep + 1} of {ONBOARDING_STEPS.length}
                     </p>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </div>
-        );
-
-      case "permissions":
-        return (
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Review Your Permissions</h3>
-            <p className="text-muted-foreground">
-              As a <strong className="capitalize">{selectedRole}</strong>, you will have:
-            </p>
-            <div className="space-y-2">
-              {[
-                { label: "View Analytics", enabled: true },
-                { label: "Edit Content", enabled: selectedRole !== "viewer" },
-                { label: "Approve Workflows", enabled: selectedRole === "admin" || selectedRole === "editor" },
-                { label: "Manage Team", enabled: selectedRole === "admin" },
-                { label: "Manage Settings", enabled: selectedRole === "admin" },
-              ].map((perm) => (
-                <div key={perm.label} className="flex items-center gap-2">
-                  {perm.enabled ? (
-                    <CheckCircle2 className="h-5 w-5 text-emerald-600" />
-                  ) : (
-                    <Circle className="h-5 w-5 text-gray-300" />
-                  )}
-                  <span className={perm.enabled ? "" : "text-muted-foreground"}>{perm.label}</span>
+                  </div>
+                  <div className="text-right space-y-1">
+                    <div className="text-2xl font-bold">{session.progress}%</div>
+                    <Progress value={session.progress} className="w-32" />
+                  </div>
                 </div>
               ))}
             </div>
-          </div>
-        );
-
-      case "first-task":
-        return (
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Complete Your First Task</h3>
-            <p className="text-muted-foreground">
-              Great! You're all set up. Here's a quick task to get you started:
-            </p>
-            <Card className="bg-blue-50">
-              <CardContent className="p-4">
-                <h4 className="font-medium">Explore the Dashboard</h4>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Take a moment to familiarize yourself with the main dashboard and its features.
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-        );
-
-      default:
-        return null;
-    }
-  };
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
-    <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>Team Onboarding</DialogTitle>
-        </DialogHeader>
-
-        <div className="space-y-6">
-          {/* Progress Bar */}
-          <div className="space-y-2">
-            <div className="flex justify-between text-sm">
-              <span>Progress</span>
-              <span>{Math.round(progress)}%</span>
-            </div>
-            <Progress value={progress} className="h-2" />
-          </div>
-
-          {/* Steps Indicator */}
-          <div className="flex justify-between">
-            {steps.map((step: any, index: number) => (
-              <div key={step.id} className="flex flex-col items-center gap-1">
-                <div
-                  className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                    index === currentStep
-                      ? "bg-emerald-600 text-white"
-                      : step.completed
-                      ? "bg-emerald-100 text-emerald-600"
-                      : "bg-gray-200 text-gray-400"
-                  }`}
-                >
-                  {step.completed ? <CheckCircle2 className="h-5 w-5" /> : index + 1}
-                </div>
-                <span className="text-xs text-center">{step.title}</span>
-              </div>
-            ))}
-          </div>
-
-          {/* Step Content */}
-          <div className="min-h-[200px]">{renderStepContent()}</div>
-
-          {/* Navigation */}
-          <div className="flex justify-between">
-            <Button variant="outline" onClick={handleBack} disabled={currentStep === 0}>
-              Back
-            </Button>
-            <Button onClick={handleNext}>
-              {currentStep === steps.length - 1 ? "Complete" : "Next"}
-            </Button>
-          </div>
+    <div className="max-w-4xl mx-auto space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-3xl font-bold">Team Onboarding</h2>
+          <p className="text-muted-foreground">Streamlined onboarding with automated task assignment</p>
         </div>
-      </DialogContent>
-    </Dialog>
+        {user?.role === "admin" && (
+          <Button onClick={() => setShowAnalytics(true)} variant="outline">
+            <TrendingUp className="mr-2 h-4 w-4" />
+            View Analytics
+          </Button>
+        )}
+      </div>
+
+      {userSession && (
+        <Card className="border-emerald-200 bg-emerald-50/50">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>Your Onboarding Progress</CardTitle>
+                <CardDescription>
+                  {userSession.status === "completed" 
+                    ? "Congratulations! You've completed onboarding." 
+                    : `Step ${userSession.currentStep + 1} of ${ONBOARDING_STEPS.length}`}
+                </CardDescription>
+              </div>
+              <div className="text-right">
+                <div className="text-3xl font-bold text-emerald-600">{userSession.progress}%</div>
+                <p className="text-sm text-muted-foreground">Complete</p>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <Progress value={userSession.progress} className="mb-4" />
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Bell className="h-4 w-4" />
+              <span>{userSession.tasks?.filter(t => t.status === "todo").length || 0} tasks pending</span>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      <Tabs value={currentStep.toString()} className="space-y-4">
+        <TabsList className="grid w-full grid-cols-4">
+          {ONBOARDING_STEPS.slice(0, 4).map((step) => (
+            <TabsTrigger
+              key={step.id}
+              value={step.id.toString()}
+              disabled={!userSession && step.id > 0}
+              className="flex items-center gap-2"
+            >
+              {userSession?.completedSteps.includes(step.id) ? (
+                <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+              ) : (
+                <Circle className="h-4 w-4" />
+              )}
+              <span className="hidden sm:inline">{step.title}</span>
+            </TabsTrigger>
+          ))}
+        </TabsList>
+
+        <TabsContent value="0" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Users className="h-5 w-5" />
+                Welcome to the Team!
+              </CardTitle>
+              <CardDescription>
+                Let's get you started with role-based onboarding
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="space-y-2">
+                <Label htmlFor="role">Select Your Role</Label>
+                <Select value={selectedRole} onValueChange={setSelectedRole}>
+                  <SelectTrigger id="role">
+                    <SelectValue placeholder="Choose your role" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ROLE_TEMPLATES.map((role) => (
+                      <SelectItem key={role.value} value={role.value}>
+                        <div className="flex items-center gap-2">
+                          <span>{role.icon}</span>
+                          <span>{role.label}</span>
+                          <Badge variant="secondary" className="ml-2">{role.tasks} tasks</Badge>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-sm text-muted-foreground">
+                  We'll automatically assign role-specific tasks and training materials
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="department">Department (Optional)</Label>
+                <Input
+                  id="department"
+                  placeholder="e.g., Engineering, Marketing"
+                  value={department}
+                  onChange={(e) => setDepartment(e.target.value)}
+                />
+              </div>
+
+              {selectedRole && (
+                <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-lg">
+                  <h4 className="font-semibold mb-2 flex items-center gap-2">
+                    <Award className="h-4 w-4 text-emerald-600" />
+                    What You'll Get:
+                  </h4>
+                  <ul className="space-y-1 text-sm text-muted-foreground">
+                    <li>✓ {ROLE_TEMPLATES.find(r => r.value === selectedRole)?.tasks} automated tasks</li>
+                    <li>✓ Role-specific training materials</li>
+                    <li>✓ Progress notifications</li>
+                    <li>✓ Completion certificate</li>
+                  </ul>
+                </div>
+              )}
+
+              <Button 
+                onClick={handleStartOnboarding} 
+                disabled={!selectedRole || !!userSession}
+                className="w-full"
+                size="lg"
+              >
+                {userSession ? "Already Started" : "Start Onboarding"}
+              </Button>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {ONBOARDING_STEPS.slice(1).map((step) => (
+          <TabsContent key={step.id} value={step.id.toString()} className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>{step.title}</CardTitle>
+                <CardDescription>{step.description}</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  <p className="text-sm">
+                    Complete the activities for this step and add any notes below.
+                  </p>
+                </div>
+
+                {userSession?.tasks && (
+                  <div className="space-y-2">
+                    <Label>Related Tasks</Label>
+                    <div className="space-y-2">
+                      {userSession.tasks
+                        .filter(t => t.status !== "done")
+                        .slice(0, 3)
+                        .map((task) => (
+                          <div key={task._id} className="flex items-start gap-2 p-3 border rounded-lg">
+                            <Briefcase className="h-4 w-4 mt-1 text-muted-foreground" />
+                            <div className="flex-1">
+                              <p className="font-medium text-sm">{task.title}</p>
+                              <p className="text-xs text-muted-foreground">{task.description}</p>
+                            </div>
+                            <Badge variant={task.priority === "high" ? "destructive" : "secondary"}>
+                              {task.priority}
+                            </Badge>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className="space-y-2">
+                  <Label htmlFor="notes">Notes (Optional)</Label>
+                  <Textarea
+                    id="notes"
+                    placeholder="Add any notes or feedback about this step..."
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    rows={4}
+                  />
+                </div>
+
+                <Button 
+                  onClick={handleCompleteStep}
+                  disabled={!userSession || userSession.completedSteps.includes(step.id)}
+                  className="w-full"
+                  size="lg"
+                >
+                  {userSession?.completedSteps.includes(step.id) ? (
+                    <>
+                      <CheckCircle2 className="mr-2 h-4 w-4" />
+                      Completed
+                    </>
+                  ) : (
+                    "Complete Step"
+                  )}
+                </Button>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        ))}
+      </Tabs>
+
+      {userSession?.status === "completed" && (
+        <Card className="border-emerald-200 bg-gradient-to-br from-emerald-50 to-green-50">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Award className="h-6 w-6 text-emerald-600" />
+              Onboarding Complete!
+            </CardTitle>
+            <CardDescription>
+              Congratulations on completing your onboarding journey
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-center p-8">
+              <div className="text-center space-y-4">
+                <div className="text-6xl">🎉</div>
+                <h3 className="text-2xl font-bold">Welcome Aboard!</h3>
+                <p className="text-muted-foreground">
+                  You're now fully onboarded and ready to contribute to the team.
+                </p>
+              </div>
+            </div>
+            <Button className="w-full" size="lg">
+              <Download className="mr-2 h-4 w-4" />
+              Download Certificate
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+    </div>
   );
 }

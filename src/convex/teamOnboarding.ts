@@ -1,7 +1,339 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { mutation, query, internalMutation } from "./_generated/server";
 import { internal } from "./_generated/api";
-import type { Id } from "./_generated/dataModel";
+
+// Role-based task templates
+const ROLE_TASK_TEMPLATES: Record<string, Array<{ title: string; description: string; priority: "low" | "medium" | "high"; dueInDays: number }>> = {
+  developer: [
+    { title: "Set up development environment", description: "Install required tools and access repositories", priority: "high", dueInDays: 1 },
+    { title: "Complete security training", description: "Review security policies and best practices", priority: "high", dueInDays: 2 },
+    { title: "Review codebase architecture", description: "Understand system design and patterns", priority: "medium", dueInDays: 3 },
+    { title: "Complete first code review", description: "Participate in team code review process", priority: "medium", dueInDays: 5 },
+  ],
+  designer: [
+    { title: "Access design tools", description: "Set up Figma, Adobe Creative Suite, etc.", priority: "high", dueInDays: 1 },
+    { title: "Review brand guidelines", description: "Study company brand identity and standards", priority: "high", dueInDays: 2 },
+    { title: "Meet with design team", description: "Introduction to design processes and workflows", priority: "medium", dueInDays: 3 },
+    { title: "Complete first design task", description: "Work on assigned design project", priority: "medium", dueInDays: 7 },
+  ],
+  marketing: [
+    { title: "Access marketing platforms", description: "Set up accounts for social media, analytics, etc.", priority: "high", dueInDays: 1 },
+    { title: "Review marketing strategy", description: "Understand current campaigns and goals", priority: "high", dueInDays: 2 },
+    { title: "Meet key stakeholders", description: "Connect with sales, product, and content teams", priority: "medium", dueInDays: 3 },
+    { title: "Create first campaign", description: "Launch your first marketing initiative", priority: "medium", dueInDays: 7 },
+  ],
+  sales: [
+    { title: "CRM system training", description: "Learn to use Salesforce/HubSpot", priority: "high", dueInDays: 1 },
+    { title: "Product knowledge training", description: "Deep dive into product features and benefits", priority: "high", dueInDays: 2 },
+    { title: "Shadow senior sales rep", description: "Observe sales calls and demos", priority: "medium", dueInDays: 3 },
+    { title: "Complete first demo", description: "Deliver product demo to prospect", priority: "medium", dueInDays: 10 },
+  ],
+  manager: [
+    { title: "HR systems access", description: "Set up access to HRIS, payroll, performance tools", priority: "high", dueInDays: 1 },
+    { title: "Leadership training", description: "Complete management fundamentals course", priority: "high", dueInDays: 3 },
+    { title: "Team introductions", description: "Meet with all direct reports individually", priority: "high", dueInDays: 5 },
+    { title: "Set team goals", description: "Establish quarterly objectives with team", priority: "medium", dueInDays: 14 },
+  ],
+};
+
+// Create onboarding session with automated task assignment
+export const createOnboardingSession = mutation({
+  args: {
+    businessId: v.id("businesses"),
+    userId: v.id("users"),
+    role: v.string(),
+    department: v.optional(v.string()),
+    startDate: v.number(),
+    hrSystemId: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const sessionId = await ctx.db.insert("teamOnboarding", {
+      businessId: args.businessId,
+      userId: args.userId,
+      role: args.role,
+      department: args.department,
+      startDate: args.startDate,
+      currentStep: 0,
+      completedSteps: [],
+      progress: 0,
+      status: "in_progress",
+      hrSystemId: args.hrSystemId,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+
+    // Automatically create role-based tasks
+    await ctx.scheduler.runAfter(0, internal.teamOnboarding.createRoleBasedTasks, {
+      sessionId,
+      businessId: args.businessId,
+      userId: args.userId,
+      role: args.role,
+    });
+
+    // Send welcome notification
+    await ctx.scheduler.runAfter(0, internal.notifications.sendNotification, {
+      businessId: args.businessId,
+      userId: args.userId,
+      type: "system_alert",
+      title: "Welcome to the team!",
+      message: `Your onboarding journey has begun. Complete your tasks to get started.`,
+      priority: "high",
+    });
+
+    return sessionId;
+  },
+});
+
+// Internal mutation to create role-based tasks
+export const createRoleBasedTasks = internalMutation({
+  args: {
+    sessionId: v.id("teamOnboarding"),
+    businessId: v.id("businesses"),
+    userId: v.id("users"),
+    role: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const templates = ROLE_TASK_TEMPLATES[args.role.toLowerCase()] || ROLE_TASK_TEMPLATES.developer;
+    const now = Date.now();
+
+    for (const template of templates) {
+      const dueDate = now + (template.dueInDays * 24 * 60 * 60 * 1000);
+      
+      await ctx.db.insert("tasks", {
+        businessId: args.businessId,
+        title: template.title,
+        description: template.description,
+        priority: template.priority,
+        urgent: template.priority === "high",
+        status: "todo",
+        dueDate,
+        createdAt: now,
+        updatedAt: now,
+        metadata: {
+          onboardingSessionId: args.sessionId,
+          assignedTo: args.userId,
+        },
+      });
+    }
+
+    return templates.length;
+  },
+});
+
+// Update onboarding progress with notifications
+export const updateOnboardingProgress = mutation({
+  args: {
+    sessionId: v.id("teamOnboarding"),
+    stepCompleted: v.number(),
+    notes: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const session = await ctx.db.get(args.sessionId);
+    if (!session) throw new Error("Onboarding session not found");
+
+    const completedSteps = [...session.completedSteps, args.stepCompleted];
+    const totalSteps = 8; // Standard onboarding steps
+    const progress = Math.round((completedSteps.length / totalSteps) * 100);
+    const status = progress === 100 ? "completed" : "in_progress";
+
+    await ctx.db.patch(args.sessionId, {
+      completedSteps,
+      currentStep: args.stepCompleted + 1,
+      progress,
+      status,
+      updatedAt: Date.now(),
+    });
+
+    // Send progress notification
+    await ctx.scheduler.runAfter(0, internal.notifications.sendNotification, {
+      businessId: session.businessId,
+      userId: session.userId,
+      type: "workflow_completion",
+      title: "Onboarding Progress Update",
+      message: `You've completed step ${args.stepCompleted + 1}. You're ${progress}% done!`,
+      priority: "medium",
+    });
+
+    // If completed, trigger completion workflow
+    if (status === "completed") {
+      await ctx.scheduler.runAfter(0, internal.teamOnboarding.handleOnboardingCompletion, {
+        sessionId: args.sessionId,
+        businessId: session.businessId,
+        userId: session.userId,
+      });
+    }
+
+    return { progress, status };
+  },
+});
+
+// Handle onboarding completion
+export const handleOnboardingCompletion = internalMutation({
+  args: {
+    sessionId: v.id("teamOnboarding"),
+    businessId: v.id("businesses"),
+    userId: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.sessionId, {
+      completedAt: Date.now(),
+      status: "completed",
+    });
+
+    // Send completion notification
+    await ctx.scheduler.runAfter(0, internal.notifications.sendNotification, {
+      businessId: args.businessId,
+      userId: args.userId,
+      type: "workflow_completion",
+      title: "🎉 Onboarding Complete!",
+      message: "Congratulations! You've completed your onboarding. Your certificate is ready.",
+      priority: "high",
+    });
+
+    // Notify manager/HR
+    const user = await ctx.db.get(args.userId);
+    if (user?.managerId) {
+      await ctx.scheduler.runAfter(0, internal.notifications.sendNotification, {
+        businessId: args.businessId,
+        userId: user.managerId,
+        type: "system_alert",
+        title: "Team Member Onboarding Complete",
+        message: `${user.name || user.email} has completed their onboarding.`,
+        priority: "medium",
+      });
+    }
+
+    return true;
+  },
+});
+
+// Get onboarding analytics
+export const getOnboardingAnalytics = query({
+  args: {
+    businessId: v.id("businesses"),
+    timeRange: v.optional(v.union(v.literal("7d"), v.literal("30d"), v.literal("90d"))),
+  },
+  handler: async (ctx, args) => {
+    const sessions = await ctx.db
+      .query("teamOnboarding")
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .collect();
+
+    const now = Date.now();
+    const timeRangeMs = args.timeRange === "7d" ? 7 * 24 * 60 * 60 * 1000 :
+                        args.timeRange === "30d" ? 30 * 24 * 60 * 60 * 1000 :
+                        90 * 24 * 60 * 60 * 1000;
+    
+    const recentSessions = sessions.filter(s => s.createdAt > now - timeRangeMs);
+
+    const totalSessions = recentSessions.length;
+    const completedSessions = recentSessions.filter(s => s.status === "completed").length;
+    const inProgressSessions = recentSessions.filter(s => s.status === "in_progress").length;
+    const averageProgress = recentSessions.reduce((sum, s) => sum + s.progress, 0) / (totalSessions || 1);
+    
+    // Calculate average completion time
+    const completedWithTime = recentSessions.filter(s => s.completedAt);
+    const averageCompletionDays = completedWithTime.length > 0
+      ? completedWithTime.reduce((sum, s) => sum + ((s.completedAt! - s.createdAt) / (24 * 60 * 60 * 1000)), 0) / completedWithTime.length
+      : 0;
+
+    // Role breakdown
+    const roleBreakdown = recentSessions.reduce((acc: Record<string, number>, s) => {
+      acc[s.role] = (acc[s.role] || 0) + 1;
+      return acc;
+    }, {});
+
+    return {
+      totalSessions,
+      completedSessions,
+      inProgressSessions,
+      completionRate: totalSessions > 0 ? (completedSessions / totalSessions) * 100 : 0,
+      averageProgress: Math.round(averageProgress),
+      averageCompletionDays: Math.round(averageCompletionDays * 10) / 10,
+      roleBreakdown,
+      recentSessions: recentSessions.slice(0, 10),
+    };
+  },
+});
+
+// Get user's onboarding session
+export const getUserOnboardingSession = query({
+  args: {
+    userId: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    const session = await ctx.db
+      .query("teamOnboarding")
+      .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .order("desc")
+      .first();
+
+    if (!session) return null;
+
+    // Get associated tasks
+    const tasks = await ctx.db
+      .query("tasks")
+      .withIndex("by_business", (q) => q.eq("businessId", session.businessId))
+      .collect();
+
+    const onboardingTasks = tasks.filter(t => 
+      t.metadata?.onboardingSessionId === session._id
+    );
+
+    return {
+      ...session,
+      tasks: onboardingTasks,
+    };
+  },
+});
+
+// Sync with HR system
+export const syncWithHRSystem = mutation({
+  args: {
+    sessionId: v.id("teamOnboarding"),
+    hrData: v.any(),
+  },
+  handler: async (ctx, args) => {
+    const session = await ctx.db.get(args.sessionId);
+    if (!session) throw new Error("Session not found");
+
+    await ctx.db.patch(args.sessionId, {
+      hrSystemData: args.hrData,
+      lastHRSync: Date.now(),
+      updatedAt: Date.now(),
+    });
+
+    return true;
+  },
+});
+
+// Get team onboarding dashboard
+export const getTeamOnboardingDashboard = query({
+  args: {
+    businessId: v.id("businesses"),
+  },
+  handler: async (ctx, args) => {
+    const sessions = await ctx.db
+      .query("teamOnboarding")
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .order("desc")
+      .take(50);
+
+    const activeCount = sessions.filter(s => s.status === "in_progress").length;
+    const completedCount = sessions.filter(s => s.status === "completed").length;
+    const avgProgress = sessions.reduce((sum, s) => sum + s.progress, 0) / (sessions.length || 1);
+
+    return {
+      sessions,
+      stats: {
+        active: activeCount,
+        completed: completedCount,
+        total: sessions.length,
+        averageProgress: Math.round(avgProgress),
+      },
+    };
+  },
+});
 
 // Get user's onboarding checklist
 export const getUserOnboarding = query({

@@ -1,98 +1,11 @@
-import { query, mutation, internalMutation } from "./_generated/server";
 import { v } from "convex/values";
+import { mutation, query, internalMutation } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
 
-// Query: List policies for a business
-export const listPolicies = query({
-  args: { 
-    businessId: v.optional(v.id("businesses")),
-    status: v.optional(v.union(v.literal("draft"), v.literal("active"), v.literal("deprecated"))),
-  },
-  handler: async (ctx, args) => {
-    if (!args.businessId) return [];
-    
-    let query = ctx.db
-      .query("policies")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId!));
-    
-    const policies = await query.collect();
-    
-    if (args.status) {
-      return policies.filter(p => p.status === args.status);
-    }
-    
-    return policies;
-  },
-});
+// ============================================================================
+// POLICY CRUD OPERATIONS
+// ============================================================================
 
-// Query: Get policy by ID with version history
-export const getPolicyWithVersions = query({
-  args: { policyId: v.id("policies") },
-  handler: async (ctx, args) => {
-    const policy = await ctx.db.get(args.policyId);
-    if (!policy) return null;
-    
-    const versions = await ctx.db
-      .query("policyVersions")
-      .withIndex("by_policy", (q) => q.eq("policyId", args.policyId))
-      .order("desc")
-      .collect();
-    
-    return { policy, versions };
-  },
-});
-
-// Query: Get pending policy approvals
-export const getPendingApprovals = query({
-  args: { businessId: v.optional(v.id("businesses")) },
-  handler: async (ctx, args) => {
-    if (!args.businessId) return [];
-    
-    return await ctx.db
-      .query("policyApprovals")
-      .withIndex("by_business_and_status", (q) => 
-        q.eq("businessId", args.businessId!).eq("status", "pending")
-      )
-      .collect();
-  },
-});
-
-// Query: Get policy compliance status
-export const getPolicyCompliance = query({
-  args: { businessId: v.optional(v.id("businesses")) },
-  handler: async (ctx, args) => {
-    if (!args.businessId) return { compliant: 0, nonCompliant: 0, exceptions: 0 };
-    
-    const policies = await ctx.db
-      .query("policies")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId!))
-      .filter((q) => q.eq(q.field("status"), "active"))
-      .collect();
-    
-    const exceptions = await ctx.db
-      .query("policyExceptions")
-      .withIndex("by_business_and_status", (q) => 
-        q.eq("businessId", args.businessId!).eq("status", "active")
-      )
-      .collect();
-    
-    let compliant = 0;
-    let nonCompliant = 0;
-    
-    for (const policy of policies) {
-      const hasException = exceptions.some(e => e.policyId === policy._id);
-      if (hasException) {
-        nonCompliant++;
-      } else {
-        compliant++;
-      }
-    }
-    
-    return { compliant, nonCompliant, exceptions: exceptions.length };
-  },
-});
-
-// Mutation: Create policy
 export const createPolicy = mutation({
   args: {
     businessId: v.id("businesses"),
@@ -100,19 +13,23 @@ export const createPolicy = mutation({
     description: v.string(),
     category: v.string(),
     content: v.string(),
-    severity: v.union(v.literal("low"), v.literal("medium"), v.literal("high"), v.literal("critical")),
-    requiresApproval: v.boolean(),
+    severity: v.union(
+      v.literal("low"),
+      v.literal("medium"),
+      v.literal("high"),
+      v.literal("critical")
+    ),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Unauthorized");
-    
+    if (!identity) throw new Error("Unauthenticated");
+
     const user = await ctx.db
       .query("users")
       .withIndex("email", (q) => q.eq("email", identity.email!))
       .unique();
     if (!user) throw new Error("User not found");
-    
+
     const policyId = await ctx.db.insert("policies", {
       businessId: args.businessId,
       title: args.title,
@@ -120,13 +37,13 @@ export const createPolicy = mutation({
       category: args.category,
       content: args.content,
       version: "1.0",
-      status: args.requiresApproval ? "draft" : "active",
+      status: "draft",
       severity: args.severity,
       createdBy: user._id,
       createdAt: Date.now(),
       updatedAt: Date.now(),
     });
-    
+
     // Create initial version
     await ctx.db.insert("policyVersions", {
       policyId,
@@ -136,90 +53,151 @@ export const createPolicy = mutation({
       createdBy: user._id,
       createdAt: Date.now(),
     });
-    
-    // Create approval request if required
-    if (args.requiresApproval) {
-      await ctx.db.insert("policyApprovals", {
-        businessId: args.businessId,
-        policyId,
-        requestedBy: user._id,
-        status: "pending",
-        createdAt: Date.now(),
-      });
-    }
-    
-    // Audit log
-    await ctx.db.insert("audit_logs", {
-      businessId: args.businessId,
-      userId: user._id,
-      action: "policy_created",
-      entityType: "policy",
-      entityId: policyId,
-      details: { title: args.title, version: "1.0" },
-      createdAt: Date.now(),
-    });
-    
+
     return policyId;
   },
 });
 
-// Mutation: Update policy (creates new version)
 export const updatePolicy = mutation({
   args: {
     policyId: v.id("policies"),
-    content: v.string(),
-    changeNotes: v.string(),
+    title: v.optional(v.string()),
+    description: v.optional(v.string()),
+    category: v.optional(v.string()),
+    content: v.optional(v.string()),
+    severity: v.optional(
+      v.union(
+        v.literal("low"),
+        v.literal("medium"),
+        v.literal("high"),
+        v.literal("critical")
+      )
+    ),
+    changeNotes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Unauthorized");
-    
+    if (!identity) throw new Error("Unauthenticated");
+
     const user = await ctx.db
       .query("users")
       .withIndex("email", (q) => q.eq("email", identity.email!))
       .unique();
     if (!user) throw new Error("User not found");
-    
+
     const policy = await ctx.db.get(args.policyId);
     if (!policy) throw new Error("Policy not found");
-    
-    // Parse version and increment
-    const [major, minor] = policy.version.split(".").map(Number);
-    const newVersion = `${major}.${minor + 1}`;
-    
-    // Update policy
-    await ctx.db.patch(args.policyId, {
-      content: args.content,
-      version: newVersion,
-      updatedAt: Date.now(),
-    });
-    
-    // Create version record
-    await ctx.db.insert("policyVersions", {
-      policyId: args.policyId,
-      version: newVersion,
-      content: args.content,
-      changeNotes: args.changeNotes,
-      createdBy: user._id,
-      createdAt: Date.now(),
-    });
-    
-    // Audit log
-    await ctx.db.insert("audit_logs", {
-      businessId: policy.businessId,
-      userId: user._id,
-      action: "policy_updated",
-      entityType: "policy",
-      entityId: args.policyId,
-      details: { version: newVersion, changeNotes: args.changeNotes },
-      createdAt: Date.now(),
-    });
-    
-    return newVersion;
+
+    const updates: any = { updatedAt: Date.now() };
+    if (args.title) updates.title = args.title;
+    if (args.description) updates.description = args.description;
+    if (args.category) updates.category = args.category;
+    if (args.severity) updates.severity = args.severity;
+
+    // If content changed, create new version
+    if (args.content && args.content !== policy.content) {
+      const versionParts = policy.version.split(".");
+      const newVersion = `${versionParts[0]}.${parseInt(versionParts[1]) + 1}`;
+      
+      updates.content = args.content;
+      updates.version = newVersion;
+
+      await ctx.db.insert("policyVersions", {
+        policyId: args.policyId,
+        version: newVersion,
+        content: args.content,
+        changeNotes: args.changeNotes || "Updated policy content",
+        createdBy: user._id,
+        createdAt: Date.now(),
+      });
+    }
+
+    await ctx.db.patch(args.policyId, updates);
+    return args.policyId;
   },
 });
 
-// Mutation: Approve policy
+export const deletePolicy = mutation({
+  args: { policyId: v.id("policies") },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Unauthenticated");
+
+    await ctx.db.delete(args.policyId);
+  },
+});
+
+// ============================================================================
+// POLICY QUERIES
+// ============================================================================
+
+export const getPolicies = query({
+  args: {
+    businessId: v.id("businesses"),
+    status: v.optional(v.union(v.literal("draft"), v.literal("active"), v.literal("deprecated"))),
+  },
+  handler: async (ctx, args) => {
+    let query = ctx.db
+      .query("policies")
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId));
+
+    if (args.status) {
+      const policies = await query.collect();
+      return policies.filter((p) => p.status === args.status);
+    }
+
+    return await query.collect();
+  },
+});
+
+export const getPolicy = query({
+  args: { policyId: v.id("policies") },
+  handler: async (ctx, args) => {
+    return await ctx.db.get(args.policyId);
+  },
+});
+
+export const getPolicyVersions = query({
+  args: { policyId: v.id("policies") },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("policyVersions")
+      .withIndex("by_policy", (q) => q.eq("policyId", args.policyId))
+      .collect();
+  },
+});
+
+// ============================================================================
+// APPROVAL WORKFLOW
+// ============================================================================
+
+export const requestApproval = mutation({
+  args: {
+    businessId: v.id("businesses"),
+    policyId: v.id("policies"),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Unauthenticated");
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("email", (q) => q.eq("email", identity.email!))
+      .unique();
+    if (!user) throw new Error("User not found");
+
+    const approvalId = await ctx.db.insert("policyApprovals", {
+      businessId: args.businessId,
+      policyId: args.policyId,
+      requestedBy: user._id,
+      status: "pending",
+      createdAt: Date.now(),
+    });
+
+    return approvalId;
+  },
+});
+
 export const approvePolicy = mutation({
   args: {
     approvalId: v.id("policyApprovals"),
@@ -227,152 +205,373 @@ export const approvePolicy = mutation({
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Unauthorized");
-    
+    if (!identity) throw new Error("Unauthenticated");
+
     const user = await ctx.db
       .query("users")
       .withIndex("email", (q) => q.eq("email", identity.email!))
       .unique();
     if (!user) throw new Error("User not found");
-    
+
     const approval = await ctx.db.get(args.approvalId);
     if (!approval) throw new Error("Approval not found");
-    
-    // Update approval
+
     await ctx.db.patch(args.approvalId, {
       status: "approved",
       approvedBy: user._id,
       approvedAt: Date.now(),
       comments: args.comments,
     });
-    
-    // Activate policy
+
+    // Activate the policy
     await ctx.db.patch(approval.policyId, {
       status: "active",
       updatedAt: Date.now(),
     });
-    
-    // Audit log
-    await ctx.db.insert("audit_logs", {
-      businessId: approval.businessId,
-      userId: user._id,
-      action: "policy_approved",
-      entityType: "policy",
-      entityId: approval.policyId,
-      details: { comments: args.comments },
-      createdAt: Date.now(),
-    });
-    
-    return approval.policyId;
+
+    return args.approvalId;
   },
 });
 
-// Mutation: Reject policy
 export const rejectPolicy = mutation({
   args: {
     approvalId: v.id("policyApprovals"),
-    reason: v.string(),
+    comments: v.string(),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Unauthorized");
-    
+    if (!identity) throw new Error("Unauthenticated");
+
     const user = await ctx.db
       .query("users")
       .withIndex("email", (q) => q.eq("email", identity.email!))
       .unique();
     if (!user) throw new Error("User not found");
-    
-    const approval = await ctx.db.get(args.approvalId);
-    if (!approval) throw new Error("Approval not found");
-    
-    // Update approval
+
     await ctx.db.patch(args.approvalId, {
       status: "rejected",
       approvedBy: user._id,
       approvedAt: Date.now(),
-      comments: args.reason,
+      comments: args.comments,
     });
-    
-    // Audit log
-    await ctx.db.insert("audit_logs", {
-      businessId: approval.businessId,
-      userId: user._id,
-      action: "policy_rejected",
-      entityType: "policy",
-      entityId: approval.policyId,
-      details: { reason: args.reason },
-      createdAt: Date.now(),
-    });
-    
-    return approval.policyId;
+
+    return args.approvalId;
   },
 });
 
-// Mutation: Create policy exception
-export const createException = mutation({
+export const getPendingApprovals = query({
+  args: { businessId: v.id("businesses") },
+  handler: async (ctx, args) => {
+    const approvals = await ctx.db
+      .query("policyApprovals")
+      .withIndex("by_business_and_status", (q) =>
+        q.eq("businessId", args.businessId).eq("status", "pending")
+      )
+      .collect();
+
+    const enriched = await Promise.all(
+      approvals.map(async (approval) => {
+        const policy = await ctx.db.get(approval.policyId);
+        const requester = await ctx.db.get(approval.requestedBy);
+        return {
+          ...approval,
+          policy,
+          requester,
+        };
+      })
+    );
+
+    return enriched;
+  },
+});
+
+// ============================================================================
+// DISTRIBUTION & ACKNOWLEDGMENT
+// ============================================================================
+
+export const distributePolicy = mutation({
   args: {
-    businessId: v.id("businesses"),
     policyId: v.id("policies"),
-    reason: v.string(),
-    expiresAt: v.optional(v.number()),
+    userIds: v.array(v.id("users")),
+    dueDate: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Unauthorized");
-    
-    const user = await ctx.db
-      .query("users")
-      .withIndex("email", (q) => q.eq("email", identity.email!))
-      .unique();
-    if (!user) throw new Error("User not found");
-    
-    const exceptionId = await ctx.db.insert("policyExceptions", {
-      businessId: args.businessId,
-      policyId: args.policyId,
-      reason: args.reason,
-      status: "active",
-      createdBy: user._id,
-      createdAt: Date.now(),
-      expiresAt: args.expiresAt,
-    });
-    
-    // Audit log
-    await ctx.db.insert("audit_logs", {
-      businessId: args.businessId,
-      userId: user._id,
-      action: "policy_exception_created",
-      entityType: "policy_exception",
-      entityId: exceptionId,
-      details: { policyId: args.policyId, reason: args.reason },
-      createdAt: Date.now(),
-    });
-    
-    return exceptionId;
+    if (!identity) throw new Error("Unauthenticated");
+
+    const policy = await ctx.db.get(args.policyId);
+    if (!policy) throw new Error("Policy not found");
+
+    // Create acknowledgment records
+    const acknowledgmentIds = await Promise.all(
+      args.userIds.map((userId) =>
+        ctx.db.insert("policyAcknowledgments", {
+          policyId: args.policyId,
+          userId,
+          status: "pending",
+          distributedAt: Date.now(),
+          dueDate: args.dueDate,
+        })
+      )
+    );
+
+    // Create notifications
+    await Promise.all(
+      args.userIds.map((userId) =>
+        ctx.db.insert("notifications", {
+          businessId: policy.businessId,
+          userId,
+          type: "system_alert",
+          title: "New Policy Requires Acknowledgment",
+          message: `Please review and acknowledge: ${policy.title}`,
+          data: { policyId: args.policyId },
+          isRead: false,
+          priority: "high",
+          createdAt: Date.now(),
+        })
+      )
+    );
+
+    return acknowledgmentIds;
   },
 });
 
-// Query: Get policy exceptions
-export const getExceptions = query({
-  args: { 
-    businessId: v.optional(v.id("businesses")),
-    policyId: v.optional(v.id("policies")),
+export const acknowledgePolicy = mutation({
+  args: {
+    acknowledgmentId: v.id("policyAcknowledgments"),
+    signature: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    if (!args.businessId) return [];
-    
-    let query = ctx.db
-      .query("policyExceptions")
-      .withIndex("by_business_and_status", (q) => 
-        q.eq("businessId", args.businessId!).eq("status", "active")
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Unauthenticated");
+
+    await ctx.db.patch(args.acknowledgmentId, {
+      status: "acknowledged",
+      acknowledgedAt: Date.now(),
+      signature: args.signature,
+    });
+
+    return args.acknowledgmentId;
+  },
+});
+
+export const getPolicyAcknowledgments = query({
+  args: { policyId: v.id("policies") },
+  handler: async (ctx, args) => {
+    const acknowledgments = await ctx.db
+      .query("policyAcknowledgments")
+      .withIndex("by_policy", (q) => q.eq("policyId", args.policyId))
+      .collect();
+
+    const enriched = await Promise.all(
+      acknowledgments.map(async (ack) => {
+        const user = await ctx.db.get(ack.userId);
+        return { ...ack, user };
+      })
+    );
+
+    return enriched;
+  },
+});
+
+export const getUserPendingAcknowledgments = query({
+  args: { userId: v.id("users") },
+  handler: async (ctx, args) => {
+    const acknowledgments = await ctx.db
+      .query("policyAcknowledgments")
+      .withIndex("by_user_and_status", (q) =>
+        q.eq("userId", args.userId).eq("status", "pending")
+      )
+      .collect();
+
+    const enriched = await Promise.all(
+      acknowledgments.map(async (ack) => {
+        const policy = await ctx.db.get(ack.policyId);
+        return { ...ack, policy };
+      })
+    );
+
+    return enriched;
+  },
+});
+
+// ============================================================================
+// EFFECTIVENESS ANALYTICS
+// ============================================================================
+
+export const getPolicyEffectiveness = query({
+  args: { businessId: v.id("businesses") },
+  handler: async (ctx, args) => {
+    const policies = await ctx.db
+      .query("policies")
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .collect();
+
+    const analytics = await Promise.all(
+      policies.map(async (policy) => {
+        const acknowledgments = await ctx.db
+          .query("policyAcknowledgments")
+          .withIndex("by_policy", (q) => q.eq("policyId", policy._id))
+          .collect();
+
+        const total = acknowledgments.length;
+        const acknowledged = acknowledgments.filter(
+          (a) => a.status === "acknowledged"
+        ).length;
+        const overdue = acknowledgments.filter(
+          (a) => a.status === "pending" && a.dueDate && a.dueDate < Date.now()
+        ).length;
+
+        const violations = await ctx.db
+          .query("governanceViolations")
+          .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+          .collect();
+
+        const relatedViolations = violations.filter((v) =>
+          v.reason.toLowerCase().includes(policy.title.toLowerCase())
+        ).length;
+
+        return {
+          policyId: policy._id,
+          title: policy.title,
+          category: policy.category,
+          status: policy.status,
+          version: policy.version,
+          acknowledgmentRate: total > 0 ? (acknowledged / total) * 100 : 0,
+          totalDistributed: total,
+          acknowledged,
+          pending: total - acknowledged,
+          overdue,
+          relatedViolations,
+          effectivenessScore:
+            total > 0
+              ? Math.round(
+                  ((acknowledged / total) * 70 +
+                    (relatedViolations === 0 ? 30 : Math.max(0, 30 - relatedViolations * 5))) *
+                    10
+                ) / 10
+              : 0,
+        };
+      })
+    );
+
+    return analytics;
+  },
+});
+
+export const getPolicyComplianceReport = query({
+  args: {
+    businessId: v.id("businesses"),
+    startDate: v.number(),
+    endDate: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const policies = await ctx.db
+      .query("policies")
+      .withIndex("by_business_and_status", (q) =>
+        q.eq("businessId", args.businessId).eq("status", "active")
+      )
+      .collect();
+
+    const report = {
+      totalPolicies: policies.length,
+      byCategory: {} as Record<string, number>,
+      bySeverity: {} as Record<string, number>,
+      acknowledgmentStats: {
+        total: 0,
+        acknowledged: 0,
+        pending: 0,
+        overdue: 0,
+      },
+      topPolicies: [] as any[],
+    };
+
+    for (const policy of policies) {
+      report.byCategory[policy.category] =
+        (report.byCategory[policy.category] || 0) + 1;
+      report.bySeverity[policy.severity] =
+        (report.bySeverity[policy.severity] || 0) + 1;
+
+      const acknowledgments = await ctx.db
+        .query("policyAcknowledgments")
+        .withIndex("by_policy", (q) => q.eq("policyId", policy._id))
+        .collect();
+
+      const filtered = acknowledgments.filter(
+        (a) =>
+          a.distributedAt >= args.startDate && a.distributedAt <= args.endDate
       );
-    
-    const exceptions = await query.collect();
-    
-    if (args.policyId) {
-      return exceptions.filter(e => e.policyId === args.policyId);
+
+      report.acknowledgmentStats.total += filtered.length;
+      report.acknowledgmentStats.acknowledged += filtered.filter(
+        (a) => a.status === "acknowledged"
+      ).length;
+      report.acknowledgmentStats.pending += filtered.filter(
+        (a) => a.status === "pending"
+      ).length;
+      report.acknowledgmentStats.overdue += filtered.filter(
+        (a) => a.status === "pending" && a.dueDate && a.dueDate < Date.now()
+      ).length;
     }
-    
-    return exceptions;
+
+    return report;
+  },
+});
+
+export const getPolicyTrends = query({
+  args: {
+    businessId: v.id("businesses"),
+    days: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const startDate = Date.now() - args.days * 24 * 60 * 60 * 1000;
+
+    const policies = await ctx.db
+      .query("policies")
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .collect();
+
+    const recentPolicies = policies.filter((p) => p.createdAt >= startDate);
+
+    const acknowledgments = await ctx.db
+      .query("policyAcknowledgments")
+      .collect();
+
+    const recentAcknowledgments = acknowledgments.filter(
+      (a) => a.distributedAt >= startDate
+    );
+
+    const dailyData: Record<
+      string,
+      { date: string; created: number; distributed: number; acknowledged: number }
+    > = {};
+
+    for (let i = 0; i < args.days; i++) {
+      const date = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
+      const dateStr = date.toISOString().split("T")[0];
+      dailyData[dateStr] = {
+        date: dateStr,
+        created: 0,
+        distributed: 0,
+        acknowledged: 0,
+      };
+    }
+
+    recentPolicies.forEach((p) => {
+      const dateStr = new Date(p.createdAt).toISOString().split("T")[0];
+      if (dailyData[dateStr]) dailyData[dateStr].created++;
+    });
+
+    recentAcknowledgments.forEach((a) => {
+      const distDateStr = new Date(a.distributedAt).toISOString().split("T")[0];
+      if (dailyData[distDateStr]) dailyData[distDateStr].distributed++;
+
+      if (a.acknowledgedAt) {
+        const ackDateStr = new Date(a.acknowledgedAt).toISOString().split("T")[0];
+        if (dailyData[ackDateStr]) dailyData[ackDateStr].acknowledged++;
+      }
+    });
+
+    return Object.values(dailyData).reverse();
   },
 });

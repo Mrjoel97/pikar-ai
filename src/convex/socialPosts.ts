@@ -774,3 +774,118 @@ export const bulkSchedulePosts = mutation({
     return { scheduled };
   },
 });
+
+/**
+ * Track engagement metrics for a post
+ */
+export const trackEngagementMetrics = mutation({
+  args: {
+    postId: v.id("socialPosts"),
+    platform: v.union(v.literal("twitter"), v.literal("linkedin"), v.literal("facebook")),
+    metrics: v.object({
+      impressions: v.optional(v.number()),
+      engagements: v.optional(v.number()),
+      clicks: v.optional(v.number()),
+      shares: v.optional(v.number()),
+      comments: v.optional(v.number()),
+      likes: v.optional(v.number()),
+    }),
+  },
+  handler: async (ctx, args) => {
+    const post = await ctx.db.get(args.postId);
+    if (!post) {
+      throw new Error("[ERR_POST_NOT_FOUND] Post not found.");
+    }
+
+    const currentMetrics = post.performanceMetrics || {
+      impressions: 0,
+      engagements: 0,
+      clicks: 0,
+      shares: 0,
+      comments: 0,
+      likes: 0,
+      lastUpdated: Date.now(),
+    };
+
+    // Merge new metrics with existing ones
+    const updatedMetrics = {
+      impressions: (currentMetrics.impressions || 0) + (args.metrics.impressions || 0),
+      engagements: (currentMetrics.engagements || 0) + (args.metrics.engagements || 0),
+      clicks: (currentMetrics.clicks || 0) + (args.metrics.clicks || 0),
+      shares: (currentMetrics.shares || 0) + (args.metrics.shares || 0),
+      comments: (currentMetrics.comments || 0) + (args.metrics.comments || 0),
+      likes: (currentMetrics.likes || 0) + (args.metrics.likes || 0),
+      lastUpdated: Date.now(),
+    };
+
+    await ctx.db.patch(args.postId, {
+      performanceMetrics: updatedMetrics,
+    });
+
+    // Log engagement tracking
+    await ctx.runMutation(internal.audit.write, {
+      businessId: post.businessId,
+      action: "engagement_tracked",
+      entityType: "social_post",
+      entityId: args.postId,
+      details: {
+        platform: args.platform,
+        metrics: args.metrics,
+      },
+    });
+
+    return updatedMetrics;
+  },
+});
+
+/**
+ * Get aggregated engagement metrics for a business
+ */
+export const getAggregatedEngagement = query({
+  args: {
+    businessId: v.optional(v.id("businesses")),
+    days: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    if (!args.businessId) {
+      return {
+        totalImpressions: 0,
+        totalEngagements: 0,
+        totalClicks: 0,
+        avgEngagementRate: 0,
+      };
+    }
+
+    const days = args.days || 30;
+    const cutoffTime = Date.now() - days * 24 * 60 * 60 * 1000;
+
+    const posts = await ctx.db
+      .query("socialPosts")
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId!))
+      .filter((q) => q.gte(q.field("_creationTime"), cutoffTime))
+      .collect();
+
+    let totalImpressions = 0;
+    let totalEngagements = 0;
+    let totalClicks = 0;
+
+    for (const post of posts) {
+      if (post.performanceMetrics) {
+        totalImpressions += post.performanceMetrics.impressions || 0;
+        totalEngagements += post.performanceMetrics.engagements || 0;
+        totalClicks += post.performanceMetrics.clicks || 0;
+      }
+    }
+
+    const avgEngagementRate = totalImpressions > 0
+      ? (totalEngagements / totalImpressions) * 100
+      : 0;
+
+    return {
+      totalImpressions,
+      totalEngagements,
+      totalClicks,
+      avgEngagementRate: Math.round(avgEngagementRate * 100) / 100,
+    };
+  },
+});

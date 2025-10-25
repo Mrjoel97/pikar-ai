@@ -5,13 +5,14 @@ import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Mail, FileText, Calendar, Zap } from "lucide-react";
+import { Mail, FileText, Calendar, Zap, Settings } from "lucide-react";
 
 interface QuickActionsProps {
   businessId: Id<"businesses">;
   onNewsletter?: () => void;
   onSocialPost?: () => void;
   onInvoice?: () => void;
+  onAction?: (action: string) => void;
 }
 
 export function QuickActions({
@@ -19,6 +20,7 @@ export function QuickActions({
   onNewsletter,
   onSocialPost,
   onInvoice,
+  onAction,
 }: QuickActionsProps) {
   const navigate = useNavigate();
   const nextEmailSlot = useQuery(api.schedule.nextSlotByChannel, {
@@ -58,10 +60,13 @@ export function QuickActions({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Quick Actions</CardTitle>
+        <CardTitle className="flex items-center gap-2">
+          <Zap className="h-5 w-5 text-yellow-500" />
+          Quick Actions
+        </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-3">
           {actions.map((action) => {
             const Icon = action.icon;
             return (
@@ -81,6 +86,15 @@ export function QuickActions({
               </Button>
             );
           })}
+          
+          <Button
+            variant="outline"
+            className="justify-start"
+            onClick={() => onAction?.("setup-wizard")}
+          >
+            <Settings className="mr-2 h-4 w-4" />
+            Setup Wizard
+          </Button>
         </div>
       </CardContent>
     </Card>

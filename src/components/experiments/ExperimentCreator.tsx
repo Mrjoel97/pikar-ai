@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useMutation } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -44,7 +44,24 @@ export function ExperimentCreator({ businessId, onComplete, onCancel }: Experime
   const [durationDays, setDurationDays] = useState(7);
   const [autoDeclareWinner, setAutoDeclareWinner] = useState(true);
 
+  // Sample size calculator state
+  const [baselineRate, setBaselineRate] = useState(5);
+  const [minimumDetectableEffect, setMinimumDetectableEffect] = useState(20);
+  const [statisticalPower, setStatisticalPower] = useState(80);
+  const [showCalculator, setShowCalculator] = useState(false);
+
   const createExperiment = useMutation(api.experiments.createExperiment);
+  const calculateSampleSize = useQuery(
+    api.experiments.calculateSampleSize,
+    showCalculator
+      ? {
+          baselineRate,
+          minimumDetectableEffect,
+          confidenceLevel,
+          statisticalPower,
+        }
+      : "skip"
+  );
 
   const addVariant = () => {
     if (variants.length >= 4) {
@@ -271,23 +288,125 @@ export function ExperimentCreator({ businessId, onComplete, onCancel }: Experime
       {step === 3 && (
         <Card>
           <CardHeader>
-            <CardTitle>Configuration</CardTitle>
-            <CardDescription>Set statistical parameters</CardDescription>
+            <CardTitle>Statistical Configuration</CardTitle>
+            <CardDescription>Set parameters for statistical analysis</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <Label>Confidence Level</Label>
-              <Select value={String(confidenceLevel)} onValueChange={(v) => setConfidenceLevel(Number(v))}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="90">90%</SelectItem>
-                  <SelectItem value="95">95%</SelectItem>
-                  <SelectItem value="99">99%</SelectItem>
-                </SelectContent>
-              </Select>
+          <CardContent className="space-y-6">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Confidence Level</Label>
+                <Select value={String(confidenceLevel)} onValueChange={(v) => setConfidenceLevel(Number(v))}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="90">90% (Less strict)</SelectItem>
+                    <SelectItem value="95">95% (Recommended)</SelectItem>
+                    <SelectItem value="99">99% (Very strict)</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Higher confidence reduces false positives
+                </p>
+              </div>
+              <div>
+                <Label htmlFor="duration">Duration (days)</Label>
+                <Input
+                  id="duration"
+                  type="number"
+                  value={durationDays}
+                  onChange={(e) => setDurationDays(Number(e.target.value))}
+                  min={1}
+                  max={30}
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Recommended: 7-14 days
+                </p>
+              </div>
             </div>
+
+            <div className="border rounded-lg p-4 space-y-4">
+              <div className="flex items-center justify-between">
+                <h4 className="font-semibold">Sample Size Calculator</h4>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowCalculator(!showCalculator)}
+                >
+                  {showCalculator ? "Hide" : "Show"} Calculator
+                </Button>
+              </div>
+
+              {showCalculator && (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="baselineRate">Baseline Conversion Rate (%)</Label>
+                      <Input
+                        id="baselineRate"
+                        type="number"
+                        value={baselineRate}
+                        onChange={(e) => setBaselineRate(Number(e.target.value))}
+                        min={0.1}
+                        max={100}
+                        step={0.1}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="mde">Minimum Detectable Effect (%)</Label>
+                      <Input
+                        id="mde"
+                        type="number"
+                        value={minimumDetectableEffect}
+                        onChange={(e) => setMinimumDetectableEffect(Number(e.target.value))}
+                        min={1}
+                        max={100}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="power">Statistical Power (%)</Label>
+                      <Input
+                        id="power"
+                        type="number"
+                        value={statisticalPower}
+                        onChange={(e) => setStatisticalPower(Number(e.target.value))}
+                        min={50}
+                        max={99}
+                      />
+                    </div>
+                  </div>
+
+                  {calculateSampleSize && (
+                    <div className="bg-muted p-4 rounded-lg space-y-2">
+                      <h5 className="font-semibold text-sm">Recommended Sample Size</h5>
+                      <div className="grid grid-cols-3 gap-4 text-sm">
+                        <div>
+                          <p className="text-muted-foreground">Per Variant</p>
+                          <p className="text-lg font-bold">{calculateSampleSize.sampleSizePerVariant}</p>
+                        </div>
+                        <div>
+                          <p className="text-muted-foreground">Total</p>
+                          <p className="text-lg font-bold">{calculateSampleSize.totalSampleSize}</p>
+                        </div>
+                        <div>
+                          <p className="text-muted-foreground">Est. Duration</p>
+                          <p className="text-lg font-bold">{calculateSampleSize.estimatedDays} days</p>
+                        </div>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setMinimumSampleSize(calculateSampleSize.sampleSizePerVariant)}
+                        className="w-full mt-2"
+                      >
+                        Use Recommended Sample Size
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
             <div>
               <Label htmlFor="sampleSize">Minimum Sample Size (per variant)</Label>
               <Input
@@ -297,20 +416,18 @@ export function ExperimentCreator({ businessId, onComplete, onCancel }: Experime
                 onChange={(e) => setMinimumSampleSize(Number(e.target.value))}
                 min={50}
               />
+              <p className="text-xs text-muted-foreground mt-1">
+                Current: {minimumSampleSize} per variant ({minimumSampleSize * variants.length} total)
+              </p>
             </div>
-            <div>
-              <Label htmlFor="duration">Duration (days)</Label>
-              <Input
-                id="duration"
-                type="number"
-                value={durationDays}
-                onChange={(e) => setDurationDays(Number(e.target.value))}
-                min={1}
-                max={30}
-              />
-            </div>
-            <div className="flex items-center justify-between">
-              <Label htmlFor="autoDeclare">Auto-declare winner</Label>
+
+            <div className="flex items-center justify-between p-4 border rounded-lg">
+              <div>
+                <Label htmlFor="autoDeclare">Auto-declare winner</Label>
+                <p className="text-xs text-muted-foreground">
+                  Automatically end test when statistical significance is reached
+                </p>
+              </div>
               <Switch
                 id="autoDeclare"
                 checked={autoDeclareWinner}

@@ -2081,3 +2081,480 @@ export const createQuickFromIdea = mutation({
     return workflowId;
   },
 });
+
+// ============================================================================
+// WORKFLOW EXECUTION ENGINE WITH ADVANCED FEATURES
+// ============================================================================
+
+/**
+ * Execute a workflow with conditional branching, parallel execution, and error handling
+ */
+export const executeWorkflowAdvanced = mutation({
+  args: {
+    workflowId: v.id("workflows"),
+    input: v.optional(v.any()),
+    executionMode: v.optional(v.union(v.literal("sequential"), v.literal("parallel"))),
+  },
+  handler: async (ctx, args) => {
+    const workflow = await ctx.db.get(args.workflowId);
+    if (!workflow) throw new Error("Workflow not found");
+
+    const businessId = workflow.businessId;
+    const business = await ctx.db.get(businessId);
+    if (!business) throw new Error("Business not found");
+
+    // Create workflow run
+    const runId = await ctx.db.insert("workflowRuns", {
+      workflowId: args.workflowId,
+      businessId,
+      status: "running",
+      mode: "auto",
+      startedAt: Date.now(),
+    });
+
+    try {
+      const pipeline = workflow.pipeline || [];
+      const executionMode = args.executionMode || "sequential";
+      const results: any[] = [];
+
+      if (executionMode === "parallel") {
+        // Parallel execution
+        const promises = pipeline.map(async (step: any, index: number) => {
+          return await executeStep(ctx, step, args.input, index);
+        });
+        const parallelResults = await Promise.allSettled(promises);
+        
+        for (const result of parallelResults) {
+          if (result.status === "fulfilled") {
+            results.push(result.value);
+          } else {
+            results.push({ error: result.reason?.message || "Step failed" });
+          }
+        }
+      } else {
+        // Sequential execution with conditional branching
+        let currentInput = args.input;
+        
+        for (let i = 0; i < pipeline.length; i++) {
+          const step = pipeline[i];
+          
+          // Check conditions
+          if (step.condition) {
+            const conditionMet = evaluateCondition(step.condition, currentInput, results);
+            if (!conditionMet) {
+              results.push({ skipped: true, reason: "Condition not met" });
+              continue;
+            }
+          }
+
+          // Execute step with retry logic
+          const stepResult = await executeStepWithRetry(ctx, step, currentInput, i);
+          results.push(stepResult);
+          
+          // Update input for next step
+          if (stepResult.output) {
+            currentInput = stepResult.output;
+          }
+
+          // Handle branching
+          if (step.branches && stepResult.branchKey) {
+            const branch = step.branches[stepResult.branchKey];
+            if (branch) {
+              // Execute branch steps
+              for (const branchStep of branch) {
+                const branchResult = await executeStepWithRetry(ctx, branchStep, currentInput, i);
+                results.push(branchResult);
+                if (branchResult.output) {
+                  currentInput = branchResult.output;
+                }
+              }
+            }
+          }
+        }
+      }
+
+      // Update workflow run
+      await ctx.db.patch(runId, {
+        status: "succeeded",
+        completedAt: Date.now(),
+      });
+
+      // Record analytics
+      await recordWorkflowAnalytics(ctx, args.workflowId, businessId, "success", results);
+
+      return { runId, status: "succeeded", results };
+    } catch (error: any) {
+      await ctx.db.patch(runId, {
+        status: "failed",
+        errorMessage: error.message,
+        completedAt: Date.now(),
+      });
+
+      await recordWorkflowAnalytics(ctx, args.workflowId, businessId, "failure", []);
+
+      throw error;
+    }
+  },
+});
+
+/**
+ * Execute a single step with retry logic
+ */
+async function executeStepWithRetry(
+  ctx: any,
+  step: any,
+  input: any,
+  stepIndex: number,
+  maxRetries: number = 3
+): Promise<any> {
+  let lastError: Error | null = null;
+  const retryDelay = step.retryDelay || 1000;
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      const result = await executeStep(ctx, step, input, stepIndex);
+      return { ...result, attempts: attempt + 1 };
+    } catch (error: any) {
+      lastError = error;
+      
+      if (attempt < maxRetries) {
+        // Wait before retry
+        await new Promise(resolve => setTimeout(resolve, retryDelay * (attempt + 1)));
+      }
+    }
+  }
+
+  return {
+    error: lastError?.message || "Step failed after retries",
+    attempts: maxRetries + 1,
+    stepIndex,
+  };
+}
+
+/**
+ * Execute a single workflow step
+ */
+async function executeStep(ctx: any, step: any, input: any, stepIndex: number): Promise<any> {
+  const startTime = Date.now();
+
+  try {
+    let output: any;
+
+    switch (step.type) {
+      case "transform":
+        output = await transformData(step.config, input);
+        break;
+      case "filter":
+        output = await filterData(step.config, input);
+        break;
+      case "api_call":
+        output = await makeApiCall(step.config, input);
+        break;
+      case "condition":
+        output = await evaluateConditionStep(step.config, input);
+        break;
+      default:
+        output = input;
+    }
+
+    return {
+      stepIndex,
+      type: step.type,
+      status: "success",
+      output,
+      duration: Date.now() - startTime,
+    };
+  } catch (error: any) {
+    throw new Error(`Step ${stepIndex} (${step.type}) failed: ${error.message}`);
+  }
+}
+
+/**
+ * Evaluate a condition
+ */
+function evaluateCondition(condition: any, input: any, previousResults: any[]): boolean {
+  try {
+    const { field, operator, value } = condition;
+    const fieldValue = input?.[field];
+
+    switch (operator) {
+      case "equals":
+        return fieldValue === value;
+      case "not_equals":
+        return fieldValue !== value;
+      case "greater_than":
+        return fieldValue > value;
+      case "less_than":
+        return fieldValue < value;
+      case "contains":
+        return String(fieldValue).includes(value);
+      default:
+        return true;
+    }
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Transform data
+ */
+async function transformData(config: any, input: any): Promise<any> {
+  const { mapping } = config;
+  const output: any = {};
+
+  for (const [key, sourcePath] of Object.entries(mapping || {})) {
+    output[key] = getNestedValue(input, sourcePath as string);
+  }
+
+  return output;
+}
+
+/**
+ * Filter data
+ */
+async function filterData(config: any, input: any): Promise<any> {
+  const { conditions } = config;
+  
+  if (Array.isArray(input)) {
+    return input.filter(item => {
+      return conditions.every((cond: any) => {
+        return evaluateCondition(cond, item, []);
+      });
+    });
+  }
+
+  return input;
+}
+
+/**
+ * Make API call (placeholder)
+ */
+async function makeApiCall(config: any, input: any): Promise<any> {
+  // In production, this would make actual HTTP requests
+  return { success: true, data: input };
+}
+
+/**
+ * Evaluate condition step
+ */
+async function evaluateConditionStep(config: any, input: any): Promise<any> {
+  const conditionMet = evaluateCondition(config, input, []);
+  return {
+    conditionMet,
+    branchKey: conditionMet ? "true" : "false",
+  };
+}
+
+/**
+ * Get nested value from object
+ */
+function getNestedValue(obj: any, path: string): any {
+  return path.split(".").reduce((current, key) => current?.[key], obj);
+}
+
+/**
+ * Record workflow analytics
+ */
+async function recordWorkflowAnalytics(
+  ctx: any,
+  workflowId: string,
+  businessId: string,
+  status: string,
+  results: any[]
+): Promise<void> {
+  const workflow = await ctx.db.get(workflowId);
+  if (!workflow) return;
+
+  const metrics = workflow.metrics || {
+    totalRuns: 0,
+    successRate: 0,
+    avgExecutionTime: 0,
+  };
+
+  metrics.totalRuns += 1;
+  
+  if (status === "success") {
+    const successCount = Math.round(metrics.successRate * (metrics.totalRuns - 1) / 100) + 1;
+    metrics.successRate = (successCount / metrics.totalRuns) * 100;
+  } else {
+    const successCount = Math.round(metrics.successRate * (metrics.totalRuns - 1) / 100);
+    metrics.successRate = (successCount / metrics.totalRuns) * 100;
+  }
+
+  await ctx.db.patch(workflowId, {
+    metrics: {
+      ...metrics,
+      lastRun: Date.now(),
+    },
+  });
+}
+
+// ============================================================================
+// WORKFLOW VERSIONING
+// ============================================================================
+
+/**
+ * Create a new version of a workflow
+ */
+export const createWorkflowVersion = mutation({
+  args: {
+    workflowId: v.id("workflows"),
+    changeNotes: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const workflow = await ctx.db.get(args.workflowId);
+    if (!workflow) throw new Error("Workflow not found");
+
+    const existingVersions = await ctx.db
+      .query("workflowVersions")
+      .filter(q => q.eq(q.field("workflowId"), args.workflowId))
+      .collect();
+
+    const versionNumber = existingVersions.length + 1;
+
+    const versionId = await ctx.db.insert("workflowVersions", {
+      workflowId: args.workflowId,
+      version: versionNumber,
+      snapshot: {
+        name: workflow.name,
+        description: workflow.description,
+        pipeline: workflow.pipeline,
+        trigger: workflow.trigger,
+        approval: workflow.approval,
+      },
+      changeNotes: args.changeNotes,
+      createdAt: Date.now(),
+    });
+
+    return versionId;
+  },
+});
+
+/**
+ * Get workflow versions
+ */
+export const getWorkflowVersions = query({
+  args: { workflowId: v.id("workflows") },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("workflowVersions")
+      .filter(q => q.eq(q.field("workflowId"), args.workflowId))
+      .order("desc")
+      .collect();
+  },
+});
+
+/**
+ * Restore workflow version
+ */
+export const restoreWorkflowVersion = mutation({
+  args: { versionId: v.id("workflowVersions") },
+  handler: async (ctx, args) => {
+    const version = await ctx.db.get(args.versionId);
+    if (!version) throw new Error("Version not found");
+
+    await ctx.db.patch(version.workflowId, {
+      name: version.snapshot.name,
+      description: version.snapshot.description,
+      pipeline: version.snapshot.pipeline,
+      trigger: version.snapshot.trigger,
+      approval: version.snapshot.approval,
+    });
+
+    return version.workflowId;
+  },
+});
+
+// ============================================================================
+// WORKFLOW ANALYTICS
+// ============================================================================
+
+/**
+ * Get workflow analytics
+ */
+export const getWorkflowAnalytics = query({
+  args: { businessId: v.id("businesses") },
+  handler: async (ctx, args) => {
+    const workflows = await ctx.db
+      .query("workflows")
+      .withIndex("by_business", q => q.eq("businessId", args.businessId))
+      .collect();
+
+    const runs = await ctx.db
+      .query("workflowRuns")
+      .withIndex("by_business", q => q.eq("businessId", args.businessId))
+      .collect();
+
+    const totalWorkflows = workflows.length;
+    const activeWorkflows = workflows.filter(w => w.status === "active").length;
+    const totalRuns = runs.length;
+    const successfulRuns = runs.filter(r => r.status === "succeeded").length;
+    const failedRuns = runs.filter(r => r.status === "failed").length;
+    const successRate = totalRuns > 0 ? (successfulRuns / totalRuns) * 100 : 0;
+
+    // Calculate average execution time
+    const completedRuns = runs.filter(r => r.completedAt);
+    const avgExecutionTime = completedRuns.length > 0
+      ? completedRuns.reduce((sum, r) => sum + (r.completedAt! - r.startedAt), 0) / completedRuns.length
+      : 0;
+
+    // Top performing workflows
+    const workflowPerformance = workflows.map(w => ({
+      id: w._id,
+      name: w.name,
+      totalRuns: w.metrics?.totalRuns || 0,
+      successRate: w.metrics?.successRate || 0,
+      avgExecutionTime: w.metrics?.avgExecutionTime || 0,
+    })).sort((a, b) => b.totalRuns - a.totalRuns).slice(0, 5);
+
+    // Recent runs
+    const recentRuns = runs
+      .sort((a, b) => b.startedAt - a.startedAt)
+      .slice(0, 10)
+      .map(r => {
+        const workflow = workflows.find(w => w._id === r.workflowId);
+        return {
+          id: r._id,
+          workflowName: workflow?.name || "Unknown",
+          status: r.status,
+          startedAt: r.startedAt,
+          completedAt: r.completedAt,
+          duration: r.completedAt ? r.completedAt - r.startedAt : null,
+        };
+      });
+
+    return {
+      summary: {
+        totalWorkflows,
+        activeWorkflows,
+        totalRuns,
+        successfulRuns,
+        failedRuns,
+        successRate,
+        avgExecutionTime,
+      },
+      topWorkflows: workflowPerformance,
+      recentRuns,
+    };
+  },
+});
+
+/**
+ * Get workflow execution details
+ */
+export const getWorkflowExecution = query({
+  args: { runId: v.id("workflowRuns") },
+  handler: async (ctx, args) => {
+    const run = await ctx.db.get(args.runId);
+    if (!run) return null;
+
+    const workflow = await ctx.db.get(run.workflowId);
+    
+    return {
+      ...run,
+      workflowName: workflow?.name || "Unknown",
+      pipeline: workflow?.pipeline || [],
+    };
+  },
+});

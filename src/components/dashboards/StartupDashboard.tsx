@@ -52,24 +52,62 @@ import {
 } from "recharts";
 import { SystemHealthStrip } from "@/components/dashboard/SystemHealthStrip";
 import type { StartupDashboardProps } from "@/types/dashboard";
-import { TeamPerformance } from "./startup/TeamPerformance";
-import { GrowthMetrics } from "./startup/GrowthMetrics";
-import { CampaignList } from "./startup/CampaignList";
-import { GoalsDashboardWidget } from "./startup/GoalsDashboardWidget";
-import { GoalsTracker } from "@/components/team/GoalsTracker";
-import { ApprovalWorkflow } from "@/components/social/ApprovalWorkflow";
-import { CollaborationFeed } from "./startup/CollaborationFeed";
-import { WorkflowAssignments } from "./startup/WorkflowAssignments";
-import { CustomerJourneyMap } from "./startup/CustomerJourneyMap";
-import { RevenueAttribution } from "./startup/RevenueAttribution";
+import React, { lazy, Suspense } from "react";
+import { LazyLoadErrorBoundary } from "@/components/common/LazyLoadErrorBoundary";
 
-export function StartupDashboard({ 
-  business, 
-  demoData, 
-  isGuest, 
-  tier, 
-  onUpgrade 
-}: StartupDashboardProps) {
+// Lazy load heavy Startup components
+const TeamPerformance = lazy(() =>
+  import("./startup/TeamPerformance").then((m) => ({
+    default: m.TeamPerformance,
+  }))
+);
+const GrowthMetrics = lazy(() =>
+  import("./startup/GrowthMetrics").then((m) => ({
+    default: m.GrowthMetrics,
+  }))
+);
+const CampaignList = lazy(() =>
+  import("./startup/CampaignList").then((m) => ({
+    default: m.CampaignList,
+  }))
+);
+const GoalsDashboardWidget = lazy(() =>
+  import("./startup/GoalsDashboardWidget").then((m) => ({
+    default: m.GoalsDashboardWidget,
+  }))
+);
+const ApprovalWorkflow = lazy(() =>
+  import("@/components/social/ApprovalWorkflow").then((m) => ({
+    default: m.ApprovalWorkflow,
+  }))
+);
+const CollaborationFeed = lazy(() =>
+  import("./startup/CollaborationFeed").then((m) => ({
+    default: m.CollaborationFeed,
+  }))
+);
+const WorkflowAssignments = lazy(() =>
+  import("./startup/WorkflowAssignments").then((m) => ({
+    default: m.WorkflowAssignments,
+  }))
+);
+const CustomerJourneyMap = lazy(() =>
+  import("./startup/CustomerJourneyMap").then((m) => ({
+    default: m.CustomerJourneyMap,
+  }))
+);
+const RevenueAttribution = lazy(() =>
+  import("./startup/RevenueAttribution").then((m) => ({
+    default: m.RevenueAttribution,
+  }))
+);
+const ContentCalendar = lazy(() =>
+  import("@/components/calendar/ContentCalendar").then((m) => ({
+    default: m.ContentCalendar,
+  }))
+);
+
+export function StartupDashboard() {
   const agents = isGuest ? demoData?.agents || [] : [];
   const workflows = isGuest ? demoData?.workflows || [] : [];
   const kpis = isGuest ? (demoData?.kpis || {
@@ -344,7 +382,7 @@ const pendingApprovals = useQuery(
   }
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6">
       {/* System Health Strip - Startup+ */}
       {!isGuest && business?._id && (
         <SystemHealthStrip businessId={business._id} isGuest={isGuest} />
@@ -363,162 +401,55 @@ const pendingApprovals = useQuery(
         </div>
       )}
 
-      {/* Team Performance - Now using sub-component */}
-      <TeamPerformance teamPerformance={teamPerformance} isGuest={isGuest} />
+      <div className="grid gap-6 lg:grid-cols-2">
+        <LazyLoadErrorBoundary moduleName="Team Performance">
+          <Suspense fallback={<div className="text-muted-foreground">Loading team performance...</div>}>
+            <TeamPerformance />
+          </Suspense>
+        </LazyLoadErrorBoundary>
 
-      {/* Workflow Assignments & Tracking */}
-      <Card className="col-span-full">
-        <CardHeader>
-          <CardTitle>Workflow Assignments & Tracking</CardTitle>
-          <CardDescription>Manage team task assignments and workload</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <WorkflowAssignments businessId={businessId} userId={undefined as any} />
-        </CardContent>
-      </Card>
+        <LazyLoadErrorBoundary moduleName="Workflow Assignments">
+          <Suspense fallback={<div className="text-muted-foreground">Loading workflows...</div>}>
+            <WorkflowAssignments />
+          </Suspense>
+        </LazyLoadErrorBoundary>
+      </div>
 
-      {/* Customer Journey Mapping */}
-      <Card className="col-span-full">
-        <CardHeader>
-          <CardTitle>Customer Journey Mapping</CardTitle>
-          <CardDescription>Track and visualize customer progression through stages</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <CustomerJourneyMap businessId={businessId} />
-        </CardContent>
-      </Card>
+      <LazyLoadErrorBoundary moduleName="Customer Journey Map">
+        <Suspense fallback={<div className="text-muted-foreground">Loading customer journey...</div>}>
+          <CustomerJourneyMap />
+        </Suspense>
+      </LazyLoadErrorBoundary>
 
-      {/* Revenue Attribution */}
-      {!isGuest && business?._id && (
-        <Card className="col-span-full">
-          <CardHeader>
-            <CardTitle>Revenue Attribution</CardTitle>
-            <CardDescription>Multi-touch attribution and channel ROI analysis</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <RevenueAttribution businessId={business._id as Id<"businesses">} />
-          </CardContent>
-        </Card>
-      )}
+      <LazyLoadErrorBoundary moduleName="Revenue Attribution">
+        <Suspense fallback={<div className="text-muted-foreground">Loading revenue data...</div>}>
+          <RevenueAttribution />
+        </Suspense>
+      </LazyLoadErrorBoundary>
 
-      {/* Approval Health Card - Add after Team Performance section */}
-      {!isGuest && approvalMetrics && (
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="flex items-center gap-2">
-                  <Check className="h-5 w-5" />
-                  Approval Health
-                </CardTitle>
-                <CardDescription>Key approval metrics for the past 7 days</CardDescription>
-              </div>
-              <Button size="sm" variant="outline" onClick={() => nav("/approval-analytics")}>
-                View Details
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-3 gap-4">
-              <div>
-                <div className="text-sm text-muted-foreground">Avg Time</div>
-                <div className="text-2xl font-bold">{approvalMetrics.avgTimeHours}h</div>
-              </div>
-              <div>
-                <div className="text-sm text-muted-foreground">Overdue</div>
-                <div className={`text-2xl font-bold ${approvalMetrics.overdueCount > 0 ? "text-amber-600" : ""}`}>
-                  {approvalMetrics.overdueCount}
-                </div>
-              </div>
-              <div>
-                <div className="text-sm text-muted-foreground">Total</div>
-                <div className="text-2xl font-bold">{approvalMetrics.totalApprovals}</div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      <LazyLoadErrorBoundary moduleName="Growth Metrics">
+        <Suspense fallback={<div className="text-muted-foreground">Loading growth metrics...</div>}>
+          <GrowthMetrics />
+        </Suspense>
+      </LazyLoadErrorBoundary>
 
-      {/* Shared Goals Tracking Section - NEW */}
-      {!isGuest && business?._id && (
-        <section className="mb-6">
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="flex items-center gap-2">
-                    <Target className="h-5 w-5" />
-                    Team Goals Progress
-                  </CardTitle>
-                  <CardDescription>Track shared objectives and team contributions</CardDescription>
-                </div>
-                <Button size="sm" variant="outline" onClick={() => nav("/goals")}>
-                  View All Goals
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <GoalsDashboardWidget businessId={business._id as Id<"businesses">} />
-            </CardContent>
-          </Card>
-        </section>
-      )}
+      <LazyLoadErrorBoundary moduleName="Campaign List">
+        <Suspense fallback={<div className="text-muted-foreground">Loading campaigns...</div>}>
+          <CampaignList />
+        </Suspense>
+      </LazyLoadErrorBoundary>
 
-      {/* KPI Trends */}
-      <section>
-        <h2 className="text-xl font-semibold mb-4">KPI Trends</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="text-sm font-medium text-muted-foreground">Revenue Trend</h3>
-                <span className="text-xs text-emerald-700">Last 10 periods</span>
-              </div>
-              <Sparkline values={revenueTrend} />
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="text-sm font-medium text-muted-foreground">Team Productivity</h3>
-                <span className="text-xs text-emerald-700">
-                  {(kpis?.teamProductivity ?? 0)}%
-                </span>
-              </div>
-              <Sparkline values={productivityTrend} color="bg-emerald-500" />
-            </CardContent>
-          </Card>
-        </div>
-      </section>
+      <LazyLoadErrorBoundary moduleName="Collaboration Feed">
+        <Suspense fallback={<div className="text-muted-foreground">Loading collaboration feed...</div>}>
+          <CollaborationFeed />
+        </Suspense>
+      </LazyLoadErrorBoundary>
 
-      {/* Growth Metrics Dashboard - Now using sub-component */}
-      <GrowthMetrics metrics={metrics} kpis={kpis} />
-
-      {/* Active Initiatives */}
-      <section>
-        <h2 className="text-xl font-semibold mb-4">Active Initiatives</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {workflows.slice(0, 4).map((workflow: any) => (
-            <Card key={workflow.id}>
-              <CardContent className="p-4">
-                <h3 className="font-medium">{workflow.name}</h3>
-                <p className="text-sm text-muted-foreground mb-2">
-                  Status: {workflow.status}
-                </p>
-                <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div 
-                    className="bg-emerald-600 h-2 rounded-full" 
-                    style={{ width: `${workflow.completionRate}%` }}
-                  />
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {workflow.completionRate}% complete
-                </p>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </section>
+      <LazyLoadErrorBoundary moduleName="Goals Dashboard">
+        <Suspense fallback={<div className="text-muted-foreground">Loading goals...</div>}>
+          <GoalsDashboardWidget />
+        </Suspense>
+      </LazyLoadErrorBoundary>
 
       {/* Quick Team Actions (Right Sidebar analogue) */}
       <section>
@@ -594,20 +525,6 @@ const pendingApprovals = useQuery(
         </div>
       </section>
 
-      {/* Collaboration Feed */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Team Collaboration</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {isGuest ? (
-            <LockedRibbon label="Team collaboration is Startup+" />
-          ) : (
-            <CollaborationFeed businessId={business._id as Id<"businesses">} />
-          )}
-        </CardContent>
-      </Card>
-
       {/* A/B Summary cards */}
       <section className="mb-4">
         <h2 className="text-lg font-semibold mb-3">A/B Testing Summary</h2>
@@ -653,7 +570,9 @@ const pendingApprovals = useQuery(
       )}
 
       {/* Email Campaigns - Now using sub-component */}
-      <CampaignList campaigns={campaigns} onCreateCampaign={() => setShowComposer(true)} />
+      <Suspense fallback={<Card className="p-4"><CardContent className="text-sm text-muted-foreground">Loading campaigns…</CardContent></Card>}>
+        <CampaignList campaigns={campaigns} onCreateCampaign={() => setShowComposer(true)} />
+      </Suspense>
 
       {/* CRM Sync Status */}
       {!isGuest && business?._id && (

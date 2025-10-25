@@ -200,6 +200,349 @@ export const getVendorRiskAssessment = query({
 });
 
 /**
+ * Get vendor performance scorecard
+ */
+export const getVendorScorecard = query({
+  args: {
+    vendorId: v.id("vendors"),
+  },
+  handler: async (ctx, args) => {
+    const vendor = await ctx.db.get(args.vendorId);
+    if (!vendor) return null;
+
+    const metrics = await ctx.db
+      .query("vendorPerformanceMetrics")
+      .filter((q) => q.eq(q.field("vendorId"), args.vendorId))
+      .order("desc")
+      .take(12);
+
+    if (metrics.length === 0) {
+      return {
+        vendor,
+        currentScore: 0,
+        trend: "stable" as const,
+        metrics: {
+          onTimeDelivery: 0,
+          qualityScore: 0,
+          responsiveness: 0,
+          costEfficiency: 0,
+        },
+        history: [],
+      };
+    }
+
+    const latest = metrics[0];
+    const previous = metrics[1];
+    const trend = previous
+      ? latest.overallScore > previous.overallScore
+        ? ("improving" as const)
+        : latest.overallScore < previous.overallScore
+        ? ("declining" as const)
+        : ("stable" as const)
+      : ("stable" as const);
+
+    return {
+      vendor,
+      currentScore: latest.overallScore,
+      trend,
+      metrics: {
+        onTimeDelivery: latest.onTimeDelivery,
+        qualityScore: latest.qualityScore,
+        responsiveness: latest.responsiveness,
+        costEfficiency: latest.costEfficiency,
+      },
+      history: metrics.map((m) => ({
+        date: m.recordedAt,
+        score: m.overallScore,
+      })),
+    };
+  },
+});
+
+/**
+ * Get contract timeline
+ */
+export const getContractTimeline = query({
+  args: {
+    businessId: v.id("businesses"),
+  },
+  handler: async (ctx, args) => {
+    const vendors = await ctx.db
+      .query("vendors")
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .filter((q) => q.eq(q.field("status"), "active"))
+      .collect();
+
+    const now = Date.now();
+    const timeline = vendors.map((v) => {
+      const totalDays = Math.floor((v.contractEnd - v.contractStart) / (24 * 60 * 60 * 1000));
+      const elapsedDays = Math.floor((now - v.contractStart) / (24 * 60 * 60 * 1000));
+      const remainingDays = Math.floor((v.contractEnd - now) / (24 * 60 * 60 * 1000));
+      const progress = Math.min(100, Math.max(0, (elapsedDays / totalDays) * 100));
+
+      return {
+        vendorId: v._id,
+        vendorName: v.name,
+        contractStart: v.contractStart,
+        contractEnd: v.contractEnd,
+        totalDays,
+        elapsedDays,
+        remainingDays,
+        progress,
+        status: remainingDays <= 30 ? "expiring" : remainingDays <= 90 ? "warning" : "active",
+      };
+    });
+
+    return timeline.sort((a, b) => a.remainingDays - b.remainingDays);
+  },
+});
+
+/**
+ * Get spend analytics
+ */
+export const getSpendAnalytics = query({
+  args: {
+    businessId: v.id("businesses"),
+    timeRange: v.optional(v.union(v.literal("30d"), v.literal("90d"), v.literal("1y"))),
+  },
+  handler: async (ctx, args) => {
+    const vendors = await ctx.db
+      .query("vendors")
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .collect();
+
+    const totalSpend = vendors.reduce((sum, v) => sum + v.contractValue, 0);
+    const activeSpend = vendors
+      .filter((v) => v.status === "active")
+      .reduce((sum, v) => sum + v.contractValue, 0);
+
+    // Category breakdown
+    const categorySpend: Record<string, number> = {};
+    vendors.forEach((v) => {
+      categorySpend[v.category] = (categorySpend[v.category] || 0) + v.contractValue;
+    });
+
+    const categoryBreakdown = Object.entries(categorySpend)
+      .map(([category, spend]) => ({
+        category,
+        spend,
+        percentage: (spend / totalSpend) * 100,
+      }))
+      .sort((a, b) => b.spend - a.spend);
+
+    // Top vendors by spend
+    const topVendors = vendors
+      .sort((a, b) => b.contractValue - a.contractValue)
+      .slice(0, 10)
+      .map((v) => ({
+        vendorId: v._id,
+        name: v.name,
+        spend: v.contractValue,
+        percentage: (v.contractValue / totalSpend) * 100,
+      }));
+
+    // Monthly spend projection (simplified)
+    const monthlySpend = activeSpend / 12;
+
+    return {
+      totalSpend,
+      activeSpend,
+      monthlySpend,
+      categoryBreakdown,
+      topVendors,
+      vendorCount: vendors.length,
+      averageContractValue: totalSpend / vendors.length || 0,
+    };
+  },
+});
+
+/**
+ * Get vendor risk assessment details
+ */
+export const getVendorRiskDetails = query({
+  args: {
+    vendorId: v.id("vendors"),
+  },
+  handler: async (ctx, args) => {
+    const vendor = await ctx.db.get(args.vendorId);
+    if (!vendor) return null;
+
+    const metrics = await ctx.db
+      .query("vendorPerformanceMetrics")
+      .filter((q) => q.eq(q.field("vendorId"), args.vendorId))
+      .order("desc")
+      .take(6);
+
+    const now = Date.now();
+    const daysUntilExpiry = Math.floor((vendor.contractEnd - now) / (24 * 60 * 60 * 1000));
+
+    // Calculate risk factors
+    const riskFactors = [];
+    let riskScore = 0;
+
+    // Performance risk
+    if (vendor.performanceScore < 60) {
+      riskFactors.push({ factor: "Low Performance Score", severity: "high", impact: 30 });
+      riskScore += 30;
+    } else if (vendor.performanceScore < 75) {
+      riskFactors.push({ factor: "Below Average Performance", severity: "medium", impact: 15 });
+      riskScore += 15;
+    }
+
+    // Contract expiry risk
+    if (daysUntilExpiry <= 30) {
+      riskFactors.push({ factor: "Contract Expiring Soon", severity: "high", impact: 25 });
+      riskScore += 25;
+    } else if (daysUntilExpiry <= 90) {
+      riskFactors.push({ factor: "Contract Renewal Approaching", severity: "medium", impact: 10 });
+      riskScore += 10;
+    }
+
+    // Performance trend risk
+    if (metrics.length >= 3) {
+      const recentScores = metrics.slice(0, 3).map((m) => m.overallScore);
+      const isDecreasing = recentScores[0] < recentScores[1] && recentScores[1] < recentScores[2];
+      if (isDecreasing) {
+        riskFactors.push({ factor: "Declining Performance Trend", severity: "medium", impact: 20 });
+        riskScore += 20;
+      }
+    }
+
+    // High value risk
+    if (vendor.contractValue > 100000) {
+      riskFactors.push({ factor: "High Contract Value", severity: "low", impact: 10 });
+      riskScore += 10;
+    }
+
+    const riskLevel =
+      riskScore >= 50 ? "high" : riskScore >= 25 ? "medium" : "low";
+
+    return {
+      vendor,
+      riskScore: Math.min(100, riskScore),
+      riskLevel,
+      riskFactors,
+      daysUntilExpiry,
+      recommendations: generateRiskRecommendations(riskFactors, vendor),
+    };
+  },
+});
+
+function generateRiskRecommendations(riskFactors: any[], vendor: any): string[] {
+  const recommendations: string[] = [];
+
+  riskFactors.forEach((factor) => {
+    if (factor.factor.includes("Performance")) {
+      recommendations.push("Schedule performance review meeting");
+      recommendations.push("Implement performance improvement plan");
+    }
+    if (factor.factor.includes("Expiring")) {
+      recommendations.push("Initiate contract renewal discussions immediately");
+      recommendations.push("Evaluate alternative vendors");
+    }
+    if (factor.factor.includes("Declining")) {
+      recommendations.push("Conduct root cause analysis");
+      recommendations.push("Set up weekly performance monitoring");
+    }
+  });
+
+  if (recommendations.length === 0) {
+    recommendations.push("Continue regular monitoring");
+    recommendations.push("Maintain current vendor relationship");
+  }
+
+  return [...new Set(recommendations)].slice(0, 5);
+}
+
+/**
+ * Compare vendors
+ */
+export const compareVendors = query({
+  args: {
+    vendorIds: v.array(v.id("vendors")),
+  },
+  handler: async (ctx, args) => {
+    if (args.vendorIds.length === 0) return [];
+
+    const comparisons = await Promise.all(
+      args.vendorIds.map(async (vendorId) => {
+        const vendor = await ctx.db.get(vendorId);
+        if (!vendor) return null;
+
+        const metrics = await ctx.db
+          .query("vendorPerformanceMetrics")
+          .filter((q) => q.eq(q.field("vendorId"), vendorId))
+          .order("desc")
+          .take(1);
+
+        const latestMetric = metrics[0];
+
+        return {
+          vendorId: vendor._id,
+          name: vendor.name,
+          category: vendor.category,
+          contractValue: vendor.contractValue,
+          performanceScore: vendor.performanceScore,
+          riskLevel: vendor.riskLevel,
+          onTimeDelivery: latestMetric?.onTimeDelivery || 0,
+          qualityScore: latestMetric?.qualityScore || 0,
+          responsiveness: latestMetric?.responsiveness || 0,
+          costEfficiency: latestMetric?.costEfficiency || 0,
+          contractEnd: vendor.contractEnd,
+        };
+      })
+    );
+
+    return comparisons.filter((c) => c !== null);
+  },
+});
+
+/**
+ * Get vendor performance trends
+ */
+export const getVendorPerformanceTrends = query({
+  args: {
+    businessId: v.id("businesses"),
+    days: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const days = args.days || 180;
+    const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
+
+    const vendors = await ctx.db
+      .query("vendors")
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .collect();
+
+    const trends = await Promise.all(
+      vendors.map(async (vendor) => {
+        const metrics = await ctx.db
+          .query("vendorPerformanceMetrics")
+          .filter((q) =>
+            q.and(
+              q.eq(q.field("vendorId"), vendor._id),
+              q.gte(q.field("recordedAt"), cutoff)
+            )
+          )
+          .order("asc")
+          .collect();
+
+        return {
+          vendorId: vendor._id,
+          vendorName: vendor.name,
+          dataPoints: metrics.map((m) => ({
+            date: m.recordedAt,
+            score: m.overallScore,
+          })),
+        };
+      })
+    );
+
+    return trends.filter((t) => t.dataPoints.length > 0);
+  },
+});
+
+/**
  * Create vendor
  */
 export const createVendor = mutation({

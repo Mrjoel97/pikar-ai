@@ -39,6 +39,14 @@ const TestRunnerPage = React.lazy(() => import("./pages/TestRunner"));
 
 const DocsPage = React.lazy(() => import("./pages/Docs"));
 
+// Add new lazy-loaded pages
+const CrmIntegrationHubPage = React.lazy(() => import("./pages/CrmIntegrationHub"));
+const CustomerJourneyPage = React.lazy(() => import("./pages/CustomerJourney"));
+const VendorManagementPage = React.lazy(() => import("./pages/VendorManagement"));
+const ContentCalendarPage = React.lazy(() => import("./pages/ContentCalendar"));
+const PortfolioDashboardPage = React.lazy(() => import("./pages/PortfolioDashboard"));
+const DataWarehousePage = React.lazy(() => import("./pages/DataWarehouse"));
+
 const DataWarehouseManager = React.lazy(() =>
   import("./components/enterprise/DataWarehouseManager").then((m) => ({
     default: m.DataWarehouseManager,
@@ -397,6 +405,56 @@ createRoot(document.getElementById("root")!).render(
                   </React.Suspense>
                 }
               />
+              
+              <Route
+                path="/crm-integration-hub"
+                element={
+                  <React.Suspense fallback={<div className="p-6 text-sm">Loading…</div>}>
+                    <CrmIntegrationHubPage />
+                  </React.Suspense>
+                }
+              />
+              <Route
+                path="/customer-journey"
+                element={
+                  <React.Suspense fallback={<div className="p-6 text-sm">Loading…</div>}>
+                    <CustomerJourneyPage />
+                  </React.Suspense>
+                }
+              />
+              <Route
+                path="/vendor-management"
+                element={
+                  <React.Suspense fallback={<div className="p-6 text-sm">Loading…</div>}>
+                    <VendorManagementPage />
+                  </React.Suspense>
+                }
+              />
+              <Route
+                path="/content-calendar"
+                element={
+                  <React.Suspense fallback={<div className="p-6 text-sm">Loading…</div>}>
+                    <ContentCalendarPage />
+                  </React.Suspense>
+                }
+              />
+              <Route
+                path="/portfolio-dashboard"
+                element={
+                  <React.Suspense fallback={<div className="p-6 text-sm">Loading…</div>}>
+                    <PortfolioDashboardPage />
+                  </React.Suspense>
+                }
+              />
+              <Route
+                path="/data-warehouse"
+                element={
+                  <React.Suspense fallback={<div className="p-6 text-sm">Loading…</div>}>
+                    <DataWarehousePage />
+                  </React.Suspense>
+                }
+              />
+              
               <Route path="*" element={<NotFound />} />
             </Routes>
           </MemoryRouter>

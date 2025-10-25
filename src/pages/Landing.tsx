@@ -11,8 +11,8 @@ import {
   Target,
   Sparkles,
   CheckCircle,
-  Loader2,
   MessageCircle,
+  Loader2,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useNavigate } from "react-router";
@@ -262,21 +262,19 @@ export default function Landing() {
 
       {/* Navigation */}
       <nav className="sticky top-0 z-50 backdrop-blur-lg bg-background/80 border-b border-border/50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          {/* Reduce navbar height on mobile for better fit */}
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-14 sm:h-16">
-            <motion.div 
-              className="flex items-center space-x-3 cursor-pointer"
-              onClick={() => navigate("/")}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              <div className="neu-raised rounded-xl p-2 bg-primary/10">
-                {/* Slightly smaller icon on mobile to avoid wrap */}
-                <Brain className="h-7 w-7 sm:h-8 sm:w-8 text-primary" />
-              </div>
-              <span className="text-lg sm:text-xl font-bold tracking-tight">Pikar AI</span>
-            </motion.div>
+              <motion.div 
+                className="flex items-center space-x-2 sm:space-x-3 cursor-pointer"
+                onClick={() => navigate("/")}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                <div className="neu-raised rounded-xl p-1.5 sm:p-2 bg-primary/10">
+                  <Brain className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />
+                </div>
+                <span className="text-base sm:text-xl font-bold tracking-tight">Pikar AI</span>
+              </motion.div>
 
             {/* Desktop nav */}
             <div className="hidden md:flex items-center gap-6 text-sm">
@@ -312,28 +310,24 @@ export default function Landing() {
 
             {/* Desktop actions */}
             <div className="hidden md:flex items-center space-x-3">
-              <Button
-                className="neu-flat rounded-xl bg-card/70 hover:bg-card text-foreground"
-                onClick={() => navigate("/auth")}
-                aria-label="Sign in"
-              >
-                Sign In
-              </Button>
-              <Button
-                className="neu-raised rounded-xl bg-primary hover:bg-primary/90"
-                onClick={handleGetStarted}
-                disabled={isLoading}
-                aria-label="Get started"
-              >
-                {isLoading ? (
-                  <span className="inline-flex items-center">
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Loading...
-                  </span>
-                ) : (
-                  "Get Started"
-                )}
-              </Button>
+              <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                <Button
+                  className="neu-flat rounded-xl bg-card/70 hover:bg-card text-foreground"
+                  onClick={() => navigate("/auth")}
+                  aria-label="Sign in"
+                >
+                  Sign In
+                </Button>
+              </motion.div>
+              <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                <Button
+                  className="neu-raised rounded-xl bg-primary hover:bg-primary/90"
+                        onClick={handleGetStarted}
+                        aria-label="Get started"
+                      >
+                        Get Started
+                </Button>
+              </motion.div>
             </div>
 
             {/* Mobile menu */}
@@ -413,9 +407,17 @@ export default function Landing() {
                           setMobileOpen(false);
                           navigate("/auth");
                         }}
+                        disabled={isLoading}
                         aria-label="Sign in"
                       >
-                        Sign In
+                        {isLoading ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Loading...
+                          </>
+                        ) : (
+                          "Sign In"
+                        )}
                       </Button>
                       <Button
                         className="w-full neu-raised rounded-xl bg-[#1B5235] hover:bg-[#17452D] text-white"
@@ -423,17 +425,9 @@ export default function Landing() {
                           setMobileOpen(false);
                           handleGetStarted();
                         }}
-                        disabled={isLoading}
                         aria-label="Get started"
                       >
-                        {isLoading ? (
-                          <span className="inline-flex items-center">
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Loading...
-                          </span>
-                        ) : (
-                          "Get Started"
-                        )}
+                        Get Started
                       </Button>
                     </div>
                   </div>
@@ -449,7 +443,7 @@ export default function Landing() {
         id="main"
         className="relative pt-5 pb-12 sm:pt-10 sm:pb-20 lg:pt-10 lg:pb-24 px-4 sm:px-6 lg:px-8"
       >
-        {/* Subtle white gradient overlay */}
+        {/* Static gradient overlay */}
         <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top,rgba(255,255,255,0.95),rgba(255,255,255,0.9)_45%,transparent_70%)]" />
         <div className="max-w-7xl mx-auto text-center">
           <motion.div
@@ -457,104 +451,209 @@ export default function Landing() {
             animate={{ y: 0, opacity: 1 }}
             transition={{ duration: 0.8, delay: 0.2 }}
           >
-            <div className="inline-flex items-center space-x-2 bg-primary/10 rounded-full px-3 py-1.5 sm:px-4 sm:py-2 mb-6 sm:mb-8 neu-inset">
-              <Sparkles className="h-4 w-4 text-primary" />
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ duration: 0.6, delay: 0.3 }}
+              className="inline-flex items-center space-x-2 bg-primary/10 rounded-full px-3 py-1.5 sm:px-4 sm:py-2 mb-6 sm:mb-8 neu-inset"
+            >
+              <motion.div
+                animate={{ rotate: [0, 360] }}
+                transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+              >
+                <Sparkles className="h-4 w-4 text-primary" />
+              </motion.div>
               <span className="text-xs sm:text-sm font-medium text-primary">AI-Powered Business Intelligence</span>
-            </div>
+            </motion.div>
             
-            <h1 className="text-4xl sm:text-6xl md:text-7xl font-bold tracking-tight mb-4 sm:mb-6 leading-[1.15] sm:leading-[1.1]">
-              <span className="text-foreground">Transform Your Business</span>
+            <motion.h1
+              initial={{ y: 30, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ duration: 0.8, delay: 0.5 }}
+              className="text-4xl sm:text-6xl md:text-7xl font-bold tracking-tight mb-4 sm:mb-6 leading-[1.15] sm:leading-[1.1]"
+            >
+              <motion.span
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.6, delay: 0.7 }}
+                className="text-foreground"
+              >
+                Transform Your Business
+              </motion.span>
               <br />
-              <span className="text-primary">and Ideas</span> <span className="text-foreground">with AI</span>
-            </h1>
+              <motion.span
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.6, delay: 0.9 }}
+                className="text-primary"
+              >
+                and Ideas
+              </motion.span>{" "}
+              <motion.span
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.6, delay: 1.1 }}
+                className="text-foreground"
+              >
+                with AI
+              </motion.span>
+            </motion.h1>
             
-            <p className="text-base sm:text-xl text-muted-foreground max-w-3xl mx-auto mb-8 sm:mb-10 leading-relaxed px-1">
+            <motion.p
+              initial={{ y: 20, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ duration: 0.8, delay: 1.3 }}
+              className="text-base sm:text-xl text-muted-foreground max-w-3xl mx-auto mb-8 sm:mb-10 leading-relaxed px-1"
+            >
               Pikar AI helps entrepreneurs and businesses evaluate ideas, diagnose problems,
               and integrate with ERP systems using cutting-edge artificial intelligence.
-            </p>
+            </motion.p>
             
-            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-center">
-              <Button
-                size="lg"
-                className="w-full sm:w-auto neu-raised rounded-xl bg-primary hover:bg-primary/90 px-8 py-4 text-lg"
-                onClick={handleGetStarted}
-                disabled={isLoading}
-                aria-label="Start free assessment"
+            <motion.div
+              initial={{ y: 30, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ duration: 0.8, delay: 1.5 }}
+              className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-center"
+            >
+              <motion.div
+                initial={{ x: -20, opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                transition={{ duration: 0.6, delay: 1.7 }}
+                whileHover={{ scale: 1.05, y: -2 }}
+                whileTap={{ scale: 0.95 }}
+                className="w-full sm:w-auto"
               >
-                {isLoading ? (
-                  <span className="inline-flex items-center">
-                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                    Loading...
-                  </span>
-                ) : (
-                  <>
-                    Start Free Assessment
-                    <ArrowRight className="ml-2 h-5 w-5" />
-                  </>
-                )}
-              </Button>
-              <Button
-                size="lg"
-                className="w-full sm:w-auto neu-flat rounded-xl px-8 py-4 text-lg"
-                variant="outline"
-                onClick={() => setDemoOpen(true)}
-                aria-label="Watch demo"
+                <Button
+                  size="lg"
+                  className="w-full sm:w-auto neu-raised rounded-xl bg-primary hover:bg-primary/90 px-8 py-4 text-lg"
+                  onClick={handleGetStarted}
+                  aria-label="Start free assessment"
+                >
+                  Start Free Assessment
+                  <ArrowRight className="ml-2 h-5 w-5" />
+                </Button>
+              </motion.div>
+              <motion.div
+                initial={{ x: 20, opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                transition={{ duration: 0.6, delay: 1.9 }}
+                whileHover={{ scale: 1.05, y: -2 }}
+                whileTap={{ scale: 0.95 }}
+                className="w-full sm:w-auto"
               >
-                Watch Demo
-              </Button>
-            </div>
+                <Button
+                  size="lg"
+                  className="w-full sm:w-auto neu-flat rounded-xl px-8 py-4 text-lg"
+                  variant="outline"
+                  onClick={() => setDemoOpen(true)}
+                  aria-label="Watch demo"
+                >
+                  Watch Demo
+                </Button>
+              </motion.div>
+            </motion.div>
           </motion.div>
         </div>
 
-        <div className="mt-8 sm:mt-10">
+        <motion.div 
+          className="mt-8 sm:mt-10"
+          initial={{ y: 50, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ duration: 0.8, delay: 0.6 }}
+        >
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6 max-w-4xl mx-auto">
-            {heroStats.map((stat) => (
-              <div
+            {heroStats.map((stat, index) => (
+              <motion.div
                 key={stat.label}
                 className="neu-inset rounded-xl px-4 py-3 sm:px-5 sm:py-4 bg-card/70 text-center"
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ duration: 0.5, delay: 0.7 + index * 0.1 }}
+                whileHover={{ scale: 1.05, y: -5 }}
               >
                 <div className="text-lg sm:text-2xl font-bold text-black">{stat.value}</div>
                 <div className="text-xs sm:text-sm text-muted-foreground">{stat.label}</div>
-              </div>
+              </motion.div>
             ))}
           </div>
-        </div>
+        </motion.div>
       </section>
 
       {/* High-Traction Industries (randomized) */}
-      <section className="px-4 sm:px-6 lg:px-8 pb-10">
+      <motion.section 
+        className="px-4 sm:px-6 lg:px-8 pb-10"
+        initial={{ opacity: 0 }}
+        whileInView={{ opacity: 1 }}
+        transition={{ duration: 0.8 }}
+        viewport={{ once: true }}
+      >
         <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-4">
+          <motion.div 
+            className="text-center mb-4"
+            initial={{ y: 20, opacity: 0 }}
+            whileInView={{ y: 0, opacity: 1 }}
+            transition={{ duration: 0.6 }}
+            viewport={{ once: true }}
+          >
             <p className="text-xs sm:text-sm text-muted-foreground tracking-wide">
               High‑Traction Industries We Support
             </p>
-          </div>
+          </motion.div>
           <div className="flex flex-wrap justify-center gap-2 sm:gap-3">
-            {randomIndustries.map((ind) => (
-              <Badge
+            {randomIndustries.map((ind, index) => (
+              <motion.div
                 key={ind}
-                variant="secondary"
-                className="neu-inset rounded-full px-3 py-1.5 bg-card/70"
+                initial={{ scale: 0, opacity: 0 }}
+                whileInView={{ scale: 1, opacity: 1 }}
+                transition={{ duration: 0.3, delay: index * 0.03 }}
+                viewport={{ once: true }}
+                whileHover={{ scale: 1.1 }}
               >
-                {ind}
-              </Badge>
+                <Badge
+                  variant="secondary"
+                  className="neu-inset rounded-full px-3 py-1.5 bg-card/70"
+                >
+                  {ind}
+                </Badge>
+              </motion.div>
             ))}
           </div>
         </div>
-      </section>
+      </motion.section>
 
       {/* Trusted Logos - Animated Marquee */}
-      <React.Suspense fallback={<div className="px-4 sm:px-6 lg:px-8 pb-12 sm:pb-16 text-sm text-muted-foreground">Loading logos…</div>}>
-        <TrustedLogosMarquee logos={trustedLogos} />
-      </React.Suspense>
+      <motion.div
+        initial={{ y: 50, opacity: 0 }}
+        whileInView={{ y: 0, opacity: 1 }}
+        transition={{ duration: 0.8 }}
+        viewport={{ once: true }}
+      >
+        <React.Suspense fallback={<div className="px-4 sm:px-6 lg:px-8 pb-12 sm:pb-16 text-sm text-muted-foreground">Loading logos…</div>}>
+          <TrustedLogosMarquee logos={trustedLogos} />
+        </React.Suspense>
+      </motion.div>
 
-      <React.Suspense fallback={<div className="px-4 sm:px-6 lg:px-8 pb-12 sm:pb-16 text-sm text-muted-foreground">Loading features…</div>}>
-        <FeaturesSection features={features} />
-      </React.Suspense>
+      <motion.div
+        initial={{ y: 50, opacity: 0 }}
+        whileInView={{ y: 0, opacity: 1 }}
+        transition={{ duration: 0.8, delay: 0.2 }}
+        viewport={{ once: true }}
+      >
+        <React.Suspense fallback={<div className="px-4 sm:px-6 lg:px-8 pb-12 sm:pb-16 text-sm text-muted-foreground">Loading features…</div>}>
+          <FeaturesSection features={features} />
+        </React.Suspense>
+      </motion.div>
 
-      <React.Suspense fallback={<div className="px-4 sm:px-6 lg:px-8 py-14 sm:py-20 text-sm text-muted-foreground">Loading KPI trends…</div>}>
-        <KpiTrendsCard data={trendData} />
-      </React.Suspense>
+      <motion.div
+        initial={{ y: 50, opacity: 0 }}
+        whileInView={{ y: 0, opacity: 1 }}
+        transition={{ duration: 0.8, delay: 0.2 }}
+        viewport={{ once: true }}
+      >
+        <React.Suspense fallback={<div className="px-4 sm:px-6 lg:px-8 py-14 sm:py-20 text-sm text-muted-foreground">Loading KPI trends…</div>}>
+          <KpiTrendsCard data={trendData} />
+        </React.Suspense>
+      </motion.div>
 
       {/* Demo Video Carousel */}
       <React.Suspense fallback={null}>
@@ -566,8 +665,34 @@ export default function Landing() {
       </React.Suspense>
 
       {/* Testimonials Section */}
-      <section className="py-14 sm:py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-background to-accent/5">
-        <div className="max-w-7xl mx-auto">
+      <section className="py-14 sm:py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-background to-accent/5 relative overflow-hidden">
+        {/* Floating background elements */}
+        <motion.div
+          className="absolute top-20 left-10 w-32 h-32 bg-emerald-500/5 rounded-full blur-3xl"
+          animate={{
+            y: [0, 30, 0],
+            scale: [1, 1.1, 1],
+          }}
+          transition={{
+            duration: 8,
+            repeat: Infinity,
+            ease: "easeInOut",
+          }}
+        />
+        <motion.div
+          className="absolute bottom-20 right-10 w-40 h-40 bg-primary/5 rounded-full blur-3xl"
+          animate={{
+            y: [0, -40, 0],
+            scale: [1, 1.2, 1],
+          }}
+          transition={{
+            duration: 10,
+            repeat: Infinity,
+            ease: "easeInOut",
+          }}
+        />
+        
+        <div className="max-w-7xl mx-auto relative z-10">
           <motion.div
             initial={{ y: 50, opacity: 0 }}
             whileInView={{ y: 0, opacity: 1 }}
@@ -575,16 +700,35 @@ export default function Landing() {
             viewport={{ once: true }}
             className="text-center mb-12 sm:mb-16"
           >
-            <Badge variant="secondary" className="mb-4 neu-inset">
-              <Users className="h-3 w-3 mr-1" />
-              Trusted by 8,200+ Businesses
-            </Badge>
-            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight mb-3 sm:mb-4">
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0 }}
+              whileInView={{ scale: 1, opacity: 1 }}
+              transition={{ duration: 0.5, delay: 0.2 }}
+              viewport={{ once: true }}
+            >
+              <Badge variant="secondary" className="mb-4 neu-inset">
+                <Users className="h-3 w-3 mr-1" />
+                Trusted by 8,200+ Businesses
+              </Badge>
+            </motion.div>
+            <motion.h2
+              className="text-3xl sm:text-4xl font-bold tracking-tight mb-3 sm:mb-4"
+              initial={{ y: 20, opacity: 0 }}
+              whileInView={{ y: 0, opacity: 1 }}
+              transition={{ duration: 0.6, delay: 0.3 }}
+              viewport={{ once: true }}
+            >
               Real Results from Real People
-            </h2>
-            <p className="text-base sm:text-xl text-muted-foreground max-w-2xl mx-auto px-2">
+            </motion.h2>
+            <motion.p
+              className="text-base sm:text-xl text-muted-foreground max-w-2xl mx-auto px-2"
+              initial={{ y: 20, opacity: 0 }}
+              whileInView={{ y: 0, opacity: 1 }}
+              transition={{ duration: 0.6, delay: 0.4 }}
+              viewport={{ once: true }}
+            >
               See how businesses across industries are transforming with Pikar AI
-            </p>
+            </motion.p>
           </motion.div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -646,46 +790,103 @@ export default function Landing() {
             ].map((testimonial, index) => (
               <motion.div
                 key={testimonial.name}
-                initial={{ y: 30, opacity: 0 }}
-                whileInView={{ y: 0, opacity: 1 }}
-                transition={{ duration: 0.6, delay: index * 0.1 }}
-                viewport={{ once: true }}
+                initial={{ y: 50, opacity: 0, scale: 0.9 }}
+                whileInView={{ y: 0, opacity: 1, scale: 1 }}
+                transition={{ 
+                  duration: 0.6, 
+                  delay: index * 0.15,
+                  type: "spring",
+                  stiffness: 100
+                }}
+                viewport={{ once: true, margin: "-50px" }}
+                whileHover={{ 
+                  y: -8,
+                  transition: { duration: 0.3 }
+                }}
               >
-                <Card className="neu-raised rounded-2xl border-0 h-full hover:shadow-xl transition-shadow">
-                  <CardContent className="p-6">
-                    <div className="flex items-start gap-4 mb-4">
-                      <img
+                <Card className="neu-raised rounded-2xl border-0 h-full hover:shadow-2xl transition-all duration-300 relative overflow-hidden group">
+                  {/* Animated gradient overlay on hover */}
+                  <motion.div
+                    className="absolute inset-0 bg-gradient-to-br from-emerald-500/0 to-primary/0 group-hover:from-emerald-500/5 group-hover:to-primary/5 transition-all duration-500"
+                    initial={{ opacity: 0 }}
+                    whileHover={{ opacity: 1 }}
+                  />
+                  <CardContent className="p-6 relative z-10">
+                    <motion.div 
+                      className="flex items-start gap-4 mb-4"
+                      initial={{ x: -20, opacity: 0 }}
+                      whileInView={{ x: 0, opacity: 1 }}
+                      transition={{ duration: 0.5, delay: index * 0.15 + 0.2 }}
+                      viewport={{ once: true }}
+                    >
+                      <motion.img
                         src={testimonial.image}
                         alt={testimonial.name}
                         className="w-14 h-14 rounded-full object-cover neu-raised"
                         onError={(e) => {
                           (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(testimonial.name)}&size=400&background=random`;
                         }}
+                        whileHover={{ scale: 1.1, rotate: 5 }}
+                        transition={{ type: "spring", stiffness: 300 }}
                       />
                       <div className="flex-1">
                         <h4 className="font-semibold text-foreground">{testimonial.name}</h4>
                         <p className="text-sm text-muted-foreground">{testimonial.role}</p>
                         <p className="text-xs text-muted-foreground">{testimonial.company}</p>
                       </div>
-                      <Badge variant="outline" className="neu-inset text-xs">
-                        {testimonial.tier}
-                      </Badge>
-                    </div>
+                      <motion.div
+                        initial={{ scale: 0 }}
+                        whileInView={{ scale: 1 }}
+                        transition={{ duration: 0.3, delay: index * 0.15 + 0.4 }}
+                        viewport={{ once: true }}
+                      >
+                        <Badge variant="outline" className="neu-inset text-xs">
+                          {testimonial.tier}
+                        </Badge>
+                      </motion.div>
+                    </motion.div>
                     
-                    <p className="text-sm text-foreground leading-relaxed mb-3">
+                    <motion.p 
+                      className="text-sm text-foreground leading-relaxed mb-3"
+                      initial={{ opacity: 0 }}
+                      whileInView={{ opacity: 1 }}
+                      transition={{ duration: 0.6, delay: index * 0.15 + 0.3 }}
+                      viewport={{ once: true }}
+                    >
                       "{testimonial.quote}"
-                    </p>
+                    </motion.p>
                     
-                    <div className="flex items-center gap-2 pt-3 border-t border-border/50">
+                    <motion.div 
+                      className="flex items-center gap-2 pt-3 border-t border-border/50"
+                      initial={{ y: 10, opacity: 0 }}
+                      whileInView={{ y: 0, opacity: 1 }}
+                      transition={{ duration: 0.5, delay: index * 0.15 + 0.5 }}
+                      viewport={{ once: true }}
+                    >
                       <Badge variant="secondary" className="text-xs neu-inset">
                         {testimonial.industry}
                       </Badge>
                       <div className="flex gap-0.5 ml-auto">
                         {[1, 2, 3, 4, 5].map((star) => (
-                          <span key={star} className="text-amber-500 text-sm">★</span>
+                          <motion.span 
+                            key={star} 
+                            className="text-amber-500 text-sm"
+                            initial={{ scale: 0, rotate: -180 }}
+                            whileInView={{ scale: 1, rotate: 0 }}
+                            transition={{ 
+                              duration: 0.4, 
+                              delay: index * 0.15 + 0.6 + (star * 0.05),
+                              type: "spring",
+                              stiffness: 200
+                            }}
+                            viewport={{ once: true }}
+                            whileHover={{ scale: 1.3, rotate: 15 }}
+                          >
+                            ★
+                          </motion.span>
                         ))}
                       </div>
-                    </div>
+                    </motion.div>
                   </CardContent>
                 </Card>
               </motion.div>
@@ -696,23 +897,46 @@ export default function Landing() {
           <motion.div
             initial={{ y: 30, opacity: 0 }}
             whileInView={{ y: 0, opacity: 1 }}
-            transition={{ duration: 0.8, delay: 0.3 }}
+            transition={{ duration: 0.8, delay: 0.5 }}
             viewport={{ once: true }}
             className="mt-12 text-center"
           >
             <div className="flex flex-wrap justify-center items-center gap-6 sm:gap-8">
-              <div className="flex items-center gap-2">
-                <CheckCircle className="h-5 w-5 text-emerald-600" />
-                <span className="text-sm font-medium">4.9/5 Average Rating</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <CheckCircle className="h-5 w-5 text-emerald-600" />
-                <span className="text-sm font-medium">95% Customer Satisfaction</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <CheckCircle className="h-5 w-5 text-emerald-600" />
-                <span className="text-sm font-medium">12k+ Workflows Automated</span>
-              </div>
+              {[
+                { icon: CheckCircle, text: "4.9/5 Average Rating" },
+                { icon: CheckCircle, text: "95% Customer Satisfaction" },
+                { icon: CheckCircle, text: "12k+ Workflows Automated" }
+              ].map((item, idx) => (
+                <motion.div 
+                  key={idx}
+                  className="flex items-center gap-2"
+                  initial={{ scale: 0, opacity: 0 }}
+                  whileInView={{ scale: 1, opacity: 1 }}
+                  transition={{ 
+                    duration: 0.5, 
+                    delay: 0.6 + (idx * 0.1),
+                    type: "spring",
+                    stiffness: 150
+                  }}
+                  viewport={{ once: true }}
+                  whileHover={{ scale: 1.05 }}
+                >
+                  <motion.div
+                    animate={{ 
+                      rotate: [0, 10, -10, 0],
+                    }}
+                    transition={{
+                      duration: 2,
+                      repeat: Infinity,
+                      repeatDelay: 3,
+                      ease: "easeInOut"
+                    }}
+                  >
+                    <item.icon className="h-5 w-5 text-emerald-600" />
+                  </motion.div>
+                  <span className="text-sm font-medium">{item.text}</span>
+                </motion.div>
+              ))}
             </div>
           </motion.div>
         </div>
@@ -767,13 +991,15 @@ export default function Landing() {
                         </li>
                       ))}
                     </ul>
-                    <Button 
-                      className="w-full neu-flat rounded-xl"
-                      variant={index === 1 ? "default" : "outline"}
-                      onClick={() => openUpgrade(tier.name)}
-                    >
-                      Get Started
-                    </Button>
+                    <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
+                      <Button 
+                        className="w-full neu-flat rounded-xl"
+                        variant={index === 1 ? "default" : "outline"}
+                        onClick={() => openUpgrade(tier.name)}
+                      >
+                        Get Started
+                      </Button>
+                    </motion.div>
                   </CardContent>
                 </Card>
               </motion.div>
@@ -798,32 +1024,46 @@ export default function Landing() {
             <p className="text-xl text-emerald-50 mb-8 max-w-2xl mx-auto">
               Join thousands of businesses already using Pikar AI to automate operations, boost productivity, and accelerate growth.
             </p>
-            <Button 
+            <motion.div whileHover={{ scale: 1.05, y: -3 }} whileTap={{ scale: 0.95 }} className="w-full sm:w-auto">
+              <Button 
               size="lg" 
               className="w-full sm:w-auto neu-raised rounded-xl bg-white text-emerald-700 hover:bg-emerald-50 px-8 py-4 text-lg font-semibold shadow-xl"
               onClick={() => openUpgrade()}
               disabled={isLoading}
             >
               {isLoading ? (
-                <span className="inline-flex items-center">
+                <>
                   <Loader2 className="mr-2 h-5 w-5 animate-spin" />
                   Loading...
-                </span>
+                </>
               ) : (
                 <>
                   Start Your Free Trial
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </>
               )}
-            </Button>
+              </Button>
+            </motion.div>
           </motion.div>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="pt-12 sm:pt-16 border-t border-border/50">
+      <motion.footer 
+        className="pt-12 sm:pt-16 border-t border-border/50"
+        initial={{ opacity: 0 }}
+        whileInView={{ opacity: 1 }}
+        transition={{ duration: 0.8 }}
+        viewport={{ once: true }}
+      >
         {/* Newsletter Bar */}
-        <div className="px-4 sm:px-6 lg:px-8">
+        <motion.div 
+          className="px-4 sm:px-6 lg:px-8"
+          initial={{ y: 30, opacity: 0 }}
+          whileInView={{ y: 0, opacity: 1 }}
+          transition={{ duration: 0.6 }}
+          viewport={{ once: true }}
+        >
           <div className="max-w-5xl mx-auto neu-raised rounded-2xl bg-card/70 p-5 sm:p-8">
             <div className="flex flex-col md:flex-row items-start md:items-center gap-4 md:gap-6">
               <div className="flex-1">
@@ -845,28 +1085,36 @@ export default function Landing() {
                       aria-label="Email address"
                     />
                   </div>
-                  <Button
-                    type="submit"
-                    className="neu-raised rounded-xl bg-primary text-primary-foreground hover:bg-primary/90"
-                    disabled={newsletterSubmitting}
-                  >
-                    {newsletterSubmitting ? (
-                      <span className="inline-flex items-center">
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Subscribing...
-                      </span>
-                    ) : (
-                      "Subscribe"
-                    )}
-                  </Button>
+                  <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                    <Button
+                      type="submit"
+                      className="neu-raised rounded-xl bg-primary text-primary-foreground hover:bg-primary/90"
+                      disabled={newsletterSubmitting || isLoading}
+                    >
+                      {newsletterSubmitting ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Subscribing...
+                        </>
+                      ) : (
+                        "Subscribe"
+                      )}
+                    </Button>
+                  </motion.div>
                 </div>
               </form>
             </div>
           </div>
-        </div>
+        </motion.div>
 
         {/* Footer Base */}
-        <div className="px-4 sm:px-6 lg:px-8">
+        <motion.div 
+          className="px-4 sm:px-6 lg:px-8"
+          initial={{ y: 30, opacity: 0 }}
+          whileInView={{ y: 0, opacity: 1 }}
+          transition={{ duration: 0.6, delay: 0.2 }}
+          viewport={{ once: true }}
+        >
           <div className="max-w-7xl mx-auto py-10 sm:py-12">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
               <div>
@@ -926,8 +1174,8 @@ export default function Landing() {
               </p>
             </div>
           </div>
-        </div>
-      </footer>
+        </motion.div>
+      </motion.footer>
 
       {/* AI Chat Assistant */}
       <div className="fixed bottom-6 right-6 z-50">
@@ -936,7 +1184,9 @@ export default function Landing() {
             <CardHeader className="border-b">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-lg">AI Assistant</CardTitle>
-                <Button variant="ghost" size="sm" onClick={() => setAiChatOpen(false)}>✕</Button>
+                <motion.div whileHover={{ scale: 1.1, rotate: 90 }} whileTap={{ scale: 0.9 }}>
+                  <Button variant="ghost" size="sm" onClick={() => setAiChatOpen(false)}>✕</Button>
+                </motion.div>
               </div>
             </CardHeader>
             <CardContent className="flex-1 overflow-y-auto p-4 space-y-4">
@@ -956,18 +1206,29 @@ export default function Landing() {
                   onChange={(e) => setChatInput(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && handleSendMessage()}
                 />
-                <Button onClick={handleSendMessage}>Send</Button>
+                <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                  <Button onClick={handleSendMessage}>Send</Button>
+                </motion.div>
               </div>
             </div>
           </Card>
         ) : (
-          <Button
-            size="lg"
-            className="rounded-full h-14 w-14 shadow-lg"
-            onClick={() => setAiChatOpen(true)}
+          <motion.div 
+            whileHover={{ scale: 1.1, rotate: 5 }} 
+            whileTap={{ scale: 0.9 }}
+            animate={{ y: [0, -10, 0] }}
+            transition={{ 
+              y: { duration: 2, repeat: Infinity, ease: "easeInOut" }
+            }}
           >
-            <MessageCircle className="h-6 w-6" />
-          </Button>
+            <Button
+              size="lg"
+              className="rounded-full h-14 w-14 shadow-lg"
+              onClick={() => setAiChatOpen(true)}
+            >
+              <MessageCircle className="h-6 w-6" />
+            </Button>
+          </motion.div>
         )}
       </div>
     </motion.div>

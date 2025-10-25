@@ -1,14 +1,19 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { Database, Plus, RefreshCw, AlertCircle, CheckCircle, Clock } from "lucide-react";
+import { Database, Plus, RefreshCw, AlertCircle, CheckCircle, Clock, Workflow, FileDown, Shield, BarChart3 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import type { Id } from "@/convex/_generated/dataModel";
+import { PipelineBuilder } from "./warehouse/PipelineBuilder";
+import { TransformationEditor } from "./warehouse/TransformationEditor";
+import { ScheduleConfiguration } from "./warehouse/ScheduleConfiguration";
+import { QualityDashboard } from "./warehouse/QualityDashboard";
+import { ExportHistory } from "./warehouse/ExportHistory";
 
-// Add local UI types to make maps/reduces strictly typed
 type DataSourceSummary = {
   _id: Id<"dataWarehouseSources">;
   name: string;
@@ -31,7 +36,6 @@ type QualityMetric = {
 };
 
 export function DataWarehouseManager({ businessId }: { businessId?: Id<"businesses"> | null }) {
-  // Make queries guest-safe by skipping when businessId is absent
   const sources = useQuery(api.dataWarehouse.listDataSources, businessId ? { businessId } : undefined);
   const jobHistory = useQuery(
     api.dataWarehouse.getJobHistory,
@@ -40,6 +44,10 @@ export function DataWarehouseManager({ businessId }: { businessId?: Id<"business
   const qualityMetrics = useQuery(
     api.dataWarehouse.getQualityMetrics,
     businessId ? { businessId } : undefined
+  );
+  const analytics = useQuery(
+    api.dataWarehouse.getWarehouseAnalytics,
+    businessId ? { businessId, timeRange: "7d" } : undefined
   );
   const triggerSync = useMutation(api.dataWarehouse.triggerSync);
 
@@ -80,7 +88,6 @@ export function DataWarehouseManager({ businessId }: { businessId?: Id<"business
     }
   };
 
-  // Early return to avoid rendering feature UI without a business context
   if (!businessId) {
     return (
       <Card>
@@ -103,7 +110,7 @@ export function DataWarehouseManager({ businessId }: { businessId?: Id<"business
             Data Warehouse Integration
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Manage external data sources and ETL pipelines
+            Manage external data sources, ETL pipelines, and data quality
           </p>
         </div>
         <Button>
@@ -112,142 +119,241 @@ export function DataWarehouseManager({ businessId }: { businessId?: Id<"business
         </Button>
       </div>
 
-      {/* Data Sources */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {sources?.map((source: DataSourceSummary) => (
-          <Card key={source._id} className="relative">
+      {/* Analytics Overview */}
+      {analytics && (
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <Card>
             <CardHeader className="pb-3">
-              <div className="flex items-start justify-between">
-                <div>
-                  <CardTitle className="text-base">{source.name}</CardTitle>
-                  <CardDescription className="text-xs mt-1">
-                    {source.type.toUpperCase()}
-                  </CardDescription>
-                </div>
-                <Badge variant="outline" className={getStatusColor(source.status)}>
-                  <span className="flex items-center gap-1">
-                    {getStatusIcon(source.status)}
-                    {source.status}
-                  </span>
-                </Badge>
-              </div>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Data Sources</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="text-xs text-muted-foreground">
-                {source.lastSyncTime ? (
-                  <div>Last sync: {new Date(source.lastSyncTime).toLocaleString()}</div>
-                ) : (
-                  <div>Never synced</div>
-                )}
-              </div>
-              <div className="flex gap-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="flex-1"
-                  onClick={() => handleSync(source._id)}
-                  disabled={source.status === "syncing"}
-                >
-                  <RefreshCw className="h-3 w-3 mr-1" />
-                  Sync Now
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => setSelectedSource(source._id)}
-                >
-                  Details
-                </Button>
+            <CardContent>
+              <div className="text-2xl font-bold">{analytics.sources.total}</div>
+              <div className="text-xs text-muted-foreground mt-1">
+                {analytics.sources.connected} connected
               </div>
             </CardContent>
           </Card>
-        ))}
-
-        {(!sources || sources.length === 0) && (
-          <Card className="col-span-full">
-            <CardContent className="p-12 text-center">
-              <Database className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-              <h3 className="font-semibold mb-2">No data sources configured</h3>
-              <p className="text-sm text-muted-foreground mb-4">
-                Connect your first data warehouse to start syncing data
-              </p>
-              <Button>
-                <Plus className="h-4 w-4 mr-2" />
-                Add Data Source
-              </Button>
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Records Processed</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{analytics.records.processed.toLocaleString()}</div>
+              <div className="text-xs text-muted-foreground mt-1">
+                {analytics.records.successRate.toFixed(1)}% success rate
+              </div>
             </CardContent>
           </Card>
-        )}
-      </div>
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium text-muted-foreground">ETL Pipelines</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{analytics.pipelines.total}</div>
+              <div className="text-xs text-muted-foreground mt-1">
+                {analytics.pipelines.enabled} enabled
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Job Success Rate</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{analytics.jobs.successRate.toFixed(1)}%</div>
+              <div className="text-xs text-muted-foreground mt-1">
+                {analytics.jobs.successful}/{analytics.jobs.total} jobs
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
-      {/* Job History */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Recent Sync Jobs</CardTitle>
-          <CardDescription>ETL job execution history</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-2">
-            {jobHistory?.map((job: EtlJob) => (
-              <div
-                key={job._id}
-                className="flex items-center justify-between p-3 border rounded-lg"
-              >
-                <div className="flex-1">
-                  <div className="text-sm font-medium">{job.jobType.replace("_", " ")}</div>
+      {/* Main Tabs */}
+      <Tabs defaultValue="sources" className="w-full">
+        <TabsList className="grid w-full grid-cols-6">
+          <TabsTrigger value="sources">
+            <Database className="h-4 w-4 mr-2" />
+            Sources
+          </TabsTrigger>
+          <TabsTrigger value="pipelines">
+            <Workflow className="h-4 w-4 mr-2" />
+            Pipelines
+          </TabsTrigger>
+          <TabsTrigger value="transformations">
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Transformations
+          </TabsTrigger>
+          <TabsTrigger value="exports">
+            <FileDown className="h-4 w-4 mr-2" />
+            Exports
+          </TabsTrigger>
+          <TabsTrigger value="quality">
+            <Shield className="h-4 w-4 mr-2" />
+            Quality
+          </TabsTrigger>
+          <TabsTrigger value="analytics">
+            <BarChart3 className="h-4 w-4 mr-2" />
+            Analytics
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="sources" className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {sources?.map((source: DataSourceSummary) => (
+              <Card key={source._id} className="relative">
+                <CardHeader className="pb-3">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <CardTitle className="text-base">{source.name}</CardTitle>
+                      <CardDescription className="text-xs mt-1">
+                        {source.type.toUpperCase()}
+                      </CardDescription>
+                    </div>
+                    <Badge variant="outline" className={getStatusColor(source.status)}>
+                      <span className="flex items-center gap-1">
+                        {getStatusIcon(source.status)}
+                        {source.status}
+                      </span>
+                    </Badge>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-3">
                   <div className="text-xs text-muted-foreground">
-                    {new Date(job.startTime).toLocaleString()}
+                    {source.lastSyncTime ? (
+                      <div>Last sync: {new Date(source.lastSyncTime).toLocaleString()}</div>
+                    ) : (
+                      <div>Never synced</div>
+                    )}
                   </div>
-                </div>
-                <div className="flex items-center gap-4">
-                  <div className="text-right">
-                    <div className="text-sm font-medium">{job.recordsProcessed.toLocaleString()}</div>
-                    <div className="text-xs text-muted-foreground">records</div>
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="flex-1"
+                      onClick={() => handleSync(source._id)}
+                      disabled={source.status === "syncing"}
+                    >
+                      <RefreshCw className="h-3 w-3 mr-1" />
+                      Sync Now
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setSelectedSource(source._id)}
+                    >
+                      Details
+                    </Button>
                   </div>
-                  <Badge variant="outline" className={getStatusColor(job.status)}>
-                    {job.status}
-                  </Badge>
-                </div>
-              </div>
+                </CardContent>
+              </Card>
             ))}
-            {(!jobHistory || jobHistory.length === 0) && (
-              <div className="text-center py-8 text-sm text-muted-foreground">
-                No sync jobs yet
-              </div>
+
+            {(!sources || sources.length === 0) && (
+              <Card className="col-span-full">
+                <CardContent className="p-12 text-center">
+                  <Database className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                  <h3 className="font-semibold mb-2">No data sources configured</h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Connect your first data warehouse to start syncing data
+                  </p>
+                  <Button>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Data Source
+                  </Button>
+                </CardContent>
+              </Card>
             )}
           </div>
-        </CardContent>
-      </Card>
+        </TabsContent>
 
-      {/* Data Quality Overview */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Data Quality Metrics</CardTitle>
-          <CardDescription>Overall data health across all sources</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-            {["completeness", "accuracy", "consistency", "timeliness", "validity"].map((metric) => {
-              const metricData = qualityMetrics?.filter((m: QualityMetric) => m.metricType === metric);
-              const avgScore =
-                metricData && metricData.length > 0
-                  ? Math.round(
-                      metricData.reduce((sum: number, m: QualityMetric) => sum + m.score, 0) / metricData.length
-                    )
-                  : 0;
+        <TabsContent value="pipelines">
+          <PipelineBuilder businessId={businessId} />
+        </TabsContent>
 
-              return (
-                <div key={metric} className="text-center p-4 border rounded-lg">
-                  <div className="text-2xl font-bold">{avgScore}%</div>
-                  <div className="text-xs text-muted-foreground capitalize mt-1">
-                    {metric}
+        <TabsContent value="transformations">
+          <TransformationEditor businessId={businessId} />
+        </TabsContent>
+
+        <TabsContent value="exports">
+          <ExportHistory businessId={businessId} />
+        </TabsContent>
+
+        <TabsContent value="quality">
+          <QualityDashboard businessId={businessId} />
+        </TabsContent>
+
+        <TabsContent value="analytics" className="space-y-4">
+          {/* Job History */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Recent Sync Jobs</CardTitle>
+              <CardDescription>ETL job execution history</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                {jobHistory?.map((job: EtlJob) => (
+                  <div
+                    key={job._id}
+                    className="flex items-center justify-between p-3 border rounded-lg"
+                  >
+                    <div className="flex-1">
+                      <div className="text-sm font-medium">{job.jobType.replace("_", " ")}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {new Date(job.startTime).toLocaleString()}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <div className="text-right">
+                        <div className="text-sm font-medium">{job.recordsProcessed.toLocaleString()}</div>
+                        <div className="text-xs text-muted-foreground">records</div>
+                      </div>
+                      <Badge variant="outline" className={getStatusColor(job.status)}>
+                        {job.status}
+                      </Badge>
+                    </div>
                   </div>
-                </div>
-              );
-            })}
-          </div>
-        </CardContent>
-      </Card>
+                ))}
+                {(!jobHistory || jobHistory.length === 0) && (
+                  <div className="text-center py-8 text-sm text-muted-foreground">
+                    No sync jobs yet
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Data Quality Overview */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Data Quality Metrics</CardTitle>
+              <CardDescription>Overall data health across all sources</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                {["completeness", "accuracy", "consistency", "timeliness", "validity"].map((metric) => {
+                  const metricData = qualityMetrics?.filter((m: QualityMetric) => m.metricType === metric);
+                  const avgScore =
+                    metricData && metricData.length > 0
+                      ? Math.round(
+                          metricData.reduce((sum: number, m: QualityMetric) => sum + m.score, 0) / metricData.length
+                        )
+                      : 0;
+
+                  return (
+                    <div key={metric} className="text-center p-4 border rounded-lg">
+                      <div className="text-2xl font-bold">{avgScore}%</div>
+                      <div className="text-xs text-muted-foreground capitalize mt-1">
+                        {metric}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

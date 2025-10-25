@@ -19,7 +19,7 @@ export default function AnalyticsPage() {
   const firstBizId = businesses?.[0]?._id;
   const initiatives = useQuery(
     api.initiatives.getByBusiness,
-    firstBizId ? ({ businessId: firstBizId } as any) : undefined
+    firstBizId ? { businessId: firstBizId } : "skip"
   );
   const agents = useQuery(
     api.aiAgents.getByBusiness,

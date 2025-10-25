@@ -45,9 +45,11 @@ export function ExperimentDashboard({ businessId }: ExperimentDashboardProps) {
     try {
       const result = await determineWinner({ experimentId });
       if (result.isSignificant && result.winnerId) {
-        toast.success(`Winner determined: ${result.bestVariantKey} with ${result.conversionRate.toFixed(2)}% conversion rate`);
+        toast.success(
+          `Winner: ${result.bestVariantKey} with ${result.conversionRate.toFixed(2)}% conversion rate (${result.relativeImprovement.toFixed(1)}% improvement, p=${result.pValue.toFixed(4)})`
+        );
       } else {
-        toast.info("No statistically significant winner yet. Continue testing.");
+        toast.info(result.message || "No statistically significant winner yet. Continue testing.");
       }
     } catch (error) {
       toast.error("Failed to determine winner");
@@ -147,6 +149,9 @@ function ExperimentCard({
   isCompleted?: boolean;
 }) {
   const results = useQuery(api.experiments.calculateResults, { experimentId: experiment._id });
+  const significance = useQuery(api.experiments.calculateStatisticalSignificance, {
+    experimentId: experiment._id,
+  });
 
   return (
     <Card>
@@ -169,6 +174,40 @@ function ExperimentCard({
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
+        {/* Statistical Significance Panel */}
+        {significance && significance.comparisons.length > 0 && (
+          <div className="border rounded-lg p-4 bg-muted/50 space-y-3">
+            <h4 className="font-semibold text-sm flex items-center gap-2">
+              <TrendingUp className="h-4 w-4" />
+              Statistical Analysis
+            </h4>
+            <div className="space-y-2">
+              {significance.comparisons.map((comp: any) => (
+                <div key={comp.variantId} className="flex items-center justify-between text-sm">
+                  <span className="font-medium">{comp.name} vs Control:</span>
+                  <div className="flex items-center gap-2">
+                    <Badge variant={comp.isSignificant ? "default" : "outline"}>
+                      {comp.isSignificant ? "Significant" : "Not Significant"}
+                    </Badge>
+                    <span className="text-xs text-muted-foreground">
+                      p={comp.pValue.toFixed(4)}
+                    </span>
+                    <span className={`text-xs font-semibold ${comp.relativeImprovement > 0 ? "text-green-600" : "text-red-600"}`}>
+                      {comp.relativeImprovement > 0 ? "+" : ""}{comp.relativeImprovement.toFixed(1)}%
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+            {significance.overallSignificance && (
+              <p className="text-xs text-green-600 font-medium">
+                ✓ Statistical significance achieved at {experiment.configuration.confidenceLevel}% confidence
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* Variant Results */}
         <div className="grid gap-4">
           {results?.map((variant: any) => (
             <div key={variant.variantId} className="border rounded-lg p-4 space-y-2">
@@ -197,6 +236,12 @@ function ExperimentCard({
                 </div>
               </div>
               <Progress value={variant.metrics.sent > 0 ? (variant.metrics.converted / variant.metrics.sent) * 100 : 0} />
+              
+              {/* Sample Size Progress */}
+              <div className="text-xs text-muted-foreground">
+                Sample size: {variant.metrics.sent} / {experiment.configuration.minimumSampleSize} 
+                ({Math.min(100, (variant.metrics.sent / experiment.configuration.minimumSampleSize) * 100).toFixed(0)}%)
+              </div>
             </div>
           ))}
         </div>

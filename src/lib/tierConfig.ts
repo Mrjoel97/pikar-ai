@@ -12,7 +12,12 @@ import {
   CheckCircle,
   AlertTriangle,
   Building,
-  GitBranch
+  GitBranch,
+  Calendar,
+  Network,
+  Map,
+  Building2,
+  Database
 } from "lucide-react";
 
 export type TierType = "solopreneur" | "startup" | "sme" | "enterprise";
@@ -61,6 +66,7 @@ export const tierConfigs: Record<TierType, TierConfig> = {
       { label: "AI Agents", icon: Zap, to: "/agents", feature: "basic_agents" },
       { label: "Workflows", icon: GitBranch, to: "/workflows" },
       { label: "Initiatives", icon: Target, to: "/initiatives" },
+      { label: "Content Calendar", icon: Calendar, to: "/content-calendar", feature: "content_calendar" },
       { label: "Quick Actions", icon: CheckCircle, to: "/dashboard", feature: "quick_actions" },
       { label: "Performance", icon: TrendingUp, to: "/analytics", feature: "performance_snapshot" }
     ],
@@ -107,6 +113,9 @@ export const tierConfigs: Record<TierType, TierConfig> = {
       { label: "AI Agents", icon: Zap, to: "/agents", feature: "advanced_agents" },
       { label: "Workflows", icon: GitBranch, to: "/workflows", feature: "team_workflows" },
       { label: "Initiatives", icon: Target, to: "/initiatives", feature: "active_initiatives" },
+      { label: "CRM Hub", icon: Network, to: "/crm-integration-hub", feature: "crm_integration" },
+      { label: "Customer Journey", icon: Map, to: "/customer-journey" },
+      { label: "Content Calendar", icon: Calendar, to: "/content-calendar" },
       { label: "Approvals", icon: CheckCircle, to: "/dashboard", feature: "approvals_tray" },
       { label: "Analytics", icon: TrendingUp, to: "/analytics", feature: "basic_analytics" }
     ],
@@ -151,6 +160,10 @@ export const tierConfigs: Record<TierType, TierConfig> = {
       { label: "AI Agents", icon: Zap, to: "/agents" },
       { label: "Workflows", icon: GitBranch, to: "/workflows", feature: "advanced_workflows" },
       { label: "Initiatives", icon: Target, to: "/initiatives" },
+      { label: "CRM Hub", icon: Network, to: "/crm-integration-hub", feature: "crm_integration" },
+      { label: "Customer Journey", icon: Map, to: "/customer-journey" },
+      { label: "Vendor Management", icon: Building2, to: "/vendor-management" },
+      { label: "Content Calendar", icon: Calendar, to: "/content-calendar" },
       { label: "Approvals", icon: CheckCircle, to: "/dashboard", feature: "pending_approvals" },
       { label: "Departments", icon: Building, to: "/business", feature: "department_tabs" },
       { label: "Compliance", icon: FileText, to: "/analytics", feature: "compliance_monitoring" },
@@ -201,6 +214,12 @@ export const tierConfigs: Record<TierType, TierConfig> = {
       { label: "AI Agents", icon: Zap, to: "/agents" },
       { label: "Workflows", icon: GitBranch, to: "/workflows", feature: "custom_workflows" },
       { label: "Initiatives", icon: Target, to: "/initiatives", feature: "strategic_initiatives" },
+      { label: "Portfolio", icon: Briefcase, to: "/portfolio-dashboard" },
+      { label: "Data Warehouse", icon: Database, to: "/data-warehouse" },
+      { label: "CRM Hub", icon: Network, to: "/crm-integration-hub", feature: "crm_integration" },
+      { label: "Customer Journey", icon: Map, to: "/customer-journey" },
+      { label: "Vendor Management", icon: Building2, to: "/vendor-management" },
+      { label: "Content Calendar", icon: Calendar, to: "/content-calendar" },
       { label: "Governance", icon: Shield, to: "/dashboard", feature: "advanced_governance" },
       { label: "Business Units", icon: Building, to: "/business" },
       { label: "Compliance", icon: FileText, to: "/analytics", feature: "global_compliance" },

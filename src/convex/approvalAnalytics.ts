@@ -203,3 +203,291 @@ export const getApprovalTrends = query({
       .sort((a, b) => a.date.localeCompare(b.date));
   },
 });
+
+// Approval velocity metrics - measures speed of approvals over time
+export const getApprovalVelocity = query({
+  args: {
+    businessId: v.optional(v.id("businesses")),
+    timeRange: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    if (!args.businessId) {
+      return {
+        avgVelocity: 0,
+        velocityTrend: [],
+        fastestApprovals: [],
+        slowestApprovals: [],
+      };
+    }
+
+    const timeRange = args.timeRange ?? 30;
+    const startTime = Date.now() - timeRange * 24 * 60 * 60 * 1000;
+
+    const approvals = await ctx.db
+      .query("approvalQueue")
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId!))
+      .filter((q) => q.gt(q.field("_creationTime"), startTime))
+      .collect();
+
+    const processedApprovals = approvals.filter((a) => a.status !== "pending");
+
+    // Calculate velocity (approvals per day)
+    const velocityByDay: Record<string, number> = {};
+    processedApprovals.forEach((a) => {
+      const date = new Date(a.reviewedAt || a._creationTime).toISOString().split("T")[0];
+      velocityByDay[date] = (velocityByDay[date] || 0) + 1;
+    });
+
+    const velocityTrend = Object.entries(velocityByDay)
+      .map(([date, count]) => ({ date, count }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+
+    const avgVelocity = processedApprovals.length / timeRange;
+
+    // Find fastest and slowest approvals
+    const approvalsWithTime = processedApprovals.map((a) => ({
+      ...a,
+      timeToApprove: (a.reviewedAt || Date.now()) - a._creationTime,
+    }));
+
+    const sorted = approvalsWithTime.sort((a, b) => a.timeToApprove - b.timeToApprove);
+    const fastestApprovals = sorted.slice(0, 5).map((a) => ({
+      id: a._id,
+      timeHours: Math.round((a.timeToApprove / (1000 * 60 * 60)) * 10) / 10,
+    }));
+    const slowestApprovals = sorted.slice(-5).reverse().map((a) => ({
+      id: a._id,
+      timeHours: Math.round((a.timeToApprove / (1000 * 60 * 60)) * 10) / 10,
+    }));
+
+    return {
+      avgVelocity: Math.round(avgVelocity * 10) / 10,
+      velocityTrend,
+      fastestApprovals,
+      slowestApprovals,
+    };
+  },
+});
+
+// Team performance analytics - compare team members
+export const getTeamPerformance = query({
+  args: {
+    businessId: v.optional(v.id("businesses")),
+    timeRange: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    if (!args.businessId) {
+      return [];
+    }
+
+    const timeRange = args.timeRange ?? 30;
+    const startTime = Date.now() - timeRange * 24 * 60 * 60 * 1000;
+
+    const approvals = await ctx.db
+      .query("approvalQueue")
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId!))
+      .filter((q) => q.gt(q.field("_creationTime"), startTime))
+      .collect();
+
+    const userPerformance: Record<
+      string,
+      {
+        userId: Id<"users"> | null;
+        userName: string;
+        totalAssigned: number;
+        approved: number;
+        rejected: number;
+        pending: number;
+        avgTimeHours: number;
+        approvalRate: number;
+      }
+    > = {};
+
+    for (const approval of approvals) {
+      const userId = approval.assigneeId;
+      const key = String(userId || "unassigned");
+
+      if (!userPerformance[key]) {
+        let userName = "Unassigned";
+        if (userId) {
+          const user = await ctx.db.get(userId);
+          userName = user?.name || user?.email || "Unknown";
+        }
+
+        userPerformance[key] = {
+          userId: userId || null,
+          userName,
+          totalAssigned: 0,
+          approved: 0,
+          rejected: 0,
+          pending: 0,
+          avgTimeHours: 0,
+          approvalRate: 0,
+        };
+      }
+
+      userPerformance[key].totalAssigned++;
+      if (approval.status === "approved") userPerformance[key].approved++;
+      else if (approval.status === "rejected") userPerformance[key].rejected++;
+      else userPerformance[key].pending++;
+    }
+
+    // Calculate avg time and approval rate
+    for (const [key, perf] of Object.entries(userPerformance)) {
+      const userApprovals = approvals.filter(
+        (a) => String(a.assigneeId || "unassigned") === key && a.status !== "pending"
+      );
+
+      if (userApprovals.length > 0) {
+        const totalTime = userApprovals.reduce((sum, a) => {
+          const processedAt = a.reviewedAt || Date.now();
+          return sum + (processedAt - a._creationTime);
+        }, 0);
+        perf.avgTimeHours = Math.round((totalTime / userApprovals.length / (1000 * 60 * 60)) * 10) / 10;
+      }
+
+      const processed = perf.approved + perf.rejected;
+      perf.approvalRate = processed > 0 ? Math.round((perf.approved / processed) * 100) : 0;
+    }
+
+    return Object.values(userPerformance);
+  },
+});
+
+// Predictive insights - forecast approval trends
+export const getPredictiveInsights = query({
+  args: {
+    businessId: v.optional(v.id("businesses")),
+  },
+  handler: async (ctx, args) => {
+    if (!args.businessId) {
+      return {
+        predictedBottlenecks: [],
+        riskScore: 0,
+        recommendations: [],
+        forecast: [],
+      };
+    }
+
+    const approvals = await ctx.db
+      .query("approvalQueue")
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId!))
+      .collect();
+
+    const pendingApprovals = approvals.filter((a) => a.status === "pending");
+    const processedApprovals = approvals.filter((a) => a.status !== "pending");
+
+    // Calculate risk score (0-100)
+    const overdueCount = pendingApprovals.filter(
+      (a) => a.slaDeadline && a.slaDeadline < Date.now()
+    ).length;
+    const pendingRatio = approvals.length > 0 ? pendingApprovals.length / approvals.length : 0;
+    const riskScore = Math.min(100, Math.round((overdueCount * 10 + pendingRatio * 50)));
+
+    // Predict bottlenecks
+    const userLoad: Record<string, number> = {};
+    pendingApprovals.forEach((a) => {
+      const key = String(a.assigneeId || "unassigned");
+      userLoad[key] = (userLoad[key] || 0) + 1;
+    });
+
+    const predictedBottlenecks = [];
+    for (const [userId, count] of Object.entries(userLoad)) {
+      if (count > 5) {
+        let userName = "Unassigned";
+        if (userId !== "unassigned") {
+          const user = await ctx.db.get(userId as Id<"users">);
+          userName = user?.name || user?.email || "Unknown";
+        }
+        predictedBottlenecks.push({ userName, pendingCount: count });
+      }
+    }
+
+    // Generate recommendations
+    const recommendations = [];
+    if (overdueCount > 0) {
+      recommendations.push(`${overdueCount} overdue approvals need immediate attention`);
+    }
+    if (pendingRatio > 0.5) {
+      recommendations.push("High pending ratio - consider redistributing workload");
+    }
+    if (predictedBottlenecks.length > 0) {
+      recommendations.push(`${predictedBottlenecks.length} team members at risk of bottleneck`);
+    }
+    if (recommendations.length === 0) {
+      recommendations.push("All systems operating normally");
+    }
+
+    // Simple forecast (linear projection)
+    const last7Days = processedApprovals.filter(
+      (a) => a._creationTime > Date.now() - 7 * 24 * 60 * 60 * 1000
+    );
+    const avgPerDay = last7Days.length / 7;
+    const forecast = Array.from({ length: 7 }, (_, i) => ({
+      date: new Date(Date.now() + (i + 1) * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
+      predicted: Math.round(avgPerDay),
+    }));
+
+    return {
+      predictedBottlenecks,
+      riskScore,
+      recommendations,
+      forecast,
+    };
+  },
+});
+
+// Custom report generation
+export const generateCustomReport = query({
+  args: {
+    businessId: v.optional(v.id("businesses")),
+    startDate: v.optional(v.number()),
+    endDate: v.optional(v.number()),
+    includeMetrics: v.optional(v.array(v.string())),
+  },
+  handler: async (ctx, args) => {
+    if (!args.businessId) {
+      return {
+        summary: {},
+        details: [],
+        generatedAt: Date.now(),
+      };
+    }
+
+    const startDate = args.startDate || Date.now() - 30 * 24 * 60 * 60 * 1000;
+    const endDate = args.endDate || Date.now();
+
+    const approvals = await ctx.db
+      .query("approvalQueue")
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId!))
+      .filter((q) => q.gt(q.field("_creationTime"), startDate))
+      .filter((q) => q.lt(q.field("_creationTime"), endDate))
+      .collect();
+
+    const summary: Record<string, any> = {
+      totalApprovals: approvals.length,
+      approved: approvals.filter((a) => a.status === "approved").length,
+      rejected: approvals.filter((a) => a.status === "rejected").length,
+      pending: approvals.filter((a) => a.status === "pending").length,
+      dateRange: {
+        start: new Date(startDate).toISOString(),
+        end: new Date(endDate).toISOString(),
+      },
+    };
+
+    const processedApprovals = approvals.filter((a) => a.status !== "pending");
+    if (processedApprovals.length > 0) {
+      const totalTime = processedApprovals.reduce((sum, a) => {
+        const processedAt = a.reviewedAt || Date.now();
+        return sum + (processedAt - a._creationTime);
+      }, 0);
+      summary.avgTimeHours = Math.round((totalTime / processedApprovals.length / (1000 * 60 * 60)) * 10) / 10;
+    }
+
+    return {
+      summary,
+      details: approvals.slice(0, 100), // Limit to 100 for performance
+      generatedAt: Date.now(),
+    };
+  },
+});
