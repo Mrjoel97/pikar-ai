@@ -16,7 +16,7 @@ export default function TrustedLogosMarquee({ logos }: { logos: Array<Logo> }) {
           viewport={{ once: true }}
           className="text-center mb-6 sm:mb-8"
         >
-          <p className="text-sm sm:text-base font-medium text-foreground/80 tracking-wide">
+          <p className="text-sm sm:text-base font-medium text-foreground tracking-wide">
             Trusted by teams at
           </p>
         </motion.div>
