@@ -5,6 +5,7 @@ import { ConvexReactClient } from "convex/react";
 import React, { StrictMode, useEffect, Component } from "react";
 import { createRoot } from "react-dom/client";
 import { MemoryRouter, Route, Routes, useLocation, Navigate, useNavigate } from "react-router";
+import { motion, AnimatePresence } from "framer-motion";
 import "./index.css";
 import Landing from "./pages/Landing.tsx";
 import NotFound from "./pages/NotFound.tsx";
@@ -113,7 +114,7 @@ function AppProviders({ children }: { children: React.ReactNode }) {
 }
 
 function RouteSyncer() {
-  const navigate = useNavigate(); // Add in-app navigation support
+  const navigate = useNavigate();
   const location = useLocation();
   useEffect(() => {
     window.parent.postMessage(
@@ -124,7 +125,6 @@ function RouteSyncer() {
 
   useEffect(() => {
     function handleMessage(event: MessageEvent) {
-      // Support programmatic route navigation within MemoryRouter
       if (event.data?.type === "navigateTo" && typeof event.data.path === "string") {
         navigate(event.data.path);
         return;
@@ -141,6 +141,337 @@ function RouteSyncer() {
   return null;
 }
 
+function AnimatedRoutes() {
+  const location = useLocation();
+  
+  return (
+    <AnimatePresence mode="wait">
+      <motion.div
+        key={location.pathname}
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -10 }}
+        transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+      >
+        <Routes location={location}>
+          <Route path="/" element={<Landing />} />
+          <Route
+            path="/auth"
+            element={
+              <React.Suspense fallback={<PageLoader />}>
+                <AuthPage redirectAfterAuth="/dashboard" />
+              </React.Suspense>
+            }
+          />
+          <Route
+            path="/dashboard"
+            element={
+              <React.Suspense fallback={<PageLoader />}>
+                <Dashboard />
+              </React.Suspense>
+            }
+          />
+          <Route
+            path="/onboarding"
+            element={
+              <React.Suspense fallback={<PageLoader />}>
+                <Onboarding />
+              </React.Suspense>
+            }
+          />
+          <Route
+            path="/initiatives"
+            element={
+              <React.Suspense fallback={<PageLoader />}>
+                <InitiativesPage />
+              </React.Suspense>
+            }
+          />
+          <Route
+            path="/agents"
+            element={
+              <React.Suspense fallback={<PageLoader />}>
+                <AgentsPage />
+              </React.Suspense>
+            }
+          />
+          <Route
+            path="/ai-agents"
+            element={
+              <React.Suspense fallback={<PageLoader />}>
+                <AgentsPage />
+              </React.Suspense>
+            }
+          />
+          <Route
+            path="/analytics"
+            element={
+              <React.Suspense fallback={<PageLoader />}>
+                <AnalyticsPage />
+              </React.Suspense>
+            }
+          />
+          <Route
+            path="/approval-analytics"
+            element={
+              <React.Suspense fallback={<PageLoader />}>
+                <ApprovalAnalyticsPage />
+              </React.Suspense>
+            }
+          />
+          <Route
+            path="/workflows"
+            element={
+              <React.Suspense fallback={<PageLoader />}>
+                <WorkflowsPage />
+              </React.Suspense>
+            }
+          />
+          <Route
+            path="/workflows/templates"
+            element={
+              <React.Suspense fallback={<PageLoader />}>
+                <WorkflowTemplatesPage />
+              </React.Suspense>
+            }
+          />
+          <Route
+            path="/business"
+            element={
+              <React.Suspense fallback={<PageLoader />}>
+                <BusinessPage />
+              </React.Suspense>
+            }
+          />
+          <Route
+            path="/settings"
+            element={
+              <React.Suspense fallback={<PageLoader />}>
+                <SettingsPage />
+              </React.Suspense>
+            }
+          />
+          <Route
+            path="/admin"
+            element={
+              <React.Suspense fallback={<PageLoader />}>
+                <AdminPage />
+              </React.Suspense>
+            }
+          />
+          <Route
+            path="/admin-auth"
+            element={
+              <React.Suspense fallback={<PageLoader />}>
+                <AdminAuthPage />
+              </React.Suspense>
+            }
+          />
+          <Route
+            path="/learning-hub"
+            element={
+              <React.Suspense fallback={<PageLoader />}>
+                <LearningHubPage />
+              </React.Suspense>
+            }
+          />
+          <Route
+            path="/admin/system-agents"
+            element={
+              <React.Suspense fallback={<PageLoader />}>
+                <SystemAgentsPage />
+              </React.Suspense>
+            }
+          />
+          <Route
+            path="/branding"
+            element={
+              <React.Suspense fallback={<PageLoader />}>
+                <BrandingPortal />
+              </React.Suspense>
+            }
+          />
+          <Route
+            path="/api-docs"
+            element={
+              <React.Suspense fallback={<PageLoader />}>
+                <ApiDocsPage />
+              </React.Suspense>
+            }
+          />
+          <Route
+            path="/webhooks"
+            element={
+              <React.Suspense fallback={<PageLoader />}>
+                <WebhookManagementPage />
+              </React.Suspense>
+            }
+          />
+          <Route
+            path="/scim"
+            element={
+              <React.Suspense fallback={<PageLoader />}>
+                <ScimProvisioningPage />
+              </React.Suspense>
+            }
+          />
+          <Route
+            path="/scim-provisioning"
+            element={
+              <React.Suspense fallback={<PageLoader />}>
+                <ScimProvisioningPage />
+              </React.Suspense>
+            }
+          />
+          <Route
+            path="/sso-configuration"
+            element={
+              <React.Suspense fallback={<PageLoader />}>
+                <SsoConfigurationPage />
+              </React.Suspense>
+            }
+          />
+          <Route
+            path="/kms-configuration"
+            element={
+              <React.Suspense fallback={<PageLoader />}>
+                <KmsConfigurationPage />
+              </React.Suspense>
+            }
+          />
+          <Route
+            path="/api/builder"
+            element={
+              <React.Suspense fallback={<PageLoader />}>
+                <ApiBuilderPage />
+              </React.Suspense>
+            }
+          />
+          <Route
+            path="/support"
+            element={
+              <React.Suspense fallback={<PageLoader />}>
+                <SupportPage />
+              </React.Suspense>
+            }
+          />
+          <Route
+            path="/admin/test-runner"
+            element={
+              <React.Suspense fallback={<PageLoader />}>
+                <TestRunnerPage />
+              </React.Suspense>
+            }
+          />
+          <Route
+            path="/src/components/dashboards/SolopreneurDashboard.tsx"
+            element={<Navigate to="/dashboard" replace />}
+          />
+          <Route
+            path="/enterprise/data-warehouse"
+            element={
+              <React.Suspense fallback={<PageLoader />}>
+                <DataWarehouseManager />
+              </React.Suspense>
+            }
+          />
+          <Route
+            path="/enterprise/security"
+            element={
+              <React.Suspense fallback={<PageLoader />}>
+                <SecurityDashboard />
+              </React.Suspense>
+            }
+          />
+          <Route
+            path="/enterprise/portfolio"
+            element={
+              <React.Suspense fallback={<PageLoader />}>
+                <PortfolioDashboard />
+              </React.Suspense>
+            }
+          />
+          <Route
+            path="/docs"
+            element={
+              <React.Suspense fallback={<PageLoader />}>
+                <DocsPage />
+              </React.Suspense>
+            }
+          />
+          <Route
+            path="/crm-integration-hub"
+            element={
+              <React.Suspense fallback={<PageLoader />}>
+                <CrmIntegrationHubPage />
+              </React.Suspense>
+            }
+          />
+          <Route
+            path="/customer-journey"
+            element={
+              <React.Suspense fallback={<PageLoader />}>
+                <CustomerJourneyPage />
+              </React.Suspense>
+            }
+          />
+          <Route
+            path="/vendor-management"
+            element={
+              <React.Suspense fallback={<PageLoader />}>
+                <VendorManagementPage />
+              </React.Suspense>
+            }
+          />
+          <Route
+            path="/content-calendar"
+            element={
+              <React.Suspense fallback={<PageLoader />}>
+                <ContentCalendarPage />
+              </React.Suspense>
+            }
+          />
+          <Route
+            path="/portfolio-dashboard"
+            element={
+              <React.Suspense fallback={<PageLoader />}>
+                <PortfolioDashboardPage />
+              </React.Suspense>
+            }
+          />
+          <Route
+            path="/data-warehouse"
+            element={
+              <React.Suspense fallback={<PageLoader />}>
+                <DataWarehousePage />
+              </React.Suspense>
+            }
+          />
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </motion.div>
+    </AnimatePresence>
+  );
+}
+
+function PageLoader() {
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.15 }}
+      className="min-h-screen flex items-center justify-center"
+    >
+      <motion.div
+        animate={{ rotate: 360 }}
+        transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+        className="h-8 w-8 border-4 border-primary border-t-transparent rounded-full"
+      />
+    </motion.div>
+  );
+}
+
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <ErrorBoundary>
@@ -152,307 +483,7 @@ createRoot(document.getElementById("root")!).render(
             ]}
           >
             <RouteSyncer />
-            <Routes>
-              <Route
-                path="/"
-                element={<Landing />}
-              />
-              <Route
-                path="/auth"
-                element={
-                  <React.Suspense fallback={<div className="p-6 text-sm">Loading…</div>}>
-                    <AuthPage redirectAfterAuth="/dashboard" />
-                  </React.Suspense>
-                }
-              />
-              <Route
-                path="/dashboard"
-                element={
-                  <React.Suspense fallback={<div className="p-6 text-sm">Loading…</div>}>
-                    <Dashboard />
-                  </React.Suspense>
-                }
-              />
-              <Route
-                path="/onboarding"
-                element={
-                  <React.Suspense fallback={<div className="p-6 text-sm">Loading…</div>}>
-                    <Onboarding />
-                  </React.Suspense>
-                }
-              />
-              <Route
-                path="/initiatives"
-                element={
-                  <React.Suspense fallback={<div className="p-6 text-sm">Loading…</div>}>
-                    <InitiativesPage />
-                  </React.Suspense>
-                }
-              />
-              <Route
-                path="/agents"
-                element={
-                  <React.Suspense fallback={<div className="p-6 text-sm">Loading…</div>}>
-                    <AgentsPage />
-                  </React.Suspense>
-                }
-              />
-              <Route
-                path="/ai-agents"
-                element={
-                  <React.Suspense fallback={<div className="p-6 text-sm">Loading…</div>}>
-                    <AgentsPage />
-                  </React.Suspense>
-                }
-              />
-              <Route
-                path="/analytics"
-                element={
-                  <React.Suspense fallback={<div className="p-6 text-sm">Loading…</div>}>
-                    <AnalyticsPage />
-                  </React.Suspense>
-                }
-              />
-              <Route
-                path="/approval-analytics"
-                element={
-                  <React.Suspense fallback={<div className="p-6 text-sm">Loading…</div>}>
-                    <ApprovalAnalyticsPage />
-                  </React.Suspense>
-                }
-              />
-              <Route
-                path="/workflows"
-                element={
-                  <React.Suspense fallback={<div className="p-6 text-sm">Loading…</div>}>
-                    <WorkflowsPage />
-                  </React.Suspense>
-                }
-              />
-              <Route
-                path="/workflows/templates"
-                element={
-                  <React.Suspense fallback={<div className="p-6 text-sm">Loading…</div>}>
-                    <WorkflowTemplatesPage />
-                  </React.Suspense>
-                }
-              />
-              <Route
-                path="/business"
-                element={
-                  <React.Suspense fallback={<div className="p-6 text-sm">Loading…</div>}>
-                    <BusinessPage />
-                  </React.Suspense>
-                }
-              />
-              <Route
-                path="/settings"
-                element={
-                  <React.Suspense fallback={<div className="p-6 text-sm">Loading…</div>}>
-                    <SettingsPage />
-                  </React.Suspense>
-                }
-              />
-              <Route
-                path="/admin"
-                element={
-                  <React.Suspense fallback={<div className="p-6 text-sm">Loading…</div>}>
-                    <AdminPage />
-                  </React.Suspense>
-                }
-              />
-              <Route
-                path="/admin-auth"
-                element={
-                  <React.Suspense fallback={<div className="p-6 text-sm">Loading…</div>}>
-                    <AdminAuthPage />
-                  </React.Suspense>
-                }
-              />
-              <Route
-                path="/learning-hub"
-                element={
-                  <React.Suspense fallback={<div className="p-6 text-sm">Loading…</div>}>
-                    <LearningHubPage />
-                  </React.Suspense>
-                }
-              />
-              <Route
-                path="/admin/system-agents"
-                element={
-                  <React.Suspense fallback={<div className="p-6 text-sm">Loading…</div>}>
-                    <SystemAgentsPage />
-                  </React.Suspense>
-                }
-              />
-              <Route
-                path="/branding"
-                element={
-                  <React.Suspense fallback={<div className="p-6 text-sm">Loading…</div>}>
-                    <BrandingPortal />
-                  </React.Suspense>
-                }
-              />
-              <Route
-                path="/api-docs"
-                element={
-                  <React.Suspense fallback={<div className="p-6 text-sm">Loading…</div>}>
-                    <ApiDocsPage />
-                  </React.Suspense>
-                }
-              />
-              <Route
-                path="/webhooks"
-                element={
-                  <React.Suspense fallback={<div className="p-6 text-sm">Loading…</div>}>
-                    <WebhookManagementPage />
-                  </React.Suspense>
-                }
-              />
-              <Route
-                path="/scim"
-                element={
-                  <React.Suspense fallback={<div className="p-6 text-sm">Loading…</div>}>
-                    <ScimProvisioningPage />
-                  </React.Suspense>
-                }
-              />
-              <Route
-                path="/scim-provisioning"
-                element={
-                  <React.Suspense fallback={<div className="p-6 text-sm">Loading…</div>}>
-                    <ScimProvisioningPage />
-                  </React.Suspense>
-                }
-              />
-              <Route
-                path="/sso-configuration"
-                element={
-                  <React.Suspense fallback={<div className="p-6 text-sm">Loading…</div>}>
-                    <SsoConfigurationPage />
-                  </React.Suspense>
-                }
-              />
-              <Route
-                path="/kms-configuration"
-                element={
-                  <React.Suspense fallback={<div className="p-6 text-sm">Loading…</div>}>
-                    <KmsConfigurationPage />
-                  </React.Suspense>
-                }
-              />
-              <Route
-                path="/api/builder"
-                element={
-                  <React.Suspense fallback={<div className="p-6 text-sm">Loading…</div>}>
-                    <ApiBuilderPage />
-                  </React.Suspense>
-                }
-              />
-              <Route
-                path="/support"
-                element={
-                  <React.Suspense fallback={<div className="p-6 text-sm">Loading…</div>}>
-                    <SupportPage />
-                  </React.Suspense>
-                }
-              />
-              <Route
-                path="/admin/test-runner"
-                element={
-                  <React.Suspense fallback={<div className="p-6 text-sm">Loading…</div>}>
-                    <TestRunnerPage />
-                  </React.Suspense>
-                }
-              />
-              <Route
-                path="/src/components/dashboards/SolopreneurDashboard.tsx"
-                element={<Navigate to="/dashboard" replace />}
-              />
-              <Route
-                path="/enterprise/data-warehouse"
-                element={
-                  <React.Suspense fallback={<div className="p-6 text-sm">Loading…</div>}>
-                    <DataWarehouseManager />
-                  </React.Suspense>
-                }
-              />
-              <Route
-                path="/enterprise/security"
-                element={
-                  <React.Suspense fallback={<div className="p-6 text-sm">Loading…</div>}>
-                    <SecurityDashboard />
-                  </React.Suspense>
-                }
-              />
-              <Route
-                path="/enterprise/portfolio"
-                element={
-                  <React.Suspense fallback={<div className="p-6 text-sm">Loading…</div>}>
-                    <PortfolioDashboard />
-                  </React.Suspense>
-                }
-              />
-              <Route
-                path="/docs"
-                element={
-                  <React.Suspense fallback={<div className="p-6 text-sm">Loading…</div>}>
-                    <DocsPage />
-                  </React.Suspense>
-                }
-              />
-              
-              <Route
-                path="/crm-integration-hub"
-                element={
-                  <React.Suspense fallback={<div className="p-6 text-sm">Loading…</div>}>
-                    <CrmIntegrationHubPage />
-                  </React.Suspense>
-                }
-              />
-              <Route
-                path="/customer-journey"
-                element={
-                  <React.Suspense fallback={<div className="p-6 text-sm">Loading…</div>}>
-                    <CustomerJourneyPage />
-                  </React.Suspense>
-                }
-              />
-              <Route
-                path="/vendor-management"
-                element={
-                  <React.Suspense fallback={<div className="p-6 text-sm">Loading…</div>}>
-                    <VendorManagementPage />
-                  </React.Suspense>
-                }
-              />
-              <Route
-                path="/content-calendar"
-                element={
-                  <React.Suspense fallback={<div className="p-6 text-sm">Loading…</div>}>
-                    <ContentCalendarPage />
-                  </React.Suspense>
-                }
-              />
-              <Route
-                path="/portfolio-dashboard"
-                element={
-                  <React.Suspense fallback={<div className="p-6 text-sm">Loading…</div>}>
-                    <PortfolioDashboardPage />
-                  </React.Suspense>
-                }
-              />
-              <Route
-                path="/data-warehouse"
-                element={
-                  <React.Suspense fallback={<div className="p-6 text-sm">Loading…</div>}>
-                    <DataWarehousePage />
-                  </React.Suspense>
-                }
-              />
-              
-              <Route path="*" element={<NotFound />} />
-            </Routes>
+            <AnimatedRoutes />
           </MemoryRouter>
           <Toaster />
         </FullInstrumentationProvider>

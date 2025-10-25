@@ -261,7 +261,7 @@ a:hover,
   transition: all 0.2s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-/* Page transitions */
+/* Page transitions - Enhanced for route changes */
 @keyframes fadeIn {
   from {
     opacity: 0;
@@ -273,8 +273,48 @@ a:hover,
   }
 }
 
+@keyframes fadeOut {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+}
+
 .animate-fade-in {
   animation: fadeIn 0.4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.animate-fade-out {
+  animation: fadeOut 0.3s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+/* Route transition container */
+.route-transition-enter {
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+.route-transition-enter-active {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 0.2s cubic-bezier(0.22, 1, 0.36, 1),
+              transform 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.route-transition-exit {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.route-transition-exit-active {
+  opacity: 0;
+  transform: translateY(-10px);
+  transition: opacity 0.2s cubic-bezier(0.22, 1, 0.36, 1),
+              transform 0.2s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 /* Optimize image rendering */
