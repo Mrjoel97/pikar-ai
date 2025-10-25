@@ -228,24 +228,37 @@ a,
   transition: all 0.2s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-/* Smooth transitions for all interactive elements */
+/* Refined smooth transitions for all interactive elements */
 button:hover,
 a:hover,
 [role="button"]:hover {
-  transition: all 0.15s cubic-bezier(0.22, 1, 0.36, 1);
+  transition: all 0.2s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-/* Card transitions */
+/* Enhanced card transitions with transform */
 [class*="card"],
 [class*="Card"] {
-  transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+  transition: all 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform, box-shadow;
 }
 
-/* Smooth opacity transitions */
+[class*="card"]:hover,
+[class*="Card"]:hover {
+  transition: all 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Smooth opacity and transform transitions */
 [class*="fade"],
 [data-state="open"],
 [data-state="closed"] {
-  transition: opacity 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+  transition: opacity 0.3s cubic-bezier(0.22, 1, 0.36, 1), 
+              transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Badge transitions */
+[class*="badge"],
+[class*="Badge"] {
+  transition: all 0.2s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 /* Page transitions */
