@@ -45,7 +45,7 @@
   --color-sidebar-ring: var(--sidebar-ring);
 }
 
-/* CHANGE VALUES FOR THEME */
+/* CHANGE VALUES FOR THEME - Optimized with will-change hints */
 :root {
   --radius: 0.625rem;
   --background: oklch(1.000 0.000 0);
@@ -79,6 +79,18 @@
   --sidebar-accent-foreground: oklch(0.25 0.02 240);
   --sidebar-border: oklch(1.000 0.000 0);
   --sidebar-ring: oklch(0.55 0.15 165);
+  
+  /* White-Label Branding Variables */
+  --brand-primary: var(--primary);
+  --brand-secondary: var(--secondary);
+  --brand-logo-url: none;
+  
+  /* Performance optimizations */
+  color-scheme: light;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 .dark {
@@ -113,35 +125,47 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.65 0.18 165);
+  
+  color-scheme: dark;
 }
 
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
+  
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+  
   body {
     @apply bg-background text-foreground;
+    margin: 0;
+    line-height: 1.5;
   }
+  
   button:not([disabled]),
   [role="button"]:not([disabled]) {
     cursor: pointer;
   }
   
-  /* Hide scrollbar for Chrome, Safari and Opera */
+  /* Optimized scrollbar hiding */
   *::-webkit-scrollbar {
     display: none;
   }
   
-  /* Hide scrollbar for IE, Edge and Firefox */
   * {
-    -ms-overflow-style: none;  /* IE and Edge */
-    scrollbar-width: none;  /* Firefox */
+    -ms-overflow-style: none;
+    scrollbar-width: none;
   }
 
-  /* Mobile touch improvements */
+  /* Mobile touch improvements with GPU acceleration */
   @media (max-width: 768px) {
     * {
       -webkit-tap-highlight-color: transparent;
+      -webkit-touch-callout: none;
     }
     
     body {
@@ -163,22 +187,28 @@
       line-height: 1.4;
     }
   }
+  
+  /* Performance: Reduce paint on animations */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
 }
 
-/* White-Label Branding Variables */
-:root {
-  --brand-primary: var(--primary);
-  --brand-secondary: var(--secondary);
-  --brand-logo-url: none;
-}
-
-/* Apply brand colors to key UI elements */
+/* Optimized brand utility classes with containment */
 .brand-primary-bg {
   background-color: var(--brand-primary) !important;
+  contain: layout style paint;
 }
 
 .brand-secondary-bg {
   background-color: var(--brand-secondary) !important;
+  contain: layout style paint;
 }
 
 .brand-primary-text {
@@ -187,4 +217,28 @@
 
 .brand-secondary-text {
   color: var(--brand-secondary) !important;
+}
+
+/* Performance: GPU acceleration for common interactive elements */
+button,
+a,
+[role="button"] {
+  will-change: transform;
+  transform: translateZ(0);
+}
+
+/* Optimize image rendering */
+img,
+picture,
+video,
+canvas,
+svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+/* Prevent layout shift for lazy-loaded content */
+[loading="lazy"] {
+  content-visibility: auto;
 }
