@@ -225,6 +225,43 @@ a,
 [role="button"] {
   will-change: transform;
   transform: translateZ(0);
+  transition: all 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Smooth transitions for all interactive elements */
+button:hover,
+a:hover,
+[role="button"]:hover {
+  transition: all 0.15s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Card transitions */
+[class*="card"],
+[class*="Card"] {
+  transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Smooth opacity transitions */
+[class*="fade"],
+[data-state="open"],
+[data-state="closed"] {
+  transition: opacity 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Page transitions */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
 /* Optimize image rendering */
