@@ -16,7 +16,7 @@ export default function TrustedLogosMarquee({ logos }: { logos: Array<Logo> }) {
           viewport={{ once: true }}
           className="text-center mb-6 sm:mb-8"
         >
-          <p className="text-xs sm:text-sm text-muted-foreground tracking-wide">
+          <p className="text-sm sm:text-base font-medium text-foreground/80 tracking-wide">
             Trusted by teams at
           </p>
         </motion.div>
@@ -34,12 +34,12 @@ export default function TrustedLogosMarquee({ logos }: { logos: Array<Logo> }) {
             {[...logos, ...logos].map((logo, i) => (
               <div
                 key={`${logo.name}-${i}`}
-                className="neu-inset rounded-xl px-3 py-2 sm:px-4 sm:py-3 bg-card/60"
+                className="neu-inset rounded-xl px-4 py-3 sm:px-5 sm:py-4 bg-card/80 hover:bg-card transition-colors"
               >
                 <img
                   src={logo.src}
                   alt={`${logo.name} logo`}
-                  className="h-6 sm:h-7 mx-auto opacity-75 saturate-0"
+                  className="h-7 sm:h-8 mx-auto opacity-90 hover:opacity-100 transition-opacity"
                 />
               </div>
             ))}
