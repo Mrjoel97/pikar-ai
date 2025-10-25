@@ -295,24 +295,24 @@ a:hover,
 /* Route transition container */
 .route-transition-enter {
   opacity: 0;
-  transform: translateY(10px);
+  transform: translateY(20px) scale(0.98);
 }
 
 .route-transition-enter-active {
   opacity: 1;
-  transform: translateY(0);
-  transition: opacity 0.2s cubic-bezier(0.22, 1, 0.36, 1),
-              transform 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+  transform: translateY(0) scale(1);
+  transition: opacity 0.25s cubic-bezier(0.22, 1, 0.36, 1),
+              transform 0.25s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .route-transition-exit {
   opacity: 1;
-  transform: translateY(0);
+  transform: translateY(0) scale(1);
 }
 
 .route-transition-exit-active {
   opacity: 0;
-  transform: translateY(-10px);
+  transform: translateY(-20px) scale(0.98);
   transition: opacity 0.2s cubic-bezier(0.22, 1, 0.36, 1),
               transform 0.2s cubic-bezier(0.22, 1, 0.36, 1);
 }
