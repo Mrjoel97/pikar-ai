@@ -134,4 +134,12 @@ crons.interval(
   {}
 );
 
+// Cleanup old auth refresh tokens every 6 hours to prevent accumulation
+crons.interval(
+  "cleanup-auth-tokens",
+  { hours: 6 },
+  internal.authCleanup.cleanupOldTokens,
+  { batchSize: 500, olderThanDays: 7 }
+);
+
 export default crons;
