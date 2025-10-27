@@ -28,6 +28,7 @@ import type * as audit from "../audit.js";
 import type * as auditActions from "../auditActions.js";
 import type * as auth_emailOtp from "../auth/emailOtp.js";
 import type * as auth from "../auth.js";
+import type * as authCleanup from "../authCleanup.js";
 import type * as billing from "../billing.js";
 import type * as billingInternal from "../billingInternal.js";
 import type * as brandBuilder from "../brandBuilder.js";
@@ -201,6 +202,7 @@ declare const fullApi: ApiFromModules<{
   auditActions: typeof auditActions;
   "auth/emailOtp": typeof auth_emailOtp;
   auth: typeof auth;
+  authCleanup: typeof authCleanup;
   billing: typeof billing;
   billingInternal: typeof billingInternal;
   brandBuilder: typeof brandBuilder;
