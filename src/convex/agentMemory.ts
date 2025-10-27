@@ -39,16 +39,19 @@ export const getAgentMemories = query({
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
+    // Optimized: Use take() instead of collect() when limit is specified
+    const effectiveLimit = args.limit ? args.limit * 2 : 1000; // Fetch extra for sorting
+    
     let query = ctx.db
       .query("agentMemories")
       .withIndex("by_agent", (q) => q.eq("agentId", args.agentId));
 
-    const memories = await query.collect();
+    const memories = await query.take(effectiveLimit);
     
-    let filtered = memories;
-    if (args.memoryType) {
-      filtered = memories.filter(m => m.memoryType === args.memoryType);
-    }
+    // Filter by type if specified
+    let filtered = args.memoryType 
+      ? memories.filter(m => m.memoryType === args.memoryType)
+      : memories;
 
     // Sort by importance and recency
     filtered.sort((a, b) => {
@@ -126,11 +129,13 @@ export const getActiveCollaborations = query({
     businessId: v.id("businesses"),
   },
   handler: async (ctx, args) => {
-    return await ctx.db
+    // Optimized: Use indexed query for status if available, otherwise filter efficiently
+    const collabs = await ctx.db
       .query("agentCollaborations")
       .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
-      .filter((q) => q.eq(q.field("status"), "active"))
-      .collect();
+      .take(100); // Limit to prevent excessive reads
+    
+    return collabs.filter(c => c.status === "active");
   },
 });
 

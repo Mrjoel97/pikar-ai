@@ -21,160 +21,181 @@ export const getRecent = query({
 
     const businessId: Id<"businesses"> = args.businessId as Id<"businesses">;
 
-    // Aggregate activities from multiple sources
-    const activities: Array<{
-      id: string;
-      type: string;
-      createdAt: number;
-      title: string;
-      message: string;
-      userId?: Id<"users">;
-      userName?: string;
-      priority?: string;
-      status?: string;
-      mentions?: string[];
-      data?: any;
-    }> = [];
+    // Optimized: Fetch only what we need based on filters
+    const effectiveLimit = limit * 2; // Fetch extra to account for filtering
 
-    // 1. Notifications
-    const notifications = await ctx.db
-      .query("notifications")
-      .withIndex("by_business", (q) => q.eq("businessId", businessId))
-      .order("desc")
-      .take(limit);
+    // Build queries based on filters
+    const fetchActivities = async () => {
+      const activities: Array<{
+        id: string;
+        type: string;
+        createdAt: number;
+        title: string;
+        message: string;
+        userId?: Id<"users">;
+        userName?: string;
+        priority?: string;
+        status?: string;
+        mentions?: string[];
+        data?: any;
+      }> = [];
 
-    for (const n of notifications) {
-      activities.push({
-        id: String(n._id),
-        type: "notification",
-        createdAt: n.createdAt ?? 0,
-        title: n.title,
-        message: n.message,
-        userId: n.userId,
-        priority: n.priority,
-        status: n.isRead ? "read" : "unread",
-        mentions: extractMentions(n.message),
-        data: n.data ?? null,
-      });
-    }
+      const shouldFetch = (type: string) =>
+        !args.activityTypes || args.activityTypes.length === 0 || args.activityTypes.includes(type);
 
-    // 2. Workflow runs
-    const runs = await ctx.db
-      .query("workflowRuns")
-      .withIndex("by_business", (q) => q.eq("businessId", businessId))
-      .order("desc")
-      .take(limit);
+      // 1. Notifications - optimized with user filter
+      if (shouldFetch("notification")) {
+        const notifQuery = args.userId
+          ? ctx.db
+              .query("notifications")
+              .withIndex("by_user", (q) => q.eq("userId", args.userId).eq("businessId", businessId))
+          : ctx.db
+              .query("notifications")
+              .withIndex("by_business", (q) => q.eq("businessId", businessId));
 
-    for (const r of runs) {
-      activities.push({
-        id: String(r._id),
-        type: "workflow_run",
-        createdAt: r.startedAt ?? 0,
-        title: `Workflow ${r.status}`,
-        message: `Workflow run ${r.status}${r.errorMessage ? `: ${r.errorMessage}` : ""}`,
-        status: r.status,
-      });
-    }
+        const notifications = await notifQuery.order("desc").take(effectiveLimit);
 
-    // 3. Team chat messages
-    const messages = await ctx.db
-      .query("teamMessages")
-      .withIndex("by_business", (q) => q.eq("businessId", businessId))
-      .order("desc")
-      .take(limit);
+        for (const n of notifications) {
+          activities.push({
+            id: String(n._id),
+            type: "notification",
+            createdAt: n.createdAt ?? 0,
+            title: n.title,
+            message: n.message,
+            userId: n.userId,
+            priority: n.priority,
+            status: n.isRead ? "read" : "unread",
+            mentions: extractMentions(n.message),
+            data: n.data ?? null,
+          });
+        }
+      }
 
-    for (const m of messages) {
-      const sender = await ctx.db.get(m.senderId);
-      activities.push({
-        id: String(m._id),
-        type: "team_message",
-        createdAt: m.createdAt ?? 0,
-        title: "Team Message",
-        message: m.content.substring(0, 100) + (m.content.length > 100 ? "..." : ""),
-        userId: m.senderId,
-        userName: sender?.name ?? sender?.email ?? "Unknown",
-        mentions: extractMentions(m.content),
-      });
-    }
+      // 2. Workflow runs
+      if (shouldFetch("workflow_run")) {
+        const runs = await ctx.db
+          .query("workflowRuns")
+          .withIndex("by_business", (q) => q.eq("businessId", businessId))
+          .order("desc")
+          .take(effectiveLimit);
 
-    // 4. Goal updates
-    const goalUpdates = await ctx.db
-      .query("goalUpdates")
-      .withIndex("by_business", (q) => q.eq("businessId", businessId))
-      .order("desc")
-      .take(limit);
+        for (const r of runs) {
+          activities.push({
+            id: String(r._id),
+            type: "workflow_run",
+            createdAt: r.startedAt ?? 0,
+            title: `Workflow ${r.status}`,
+            message: `Workflow run ${r.status}${r.errorMessage ? `: ${r.errorMessage}` : ""}`,
+            status: r.status,
+          });
+        }
+      }
 
-    for (const gu of goalUpdates) {
-      const goal = await ctx.db.get(gu.goalId);
-      const updater = await ctx.db.get(gu.updatedBy);
-      activities.push({
-        id: String(gu._id),
-        type: "goal_update",
-        createdAt: gu.timestamp ?? 0,
-        title: "Goal Progress",
-        message: `${updater?.name ?? "Someone"} updated "${goal?.title ?? "a goal"}" from ${gu.previousValue} to ${gu.newValue}`,
-        userId: gu.updatedBy,
-        userName: updater?.name ?? updater?.email ?? "Unknown",
-      });
-    }
+      // 3. Team chat messages
+      if (shouldFetch("team_message")) {
+        const messages = await ctx.db
+          .query("teamMessages")
+          .withIndex("by_business", (q) => q.eq("businessId", businessId))
+          .order("desc")
+          .take(effectiveLimit);
 
-    // 5. Approval queue items
-    const approvals = await ctx.db
-      .query("approvalQueue")
-      .withIndex("by_business", (q) => q.eq("businessId", businessId))
-      .order("desc")
-      .take(limit);
+        for (const m of messages) {
+          if (args.userId && m.senderId !== args.userId) continue;
+          
+          const sender = await ctx.db.get(m.senderId);
+          activities.push({
+            id: String(m._id),
+            type: "team_message",
+            createdAt: m.createdAt ?? 0,
+            title: "Team Message",
+            message: m.content.substring(0, 100) + (m.content.length > 100 ? "..." : ""),
+            userId: m.senderId,
+            userName: sender?.name ?? sender?.email ?? "Unknown",
+            mentions: extractMentions(m.content),
+          });
+        }
+      }
 
-    for (const a of approvals) {
-      activities.push({
-        id: String(a._id),
-        type: "approval",
-        createdAt: a._creationTime,
-        title: a.title,
-        message: a.description,
-        priority: a.priority,
-        status: a.status,
-      });
-    }
+      // 4. Goal updates
+      if (shouldFetch("goal_update")) {
+        const goalUpdates = await ctx.db
+          .query("goalUpdates")
+          .withIndex("by_business", (q) => q.eq("businessId", businessId))
+          .order("desc")
+          .take(effectiveLimit);
 
-    // 6. Social posts
-    const posts = await ctx.db
-      .query("socialPosts")
-      .withIndex("by_business", (q) => q.eq("businessId", businessId))
-      .order("desc")
-      .take(limit);
+        for (const gu of goalUpdates) {
+          if (args.userId && gu.updatedBy !== args.userId) continue;
+          
+          const goal = await ctx.db.get(gu.goalId);
+          const updater = await ctx.db.get(gu.updatedBy);
+          activities.push({
+            id: String(gu._id),
+            type: "goal_update",
+            createdAt: gu.timestamp ?? 0,
+            title: "Goal Progress",
+            message: `${updater?.name ?? "Someone"} updated "${goal?.title ?? "a goal"}" from ${gu.previousValue} to ${gu.newValue}`,
+            userId: gu.updatedBy,
+            userName: updater?.name ?? updater?.email ?? "Unknown",
+          });
+        }
+      }
 
-    for (const p of posts) {
-      const creator = await ctx.db.get(p.createdBy);
-      activities.push({
-        id: String(p._id),
-        type: "social_post",
-        createdAt: p._creationTime,
-        title: "Social Post",
-        message: `${creator?.name ?? "Someone"} ${p.status === "posted" ? "posted" : "scheduled"} to ${p.platforms.join(", ")}`,
-        userId: p.createdBy,
-        userName: creator?.name ?? creator?.email ?? "Unknown",
-        status: p.status,
-      });
-    }
+      // 5. Approval queue items
+      if (shouldFetch("approval")) {
+        const approvals = await ctx.db
+          .query("approvalQueue")
+          .withIndex("by_business", (q) => q.eq("businessId", businessId))
+          .order("desc")
+          .take(effectiveLimit);
 
-    // Apply filters
-    let filtered = activities;
+        for (const a of approvals) {
+          activities.push({
+            id: String(a._id),
+            type: "approval",
+            createdAt: a._creationTime,
+            title: a.title,
+            message: a.description,
+            priority: a.priority,
+            status: a.status,
+          });
+        }
+      }
 
-    // Filter by user
-    if (args.userId) {
-      filtered = filtered.filter((a) => a.userId === args.userId);
-    }
+      // 6. Social posts
+      if (shouldFetch("social_post")) {
+        const posts = await ctx.db
+          .query("socialPosts")
+          .withIndex("by_business", (q) => q.eq("businessId", businessId))
+          .order("desc")
+          .take(effectiveLimit);
 
-    // Filter by activity types
-    if (args.activityTypes && args.activityTypes.length > 0) {
-      filtered = filtered.filter((a) => args.activityTypes!.includes(a.type));
-    }
+        for (const p of posts) {
+          if (args.userId && p.createdBy !== args.userId) continue;
+          
+          const creator = await ctx.db.get(p.createdBy);
+          activities.push({
+            id: String(p._id),
+            type: "social_post",
+            createdAt: p._creationTime,
+            title: "Social Post",
+            message: `${creator?.name ?? "Someone"} ${p.status === "posted" ? "posted" : "scheduled"} to ${p.platforms.join(", ")}`,
+            userId: p.createdBy,
+            userName: creator?.name ?? creator?.email ?? "Unknown",
+            status: p.status,
+          });
+        }
+      }
 
-    // Search filter
+      return activities;
+    };
+
+    let activities = await fetchActivities();
+
+    // Apply search filter only if needed
     if (args.searchTerm && args.searchTerm.trim().length > 0) {
       const term = args.searchTerm.toLowerCase();
-      filtered = filtered.filter(
+      activities = activities.filter(
         (a) =>
           a.title.toLowerCase().includes(term) ||
           a.message.toLowerCase().includes(term) ||
@@ -183,11 +204,9 @@ export const getRecent = query({
     }
 
     // Sort by time desc and limit
-    const sorted = filtered
+    return activities
       .sort((a, b) => b.createdAt - a.createdAt)
       .slice(0, limit);
-
-    return sorted;
   },
 });
 

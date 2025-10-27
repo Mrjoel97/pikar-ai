@@ -214,8 +214,9 @@ export const listPendingAdminRequests = query({
   handler: async (ctx) => {
     const superOk = await isSuperAdmin(ctx);
     if (!superOk) return [];
-    const pending = await ctx.db.query("admins").collect();
-    return pending.filter((a: any) => a.role === "pending_senior");
+    // Optimized: Use take() with reasonable limit instead of collect()
+    const admins = await ctx.db.query("admins").take(200);
+    return admins.filter((a: any) => a.role === "pending_senior");
   },
 });
 
@@ -225,7 +226,8 @@ export const listTenants = query({
   handler: async (ctx) => {
     const ok = await isPlatformAdmin(ctx);
     if (!ok) return [];
-    const tenants = await ctx.db.query("businesses").collect();
+    // Optimized: Use take() with reasonable limit for admin dashboard
+    const tenants = await ctx.db.query("businesses").take(500);
     return tenants;
   },
 });
