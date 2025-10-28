@@ -135,12 +135,12 @@ crons.interval(
 );
 
 // Cleanup old auth refresh tokens every 6 hours to prevent accumulation
-// More aggressive: 7 days retention, larger batches
+// Uses optimized indexed query to delete only tokens older than 7 days
 crons.interval(
   "cleanup-auth-tokens",
   { hours: 6 },
-  internal.authCleanup.cleanupOldTokens,
-  { batchSize: 1000, olderThanDays: 7 }
+  internal.authCleanup.cleanupOldRefreshTokens,
+  {}
 );
 
 export default crons;

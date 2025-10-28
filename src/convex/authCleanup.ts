@@ -1,12 +1,60 @@
 import { internalMutation } from "./_generated/server";
 import { v } from "convex/values";
+import { internal } from "./_generated/api";
+
+const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 
 /**
- * Emergency cleanup utility for auth refresh tokens.
- * This mutation deletes old refresh tokens in batches to prevent
- * the "too many reads" error during sign-in.
- * 
- * Run this manually via: npx convex run authCleanup:cleanupOldTokens
+ * Optimized cleanup utility for auth refresh tokens.
+ * Uses indexed queries to efficiently delete only tokens older than 7 days.
+ * Processes in batches of 500 to stay under read limits.
+ * Automatically schedules itself to continue if more tokens need deletion.
+ */
+export const cleanupOldRefreshTokens = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const cutoffTime = Date.now() - SEVEN_DAYS_MS;
+    
+    try {
+      // Query only tokens older than 7 days using the index
+      const oldTokens = await ctx.db
+        .query("authRefreshTokens")
+        .withIndex("by_creation_time", (q) =>
+          q.lt("_creationTime", cutoffTime)
+        )
+        .take(500); // Process 500 at a time
+      
+      // Delete the old tokens
+      await Promise.all(
+        oldTokens.map((token) => ctx.db.delete(token._id))
+      );
+      
+      const deletedCount = oldTokens.length;
+      
+      // If we deleted 500, there might be more - schedule another run
+      if (deletedCount === 500) {
+        await ctx.scheduler.runAfter(0, internal.authCleanup.cleanupOldRefreshTokens, {});
+      }
+      
+      return {
+        success: true,
+        deletedCount,
+        message: `Deleted ${deletedCount} expired refresh tokens older than 7 days`,
+        hasMore: deletedCount === 500,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        deletedCount: 0,
+        message: `Error during cleanup: ${error}`,
+        hasMore: false,
+      };
+    }
+  },
+});
+
+/**
+ * Legacy cleanup with configurable parameters (kept for backward compatibility)
  */
 export const cleanupOldTokens = internalMutation({
   args: {
@@ -17,17 +65,16 @@ export const cleanupOldTokens = internalMutation({
     const batchSize = args.batchSize ?? 500;
     const olderThanDays = args.olderThanDays ?? 7;
     
-    // Calculate cutoff timestamp (7 days ago by default - more aggressive)
     const cutoffTime = Date.now() - (olderThanDays * 24 * 60 * 60 * 1000);
     
     try {
-      // Query the authRefreshTokens table (managed by Convex Auth)
       const oldTokens = await ctx.db
         .query("authRefreshTokens")
-        .filter((q) => q.lt(q.field("expirationTime"), cutoffTime))
+        .withIndex("by_creation_time", (q) =>
+          q.lt("_creationTime", cutoffTime)
+        )
         .take(batchSize);
       
-      // Delete tokens in batch
       let deletedCount = 0;
       for (const token of oldTokens) {
         await ctx.db.delete(token._id);
