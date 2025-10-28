@@ -15,9 +15,9 @@ export const cleanupOldTokens = internalMutation({
   },
   handler: async (ctx, args) => {
     const batchSize = args.batchSize ?? 500;
-    const olderThanDays = args.olderThanDays ?? 30;
+    const olderThanDays = args.olderThanDays ?? 7;
     
-    // Calculate cutoff timestamp (30 days ago by default)
+    // Calculate cutoff timestamp (7 days ago by default - more aggressive)
     const cutoffTime = Date.now() - (olderThanDays * 24 * 60 * 60 * 1000);
     
     try {
