@@ -1,3 +1,4 @@
+import React from "react";
 import { motion, useReducedMotion } from "framer-motion";
 
 type Logo = { name: string; src: string };
