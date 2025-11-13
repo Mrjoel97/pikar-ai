@@ -42,6 +42,7 @@ import {
   Mail,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
+import { isGuestMode } from "@/lib/guestUtils";
 import CampaignComposer from "@/components/email/CampaignComposer";
 import { motion } from "framer-motion";
 import { InvoiceComposer } from "@/components/invoices/InvoiceComposer";

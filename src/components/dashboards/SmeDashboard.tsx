@@ -28,6 +28,10 @@ import { CrossDepartmentMetrics } from "@/components/workflows/CrossDepartmentMe
 import { SystemHealthStrip } from "@/components/dashboard/SystemHealthStrip";
 import { LazyLoadErrorBoundary } from "@/components/common/LazyLoadErrorBoundary";
 import { type SmeDashboardProps } from "@/types/dashboard";
+import { lazy, Suspense } from "react";
+import { useAuth } from "@/hooks/use-auth";
+import { isGuestMode } from "@/lib/guestUtils";
+import { demoData as importedDemoData } from "@/lib/demoData";
 
 // Lazy load heavy SME components
 const DepartmentTabs = lazy(() =>
@@ -52,6 +56,21 @@ const IntegrationHub = lazy(() =>
 );
 
 export function SmeDashboard() {
+  const { user } = useAuth();
+  const isGuest = isGuestMode();
+  const demoData = importedDemoData;
+  
+  // Get business from user profile
+  const business = useQuery(
+    api.users.getCurrentBusiness,
+    !isGuest && user ? {} : "skip"
+  );
+  
+  const tier = business?.tier || "sme";
+  const onUpgrade = () => {
+    window.location.href = "/pricing";
+  };
+
   // Fix: derive businessId from current props first
   const businessId = !isGuest ? business?._id : null;
 
@@ -61,10 +80,10 @@ export function SmeDashboard() {
     !isGuest && businessId ? { businessId } : undefined
   );
 
-  const agents = isGuest ? demoData?.agents || [] : [];
-  const workflows = isGuest ? demoData?.workflows || [] : [];
-  const kpis = isGuest ? (demoData?.kpis || {}) : (kpiDoc || {});
-  const tasks = isGuest ? demoData?.tasks || [] : [];
+  const agents = isGuest ? (demoData?.sme?.agents || []) : [];
+  const workflows = isGuest ? (demoData?.sme?.workflows || []) : [];
+  const kpis = isGuest ? (demoData?.sme?.kpis || {}) : (kpiDoc || {});
+  const tasks = isGuest ? (demoData?.sme?.tasks || []) : [];
 
   const pendingApprovals = useQuery(
     api.approvals.getApprovalQueue,
@@ -349,27 +368,27 @@ export function SmeDashboard() {
 
       <LazyLoadErrorBoundary moduleName="Department Tabs">
         <Suspense fallback={<div className="text-muted-foreground">Loading departments...</div>}>
-          <DepartmentTabs />
+          <DepartmentTabs businessId={businessId || ""} isGuest={isGuest} kpiDoc={kpiDoc} />
         </Suspense>
       </LazyLoadErrorBoundary>
 
       <div className="grid gap-6 lg:grid-cols-2">
         <LazyLoadErrorBoundary moduleName="Governance Panel">
           <Suspense fallback={<div className="text-muted-foreground">Loading governance...</div>}>
-            <GovernancePanel />
+            <GovernancePanel businessId={businessId || ""} isGuest={isGuest} governanceAutomationEnabled={governanceAutomationEnabled} hasTier={hasTier} LockedRibbon={LockedRibbon} />
           </Suspense>
         </LazyLoadErrorBoundary>
 
         <LazyLoadErrorBoundary moduleName="Compliance & Risk">
           <Suspense fallback={<div className="text-muted-foreground">Loading compliance...</div>}>
-            <ComplianceRisk />
+            <ComplianceRisk businessId={businessId || ""} isGuest={isGuest} kpis={kpis} riskAnalyticsEnabled={riskAnalyticsEnabled} LockedRibbon={LockedRibbon} />
           </Suspense>
         </LazyLoadErrorBoundary>
       </div>
 
       <LazyLoadErrorBoundary moduleName="Integration Hub">
         <Suspense fallback={<div className="text-muted-foreground">Loading integrations...</div>}>
-          <IntegrationHub />
+          <IntegrationHub businessId={businessId || ""} tier={tier} />
         </Suspense>
       </LazyLoadErrorBoundary>
     </div>

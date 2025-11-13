@@ -22,6 +22,9 @@ import { EnterpriseControls } from "./enterprise/EnterpriseControls";
 import { IntegrationStatus } from "./enterprise/IntegrationStatus";
 import { withMutationErrorHandling } from "@/lib/dashboardErrorHandling";
 import { LazyLoadErrorBoundary } from "@/components/common/LazyLoadErrorBoundary";
+import { useAuth } from "@/hooks/use-auth";
+import { isGuestMode } from "@/lib/guestUtils";
+import { demoData as importedDemoData } from "@/lib/demoData";
 
 // Lazy-load heavy components to reduce initial bundle
 const RoiDashboard = lazy(() =>
@@ -116,6 +119,21 @@ const IntegrationHub = lazy(() =>
  * @returns {JSX.Element} Rendered enterprise dashboard
  */
 export function EnterpriseDashboard() {
+  const { user } = useAuth();
+  const isGuest = isGuestMode();
+  const demoData = importedDemoData;
+  
+  // Get business from user profile
+  const business = useQuery(
+    api.users.getCurrentBusiness,
+    !isGuest && user ? {} : "skip"
+  );
+  
+  const tier = business?.tier || "enterprise";
+  const onUpgrade = () => {
+    window.location.href = "/pricing";
+  };
+
   const [region, setRegion] = useState<string>("global");
   const [unit, setUnit] = useState<string>("all");
 
@@ -135,10 +153,10 @@ export function EnterpriseDashboard() {
     isGuest || !businessId ? undefined : { businessId, limit: 5 }
   );
 
-  const agents = isGuest ? demoData?.agents || [] : [];
-  const workflows = isGuest ? demoData?.workflows || [] : [];
-  const kpis = isGuest ? (demoData?.kpis || {}) : (kpiDoc || {});
-  const tasks = isGuest ? demoData?.tasks || [] : [];
+  const agents = isGuest ? (demoData?.enterprise?.agents || []) : [];
+  const workflows = isGuest ? (demoData?.enterprise?.workflows || []) : [];
+  const kpis = isGuest ? (demoData?.enterprise?.kpis || {}) : (kpiDoc || {});
+  const tasks = isGuest ? (demoData?.enterprise?.tasks || []) : [];
 
   const approveSelf = useMutation(api.approvals.approveSelf);
   const rejectSelf = useMutation(api.approvals.rejectSelf);
@@ -368,57 +386,83 @@ export function EnterpriseDashboard() {
     <div className="space-y-6">
       <LazyLoadErrorBoundary moduleName="Global Overview">
         <Suspense fallback={<div className="text-muted-foreground">Loading global overview...</div>}>
-          <GlobalOverview />
+          <GlobalOverview 
+            businessId={businessId || ""}
+            region={region}
+            setRegion={setRegion}
+            unit={unit}
+            setUnit={setUnit}
+            kpis={kpis}
+            isGuest={isGuest}
+          />
         </Suspense>
       </LazyLoadErrorBoundary>
 
       <LazyLoadErrorBoundary moduleName="Widget Grid">
         <Suspense fallback={<div className="text-muted-foreground">Loading widgets...</div>}>
-          <WidgetGrid />
+          <WidgetGrid 
+            widgetOrder={widgetOrder}
+            setWidgetOrder={setWidgetOrder}
+            widgetsByKey={widgetsByKey}
+          />
         </Suspense>
       </LazyLoadErrorBoundary>
 
       <div className="grid gap-6 lg:grid-cols-2">
         <LazyLoadErrorBoundary moduleName="Strategic Command Center">
           <Suspense fallback={<div className="text-muted-foreground">Loading strategic command...</div>}>
-            <StrategicCommandCenter />
+            <StrategicCommandCenter businessId={businessId || ""} />
           </Suspense>
         </LazyLoadErrorBoundary>
 
         <LazyLoadErrorBoundary moduleName="Social Command Center">
           <Suspense fallback={<div className="text-muted-foreground">Loading social command...</div>}>
-            <SocialCommandCenter />
+            <SocialCommandCenter businessId={businessId || ""} />
           </Suspense>
         </LazyLoadErrorBoundary>
       </div>
 
       <LazyLoadErrorBoundary moduleName="Approvals & Audit">
         <Suspense fallback={<div className="text-muted-foreground">Loading approvals...</div>}>
-          <ApprovalsAudit />
+          <ApprovalsAudit 
+            isGuest={isGuest}
+            approvals={approvals}
+            auditLatest={auditLatest}
+            onApprove={handleApprove}
+            onReject={handleReject}
+          />
         </Suspense>
       </LazyLoadErrorBoundary>
 
       <LazyLoadErrorBoundary moduleName="Strategic Initiatives">
         <Suspense fallback={<div className="text-muted-foreground">Loading initiatives...</div>}>
-          <StrategicInitiatives />
+          <StrategicInitiatives workflows={workflows} />
         </Suspense>
       </LazyLoadErrorBoundary>
 
       <LazyLoadErrorBoundary moduleName="System Telemetry">
         <Suspense fallback={<div className="text-muted-foreground">Loading telemetry...</div>}>
-          <SystemTelemetry />
+          <SystemTelemetry agents={agents} demoData={demoData} />
         </Suspense>
       </LazyLoadErrorBoundary>
 
       <LazyLoadErrorBoundary moduleName="Executive Agent Insights">
         <Suspense fallback={<div className="text-muted-foreground">Loading agent insights...</div>}>
-          <ExecutiveAgentInsights />
+          <ExecutiveAgentInsights entAgents={entAgents} onNavigate={(path: string) => nav(path)} />
         </Suspense>
       </LazyLoadErrorBoundary>
 
       <LazyLoadErrorBoundary moduleName="Advanced Panels">
         <Suspense fallback={<div className="text-muted-foreground">Loading advanced panels...</div>}>
-          <AdvancedPanels />
+          <AdvancedPanels 
+            isGuest={isGuest}
+            businessId={businessId || ""}
+            crmConnections={crmConnections}
+            crmConflicts={crmConflicts}
+            showExperimentCreator={showExperimentCreator}
+            setShowExperimentCreator={setShowExperimentCreator}
+            showRoiDashboard={showRoiDashboard}
+          />
         </Suspense>
       </LazyLoadErrorBoundary>
 
@@ -430,7 +474,7 @@ export function EnterpriseDashboard() {
 
       <LazyLoadErrorBoundary moduleName="Enterprise Controls">
         <Suspense fallback={<div className="text-muted-foreground">Loading controls...</div>}>
-          <EnterpriseControls />
+          <EnterpriseControls hasTier={hasTier} onUpgrade={onUpgrade} />
         </Suspense>
       </LazyLoadErrorBoundary>
     </div>

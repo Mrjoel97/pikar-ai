@@ -52,8 +52,11 @@ import {
 } from "recharts";
 import { SystemHealthStrip } from "@/components/dashboard/SystemHealthStrip";
 import type { StartupDashboardProps } from "@/types/dashboard";
-import React, { lazy, Suspense } from "react";
+import React, { lazy } from "react";
 import { LazyLoadErrorBoundary } from "@/components/common/LazyLoadErrorBoundary";
+import { useAuth } from "@/hooks/use-auth";
+import { isGuestMode } from "@/lib/guestUtils";
+import { demoData as importedDemoData } from "@/lib/demoData";
 
 // Lazy load heavy Startup components
 const TeamPerformance = lazy(() =>
@@ -101,16 +104,26 @@ const RevenueAttribution = lazy(() =>
     default: m.RevenueAttribution,
   }))
 );
-const ContentCalendar = lazy(() =>
-  import("@/components/calendar/ContentCalendar").then((m) => ({
-    default: m.ContentCalendar,
-  }))
-);
 
 export function StartupDashboard() {
-  const agents = isGuest ? demoData?.agents || [] : [];
-  const workflows = isGuest ? demoData?.workflows || [] : [];
-  const kpis = isGuest ? (demoData?.kpis || {
+  const { user } = useAuth();
+  const isGuest = isGuestMode();
+  const demoData = importedDemoData;
+  
+  // Get business from user profile
+  const business = useQuery(
+    api.users.getCurrentBusiness,
+    !isGuest && user ? {} : "skip"
+  );
+  
+  const tier = business?.tier || "startup";
+  const onUpgrade = () => {
+    window.location.href = "/pricing";
+  };
+
+  const agents = isGuest ? (demoData?.startup?.agents || []) : [];
+  const workflows = isGuest ? (demoData?.startup?.workflows || []) : [];
+  const kpis = isGuest ? (demoData?.startup?.kpis || {
     totalRevenue: 0,
     activeCustomers: 0,
     conversionRate: 0,
@@ -123,7 +136,7 @@ export function StartupDashboard() {
     teamProductivity: 0,
     taskCompletion: 0
   };
-  const tasks = isGuest ? demoData?.tasks || [] : [];
+  const tasks = isGuest ? (demoData?.startup?.tasks || []) : [];
 
   // Define businessId early before any queries that depend on it
   const businessId = !isGuest ? business?._id : null;
@@ -402,52 +415,52 @@ const pendingApprovals = useQuery(
       )}
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <LazyLoadErrorBoundary moduleName="Team Performance">
-          <Suspense fallback={<div className="text-muted-foreground">Loading team performance...</div>}>
-            <TeamPerformance />
-          </Suspense>
-        </LazyLoadErrorBoundary>
+      <LazyLoadErrorBoundary moduleName="Team Performance">
+        <Suspense fallback={<div className="text-muted-foreground">Loading team performance...</div>}>
+          <TeamPerformance teamPerformance={teamPerformance} isGuest={isGuest} />
+        </Suspense>
+      </LazyLoadErrorBoundary>
 
-        <LazyLoadErrorBoundary moduleName="Workflow Assignments">
-          <Suspense fallback={<div className="text-muted-foreground">Loading workflows...</div>}>
-            <WorkflowAssignments />
-          </Suspense>
-        </LazyLoadErrorBoundary>
+      <LazyLoadErrorBoundary moduleName="Workflow Assignments">
+        <Suspense fallback={<div className="text-muted-foreground">Loading workflows...</div>}>
+          <WorkflowAssignments businessId={businessId || ""} userId={businessId || ""} />
+        </Suspense>
+      </LazyLoadErrorBoundary>
       </div>
 
       <LazyLoadErrorBoundary moduleName="Customer Journey Map">
         <Suspense fallback={<div className="text-muted-foreground">Loading customer journey...</div>}>
-          <CustomerJourneyMap />
+          <CustomerJourneyMap businessId={businessId || ""} />
         </Suspense>
       </LazyLoadErrorBoundary>
 
       <LazyLoadErrorBoundary moduleName="Revenue Attribution">
         <Suspense fallback={<div className="text-muted-foreground">Loading revenue data...</div>}>
-          <RevenueAttribution />
+          <RevenueAttribution businessId={businessId || ""} />
         </Suspense>
       </LazyLoadErrorBoundary>
 
       <LazyLoadErrorBoundary moduleName="Growth Metrics">
         <Suspense fallback={<div className="text-muted-foreground">Loading growth metrics...</div>}>
-          <GrowthMetrics />
+          <GrowthMetrics metrics={metrics} kpis={kpis} />
         </Suspense>
       </LazyLoadErrorBoundary>
 
       <LazyLoadErrorBoundary moduleName="Campaign List">
         <Suspense fallback={<div className="text-muted-foreground">Loading campaigns...</div>}>
-          <CampaignList />
+          <CampaignList campaigns={campaigns} onCreateCampaign={() => setShowComposer(true)} />
         </Suspense>
       </LazyLoadErrorBoundary>
 
       <LazyLoadErrorBoundary moduleName="Collaboration Feed">
         <Suspense fallback={<div className="text-muted-foreground">Loading collaboration feed...</div>}>
-          <CollaborationFeed />
+          <CollaborationFeed businessId={businessId || ""} />
         </Suspense>
       </LazyLoadErrorBoundary>
 
       <LazyLoadErrorBoundary moduleName="Goals Dashboard">
         <Suspense fallback={<div className="text-muted-foreground">Loading goals...</div>}>
-          <GoalsDashboardWidget />
+          <GoalsDashboardWidget businessId={businessId || ""} />
         </Suspense>
       </LazyLoadErrorBoundary>
 

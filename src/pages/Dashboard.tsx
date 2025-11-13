@@ -172,25 +172,17 @@ export default function Dashboard() {
     : (business?.tier ? effectiveConfig.label : "Free");
 
   const renderDashboardContent = () => {
-    const props = {
-      business: guestMode ? null : business,
-      demoData: demoDataForTier,
-      isGuest: guestMode,
-      tier: effectiveTier,
-      onUpgrade: () => {},
-    };
-
     switch (effectiveTier) {
       case "solopreneur":
-        return <SolopreneurDashboard {...props} />;
+        return <SolopreneurDashboard />;
       case "startup":
-        return <StartupDashboard {...props} />;
+        return <StartupDashboard />;
       case "sme":
-        return <SmeDashboard {...props} />;
+        return <SmeDashboard />;
       case "enterprise":
-        return <EnterpriseDashboard {...props} />;
+        return <EnterpriseDashboard />;
       default:
-        return <SolopreneurDashboard {...props} />;
+        return <SolopreneurDashboard />;
     }
   };
 
