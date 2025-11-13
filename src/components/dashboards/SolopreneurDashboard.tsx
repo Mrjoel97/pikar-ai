@@ -1,5 +1,5 @@
 // @ts-nocheck
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, lazy, Suspense } from "react";
 import { useMutation, useQuery, useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -13,33 +13,47 @@ import { Progress } from "@/components/ui/progress";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from "@/components/ui/dialog";
+  Sparkles,
+  TrendingUp,
+  Users,
+  DollarSign,
+  Calendar,
+  MessageSquare,
+  BarChart3,
+  Target,
+  Zap,
+  Clock,
+  CheckCircle2,
+  AlertCircle,
+  Plus,
+  Send,
+  Eye,
+  Edit,
+  Trash2,
+  Download,
+  Upload,
+  RefreshCw,
+  Settings,
+  ChevronRight,
+  ArrowUp,
+  ArrowDown,
+  Minus,
+  FileText,
+  Mail,
+} from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import CampaignComposer from "@/components/email/CampaignComposer";
 import { motion } from "framer-motion";
-import { FileText, Mail } from "lucide-react";
 import { InvoiceComposer } from "@/components/invoices/InvoiceComposer";
 import { ContentCalendar } from "@/components/calendar/ContentCalendar";
 import { RoiDashboard } from "@/components/dashboards/RoiDashboard";
-import { ArrowUp, ArrowDown, Minus } from "lucide-react";
-import { SocialPerformance } from "@/components/dashboards/solopreneur/SocialPerformance";
-import { CustomerSegmentation } from "@/components/dashboards/solopreneur/CustomerSegmentation";
 import { VoiceNotes } from "./solopreneur/VoiceNotes";
 import type { Id } from "@/convex/_generated/dataModel";
-/* removed unused Alert imports */
-
 import type { SolopreneurDashboardProps } from "@/types/dashboard";
 import { SolopreneurSetupWizard } from "@/components/onboarding/SolopreneurSetupWizard";
-import React, { lazy, Suspense } from "react";
 import { LazyLoadErrorBoundary } from "@/components/common/LazyLoadErrorBoundary";
 
-// Add lazy loading for heavy components
+// Lazy load heavy components
 const EmailCampaignAnalytics = lazy(() => import("./solopreneur/EmailCampaignAnalytics"));
 const ContentCapsule = lazy(() => import("./solopreneur/ContentCapsule"));
 const CustomerSegmentation = lazy(() => import("./solopreneur/CustomerSegmentation"));
