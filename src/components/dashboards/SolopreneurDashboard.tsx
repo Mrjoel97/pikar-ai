@@ -12,6 +12,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useAuth } from "@/hooks/use-auth";
+import { isGuestMode } from "@/lib/guestUtils";
+import { demoData as importedDemoData } from "@/lib/demoData";
 import {
   Sparkles,
   TrendingUp,
@@ -68,6 +71,9 @@ function SolopreneurDashboard() {
   
   // Fetch current user data
   const user = useQuery(api.users.currentUser, isAuthed ? {} : "skip");
+  
+  // Determine if user is in guest mode
+  const isGuest = !isAuthed;
   
   // Add local BrainDumpSection component
   function BrainDumpSection({ businessId }: { businessId: string }) {
@@ -974,11 +980,11 @@ Renamed to avoid duplicate identifier collisions elsewhere in the file */
   );
 
   // Use demo data when in guest mode
-  const agents = isGuest ? demoData?.agents || [] : [];
-  const workflows = isGuest ? demoData?.workflows || [] : [];
-  const kpis = isGuest ? demoData?.kpis || {} : kpiDoc || {};
-  const tasks = isGuest ? demoData?.tasks || [] : [];
-  const notifications = isGuest ? demoData?.notifications || [] : [];
+  const agents = isGuest ? importedDemoData?.agents || [] : [];
+  const workflows = isGuest ? importedDemoData?.workflows || [] : [];
+  const kpis = isGuest ? importedDemoData?.kpis || {} : kpiDoc || {};
+  const tasks = isGuest ? importedDemoData?.tasks || [] : [];
+  const notifications = isGuest ? importedDemoData?.notifications || [] : [];
   // removed duplicate kpis declaration; using kpiDoc fallback above
 
   // Add: Quick Analytics (Convex) with safe fallback for guests/no business

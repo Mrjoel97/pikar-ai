@@ -1,1 +1,1 @@
-export function StartupDashboard() { ... }
+const isGuest = !isAuthed;
