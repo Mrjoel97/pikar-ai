@@ -43,7 +43,7 @@ import {
   Minus,
   FileText,
   Mail,
-} from "lucide-react";
+  } from "lucide-react";
 import { isGuestMode } from "@/lib/guestUtils";
 import CampaignComposer from "@/components/email/CampaignComposer";
 import { motion } from "framer-motion";
