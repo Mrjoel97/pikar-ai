@@ -61,7 +61,8 @@ class ErrorBoundary extends Component<
     return { hasError: true, error };
   }
   componentDidCatch(error: any) {
-    console.error("App crashed:", error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error("App crashed:", errorMessage);
   }
   render() {
     if (this.state.hasError) {

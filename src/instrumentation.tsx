@@ -53,7 +53,7 @@ async function reportErrorToVly(errorData: {
       }),
     });
   } catch (error) {
-    console.error("Failed to report error to Vly:", error);
+    console.error("Failed to report error to Vly:", error instanceof Error ? error.message : String(error));
   }
 }
 
@@ -128,26 +128,18 @@ class ErrorBoundary extends React.Component<
   }
 
   componentDidCatch(error: Error, info: React.ErrorInfo) {
-    // logErrorToMyService(
-    //   error,
-    //   // Example "componentStack":
-    //   //   in ComponentThatThrows (created by App)
-    //   //   in ErrorBoundary (created by App)
-    //   //   in div (created by App)
-    //   //   in App
-    //   info.componentStack,
-    //   // Warning: `captureOwnerStack` is not available in production.
-    //   React.captureOwnerStack(),
-    // );
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const stackTrace = error instanceof Error ? error.stack : String(error);
+    
     reportErrorToVly({
-      error: error.message,
-      stackTrace: error.stack,
+      error: errorMessage,
+      stackTrace: stackTrace,
     });
     this.setState({
       hasError: true,
       error: {
-        error: error.message,
-        stack: info.componentStack ?? error.stack ?? "",
+        error: errorMessage,
+        stack: info.componentStack ?? stackTrace ?? "",
       },
     });
   }
@@ -254,11 +246,13 @@ export function FullInstrumentationProvider({
   useEffect(() => {
     const handleError = async (event: ErrorEvent) => {
       try {
-        console.log(event);
         event.preventDefault();
+        const errorMessage = event.message || "Unknown error";
+        const stackTrace = event.error?.stack || "";
+        
         setError({
-          error: event.message,
-          stack: event.error?.stack || "",
+          error: errorMessage,
+          stack: stackTrace,
           filename: event.filename || "",
           lineno: event.lineno,
           colno: event.colno,
@@ -266,35 +260,39 @@ export function FullInstrumentationProvider({
 
         if (import.meta.env.VITE_VLY_APP_ID) {
           await reportErrorToVly({
-            error: event.message,
-            stackTrace: event.error?.stack,
+            error: errorMessage,
+            stackTrace: stackTrace,
             filename: event.filename,
             lineno: event.lineno,
             colno: event.colno,
           });
         }
-      } catch (error) {
-        console.error("Error in handleError:", error);
+      } catch (err) {
+        const errMsg = err instanceof Error ? err.message : String(err);
+        console.error("Error in handleError:", errMsg);
       }
     };
 
     const handleRejection = async (event: PromiseRejectionEvent) => {
       try {
-        console.error(event);
+        const reason = event.reason;
+        const errorMessage = reason instanceof Error ? reason.message : String(reason);
+        const stackTrace = reason instanceof Error ? reason.stack : "";
 
         if (import.meta.env.VITE_VLY_APP_ID) {
           await reportErrorToVly({
-            error: event.reason.message,
-            stackTrace: event.reason.stack,
+            error: errorMessage,
+            stackTrace: stackTrace,
           });
         }
 
         setError({
-          error: event.reason.message,
-          stack: event.reason.stack,
+          error: errorMessage,
+          stack: stackTrace || "",
         });
-      } catch (error) {
-        console.error("Error in handleRejection:", error);
+      } catch (err) {
+        const errMsg = err instanceof Error ? err.message : String(err);
+        console.error("Error in handleRejection:", errMsg);
       }
     };
 
