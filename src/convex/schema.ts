@@ -2778,6 +2778,20 @@ const schema = defineSchema({
     .index("by_email", ["emailId"])
     .index("by_campaign", ["campaignId"]),
 
+  // Goal Updates (for activity tracking)
+  goalUpdates: defineTable({
+    businessId: v.id("businesses"),
+    goalId: v.id("teamGoals"),
+    updatedBy: v.id("users"),
+    previousValue: v.number(),
+    newValue: v.number(),
+    timestamp: v.number(),
+    notes: v.optional(v.string()),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_goal", ["goalId"])
+    .index("by_updated_by", ["updatedBy"]),
+
   // Goal Milestones
   goalMilestones: defineTable({
     businessId: v.id("businesses"),
