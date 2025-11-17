@@ -293,7 +293,7 @@ export function SmeDashboard() {
           <div className="space-y-2">
             {Array.isArray(dumps) && dumps.length > 0 ? (
               dumps.map((d: any) => (
-                <div key={String(d._id)} className="rounded-md border p-3 text-sm">
+                <div key={d._id?.toString() || `dump-${Math.random()}`} className="rounded-md border p-3 text-sm">
                   <div className="text-gray-500 text-xs mb-1">
                     {new Date(d.createdAt).toLocaleString()}
                   </div>

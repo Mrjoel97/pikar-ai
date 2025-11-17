@@ -592,7 +592,7 @@ function SolopreneurDashboard({ business: businessProp }: { business?: any }) {
           <div className="space-y-2">
             {searchResults.map((d: any) => (
               <div
-                key={String(d._id)}
+                key={d._id?.toString() || `dump-${Math.random()}`}
                 className="rounded-md border p-3 text-sm"
               >
                 <div className="text-muted-foreground text-xs mb-1">
@@ -604,7 +604,7 @@ function SolopreneurDashboard({ business: businessProp }: { business?: any }) {
                     : tagIdea(String(d.content || ""))
                   ).map((t: string) => (
                     <Badge
-                      key={`${String(d._id)}_${t}`}
+                      key={`${d._id?.toString() || 'dump'}_${t}`}
                       variant="outline"
                       className="capitalize"
                     >
@@ -712,7 +712,7 @@ function SolopreneurDashboard({ business: businessProp }: { business?: any }) {
                 })
                 .map((d: any) => (
                   <div
-                    key={String(d._id)}
+                    key={d._id?.toString() || `dump-${Math.random()}`}
                     className="rounded-md border p-3 text-sm"
                   >
                     <div className="text-muted-foreground text-xs mb-1">
@@ -724,7 +724,7 @@ function SolopreneurDashboard({ business: businessProp }: { business?: any }) {
                         : tagIdea(String(d.content || ""))
                       ).map((t: string) => (
                         <Badge
-                          key={`${String(d._id)}_${t}`}
+                          key={`${d._id?.toString() || 'dump'}_${t}`}
                           variant="outline"
                           className="capitalize"
                         >
@@ -3577,7 +3577,7 @@ function SolopreneurDashboard({ business: businessProp }: { business?: any }) {
           <div className="mt-3 space-y-2">
             {businessId && recentAudit ? (
               recentAudit.map((log: any) => (
-                <div key={log._id} className="text-sm">
+                <div key={log._id?.toString() || `log-${Math.random()}`} className="text-sm">
                   <div className="font-medium">{log.action}</div>
                   <div className="text-muted-foreground">
                     {new Date(log.createdAt).toLocaleString()}

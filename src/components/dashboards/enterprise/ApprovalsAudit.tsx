@@ -33,7 +33,7 @@ export function ApprovalsAudit({
         ) : (
           <div className="space-y-2">
             {approvals.slice(0, 3).map((approval: any) => (
-              <div key={approval._id} className="flex items-center justify-between text-sm">
+              <div key={approval._id?.toString() || `approval-${Math.random()}`} className="flex items-center justify-between text-sm">
                 <span className="truncate">{approval.workflowName || "Workflow"}</span>
                 <div className="flex gap-1">
                   <Button size="sm" variant="outline" onClick={() => onApprove(approval._id)}>
@@ -55,7 +55,7 @@ export function ApprovalsAudit({
         ) : (
           <div className="space-y-1">
             {auditLatest.map((event: any) => (
-              <div key={event._id} className="flex items-center gap-2 text-xs">
+              <div key={event._id?.toString() || `event-${Math.random()}`} className="flex items-center gap-2 text-xs">
                 <Badge variant="outline" className="text-xs">
                   {event.action}
                 </Badge>

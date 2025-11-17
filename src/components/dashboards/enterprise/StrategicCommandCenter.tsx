@@ -194,7 +194,7 @@ export function StrategicCommandCenter({ businessId }: StrategicCommandCenterPro
             {initiatives && initiatives.length > 0 ? (
               initiatives.map((initiative: any) => (
                 <div
-                  key={initiative._id}
+                  key={initiative._id?.toString() || `initiative-${Math.random()}`}
                   className="flex items-center justify-between rounded-lg border p-4"
                 >
                   <div className="flex-1 space-y-1">
