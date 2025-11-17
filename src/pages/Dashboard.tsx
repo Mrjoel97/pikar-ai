@@ -9,31 +9,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { isGuestMode, getSelectedTier, getDemoData } from "@/lib/guestUtils";
 import { getTierConfig, TierType } from "@/lib/tierConfig";
-import React, { Suspense, lazy, useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { NotificationsCenter } from "@/components/NotificationsCenter";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-// Add: lazy-loaded tier dashboards (code-splitting)
-const SolopreneurDashboard = lazy(() =>
-  import("@/components/dashboards/SolopreneurDashboard").then((m) => ({
-    default: m.default,
-  })),
-);
-const StartupDashboard = lazy(() =>
-  import("@/components/dashboards/StartupDashboard").then((m) => ({
-    default: m.StartupDashboard,
-  })),
-);
-const SmeDashboard = lazy(() =>
-  import("@/components/dashboards/SmeDashboard").then((m) => ({
-    default: m.SmeDashboard,
-  })),
-);
-const EnterpriseDashboard = lazy(() =>
-  import("@/components/dashboards/EnterpriseDashboard").then((m) => ({
-    default: m.EnterpriseDashboard,
-  })),
-);
+import SolopreneurDashboard from "@/components/dashboards/SolopreneurDashboard";
+import { StartupDashboard } from "@/components/dashboards/StartupDashboard";
+import { SmeDashboard } from "@/components/dashboards/SmeDashboard";
+import { EnterpriseDashboard } from "@/components/dashboards/EnterpriseDashboard";
 import { MobileNav } from "@/components/layout/MobileNav";
 
 export default function Dashboard() {
@@ -154,7 +137,7 @@ export default function Dashboard() {
       navigate("/onboarding");
       return;
     }
-  }, [isLoading, isAuthenticated, business, guestMode, navigate]);
+  }, [isLoading, isAuthenticated, business, guestMode]);
 
   const handleNavigation = (to: string) => {
     navigate(to);
@@ -523,16 +506,8 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Dashboard content (code-split) */}
-        <Suspense
-          fallback={
-            <div className="flex items-center justify-center h-40">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600" />
-            </div>
-          }
-        >
-          {renderDashboardContent()}
-        </Suspense>
+        {/* Dashboard content */}
+        {renderDashboardContent()}
       </main>
     </div>
   );
