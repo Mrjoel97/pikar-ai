@@ -1240,7 +1240,7 @@ Renamed to avoid duplicate identifier collisions elsewhere in the file */
   };
 
   const handleGenerateSocialContent = async () => {
-    if (!business?._id || !userId) {
+    if (!business?._id || !user?._id) {
       toast.error("Please sign in to generate content");
       return;
     }
@@ -1254,7 +1254,7 @@ Renamed to avoid duplicate identifier collisions elsewhere in the file */
       setGeneratingSocial(true);
       const result = await generateSocialContent({
         businessId: business?._id,
-        userId,
+        userId: user?._id,
         topic: socialContent,
         platforms: socialPlatforms.length > 0 ? socialPlatforms : ["twitter"],
         tone: "professional",
@@ -1274,7 +1274,7 @@ Renamed to avoid duplicate identifier collisions elsewhere in the file */
   };
 
   const handleRepurposeBlogToSocial = async () => {
-    if (!business?._id || !userId) {
+    if (!business?._id || !user?._id) {
       toast.error("Please sign in to repurpose content");
       return;
     }
@@ -1283,7 +1283,7 @@ Renamed to avoid duplicate identifier collisions elsewhere in the file */
       setGeneratingSocial(true);
       const result = await generateSocialContent({
         businessId: business?._id,
-        userId,
+        userId: user?._id,
         topic: "Repurpose my latest blog post into social media content",
         platforms: ["twitter", "linkedin"],
         tone: "professional",
@@ -3812,11 +3812,11 @@ Renamed to avoid duplicate identifier collisions elsewhere in the file */
       </Dialog>
 
       {/* Setup Wizard Dialog */}
-      {userId && businessId && (
+      {user?._id && businessId && (
         <SolopreneurSetupWizard
           open={showSetupWizard}
           onClose={() => setShowSetupWizard(false)}
-          userId={userId}
+          userId={user?._id}
           businessId={businessId}
         />
       )}
