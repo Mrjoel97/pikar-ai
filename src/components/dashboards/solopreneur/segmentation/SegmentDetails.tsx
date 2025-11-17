@@ -88,7 +88,7 @@ export function SegmentDetails({
       <div className="space-y-2 max-h-60 overflow-y-auto">
         {contacts.map((c: any) => (
           <div
-            key={c._id}
+            key={c._id?.toString() || `contact-${Math.random()}`}
             className="flex items-center justify-between p-3 border rounded hover:bg-accent transition-colors"
           >
             <div>
@@ -96,8 +96,8 @@ export function SegmentDetails({
               <div className="text-xs text-muted-foreground">{c.email}</div>
               {c.tags && c.tags.length > 0 && (
                 <div className="flex gap-1 mt-1">
-                  {c.tags.map((tag: string) => (
-                    <Badge key={tag} variant="outline" className="text-xs">
+                  {c.tags.map((tag: string, idx: number) => (
+                    <Badge key={`${c._id}-${tag}-${idx}`} variant="outline" className="text-xs">
                       {tag}
                     </Badge>
                   ))}

@@ -21,7 +21,7 @@ export function CustomSegments({ segments, onDelete }: CustomSegmentsProps) {
     <div className="grid gap-3">
       {segments.map((seg: any) => (
         <div
-          key={seg._id}
+          key={seg._id?.toString() || `segment-${Math.random()}`}
           className="border rounded-lg p-4 hover:bg-accent transition-colors"
           style={{ borderLeftColor: seg.color, borderLeftWidth: "4px" }}
         >
