@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/hooks/use-auth";
 import { Brain } from "lucide-react";
-import { Suspense, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { toast } from "sonner";
 import { useQuery } from "convex/react";
@@ -24,7 +24,7 @@ function Auth({ redirectAfterAuth = "/dashboard" }: AuthProps) {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [touched, setTouched] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
   // Auth mode state
@@ -62,7 +62,7 @@ function Auth({ redirectAfterAuth = "/dashboard" }: AuthProps) {
   // Password authentication handler (currently disabled)
   const handlePasswordSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setIsLoading(true);
+    setIsSubmitting(true);
     setError(null);
 
     try {
@@ -82,24 +82,24 @@ function Auth({ redirectAfterAuth = "/dashboard" }: AuthProps) {
       setError(error instanceof Error ? error.message : "Authentication failed");
       toast.error(error instanceof Error ? error.message : "Authentication failed");
     } finally {
-      setIsLoading(false);
+      setIsSubmitting(false);
     }
   };
 
   // Google Sign-In handler
   const handleGoogleLogin = async () => {
-    setIsLoading(true);
+    setIsSubmitting(true);
     setError(null);
-    toast("Redirecting to Google…");
     
     try {
       await signIn("google");
-      // Success - the useEffect will handle navigation
+      toast.success("Redirecting to Google…");
     } catch (err: unknown) {
       console.error("Google sign-in error:", err);
       setError("Google sign-in failed. Please try again.");
-      setIsLoading(false);
       toast.error("Google sign-in failed");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -116,24 +116,20 @@ function Auth({ redirectAfterAuth = "/dashboard" }: AuthProps) {
       return;
     }
     
-    setIsLoading(true);
+    setIsSubmitting(true);
     setError(null);
     
     try {
-      // Sign in anonymously first
       await signIn("anonymous");
-      
-      // Set guest mode in localStorage
       setGuestMode(guestTier);
-      
-      toast("Signed in as guest");
+      toast.success("Signed in as guest");
       navigate(`/dashboard?guest=1&tier=${encodeURIComponent(guestTier)}`);
     } catch (error) {
       console.error("Guest login error:", error);
       setError(`Failed to continue as guest: ${error instanceof Error ? error.message : "Unknown error"}`);
       toast.error("Failed to sign in as guest");
     } finally {
-      setIsLoading(false);
+      setIsSubmitting(false);
     }
   };
 
@@ -178,7 +174,7 @@ function Auth({ redirectAfterAuth = "/dashboard" }: AuthProps) {
                 setConfirmPassword={setConfirmPassword}
                 authMode={authMode}
                 setAuthMode={setAuthMode}
-                isLoading={isLoading}
+                isLoading={isSubmitting}
                 touched={touched}
                 setTouched={setTouched}
                 isValidEmail={isValidEmail}
@@ -210,7 +206,7 @@ function Auth({ redirectAfterAuth = "/dashboard" }: AuthProps) {
           onOpenChange={setGuestDialogOpen}
           guestTier={guestTier}
           setGuestTier={setGuestTier}
-          isLoading={isLoading}
+          isLoading={isSubmitting}
           error={error}
           onConfirm={handleConfirmGuest}
         />
@@ -220,9 +216,5 @@ function Auth({ redirectAfterAuth = "/dashboard" }: AuthProps) {
 }
 
 export default function AuthPage(props: AuthProps) {
-  return (
-    <Suspense fallback={<div className="p-6 text-sm">Loading…</div>}>
-      <Auth {...props} />
-    </Suspense>
-  );
+  return <Auth {...props} />;
 }
