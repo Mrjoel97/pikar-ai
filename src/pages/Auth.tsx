@@ -81,9 +81,10 @@ function Auth({ redirectAfterAuth = "/dashboard" }: AuthProps) {
         throw new Error("Password login is not available yet. Please use Google Sign-In.");
       }
     } catch (error) {
-      console.error("Password auth error:", error instanceof Error ? error.message : String(error));
-      setError(error instanceof Error ? error.message : "Authentication failed");
-      toast.error(error instanceof Error ? error.message : "Authentication failed");
+      const errorMessage = error instanceof Error ? error.message : "Authentication failed";
+      console.error("Password auth error:", errorMessage);
+      setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
@@ -98,7 +99,8 @@ function Auth({ redirectAfterAuth = "/dashboard" }: AuthProps) {
       await signIn("google");
       toast.success("Redirecting to Google…");
     } catch (err: unknown) {
-      console.error("Google sign-in error:", err instanceof Error ? err.message : String(err));
+      const errorMessage = err instanceof Error ? err.message : "Google sign-in failed";
+      console.error("Google sign-in error:", errorMessage);
       setError("Google sign-in failed. Please try again.");
       toast.error("Google sign-in failed");
     } finally {
@@ -128,8 +130,9 @@ function Auth({ redirectAfterAuth = "/dashboard" }: AuthProps) {
       toast.success("Signed in as guest");
       navigate(`/dashboard?guest=1&tier=${encodeURIComponent(guestTier)}`);
     } catch (error) {
-      console.error("Guest login error:", error instanceof Error ? error.message : String(error));
-      setError(`Failed to continue as guest: ${error instanceof Error ? error.message : "Unknown error"}`);
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      console.error("Guest login error:", errorMessage);
+      setError(`Failed to continue as guest: ${errorMessage}`);
       toast.error("Failed to sign in as guest");
     } finally {
       setIsSubmitting(false);
