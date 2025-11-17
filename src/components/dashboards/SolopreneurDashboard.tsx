@@ -151,8 +151,8 @@ function SolopreneurDashboard({ business: businessProp }: { business?: any }) {
     // Add local loading state for restore
     /* Duplicate removed — reuse the already-declared `lastDeletedItem` and `setLastDeletedItem` */
 
-    /* Using existing searchQuery state declared earlier – duplicate removed */
-    // New: search across content/transcript/summary (single source of truth)
+    /* searchQuery state must be declared before use */
+    const [searchQuery, setSearchQuery] = React.useState("");
 
     /* Prepare args; pass undefined to skip the query cleanly */
     const searchArgsMemoSearch = React.useMemo(() => {
@@ -355,11 +355,8 @@ function SolopreneurDashboard({ business: businessProp }: { business?: any }) {
       null,
     );
 
-    // New: search across content/transcript/summary (single source of truth)
-    const [searchQuery, setSearchQuery] = React.useState("");
-
     // Correctly skip when args are undefined
-    /* searchArgsMemoSearch moved earlier to avoid TDZ error */
+    /* searchQuery and searchArgsMemoSearch moved earlier to avoid TDZ error */
 
     // Audio recording + upload + transcription
     // const mediaRecorderRef = React.useRef<MediaRecorder | null>(null);
