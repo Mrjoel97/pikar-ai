@@ -109,6 +109,8 @@ function SolopreneurDashboard({ business: businessProp }: { business?: any }) {
 
     const [text, setText] = React.useState("");
     const [saving, setSaving] = React.useState(false);
+    const [transcript, setTranscript] = React.useState("");
+    const [summary, setSummary] = React.useState("");
     // Add filter state for tag chips
     const [activeTagFilter, setActiveTagFilter] = React.useState<
       "" | "content" | "offer" | "ops"
