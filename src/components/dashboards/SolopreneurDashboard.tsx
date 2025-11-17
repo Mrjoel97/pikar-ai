@@ -77,6 +77,14 @@ function SolopreneurDashboard({ business: businessProp }: { business?: any }) {
   // Use business from prop
   const business = businessProp;
   
+  // Add navigation hook
+  const navigate = useNavigate();
+  
+  // Add onUpgrade callback function
+  const onUpgrade = () => {
+    navigate("/pricing");
+  };
+  
   // Add local BrainDumpSection component
   function BrainDumpSection({ businessId }: { businessId: string }) {
     // Get or create an initiative for the business (we'll read the first one)
