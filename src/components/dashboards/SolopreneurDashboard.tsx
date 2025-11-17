@@ -93,7 +93,7 @@ function SolopreneurDashboard({ business: businessProp }: { business?: any }) {
       businessId ? { businessId } : "skip",
     );
     const initiativeId =
-      initiatives && initiatives.length > 0 ? initiatives[0]._id : null;
+      initiatives && initiatives.length > 0 && initiatives[0] ? initiatives[0]._id : null;
 
     const dumps = useQuery(
       api.initiatives.listBrainDumpsByInitiative as any,
@@ -1086,7 +1086,7 @@ Renamed to avoid duplicate identifier collisions elsewhere in the file */
       : undefined;
   const brainDumps = currentInitiative?._id
     ? (useQuery as any)(api.initiatives.listBrainDumpsByInitiative, {
-        initiativeId: currentInitiative._id,
+        initiativeId: currentInitiative?._id,
         limit: 10,
       })
     : [];
@@ -1474,7 +1474,7 @@ Renamed to avoid duplicate identifier collisions elsewhere in the file */
     if (scheduleOpen && !isGuest && business?._id && !aiSuggestions) {
       setLoadingSuggestions(true);
       suggestOptimalSlots({
-        businessId: business._id,
+        businessId: business?._id,
         cadence: agentProfile?.cadence,
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       })
@@ -1735,7 +1735,7 @@ Renamed to avoid duplicate identifier collisions elsewhere in the file */
     }
     try {
       setSavingQuickIdea(true);
-      await addDumpTop({ initiativeId: currentInitiative._id, content });
+      await addDumpTop({ initiativeId: currentInitiative?._id, content });
       setQuickIdea("");
       toast.success("Saved idea.");
     } catch (e: any) {
@@ -1913,7 +1913,7 @@ Renamed to avoid duplicate identifier collisions elsewhere in the file */
 
     try {
       const result = await generateCapsuleAI({
-        businessId: business._id,
+        businessId: business?._id,
         agentProfile: agentProfile
           ? {
               tone: agentProfile.tone,
@@ -3436,7 +3436,7 @@ Renamed to avoid duplicate identifier collisions elsewhere in the file */
       </section>
 
       {/* Brain Dump */}
-      <BrainDumpSection businessId={business._id} />
+      <BrainDumpSection businessId={business?._id} />
 
       {/* Help Coach */}
       <section>
@@ -3790,7 +3790,7 @@ Renamed to avoid duplicate identifier collisions elsewhere in the file */
                       setAiSuggestions(null);
                       setLoadingSuggestions(true);
                       suggestOptimalSlots({
-                        businessId: business!._id,
+                        businessId: business?._id,
                         cadence: agentProfile?.cadence,
                         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
                       })
