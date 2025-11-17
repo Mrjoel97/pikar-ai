@@ -1112,9 +1112,6 @@ Renamed to avoid duplicate identifier collisions elsewhere in the file */
   // Local loading state
   const [settingUp, setSettingUp] = useState(false);
 
-  // Add navigate for "Use" action
-  const navigate = useNavigate();
-
   // Templates strip (client-side, mirrors the seeded presets)
   const myTemplates: Array<{
     key: string;
