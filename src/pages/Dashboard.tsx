@@ -136,17 +136,23 @@ export default function Dashboard() {
   }
 
   // Use useEffect for redirects to avoid infinite loops
+  const hasRedirectedRef = React.useRef(false);
+  
   useEffect(() => {
+    if (hasRedirectedRef.current) return;
+    
     // Redirect to auth if not authenticated and not in guest mode
     if (!isLoading && !isAuthenticated && !guestMode) {
+      hasRedirectedRef.current = true;
       navigate("/auth");
+      return;
     }
-  }, [isLoading, isAuthenticated, guestMode, navigate]);
-
-  useEffect(() => {
+    
     // Redirect to onboarding if authenticated but no business setup (only after business query completes)
     if (!isLoading && isAuthenticated && business === null && !guestMode) {
+      hasRedirectedRef.current = true;
       navigate("/onboarding");
+      return;
     }
   }, [isLoading, isAuthenticated, business, guestMode, navigate]);
 
