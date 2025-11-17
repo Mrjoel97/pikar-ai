@@ -154,7 +154,12 @@ function SolopreneurDashboard({ business: businessProp }: { business?: any }) {
     /* Using existing searchQuery state declared earlier – duplicate removed */
     // New: search across content/transcript/summary (single source of truth)
 
-    /* Using consolidated `searchArgsMemoSearch` defined later; removed earlier duplicate memo */
+    /* Prepare args; pass undefined to skip the query cleanly */
+    const searchArgsMemoSearch = React.useMemo(() => {
+      if (!initiativeId) return undefined;
+      const q = (searchQuery ?? "").trim();
+      return q ? { initiativeId, q, limit: 20 } : undefined;
+    }, [initiativeId, searchQuery]);
 
     // Correctly skip when args are undefined
     const searchResults = useQuery(
@@ -353,16 +358,8 @@ function SolopreneurDashboard({ business: businessProp }: { business?: any }) {
     // New: search across content/transcript/summary (single source of truth)
     const [searchQuery, setSearchQuery] = React.useState("");
 
-    /* Prepare args; pass undefined to skip the query cleanly
-Renamed to avoid duplicate identifier collisions elsewhere in the file */
-    const searchArgsMemoSearch = React.useMemo(() => {
-      if (!initiativeId) return undefined;
-      const q = (searchQuery ?? "").trim();
-      return q ? { initiativeId, q, limit: 20 } : undefined;
-    }, [initiativeId, searchQuery]);
-
     // Correctly skip when args are undefined
-    /* Using consolidated `searchResults` declared later; removed earlier duplicate declaration */
+    /* searchArgsMemoSearch moved earlier to avoid TDZ error */
 
     // Audio recording + upload + transcription
     // const mediaRecorderRef = React.useRef<MediaRecorder | null>(null);
