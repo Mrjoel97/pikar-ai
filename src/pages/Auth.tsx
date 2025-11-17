@@ -46,7 +46,10 @@ function Auth({ redirectAfterAuth = "/dashboard" }: AuthProps) {
 
   // Handle post-authentication redirection
   useEffect(() => {
-    if (authLoading || !isAuthenticated) return;
+    if (authLoading) return;
+    if (!isAuthenticated) return;
+    
+    // Wait for onboarding status to load
     if (onboardingStatus === undefined) return;
 
     // Redirect to onboarding if needed

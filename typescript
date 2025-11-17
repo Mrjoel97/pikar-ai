@@ -1,1 +1,11 @@
-const isGuest = !isAuthed;
+// Redirect to auth if not authenticated and not in guest mode
+if (!isAuthenticated && !guestMode) {
+  navigate("/auth");
+  return null;
+}
+
+// Redirect to onboarding if authenticated but no business setup
+if (isAuthenticated && business === null && !guestMode) {
+  navigate("/onboarding");
+  return null;
+}

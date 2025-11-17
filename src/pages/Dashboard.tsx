@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { isGuestMode, getSelectedTier, getDemoData } from "@/lib/guestUtils";
 import { getTierConfig, TierType } from "@/lib/tierConfig";
-import React, { Suspense, lazy, useState } from "react";
+import React, { Suspense, lazy, useState, useEffect } from "react";
 import { NotificationsCenter } from "@/components/NotificationsCenter";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -135,17 +135,20 @@ export default function Dashboard() {
     );
   }
 
-  // Redirect to auth if not authenticated and not in guest mode
-  if (!isAuthenticated && !guestMode) {
-    navigate("/auth");
-    return null;
-  }
+  // Use useEffect for redirects to avoid infinite loops
+  useEffect(() => {
+    // Redirect to auth if not authenticated and not in guest mode
+    if (!isLoading && !isAuthenticated && !guestMode) {
+      navigate("/auth");
+    }
+  }, [isLoading, isAuthenticated, guestMode, navigate]);
 
-  // Redirect to onboarding if authenticated but no business setup
-  if (isAuthenticated && business === null && !guestMode) {
-    navigate("/onboarding");
-    return null;
-  }
+  useEffect(() => {
+    // Redirect to onboarding if authenticated but no business setup (only after business query completes)
+    if (!isLoading && isAuthenticated && business === null && !guestMode) {
+      navigate("/onboarding");
+    }
+  }, [isLoading, isAuthenticated, business, guestMode, navigate]);
 
   const handleNavigation = (to: string) => {
     navigate(to);
