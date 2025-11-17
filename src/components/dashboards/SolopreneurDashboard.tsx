@@ -61,7 +61,7 @@ const ContentCapsule = lazy(() => import("./solopreneur/ContentCapsule"));
 const CustomerSegmentation = lazy(() => import("./solopreneur/CustomerSegmentation"));
 const SocialPerformance = lazy(() => import("./solopreneur/SocialPerformance"));
 
-function SolopreneurDashboard() {
+function SolopreneurDashboard({ business: businessProp }: { business?: any }) {
   // Provide a relaxed-typing alias for the composer so extra props don't cause TS errors
   const CampaignComposerAny = CampaignComposer as any;
   // Use auth status early to guard queries when not authenticated
@@ -72,6 +72,9 @@ function SolopreneurDashboard() {
   
   // Determine if user is in guest mode
   const isGuest = !isAuthed;
+  
+  // Use business from prop
+  const business = businessProp;
   
   // Add local BrainDumpSection component
   function BrainDumpSection({ businessId }: { businessId: string }) {
