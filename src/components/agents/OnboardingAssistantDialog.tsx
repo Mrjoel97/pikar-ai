@@ -43,16 +43,17 @@ export default function OnboardingAssistantDialog() {
   }, [currentBiz?._id]);
 
   // Recent executions for this workspace (reactive)
-  const hasValidBusinessId = businessId && businessId.trim() !== "";
+  const hasValidBusinessId = Boolean(businessId && businessId.trim() !== "");
   const recentExecutions = useQuery(
-    hasValidBusinessId ? (api.playbookExecutions?.listExecutions as any) : "skip" as any,
-    hasValidBusinessId ? { businessId: businessId as any, limit: 5 } : "skip" as any
+    hasValidBusinessId ? api.playbookExecutions.listExecutions : undefined,
+    hasValidBusinessId ? { businessId: businessId as any, limit: 5 } : undefined
   );
 
   // Live selected execution details (reactive)
+  const hasValidExecutionId = Boolean(selectedExecutionId && selectedExecutionId.trim() !== "");
   const selectedExecution = useQuery(
-    selectedExecutionId ? (api.playbookExecutions?.getExecution as any) : "skip" as any,
-    selectedExecutionId ? { executionId: selectedExecutionId as any } : "skip" as any
+    hasValidExecutionId ? api.playbookExecutions.getExecution : undefined,
+    hasValidExecutionId ? { executionId: selectedExecutionId as any } : undefined
   );
 
   const suggestedSlots = useMemo(

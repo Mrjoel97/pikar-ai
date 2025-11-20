@@ -1,4 +1,5 @@
+const hasValidBusinessId = Boolean(businessId && businessId.trim() !== "");
 const recentExecutions = useQuery(
-  api.playbookExecutions?.listExecutions as any,
-  businessId && businessId.trim() !== "" ? ({ businessId: businessId as any, limit: 5 } as any) : undefined
+  hasValidBusinessId ? api.playbookExecutions.listExecutions : undefined,
+  hasValidBusinessId ? { businessId: businessId as any, limit: 5 } : undefined
 );
