@@ -1,5 +1,3 @@
-const hasValidBusinessId = Boolean(businessId && businessId.trim() !== "");
-const recentExecutions = useQuery(
-  hasValidBusinessId ? api.playbookExecutions.listExecutions : undefined,
-  hasValidBusinessId ? { businessId: businessId as any, limit: 5 } : undefined
-);
+console.error("Password auth error:", errorMessage);
+console.error("Google sign-in error:", errorMessage);
+console.error("Guest login error:", errorMessage);

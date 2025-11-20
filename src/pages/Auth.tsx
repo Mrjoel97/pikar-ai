@@ -81,7 +81,7 @@ function Auth({ redirectAfterAuth = "/dashboard" }: AuthProps) {
         throw new Error("Password login is not available yet. Please use Google Sign-In.");
       }
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "Authentication failed";
+      const errorMessage = error instanceof Error ? error.message : String(error);
       console.error("Password auth error:", errorMessage);
       setError(errorMessage);
       toast.error(errorMessage);
@@ -99,7 +99,7 @@ function Auth({ redirectAfterAuth = "/dashboard" }: AuthProps) {
       await signIn("google");
       toast.success("Redirecting to Google…");
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : "Google sign-in failed";
+      const errorMessage = err instanceof Error ? err.message : String(err);
       console.error("Google sign-in error:", errorMessage);
       setError("Google sign-in failed. Please try again.");
       toast.error("Google sign-in failed");
@@ -130,7 +130,7 @@ function Auth({ redirectAfterAuth = "/dashboard" }: AuthProps) {
       toast.success("Signed in as guest");
       navigate(`/dashboard?guest=1&tier=${encodeURIComponent(guestTier)}`);
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      const errorMessage = error instanceof Error ? error.message : String(error);
       console.error("Guest login error:", errorMessage);
       setError(`Failed to continue as guest: ${errorMessage}`);
       toast.error("Failed to sign in as guest");

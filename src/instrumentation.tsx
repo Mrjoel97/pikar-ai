@@ -53,7 +53,8 @@ async function reportErrorToVly(errorData: {
       }),
     });
   } catch (error) {
-    console.error("Failed to report error to Vly:", error instanceof Error ? error.message : String(error));
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    console.error("Failed to report error to Vly:", errorMsg);
   }
 }
 
@@ -129,7 +130,7 @@ class ErrorBoundary extends React.Component<
 
   componentDidCatch(error: Error, info: React.ErrorInfo) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    const stackTrace = error instanceof Error ? error.stack : String(error);
+    const stackTrace = error instanceof Error ? (error.stack || "") : String(error);
     
     reportErrorToVly({
       error: errorMessage,
