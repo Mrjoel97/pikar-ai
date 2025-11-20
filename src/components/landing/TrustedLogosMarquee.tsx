@@ -22,9 +22,9 @@ export default function TrustedLogosMarquee({ logos }: { logos: Array<Logo> }) {
           </p>
         </motion.div>
 
-        <div className="relative overflow-hidden">
+        <div className="relative overflow-hidden bg-background/50 rounded-2xl py-6">
           <motion.div
-            className="flex items-center gap-6 sm:gap-8 whitespace-nowrap"
+            className="flex items-center gap-8 sm:gap-12 whitespace-nowrap"
             animate={marqueeAnim}
             transition={
               shouldReduceMotion
@@ -35,12 +35,25 @@ export default function TrustedLogosMarquee({ logos }: { logos: Array<Logo> }) {
             {[...logos, ...logos].map((logo, i) => (
               <div
                 key={`${logo.name}-${i}`}
-                className="neu-inset rounded-xl px-4 py-3 sm:px-5 sm:py-4 bg-card/80 hover:bg-card transition-colors"
+                className="neu-inset rounded-xl px-6 py-4 sm:px-8 sm:py-5 bg-card hover:bg-card/80 transition-all hover:scale-105 shadow-sm"
               >
                 <img
                   src={logo.src}
                   alt={`${logo.name} logo`}
-                  className="h-7 sm:h-8 mx-auto opacity-90 hover:opacity-100 transition-opacity"
+                  className="h-8 sm:h-10 w-auto mx-auto object-contain opacity-70 hover:opacity-100 transition-opacity"
+                  loading="eager"
+                  onError={(e) => {
+                    // Fallback to text if image fails to load
+                    const target = e.target as HTMLImageElement;
+                    target.style.display = 'none';
+                    const parent = target.parentElement;
+                    if (parent && !parent.querySelector('.logo-text')) {
+                      const textSpan = document.createElement('span');
+                      textSpan.className = 'logo-text text-sm font-semibold text-foreground';
+                      textSpan.textContent = logo.name;
+                      parent.appendChild(textSpan);
+                    }
+                  }}
                 />
               </div>
             ))}
