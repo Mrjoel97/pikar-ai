@@ -44,14 +44,14 @@ export default function OnboardingAssistantDialog() {
 
   // Recent executions for this workspace (reactive)
   const recentExecutions = useQuery(
-    api.playbookExecutions?.listExecutions as any,
-    businessId && businessId.trim() !== "" ? ({ businessId: businessId as any, limit: 5 } as any) : undefined
+    businessId && businessId.trim() !== "" ? api.playbookExecutions?.listExecutions as any : undefined,
+    businessId && businessId.trim() !== "" ? { businessId: businessId as any, limit: 5 } : undefined
   );
 
   // Live selected execution details (reactive)
   const selectedExecution = useQuery(
-    api.playbookExecutions?.getExecution as any,
-    selectedExecutionId ? ({ executionId: selectedExecutionId as any } as any) : undefined
+    selectedExecutionId ? api.playbookExecutions?.getExecution as any : undefined,
+    selectedExecutionId ? { executionId: selectedExecutionId as any } : undefined
   );
 
   const suggestedSlots = useMemo(

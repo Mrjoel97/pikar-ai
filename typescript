@@ -1,4 +1,4 @@
 const recentExecutions = useQuery(
   api.playbookExecutions?.listExecutions as any,
-  businessId && businessId.trim() !== "" ? ({ businessId: businessId as any, limit: 5 } as any) : "skip"
+  businessId && businessId.trim() !== "" ? ({ businessId: businessId as any, limit: 5 } as any) : undefined
 );
