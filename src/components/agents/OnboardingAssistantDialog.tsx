@@ -45,7 +45,7 @@ export default function OnboardingAssistantDialog() {
   // Recent executions for this workspace (reactive)
   const recentExecutions = useQuery(
     api.playbookExecutions?.listExecutions as any,
-    businessId ? ({ businessId: businessId as any, limit: 5 } as any) : undefined
+    businessId && businessId.trim() !== "" ? ({ businessId: businessId as any, limit: 5 } as any) : undefined
   );
 
   // Live selected execution details (reactive)
