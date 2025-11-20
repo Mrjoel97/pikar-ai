@@ -88,7 +88,7 @@ export default function TestimonialsSection({ testimonials }: TestimonialsSectio
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {testimonials.map((testimonial, index) => (
             <motion.div
-              key={testimonial.name}
+              key={`testimonial-${index}-${testimonial.name}`}
               initial={{ y: 50, opacity: 0, scale: 0.9 }}
               whileInView={{ y: 0, opacity: 1, scale: 1 }}
               transition={{ 
