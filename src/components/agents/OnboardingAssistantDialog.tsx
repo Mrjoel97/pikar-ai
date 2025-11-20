@@ -45,15 +45,15 @@ export default function OnboardingAssistantDialog() {
   // Recent executions for this workspace (reactive)
   const hasValidBusinessId = Boolean(businessId && businessId.trim() !== "");
   const recentExecutions = useQuery(
-    hasValidBusinessId ? api.playbookExecutions.listExecutions : undefined,
-    hasValidBusinessId ? { businessId: businessId as any, limit: 5 } : undefined
+    api.playbookExecutions.listExecutions,
+    hasValidBusinessId ? { businessId: businessId as any, limit: 5 } : "skip"
   );
 
   // Live selected execution details (reactive)
   const hasValidExecutionId = Boolean(selectedExecutionId && selectedExecutionId.trim() !== "");
   const selectedExecution = useQuery(
-    hasValidExecutionId ? api.playbookExecutions.getExecution : undefined,
-    hasValidExecutionId ? { executionId: selectedExecutionId as any } : undefined
+    api.playbookExecutions.getExecution,
+    hasValidExecutionId ? { executionId: selectedExecutionId as any } : "skip"
   );
 
   const suggestedSlots = useMemo(
