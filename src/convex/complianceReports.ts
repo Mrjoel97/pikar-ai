@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query, action, internalMutation } from "./_generated/server";
+import { api, internal } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
 
 // Query: List all report templates
