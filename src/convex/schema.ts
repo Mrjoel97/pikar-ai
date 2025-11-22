@@ -1594,6 +1594,9 @@ const schema = defineSchema({
     data: v.any(),
     format: v.union(v.literal("pdf"), v.literal("csv"), v.literal("excel")),
     status: v.string(),
+    changeNotes: v.optional(v.string()),
+    version: v.optional(v.number()),
+    previousVersionId: v.optional(v.id("generatedReports")),
   })
     .index("by_business", ["businessId"]),
 
@@ -2000,13 +2003,22 @@ const schema = defineSchema({
     businessId: v.id("businesses"),
     name: v.string(),
     description: v.optional(v.string()),
-    endpoint: v.string(),
+    path: v.string(),
     method: v.union(v.literal("GET"), v.literal("POST"), v.literal("PUT"), v.literal("DELETE")),
+    requiresAuth: v.boolean(),
     isActive: v.boolean(),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
     .index("by_business", ["businessId"]),
+
+  brandingAnalytics: defineTable({
+    businessId: v.id("businesses"),
+    brandId: v.optional(v.id("brands")),
+    eventType: v.string(),
+    metadata: v.optional(v.any()),
+    timestamp: v.number(),
+  }).index("by_business", ["businessId"]),
 
   // Brand Assets
   brandAssets: defineTable({

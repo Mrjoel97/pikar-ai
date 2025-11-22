@@ -9,16 +9,17 @@ export const generateSdk = action({
     apiId: v.id("customApis"),
     language: v.union(v.literal("javascript"), v.literal("python"), v.literal("curl")),
   },
+  returns: v.object({ language: v.string(), code: v.string() }),
   handler: async (ctx, args) => {
-    const api = await ctx.runQuery(api.customApis.getApiById, { apiId: args.apiId });
-    if (!api) throw new Error("API not found");
+    const apiData = await ctx.runQuery(api.customApis.getApiById, { apiId: args.apiId });
+    if (!apiData) throw new Error("API not found");
 
     const baseUrl = process.env.CONVEX_SITE_URL || "https://your-app.convex.site";
     
     if (args.language === "javascript") {
       return {
         language: "javascript",
-        code: `// ${api.name} SDK
+        code: `// ${apiData.name} SDK
 const API_BASE_URL = "${baseUrl}";
 const API_KEY = "your-api-key";
 
@@ -46,30 +47,30 @@ async function ${apiData.name.replace(/\s+/g, '')}(${apiData.requiresAuth ? 'api
     } else if (args.language === "python") {
       return {
         language: "python",
-        code: `# ${api.name} SDK
+        code: `# ${apiData.name} SDK
 import requests
 import json
 
 API_BASE_URL = "${baseUrl}"
 API_KEY = "your-api-key"
 
-def ${api.name.toLowerCase().replace(/\s+/g, '_')}(${api.requiresAuth ? 'api_key, ' : ''}data=None):
+def ${apiData.name.toLowerCase().replace(/\s+/g, '_')}(${apiData.requiresAuth ? 'api_key, ' : ''}data=None):
     headers = {
         "Content-Type": "application/json",
-        ${api.requiresAuth ? '"Authorization": f"Bearer {api_key}",' : ''}
+        ${apiData.requiresAuth ? '"Authorization": f"Bearer {api_key}",' : ''}
     }
     
-    response = requests.${api.method.toLowerCase()}(
-        f"{API_BASE_URL}${api.path}",
+    response = requests.${apiData.method.toLowerCase()}(
+        f"{API_BASE_URL}${apiData.path}",
         headers=headers,
-        ${api.method !== "GET" ? 'json=data' : ''}
+        ${apiData.method !== "GET" ? 'json=data' : ''}
     )
     
     response.raise_for_status()
     return response.json()
 
 # Usage example:
-# result = ${api.name.toLowerCase().replace(/\s+/g, '_')}(${api.requiresAuth ? 'API_KEY, ' : ''}{"key": "value"})
+# result = ${apiData.name.toLowerCase().replace(/\s+/g, '_')}(${apiData.requiresAuth ? 'API_KEY, ' : ''}{"key": "value"})
 `,
       };
     } else {

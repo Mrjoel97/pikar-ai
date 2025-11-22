@@ -1,2 +1,1 @@
-# This won't work yet because functions aren't deployed, but worth trying:
-npx convex run authCleanup:cleanupAllTokens '{"batchSize": 1000}' --prod
+grep -A 15 "brandingConfigs" src/convex/schema.ts && grep -A 15 "brandingAnalytics" src/convex/schema.ts
