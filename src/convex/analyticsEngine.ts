@@ -26,13 +26,20 @@ export const createCustomMetric = mutation({
     formula: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    return await ctx.db.insert("customMetrics", {
-      ...args,
+    const metricId = await ctx.db.insert("customMetrics", {
+      businessId: args.businessId,
+      name: args.name,
+      description: args.description,
+      dataSource: args.dataSource,
+      definition: args.definition,
+      visualization: args.visualization,
       isActive: true,
+      lastCalculated: undefined,
+      currentValue: undefined,
       createdAt: Date.now(),
-      lastCalculated: null,
-      currentValue: null,
+      updatedAt: Date.now(),
     });
+    return metricId;
   },
 });
 

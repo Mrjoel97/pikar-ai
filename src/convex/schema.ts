@@ -27,7 +27,10 @@ const schema = defineSchema({
     onboardingCompleted: v.optional(v.boolean()),
     // Add optional businessId to satisfy consumers that reference it
     businessId: v.optional(v.id("businesses")),
-  }).index("email", ["email"]),
+    // Add tokenIdentifier for auth
+    tokenIdentifier: v.optional(v.string()),
+  }).index("email", ["email"])
+    .index("by_token", ["tokenIdentifier"]),
 
   businesses: defineTable({
     name: v.string(),
@@ -1519,8 +1522,8 @@ const schema = defineSchema({
     isActive: v.boolean(),
     createdAt: v.number(),
     updatedAt: v.optional(v.number()),
-    lastCalculated: v.union(v.number(), v.null()),
-    currentValue: v.union(v.number(), v.null()),
+    lastCalculated: v.optional(v.number()),
+    currentValue: v.optional(v.number()),
   })
     .index("by_business", ["businessId"]),
 
@@ -2376,10 +2379,16 @@ const schema = defineSchema({
     colors: v.optional(v.any()),
     fonts: v.optional(v.any()),
     logo: v.optional(v.string()),
+    // Add missing fields
+    isDefault: v.optional(v.boolean()),
+    logoUrl: v.optional(v.string()),
+    primaryColor: v.optional(v.string()),
+    secondaryColor: v.optional(v.string()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
-    .index("by_business", ["businessId"]),
+    .index("by_business", ["businessId"])
+    .index("by_business_and_default", ["businessId", "isDefault"]),
 
   // SAML Configs
   samlConfigs: defineTable({
@@ -2755,8 +2764,14 @@ const schema = defineSchema({
     metrics: v.optional(v.any()),
     createdAt: v.number(),
     updatedAt: v.number(),
+    // Add fields used by code as instance tracker
+    contactId: v.optional(v.id("contacts")),
+    enteredAt: v.optional(v.number()),
+    exitedAt: v.optional(v.number()),
+    stage: v.optional(v.string()),
   })
-    .index("by_business", ["businessId"]),
+    .index("by_business", ["businessId"])
+    .index("by_contact", ["contactId"]),
 
   // Department Metrics
   departmentMetrics: defineTable({
@@ -2925,6 +2940,153 @@ const schema = defineSchema({
   })
     .index("by_business", ["businessId"])
     .index("by_workflow", ["workflowId"]),
+
+  // Add missing tables
+  activityFeed: defineTable({
+    businessId: v.id("businesses"),
+    userId: v.id("users"),
+    type: v.string(),
+    content: v.string(),
+    data: v.optional(v.any()),
+    read: v.boolean(),
+    createdAt: v.number(),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_user", ["userId"]),
+
+  departmentBudgetActuals: defineTable({
+    businessId: v.id("businesses"),
+    department: v.string(),
+    amount: v.number(),
+    date: v.number(),
+    description: v.optional(v.string()),
+    fiscalYear: v.string(),
+    createdAt: v.number(),
+  })
+    .index("by_business_and_year", ["businessId", "fiscalYear"]),
+
+  departmentBudgetForecasts: defineTable({
+    businessId: v.id("businesses"),
+    department: v.string(),
+    amount: v.number(),
+    date: v.number(),
+    fiscalYear: v.string(),
+    createdAt: v.number(),
+  })
+    .index("by_business_and_year", ["businessId", "fiscalYear"]),
+
+  revenueEvents: defineTable({
+    businessId: v.id("businesses"),
+    amount: v.number(),
+    date: v.number(),
+    source: v.string(),
+    description: v.optional(v.string()),
+    createdAt: v.number(),
+  })
+    .index("by_business", ["businessId"]),
+
+  portfolioMetrics: defineTable({
+    businessId: v.id("businesses"),
+    totalBudget: v.number(),
+    totalSpent: v.number(),
+    overallHealth: v.string(),
+    updatedAt: v.number(),
+  })
+    .index("by_business", ["businessId"]),
+
+  initiativeDependencies: defineTable({
+    businessId: v.id("businesses"),
+    sourceInitiativeId: v.id("initiatives"),
+    targetInitiativeId: v.id("initiatives"),
+    type: v.string(),
+    createdAt: v.number(),
+  })
+    .index("by_business", ["businessId"]),
+
+  resourceAllocations: defineTable({
+    businessId: v.id("businesses"),
+    initiativeId: v.id("initiatives"),
+    resourceType: v.string(),
+    allocatedAmount: v.number(),
+    capacity: v.number(),
+    createdAt: v.number(),
+  })
+    .index("by_business", ["businessId"]),
+
+  ticketComments: defineTable({
+    ticketId: v.id("supportTickets"),
+    userId: v.id("users"),
+    content: v.string(),
+    createdAt: v.number(),
+  })
+    .index("by_ticket", ["ticketId"]),
+
+  invoiceTemplates: defineTable({
+    businessId: v.id("businesses"),
+    name: v.string(),
+    content: v.string(),
+    createdAt: v.number(),
+  })
+    .index("by_business", ["businessId"]),
+
+  policyVersions: defineTable({
+    policyId: v.id("policies"),
+    version: v.string(),
+    content: v.string(),
+    createdAt: v.number(),
+    createdBy: v.id("users"),
+  })
+    .index("by_policy", ["policyId"]),
+
+  governanceRemediations: defineTable({
+    businessId: v.id("businesses"),
+    violationId: v.id("governanceViolations"),
+    workflowId: v.id("workflows"),
+    status: v.string(),
+    appliedAt: v.number(),
+    originalPipeline: v.optional(v.any()),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_workflow", ["workflowId"]),
+
+  governanceAutomationSettings: defineTable({
+    businessId: v.id("businesses"),
+    autoRemediate: v.boolean(),
+    escalationRules: v.optional(v.any()),
+    createdAt: v.number(),
+  })
+    .index("by_business", ["businessId"]),
+
+  dataQualityMetrics: defineTable({
+    businessId: v.id("businesses"),
+    sourceId: v.id("dataWarehouseSources"),
+    metric: v.string(),
+    value: v.number(),
+    createdAt: v.number(),
+  })
+    .index("by_business", ["businessId"]),
+
+  customerJourneyTransitions: defineTable({
+    businessId: v.id("businesses"),
+    contactId: v.id("contacts"),
+    fromStage: v.string(),
+    toStage: v.string(),
+    transitionedAt: v.number(),
+  })
+    .index("by_business_and_date", ["businessId", "transitionedAt"])
+    .index("by_contact", ["contactId"]),
+
+  emailEvents: defineTable({
+    businessId: v.id("businesses"),
+    campaignId: v.optional(v.id("emailCampaigns")),
+    emailId: v.optional(v.id("emails")),
+    eventType: v.string(),
+    recipient: v.string(),
+    timestamp: v.number(),
+    metadata: v.optional(v.any()),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_campaign", ["campaignId"]),
 
 });
 

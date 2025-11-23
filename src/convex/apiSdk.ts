@@ -1,7 +1,7 @@
 "use node";
 
 import { v } from "convex/values";
-import { action, query, internalMutation } from "./_generated/server";
+import { action } from "./_generated/server";
 import { api } from "./_generated/api";
 
 export const generateSdk = action({
@@ -9,8 +9,11 @@ export const generateSdk = action({
     apiId: v.id("customApis"),
     language: v.union(v.literal("javascript"), v.literal("python"), v.literal("curl")),
   },
-  returns: v.object({ language: v.string(), code: v.string() }),
-  handler: async (ctx, args) => {
+  returns: v.object({
+    language: v.string(),
+    code: v.string(),
+  }),
+  handler: async (ctx, args): Promise<{ language: string; code: string }> => {
     const apiData = await ctx.runQuery(api.customApis.getApiById, { apiId: args.apiId });
     if (!apiData) throw new Error("API not found");
 

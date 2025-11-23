@@ -1,1 +1,1 @@
-grep -A 15 "brandingConfigs" src/convex/schema.ts && grep -A 15 "brandingAnalytics" src/convex/schema.ts
+grep -nE "defineTable|brandingConfigs|notifications|customMetrics|teamMessages|customDomains|brands" src/convex/schema.ts

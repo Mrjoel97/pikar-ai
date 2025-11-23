@@ -76,6 +76,29 @@ export const getCrisisHistory = query({
 });
 
 /**
+ * Query: Get active alerts
+ */
+export const getActiveAlerts = query({
+  args: { businessId: v.id("businesses") },
+  handler: async (ctx, args) => {
+    const alerts = await ctx.db
+      .query("crisisAlerts")
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .filter((q) => q.neq(q.field("status"), "resolved"))
+      .collect();
+
+    return alerts.map((a) => ({
+      id: a._id,
+      type: a.alertType, // Map alertType to type
+      severity: a.severity,
+      message: a.description, // Map description to message
+      timestamp: a.detectedAt,
+      status: a.status,
+    }));
+  },
+});
+
+/**
  * Mutation: Create a crisis alert
  */
 export const createCrisisAlert = mutation({
