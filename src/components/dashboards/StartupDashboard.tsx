@@ -569,8 +569,8 @@ const pendingApprovals = useQuery(
             </Button>
           )}
           {(!campaigns || campaigns === "skip" || campaigns.length === 0) && !isGuest && (
-            <Button asChild variant="outline" size="sm">
-              <Button size="sm" onClick={() => navigate("/analytics")}>View Analytics</Button>
+            <Button variant="outline" size="sm" onClick={() => navigate("/analytics")}>
+              View Analytics
             </Button>
           )}
         </div>
@@ -721,8 +721,8 @@ const pendingApprovals = useQuery(
             <p className="text-sm text-muted-foreground">
               Drive focus with clear outcomes, owners, and linked workflows that unblock execution.
             </p>
-            <Button asChild size="sm" variant="default">
-              <Button size="sm" onClick={() => navigate("/initiatives")}>Open Initiatives</Button>
+            <Button size="sm" variant="default" onClick={() => navigate("/initiatives")}>
+              Open Initiatives
             </Button>
           </CardContent>
         </Card>
@@ -851,8 +851,8 @@ function CRMSyncCard({ businessId }: { businessId: string }) {
             {syncStatus.pendingConflicts} Conflicts
           </Badge>
         )}
-        <Button size="sm" variant="outline" asChild>
-          <Button size="sm" onClick={() => navigate("/crm-integration-hub")}>Manage</Button>
+        <Button size="sm" variant="outline" onClick={() => navigate("/crm-integration-hub")}>
+          Manage
         </Button>
       </div>
     </div>

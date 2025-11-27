@@ -27,7 +27,7 @@ export function DepartmentTabs({ businessId, isGuest, kpiDoc }: DepartmentTabsPr
     <section className="mb-6">
       <div className="flex items-center justify-between mb-2">
         <h2 className="text-lg font-semibold">Departments</h2>
-        <Button asChild size="sm" variant="outline">
+        <Button size="sm" variant="outline" onClick={() => navigate("/business")}>
           <a href="/analytics">Open Analytics</a>
         </Button>
       </div>
