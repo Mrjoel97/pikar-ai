@@ -170,7 +170,6 @@ function AnimatedRoutes() {
           <Route path="/api/builder" element={<ApiBuilderPage />} />
           <Route path="/support" element={<SupportPage />} />
           <Route path="/admin/test-runner" element={<TestRunnerPage />} />
-          <Route path="/src/components/dashboards/SolopreneurDashboard.tsx" element={<Navigate to="/dashboard" replace />} />
           <Route path="/enterprise/data-warehouse" element={<DataWarehouseManager />} />
           <Route path="/enterprise/security" element={<SecurityDashboard />} />
           <Route path="/enterprise/portfolio" element={<PortfolioDashboard />} />

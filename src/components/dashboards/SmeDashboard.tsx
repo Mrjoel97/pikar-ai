@@ -66,9 +66,10 @@ export function SmeDashboard() {
     !isGuest && user ? {} : "skip"
   );
   
+  const navigate = useNavigate();
   const tier = business?.tier || "sme";
   const onUpgrade = () => {
-    window.location.href = "/pricing";
+    navigate("/pricing");
   };
 
   // Fix: derive businessId from current props first

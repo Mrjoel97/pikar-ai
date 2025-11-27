@@ -74,9 +74,10 @@ export function EnterpriseDashboard() {
     !isGuest && user ? {} : "skip"
   );
   
+  const navigate = useNavigate();
   const tier = business?.tier || "enterprise";
   const onUpgrade = () => {
-    window.location.href = "/pricing";
+    navigate("/pricing");
   };
 
   const [region, setRegion] = useState<string>("global");

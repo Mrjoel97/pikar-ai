@@ -116,9 +116,10 @@ export function StartupDashboard() {
     !isGuest && user ? {} : "skip"
   );
   
+  const navigate = useNavigate();
   const tier = business?.tier || "startup";
   const onUpgrade = () => {
-    window.location.href = "/pricing";
+    navigate("/pricing");
   };
 
   const agents = isGuest ? (demoData?.startup?.agents || []) : [];
@@ -569,7 +570,7 @@ const pendingApprovals = useQuery(
           )}
           {(!campaigns || campaigns === "skip" || campaigns.length === 0) && !isGuest && (
             <Button asChild variant="outline" size="sm">
-              <a href="/analytics">View Analytics</a>
+              <Button size="sm" onClick={() => navigate("/analytics")}>View Analytics</Button>
             </Button>
           )}
         </div>
@@ -686,7 +687,7 @@ const pendingApprovals = useQuery(
                       size="sm"
                       onClick={() => {
                         try {
-                          window.location.href = "/workflows";
+                          navigate("/workflows");
                         } catch {
                           // no-op
                         }
@@ -721,7 +722,7 @@ const pendingApprovals = useQuery(
               Drive focus with clear outcomes, owners, and linked workflows that unblock execution.
             </p>
             <Button asChild size="sm" variant="default">
-              <a href="/initiatives">Open Initiatives</a>
+              <Button size="sm" onClick={() => navigate("/initiatives")}>Open Initiatives</Button>
             </Button>
           </CardContent>
         </Card>
@@ -851,7 +852,7 @@ function CRMSyncCard({ businessId }: { businessId: string }) {
           </Badge>
         )}
         <Button size="sm" variant="outline" asChild>
-          <a href="/crm">Manage</a>
+          <Button size="sm" onClick={() => navigate("/crm-integration-hub")}>Manage</Button>
         </Button>
       </div>
     </div>
