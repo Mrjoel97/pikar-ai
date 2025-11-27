@@ -13,12 +13,12 @@ import LandingCTA from "@/components/landing/LandingCTA";
 import LandingFooter from "@/components/landing/LandingFooter";
 import LandingChat from "@/components/landing/LandingChat";
 
-// Lazy-load presentational sections
-const TrustedLogosMarquee = React.lazy(() => import("@/components/landing/TrustedLogosMarquee"));
-const FeaturesSection = React.lazy(() => import("@/components/landing/FeaturesSection"));
-const KpiTrendsCard = React.lazy(() => import("@/components/landing/KpiTrendsCard"));
-const DemoVideoCarousel = React.lazy(() => import("@/components/landing/DemoVideoCarousel"));
-const TestimonialsSection = React.lazy(() => import("@/components/landing/TestimonialsSection"));
+// Static imports for stability
+import TrustedLogosMarquee from "@/components/landing/TrustedLogosMarquee";
+import FeaturesSection from "@/components/landing/FeaturesSection";
+import KpiTrendsCard from "@/components/landing/KpiTrendsCard";
+import DemoVideoCarousel from "@/components/landing/DemoVideoCarousel";
+import TestimonialsSection from "@/components/landing/TestimonialsSection";
 
 // Add static KPI trend data used by KpiTrendsCard
 const trendData: Array<{ month: string; revenue: number; leads: number; efficiency: number }> = [
@@ -233,9 +233,7 @@ export default function Landing() {
         transition={{ duration: 0.8 }}
         viewport={{ once: true }}
       >
-        <React.Suspense fallback={<div className="px-4 sm:px-6 lg:px-8 pb-12 sm:pb-16 text-sm text-muted-foreground">Loading logos…</div>}>
-          <TrustedLogosMarquee logos={trustedLogos} />
-        </React.Suspense>
+        <TrustedLogosMarquee logos={trustedLogos} />
       </motion.div>
 
       <motion.div
@@ -244,9 +242,7 @@ export default function Landing() {
         transition={{ duration: 0.8, delay: 0.2 }}
         viewport={{ once: true }}
       >
-        <React.Suspense fallback={<div className="px-4 sm:px-6 lg:px-8 pb-12 sm:pb-16 text-sm text-muted-foreground">Loading features…</div>}>
-          <FeaturesSection features={features} />
-        </React.Suspense>
+        <FeaturesSection features={features} />
       </motion.div>
 
       <motion.div
@@ -255,23 +251,18 @@ export default function Landing() {
         transition={{ duration: 0.8, delay: 0.2 }}
         viewport={{ once: true }}
       >
-        <React.Suspense fallback={<div className="px-4 sm:px-6 lg:px-8 py-14 sm:py-20 text-sm text-muted-foreground">Loading KPI trends…</div>}>
-          <KpiTrendsCard data={trendData} />
-        </React.Suspense>
+        <KpiTrendsCard data={trendData} />
       </motion.div>
 
       {/* Demo Video Carousel */}
-      <React.Suspense fallback={null}>
-        <DemoVideoCarousel
-          open={demoOpen}
-          onOpenChange={setDemoOpen}
-          onSelectTier={handleDemoTierSelect}
-        />
-      </React.Suspense>
+      <DemoVideoCarousel
+        open={demoOpen}
+        onOpenChange={setDemoOpen}
+        onSelectTier={handleDemoTierSelect}
+      />
 
       {/* Testimonials Section */}
-      <React.Suspense fallback={<div className="px-4 sm:px-6 lg:px-8 py-14 sm:py-20 text-sm text-muted-foreground">Loading testimonials…</div>}>
-        <TestimonialsSection testimonials={[
+      <TestimonialsSection testimonials={[
           {
             name: "Sarah Chen",
             role: "Founder & CEO",
@@ -327,7 +318,6 @@ export default function Landing() {
             tier: "Enterprise"
           }
         ]} />
-      </React.Suspense>
 
       <LandingPricing tiers={tiers} openUpgrade={openUpgrade} />
 

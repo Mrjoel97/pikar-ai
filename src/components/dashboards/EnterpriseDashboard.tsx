@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useState, useMemo, useEffect, useCallback, lazy, Suspense } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Badge } from "@/components/ui/badge";
@@ -26,76 +26,21 @@ import { useAuth } from "@/hooks/use-auth";
 import { isGuestMode } from "@/lib/guestUtils";
 import { demoData as importedDemoData } from "@/lib/demoData";
 
-// Lazy-load heavy components to reduce initial bundle
-const RoiDashboard = lazy(() =>
-  import("./RoiDashboard").then((m) => ({ default: m.RoiDashboard })),
-);
-const ExperimentDashboard = lazy(() =>
-  import("@/components/experiments/ExperimentDashboard").then((m) => ({
-    default: m.ExperimentDashboard,
-  })),
-);
-const ExperimentCreator = lazy(() =>
-  import("@/components/experiments/ExperimentCreator").then((m) => ({
-    default: m.ExperimentCreator,
-  })),
-);
-// Lazy load all heavy components for better code splitting
-const GlobalOverview = lazy(() =>
-  import("./enterprise/GlobalOverview").then((m) => ({
-    default: m.GlobalOverview,
-  }))
-);
-const WidgetGrid = lazy(() =>
-  import("./enterprise/WidgetGrid").then((m) => ({
-    default: m.WidgetGrid,
-  }))
-);
-const ApprovalsAudit = lazy(() =>
-  import("./enterprise/ApprovalsAudit").then((m) => ({
-    default: m.ApprovalsAudit,
-  }))
-);
-const StrategicInitiatives = lazy(() =>
-  import("./enterprise/StrategicInitiatives").then((m) => ({
-    default: m.StrategicInitiatives,
-  }))
-);
-const SystemTelemetry = lazy(() =>
-  import("./enterprise/SystemTelemetry").then((m) => ({
-    default: m.SystemTelemetry,
-  }))
-);
-const ExecutiveAgentInsights = lazy(() =>
-  import("./enterprise/ExecutiveAgentInsights").then((m) => ({
-    default: m.ExecutiveAgentInsights,
-  }))
-);
-const AdvancedPanels = lazy(() =>
-  import("./enterprise/AdvancedPanels").then((m) => ({
-    default: m.AdvancedPanels,
-  }))
-);
-const BrainDumpSection = lazy(() =>
-  import("./enterprise/BrainDumpSection").then((m) => ({
-    default: m.BrainDumpSection,
-  }))
-);
-const SocialCommandCenter = lazy(() =>
-  import("./enterprise/SocialCommandCenter").then((m) => ({
-    default: m.SocialCommandCenter,
-  }))
-);
-const StrategicCommandCenter = lazy(() =>
-  import("./enterprise/StrategicCommandCenter").then((m) => ({
-    default: m.StrategicCommandCenter,
-  }))
-);
-const IntegrationHub = lazy(() =>
-  import("@/components/integrations/IntegrationHub").then((m) => ({
-    default: m.IntegrationHub,
-  }))
-);
+// Static imports to prevent lazy loading errors
+import { RoiDashboard } from "./RoiDashboard";
+import { ExperimentDashboard } from "@/components/experiments/ExperimentDashboard";
+import { ExperimentCreator } from "@/components/experiments/ExperimentCreator";
+import { GlobalOverview } from "./enterprise/GlobalOverview";
+import { WidgetGrid } from "./enterprise/WidgetGrid";
+import { ApprovalsAudit } from "./enterprise/ApprovalsAudit";
+import { StrategicInitiatives } from "./enterprise/StrategicInitiatives";
+import { SystemTelemetry } from "./enterprise/SystemTelemetry";
+import { ExecutiveAgentInsights } from "./enterprise/ExecutiveAgentInsights";
+import { AdvancedPanels } from "./enterprise/AdvancedPanels";
+import { BrainDumpSection } from "./enterprise/BrainDumpSection";
+import { SocialCommandCenter } from "./enterprise/SocialCommandCenter";
+import { StrategicCommandCenter } from "./enterprise/StrategicCommandCenter";
+import { IntegrationHub } from "@/components/integrations/IntegrationHub";
 
 /**
  * EnterpriseDashboard Component
@@ -385,97 +330,75 @@ export function EnterpriseDashboard() {
   return (
     <div className="space-y-6">
       <LazyLoadErrorBoundary moduleName="Global Overview">
-        <Suspense fallback={<div className="text-muted-foreground">Loading global overview...</div>}>
-          <GlobalOverview 
-            businessId={businessId || ""}
-            region={region}
-            setRegion={setRegion}
-            unit={unit}
-            setUnit={setUnit}
-            kpis={kpis}
-            isGuest={isGuest}
-          />
-        </Suspense>
+        <GlobalOverview 
+          businessId={businessId || ""}
+          region={region}
+          setRegion={setRegion}
+          unit={unit}
+          setUnit={setUnit}
+          kpis={kpis}
+          isGuest={isGuest}
+        />
       </LazyLoadErrorBoundary>
 
       <LazyLoadErrorBoundary moduleName="Widget Grid">
-        <Suspense fallback={<div className="text-muted-foreground">Loading widgets...</div>}>
-          <WidgetGrid 
-            widgetOrder={widgetOrder}
-            setWidgetOrder={setWidgetOrder}
-            widgetsByKey={widgetsByKey}
-          />
-        </Suspense>
+        <WidgetGrid 
+          widgetOrder={widgetOrder}
+          setWidgetOrder={setWidgetOrder}
+          widgetsByKey={widgetsByKey}
+        />
       </LazyLoadErrorBoundary>
 
       <div className="grid gap-6 lg:grid-cols-2">
         <LazyLoadErrorBoundary moduleName="Strategic Command Center">
-          <Suspense fallback={<div className="text-muted-foreground">Loading strategic command...</div>}>
-            <StrategicCommandCenter businessId={businessId || ""} />
-          </Suspense>
+          <StrategicCommandCenter businessId={businessId || ""} />
         </LazyLoadErrorBoundary>
 
         <LazyLoadErrorBoundary moduleName="Social Command Center">
-          <Suspense fallback={<div className="text-muted-foreground">Loading social command...</div>}>
-            <SocialCommandCenter businessId={businessId || ""} />
-          </Suspense>
+          <SocialCommandCenter businessId={businessId || ""} />
         </LazyLoadErrorBoundary>
       </div>
 
       <LazyLoadErrorBoundary moduleName="Approvals & Audit">
-        <Suspense fallback={<div className="text-muted-foreground">Loading approvals...</div>}>
-          <ApprovalsAudit 
-            isGuest={isGuest}
-            approvals={approvals}
-            auditLatest={auditLatest}
-            onApprove={handleApprove}
-            onReject={handleReject}
-          />
-        </Suspense>
+        <ApprovalsAudit 
+          isGuest={isGuest}
+          approvals={approvals}
+          auditLatest={auditLatest}
+          onApprove={handleApprove}
+          onReject={handleReject}
+        />
       </LazyLoadErrorBoundary>
 
       <LazyLoadErrorBoundary moduleName="Strategic Initiatives">
-        <Suspense fallback={<div className="text-muted-foreground">Loading initiatives...</div>}>
-          <StrategicInitiatives workflows={workflows} />
-        </Suspense>
+        <StrategicInitiatives workflows={workflows} />
       </LazyLoadErrorBoundary>
 
       <LazyLoadErrorBoundary moduleName="System Telemetry">
-        <Suspense fallback={<div className="text-muted-foreground">Loading telemetry...</div>}>
-          <SystemTelemetry agents={agents} demoData={demoData} />
-        </Suspense>
+        <SystemTelemetry agents={agents} demoData={demoData} />
       </LazyLoadErrorBoundary>
 
       <LazyLoadErrorBoundary moduleName="Executive Agent Insights">
-        <Suspense fallback={<div className="text-muted-foreground">Loading agent insights...</div>}>
-          <ExecutiveAgentInsights entAgents={entAgents} onNavigate={(path: string) => nav(path)} />
-        </Suspense>
+        <ExecutiveAgentInsights entAgents={entAgents} onNavigate={(path: string) => nav(path)} />
       </LazyLoadErrorBoundary>
 
       <LazyLoadErrorBoundary moduleName="Advanced Panels">
-        <Suspense fallback={<div className="text-muted-foreground">Loading advanced panels...</div>}>
-          <AdvancedPanels 
-            isGuest={isGuest}
-            businessId={businessId || ""}
-            crmConnections={crmConnections}
-            crmConflicts={crmConflicts}
-            showExperimentCreator={showExperimentCreator}
-            setShowExperimentCreator={setShowExperimentCreator}
-            showRoiDashboard={showRoiDashboard}
-          />
-        </Suspense>
+        <AdvancedPanels 
+          isGuest={isGuest}
+          businessId={businessId || ""}
+          crmConnections={crmConnections}
+          crmConflicts={crmConflicts}
+          showExperimentCreator={showExperimentCreator}
+          setShowExperimentCreator={setShowExperimentCreator}
+          showRoiDashboard={showRoiDashboard}
+        />
       </LazyLoadErrorBoundary>
 
       <LazyLoadErrorBoundary moduleName="Integration Status">
-        <Suspense fallback={<div className="text-muted-foreground">Loading integration status...</div>}>
-          <IntegrationStatus />
-        </Suspense>
+        <IntegrationStatus />
       </LazyLoadErrorBoundary>
 
       <LazyLoadErrorBoundary moduleName="Enterprise Controls">
-        <Suspense fallback={<div className="text-muted-foreground">Loading controls...</div>}>
-          <EnterpriseControls hasTier={hasTier} onUpgrade={onUpgrade} />
-        </Suspense>
+        <EnterpriseControls hasTier={hasTier} onUpgrade={onUpgrade} />
       </LazyLoadErrorBoundary>
     </div>
   );
