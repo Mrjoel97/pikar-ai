@@ -52,58 +52,22 @@ import {
 } from "recharts";
 import { SystemHealthStrip } from "@/components/dashboard/SystemHealthStrip";
 import type { StartupDashboardProps } from "@/types/dashboard";
-import React, { lazy } from "react";
+import React from "react";
 import { LazyLoadErrorBoundary } from "@/components/common/LazyLoadErrorBoundary";
 import { useAuth } from "@/hooks/use-auth";
 import { isGuestMode } from "@/lib/guestUtils";
 import { demoData as importedDemoData } from "@/lib/demoData";
 
-// Lazy load heavy Startup components
-const TeamPerformance = lazy(() =>
-  import("./startup/TeamPerformance").then((m) => ({
-    default: m.TeamPerformance,
-  }))
-);
-const GrowthMetrics = lazy(() =>
-  import("./startup/GrowthMetrics").then((m) => ({
-    default: m.GrowthMetrics,
-  }))
-);
-const CampaignList = lazy(() =>
-  import("./startup/CampaignList").then((m) => ({
-    default: m.CampaignList,
-  }))
-);
-const GoalsDashboardWidget = lazy(() =>
-  import("./startup/GoalsDashboardWidget").then((m) => ({
-    default: m.GoalsDashboardWidget,
-  }))
-);
-const ApprovalWorkflow = lazy(() =>
-  import("@/components/social/ApprovalWorkflow").then((m) => ({
-    default: m.ApprovalWorkflow,
-  }))
-);
-const CollaborationFeed = lazy(() =>
-  import("./startup/CollaborationFeed").then((m) => ({
-    default: m.CollaborationFeed,
-  }))
-);
-const WorkflowAssignments = lazy(() =>
-  import("./startup/WorkflowAssignments").then((m) => ({
-    default: m.WorkflowAssignments,
-  }))
-);
-const CustomerJourneyMap = lazy(() =>
-  import("./startup/CustomerJourneyMap").then((m) => ({
-    default: m.CustomerJourneyMap,
-  }))
-);
-const RevenueAttribution = lazy(() =>
-  import("./startup/RevenueAttribution").then((m) => ({
-    default: m.RevenueAttribution,
-  }))
-);
+// Static imports to prevent lazy loading errors
+import { TeamPerformance } from "./startup/TeamPerformance";
+import { GrowthMetrics } from "./startup/GrowthMetrics";
+import { CampaignList } from "./startup/CampaignList";
+import { GoalsDashboardWidget } from "./startup/GoalsDashboardWidget";
+import { ApprovalWorkflow } from "@/components/social/ApprovalWorkflow";
+import { CollaborationFeed } from "./startup/CollaborationFeed";
+import { WorkflowAssignments } from "./startup/WorkflowAssignments";
+import { CustomerJourneyMap } from "./startup/CustomerJourneyMap";
+import { RevenueAttribution } from "./startup/RevenueAttribution";
 
 export function StartupDashboard() {
   const { user } = useAuth();

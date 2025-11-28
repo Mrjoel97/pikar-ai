@@ -28,32 +28,16 @@ import { CrossDepartmentMetrics } from "@/components/workflows/CrossDepartmentMe
 import { SystemHealthStrip } from "@/components/dashboard/SystemHealthStrip";
 import { LazyLoadErrorBoundary } from "@/components/common/LazyLoadErrorBoundary";
 import { type SmeDashboardProps } from "@/types/dashboard";
-import { lazy, Suspense } from "react";
+import { Suspense } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { isGuestMode } from "@/lib/guestUtils";
 import { demoData as importedDemoData } from "@/lib/demoData";
 
-// Lazy load heavy SME components
-const DepartmentTabs = lazy(() =>
-  import("./sme/DepartmentTabs").then((m) => ({
-    default: m.DepartmentTabs,
-  }))
-);
-const GovernancePanel = lazy(() =>
-  import("./sme/GovernancePanel").then((m) => ({
-    default: m.GovernancePanel,
-  }))
-);
-const ComplianceRisk = lazy(() =>
-  import("./sme/ComplianceRisk").then((m) => ({
-    default: m.ComplianceRisk,
-  }))
-);
-const IntegrationHub = lazy(() =>
-  import("@/components/integrations/IntegrationHub").then((m) => ({
-    default: m.IntegrationHub,
-  }))
-);
+// Static imports to prevent lazy loading errors
+import { DepartmentTabs } from "./sme/DepartmentTabs";
+import { GovernancePanel } from "./sme/GovernancePanel";
+import { ComplianceRisk } from "./sme/ComplianceRisk";
+import { IntegrationHub } from "@/components/integrations/IntegrationHub";
 
 export function SmeDashboard() {
   const { user } = useAuth();

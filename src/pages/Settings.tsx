@@ -1,4 +1,4 @@
-import React, { useState, lazy, Suspense } from "react";
+import React, { useState, Suspense } from "react";
 import { useNavigate } from "react-router";
 import { useQuery, useAction, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
@@ -13,11 +13,11 @@ import { Copy, Settings as SettingsIcon } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 
-// Lazy load tier-specific settings
-const SolopreneurSettings = lazy(() => import("@/components/settings/SolopreneurSettings"));
-const StartupSettings = lazy(() => import("@/components/settings/StartupSettings"));
-const SmeSettings = lazy(() => import("@/components/settings/SmeSettings"));
-const EnterpriseSettings = lazy(() => import("@/components/settings/EnterpriseSettings"));
+// Static imports for settings components
+import SolopreneurSettings from "@/components/settings/SolopreneurSettings";
+import StartupSettings from "@/components/settings/StartupSettings";
+import SmeSettings from "@/components/settings/SmeSettings";
+import EnterpriseSettings from "@/components/settings/EnterpriseSettings";
 
 export default function SettingsPage() {
   const navigate = useNavigate();
