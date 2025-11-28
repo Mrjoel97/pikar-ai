@@ -1,1 +1,2 @@
-grep -nE "defineTable|brandingConfigs|notifications|customMetrics|teamMessages|customDomains|brands" src/convex/schema.ts
+pnpm add bcryptjs
+pnpm add -D @types/bcryptjs

@@ -117,6 +117,7 @@ import type * as onboarding from "../onboarding.js";
 import type * as openai from "../openai.js";
 import type * as openapi from "../openapi.js";
 import type * as passwordAuth from "../passwordAuth.js";
+import type * as passwordAuthActions from "../passwordAuthActions.js";
 import type * as passwordAuthData from "../passwordAuthData.js";
 import type * as playbookExecutions from "../playbookExecutions.js";
 import type * as playbookVersions from "../playbookVersions.js";
@@ -291,6 +292,7 @@ declare const fullApi: ApiFromModules<{
   openai: typeof openai;
   openapi: typeof openapi;
   passwordAuth: typeof passwordAuth;
+  passwordAuthActions: typeof passwordAuthActions;
   passwordAuthData: typeof passwordAuthData;
   playbookExecutions: typeof playbookExecutions;
   playbookVersions: typeof playbookVersions;

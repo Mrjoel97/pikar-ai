@@ -15,13 +15,11 @@ export function useAuthForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [touched, setTouched] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  // Auth mode state
   const [authMode, setAuthMode] = useState<AuthMode>("signup");
-  const [authMethod, setAuthMethod] = useState<AuthMethod>("password");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [touched, setTouched] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
 
   // Guest mode state
   const [guestDialogOpen, setGuestDialogOpen] = useState(false);
@@ -108,37 +106,38 @@ export function useAuthForm() {
     }
   };
 
+  const handleForgotPassword = () => {
+    setShowForgotPassword(true);
+  };
+
+  const handleBackFromForgotPassword = () => {
+    setShowForgotPassword(false);
+  };
+
   return {
-    // Form state
     email,
     setEmail,
     password,
     setPassword,
     confirmPassword,
     setConfirmPassword,
-    touched,
-    setTouched,
-    isSubmitting,
-    error,
-    setError,
-    isValidEmail,
-
-    // Auth mode
     authMode,
     setAuthMode,
-    authMethod,
-    setAuthMethod,
-
-    // Guest mode
+    isSubmitting,
+    touched,
+    setTouched,
+    isValidEmail,
+    error,
     guestDialogOpen,
     setGuestDialogOpen,
     guestTier,
     setGuestTier,
-
-    // Handlers
+    showForgotPassword,
     handlePasswordSubmit,
     handleGoogleLogin,
     handleGuestLogin,
     handleConfirmGuest,
+    handleForgotPassword,
+    handleBackFromForgotPassword,
   };
 }

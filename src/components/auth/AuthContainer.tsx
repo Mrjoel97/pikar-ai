@@ -4,18 +4,22 @@ import { useNavigate } from "react-router";
 import { PasswordAuthForm } from "@/components/auth/PasswordAuthForm";
 import { GuestTierDialog } from "@/components/auth/GuestTierDialog";
 import { useAuthForm } from "@/hooks/use-auth-form";
+import { ForgotPasswordForm } from "./ForgotPasswordForm";
 
 interface AuthContainerProps {
   authMode: "signup" | "login";
 }
 
-export function AuthContainer({ authMode: initialAuthMode }: AuthContainerProps) {
-  const navigate = useNavigate();
+export function AuthContainer() {
   const authForm = useAuthForm();
+  const navigate = useNavigate();
 
-  // Sync initial auth mode
-  if (authForm.authMode !== initialAuthMode) {
-    authForm.setAuthMode(initialAuthMode);
+  if (authForm.showForgotPassword) {
+    return (
+      <div className="flex min-h-screen items-center justify-center p-4">
+        <ForgotPasswordForm onBack={authForm.handleBackFromForgotPassword} />
+      </div>
+    );
   }
 
   return (
@@ -39,18 +43,9 @@ export function AuthContainer({ authMode: initialAuthMode }: AuthContainerProps)
           setEmail={authForm.setEmail}
           password={authForm.password}
           setPassword={authForm.setPassword}
-          confirmPassword={authForm.confirmPassword}
-          setConfirmPassword={authForm.setConfirmPassword}
-          authMode={authForm.authMode}
-          setAuthMode={authForm.setAuthMode}
           isLoading={authForm.isSubmitting}
-          touched={authForm.touched}
-          setTouched={authForm.setTouched}
-          isValidEmail={authForm.isValidEmail}
-          error={authForm.error}
           onSubmit={authForm.handlePasswordSubmit}
-          onGoogleLogin={authForm.handleGoogleLogin}
-          onGuestLogin={authForm.handleGuestLogin}
+          onForgotPassword={authForm.handleForgotPassword}
         />
 
         {/* Footer */}
