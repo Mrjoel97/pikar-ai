@@ -1,70 +1,179 @@
 // @ts-nocheck
-import React, { useState, useRef, useEffect, lazy, Suspense } from "react";
-import { useMutation, useQuery, useAction } from "convex/react";
+import React, { useState, useRef, useEffect, Suspense } from "react";
+import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { toast } from "sonner";
-import { useNavigate } from "react-router";
-import { Separator } from "@/components/ui/separator";
-import { Textarea } from "@/components/ui/textarea";
-import { Progress } from "@/components/ui/progress";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { useAuth } from "@/hooks/use-auth";
-import { isGuestMode } from "@/lib/guestUtils";
-import { demoData as importedDemoData } from "@/lib/demoData";
+import { useNavigate } from "react-router";
+import { motion, AnimatePresence } from "framer-motion";
+import { toast } from "sonner";
 import {
-  Sparkles,
+  Brain,
   TrendingUp,
   Users,
-  DollarSign,
   Calendar,
   MessageSquare,
-  BarChart3,
-  Target,
   Zap,
+  Target,
+  BarChart3,
+  Mail,
+  Share2,
+  FileText,
   Clock,
   CheckCircle2,
   AlertCircle,
+  Sparkles,
+  ChevronRight,
   Plus,
-  Send,
-  Eye,
-  Edit,
-  Trash2,
+  Settings,
+  Bell,
+  Search,
+  Filter,
   Download,
   Upload,
   RefreshCw,
-  Settings,
-  ChevronRight,
+  Eye,
+  Edit,
+  Trash2,
+  MoreVertical,
+  X,
+  Mic,
+  Play,
+  Pause,
+  Volume2,
+  VolumeX,
+  SkipBack,
+  SkipForward,
+  Repeat,
+  Shuffle,
+  Heart,
+  Share,
+  Bookmark,
+  Send,
+  Image,
+  Video,
+  Link,
+  Smile,
+  AtSign,
+  Hash,
+  DollarSign,
+  Percent,
+  TrendingDown,
   ArrowUp,
   ArrowDown,
   Minus,
-  FileText,
-  Mail,
-  } from "lucide-react";
-import CampaignComposer from "@/components/email/CampaignComposer";
-import { motion } from "framer-motion";
-import { InvoiceComposer } from "@/components/invoices/InvoiceComposer";
-import { ContentCalendar } from "@/components/calendar/ContentCalendar";
-import { RoiDashboard } from "@/components/dashboards/RoiDashboard";
-import { VoiceNotes } from "./solopreneur/VoiceNotes";
-import type { Id } from "@/convex/_generated/dataModel";
-import type { SolopreneurDashboardProps } from "@/types/dashboard";
-import { SolopreneurSetupWizard } from "@/components/onboarding/SolopreneurSetupWizard";
-import { LazyLoadErrorBoundary } from "@/components/common/LazyLoadErrorBoundary";
+  Info,
+  HelpCircle,
+  ExternalLink,
+  Copy,
+  Check,
+  ChevronDown,
+  ChevronUp,
+  ChevronLeft,
+  ChevronsRight,
+  ChevronsLeft,
+  ChevronsUp,
+  ChevronsDown,
+  MoreHorizontal,
+  Menu,
+  Grid,
+  List,
+  Layers,
+  Package,
+  ShoppingCart,
+  CreditCard,
+  Wallet,
+  PieChart,
+  Activity,
+  Award,
+  Briefcase,
+  Building,
+  Globe,
+  MapPin,
+  Phone,
+  Inbox,
+  Archive,
+  Folder,
+  File,
+  FilePlus,
+  FileText as FileTextIcon,
+  Save,
+  Printer,
+  Scissors,
+  Clipboard,
+  Code,
+  Terminal,
+  Database,
+  Server,
+  Cloud,
+  CloudOff,
+  Wifi,
+  WifiOff,
+  Bluetooth,
+  Cast,
+  Monitor,
+  Smartphone,
+  Tablet,
+  Watch,
+  Headphones,
+  Speaker,
+  Mic as MicIcon,
+  Camera,
+  Aperture,
+  Focus,
+  Maximize,
+  Minimize,
+  ZoomIn,
+  ZoomOut,
+  RotateCw,
+  RotateCcw,
+  FlipHorizontal,
+  FlipVertical,
+  Crop,
+  Move,
+  Lock,
+  Unlock,
+  Key,
+  UserPlus,
+  UserMinus,
+  UserCheck,
+  UserX,
+  LogIn,
+  LogOut,
+  Power,
+  Loader,
+  Loader2,
+} from "lucide-react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Separator } from "@/components/ui/separator";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { Slider } from "@/components/ui/slider";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Checkbox } from "@/components/ui/checkbox";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import { format } from "date-fns";
 
-// Lazy load heavy components
-const EmailCampaignAnalytics = lazy(() => import("./solopreneur/EmailCampaignAnalytics"));
-const ContentCapsule = lazy(() => import("./solopreneur/ContentCapsule"));
-const CustomerSegmentation = lazy(() => import("./solopreneur/CustomerSegmentation"));
-const SocialPerformance = lazy(() => import("./solopreneur/SocialPerformance"));
+// Static imports instead of lazy loading
+import EmailCampaignAnalytics from "./solopreneur/EmailCampaignAnalytics";
+import ContentCapsule from "./solopreneur/ContentCapsule";
+import CustomerSegmentation from "./solopreneur/CustomerSegmentation";
+import SocialPerformance from "./solopreneur/SocialPerformance";
 
 function SolopreneurDashboard({ business: businessProp }: { business?: any }) {
-  // Provide a relaxed-typing alias for the composer so extra props don't cause TS errors
-  const CampaignComposerAny = CampaignComposer as any;
   // Use auth status early to guard queries when not authenticated
   const { isAuthenticated: isAuthed } = useAuth();
   
