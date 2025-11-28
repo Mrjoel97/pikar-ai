@@ -340,6 +340,7 @@ function AnimatedRoutes() {
           <Route path="/content-calendar" element={<ContentCalendarPage />} />
           <Route path="/portfolio-dashboard" element={<PortfolioDashboardPage />} />
           <Route path="/data-warehouse" element={<DataWarehousePage />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </motion.div>
