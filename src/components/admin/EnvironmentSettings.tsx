@@ -12,6 +12,7 @@ interface EnvironmentSettingsProps {
     hasSALES_INBOX?: boolean;
     hasPUBLIC_SALES_INBOX?: boolean;
     hasBASE_URL?: boolean;
+    hasOPENAI?: boolean;
     devSafeEmailsEnabled?: boolean;
     emailQueueDepth?: number;
     overdueApprovalsCount?: number;
@@ -20,6 +21,12 @@ interface EnvironmentSettingsProps {
 }
 
 export function EnvironmentSettings({ env }: EnvironmentSettingsProps) {
+  const openConvexDashboard = () => {
+    const convexUrl = "https://dashboard.convex.dev/d/hushed-cat-860";
+    window.open(convexUrl, "_blank", "noopener,noreferrer");
+    toast.success("Opening Convex Dashboard...");
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -28,6 +35,19 @@ export function EnvironmentSettings({ env }: EnvironmentSettingsProps) {
       <CardContent className="space-y-3">
         <TooltipProvider>
           <div className="flex flex-wrap gap-2">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Badge variant={env?.hasOPENAI ? "outline" : "destructive"}>
+                  OpenAI: {env?.hasOPENAI ? "Configured ✓" : "Missing"}
+                </Badge>
+              </TooltipTrigger>
+              <TooltipContent className="max-w-xs text-xs">
+                {env?.hasOPENAI 
+                  ? "OpenAI API key is configured. AI features (Content Capsules, Customer Segmentation) are active."
+                  : "Set OPENAI_API_KEY in Convex Dashboard to enable AI-powered features."}
+              </TooltipContent>
+            </Tooltip>
+
             <Tooltip>
               <TooltipTrigger asChild>
                 <Badge variant={env?.hasRESEND ? "outline" : "destructive"}>
@@ -76,6 +96,25 @@ export function EnvironmentSettings({ env }: EnvironmentSettingsProps) {
 
         <Separator />
 
+        {!env?.hasOPENAI && (
+          <div className="p-3 rounded-md border border-amber-300 bg-amber-50 text-amber-900">
+            <div className="font-medium mb-1">⚠️ OpenAI API Key Not Configured</div>
+            <div className="text-sm mb-2">
+              AI-powered features (Content Capsules, Customer Segmentation) require an OpenAI API key. 
+              This key will be shared across all users in your organization.
+            </div>
+            <div className="text-xs text-muted-foreground mb-2">
+              <strong>How to add:</strong>
+              <ol className="list-decimal ml-4 mt-1 space-y-1">
+                <li>Click "Configure in Convex Dashboard" below</li>
+                <li>Navigate to Settings → Environment Variables</li>
+                <li>Add: <code className="bg-white px-1 rounded">OPENAI_API_KEY</code> = <code className="bg-white px-1 rounded">sk-...</code></li>
+                <li>Save and return here to verify</li>
+              </ol>
+            </div>
+          </div>
+        )}
+
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="p-3 rounded-md border">
             <div className="text-sm text-muted-foreground">Email Queue Depth</div>
@@ -96,6 +135,24 @@ export function EnvironmentSettings({ env }: EnvironmentSettingsProps) {
         <div className="flex gap-2">
           <Button
             size="sm"
+            variant="default"
+            onClick={openConvexDashboard}
+          >
+            Configure in Convex Dashboard
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => {
+              toast(env?.hasOPENAI 
+                ? "✓ OpenAI is configured and active" 
+                : "⚠️ OpenAI API key is missing. Click 'Configure in Convex Dashboard' to add it.");
+            }}
+          >
+            Check OpenAI Status
+          </Button>
+          <Button
+            size="sm"
             variant="outline"
             onClick={() => {
               toast("Opening Settings...");
@@ -103,21 +160,6 @@ export function EnvironmentSettings({ env }: EnvironmentSettingsProps) {
             }}
           >
             Open Settings
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => {
-              const base = (import.meta as any)?.env?.VITE_PUBLIC_BASE_URL as string | undefined;
-              if (base) {
-                toast.success(`Base URL: ${base}`);
-                try { window.open(base, "_blank", "noopener,noreferrer"); } catch {}
-              } else {
-                toast.error("VITE_PUBLIC_BASE_URL not set in frontend env.");
-              }
-            }}
-          >
-            Check Base URL
           </Button>
         </div>
       </CardContent>
