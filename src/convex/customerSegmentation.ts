@@ -2,10 +2,10 @@
 
 import { action } from "./_generated/server";
 import { v } from "convex/values";
-import { internal } from "./_generated/api";
+import { internal, api } from "./_generated/api";
 
 /**
- * Analyze customers and generate AI-powered segments
+ * Analyze customers and generate AI-powered segments using OpenAI
  */
 export const analyzeCustomers = action({
   args: {
@@ -39,19 +39,55 @@ export const analyzeCustomers = action({
       (c: any) => !c.engagementScore || c.engagementScore <= 40
     );
 
-    // Generate AI insights
-    const insights = `
-📊 Customer Analysis Summary:
+    // Calculate percentages
+    const highPct = Math.round((highEngagement.length / contacts.length) * 100);
+    const mediumPct = Math.round((mediumEngagement.length / contacts.length) * 100);
+    const lowPct = Math.round((lowEngagement.length / contacts.length) * 100);
+
+    // Use AI for deeper insights if available
+    let aiInsights = "";
+    if (process.env.OPENAI_API_KEY) {
+      try {
+        const prompt = `Analyze this customer engagement data and provide actionable insights:
+
+Total Contacts: ${contacts.length}
+High Engagement: ${highEngagement.length} (${highPct}%)
+Medium Engagement: ${mediumEngagement.length} (${mediumPct}%)
+Low Engagement: ${lowEngagement.length} (${lowPct}%)
+
+Provide:
+1. Overall health assessment (1-2 sentences)
+2. Top 3 actionable recommendations
+3. Biggest opportunity or risk
+
+Keep it concise and actionable (under 200 words).`;
+
+        const result = await ctx.runAction(api.openai.generate, {
+          prompt,
+          model: "gpt-4o-mini",
+          temperature: 0.7,
+          maxTokens: 300,
+        });
+
+        aiInsights = result.text;
+      } catch (error) {
+        console.warn("[CUSTOMER_SEGMENTATION] AI analysis failed, using fallback");
+      }
+    }
+
+    // Fallback insights if AI not available
+    const fallbackInsights = `📊 Customer Analysis Summary:
 - Total Contacts: ${contacts.length}
-- High Engagement (Active): ${highEngagement.length} (${Math.round((highEngagement.length / contacts.length) * 100)}%)
-- Medium Engagement (Dormant): ${mediumEngagement.length} (${Math.round((mediumEngagement.length / contacts.length) * 100)}%)
-- Low Engagement (Inactive): ${lowEngagement.length} (${Math.round((lowEngagement.length / contacts.length) * 100)}%)
+- High Engagement (Active): ${highEngagement.length} (${highPct}%)
+- Medium Engagement (Dormant): ${mediumEngagement.length} (${mediumPct}%)
+- Low Engagement (Inactive): ${lowEngagement.length} (${lowPct}%)
 
 💡 Key Insights:
-${highEngagement.length > contacts.length * 0.3 ? "✅ Strong engagement rate - maintain current strategies" : "⚠️ Low engagement rate - consider re-engagement campaigns"}
-${lowEngagement.length > contacts.length * 0.4 ? "🔴 High inactive rate - urgent action needed" : ""}
-${mediumEngagement.length > contacts.length * 0.3 ? "⚡ Opportunity to re-activate dormant customers" : ""}
-    `.trim();
+${highPct > 30 ? "✅ Strong engagement rate - maintain current strategies" : "⚠️ Low engagement rate - consider re-engagement campaigns"}
+${lowPct > 40 ? "🔴 High inactive rate - urgent action needed" : ""}
+${mediumPct > 30 ? "⚡ Opportunity to re-activate dormant customers" : ""}`;
+
+    const insights = aiInsights || fallbackInsights;
 
     // Create suggested segments
     const segments: any = [
@@ -59,14 +95,14 @@ ${mediumEngagement.length > contacts.length * 0.3 ? "⚡ Opportunity to re-activ
         name: "High Engagement",
         description: "Highly engaged customers with frequent interactions",
         criteria: { engagement: "active", minInteractions: 5 },
-        count: Math.floor(highEngagement.length * 0.3),
+        count: highEngagement.length,
         color: "#10b981",
       },
       {
         name: "At-Risk Customers",
         description: "Previously active customers showing declining engagement",
         criteria: { engagement: "dormant", previouslyActive: true },
-        count: Math.floor(mediumEngagement.length * 0.5),
+        count: mediumEngagement.length,
         color: "#f59e0b",
       },
       {
@@ -80,12 +116,12 @@ ${mediumEngagement.length > contacts.length * 0.3 ? "⚡ Opportunity to re-activ
         name: "New Prospects",
         description: "Recently added contacts with potential",
         criteria: { status: "subscribed", daysOld: 30 },
-        count: contacts.filter((c: any) => now - c.createdAt < thirtyDays).length,
+        count: contacts.filter((c: any) => now - c._creationTime < thirtyDays).length,
         color: "#3b82f6",
       },
     ];
 
-    return { segments, totalContacts: contacts.length };
+    return { segments, insights, totalContacts: contacts.length };
   },
 });
 

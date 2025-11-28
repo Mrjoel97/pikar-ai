@@ -5,7 +5,7 @@ import { action } from "./_generated/server";
 import { api, internal } from "./_generated/api";
 
 /**
- * Generate AI content capsule with multiple content pieces
+ * Generate AI content capsule with multiple content pieces using OpenAI
  */
 export const generateContentCapsule = action({
   args: {
@@ -37,44 +37,189 @@ export const generateContentCapsule = action({
       businessId: args.businessId,
     });
 
-    // Simulate AI generation (replace with actual OpenAI call)
     const topic = args.topic || "business growth and productivity";
     const tone = args.tone || agentProfile?.tone || "professional";
+    const businessName = business.name || "Your Business";
+    const brandVoice = agentProfile?.brandVoice || "professional and engaging";
 
-    const content = {
-      weeklyPost: `🚀 Weekly Insight: ${topic}\n\nThis week, we're focusing on strategies that drive real results. Here's what you need to know:\n\n✨ Key takeaway: Success comes from consistent action\n💡 Pro tip: Start small, scale smart\n🎯 Action item: Implement one new strategy today\n\n#BusinessGrowth #Productivity #Success`,
-      
-      emailSubject: `Your Weekly ${topic.charAt(0).toUpperCase() + topic.slice(1)} Insights`,
-      
-      emailBody: `Hi there!\n\nWelcome to this week's insights on ${topic}.\n\nWe've been analyzing the latest trends and strategies that successful businesses are using, and we're excited to share what we've learned.\n\nHere are the top 3 insights:\n\n1. Focus on high-impact activities\n2. Leverage automation where possible\n3. Build systems that scale\n\nReady to implement these strategies? Let's dive deeper.\n\nBest regards,\n${business.name}`,
-      
-      tweets: [
-        `🎯 ${topic}: The secret to success? Consistency over intensity. Small daily actions compound into massive results. #BusinessTips`,
-        `💡 Quick tip: Automate the repetitive, focus on the strategic. Your time is your most valuable asset. #Productivity`,
-        `🚀 Growth hack: Document your processes. What's repeatable is scalable. #BusinessGrowth`,
-      ],
-      
-      linkedinPost: `${topic.charAt(0).toUpperCase() + topic.slice(1)}: A Strategic Perspective\n\nAfter working with hundreds of businesses, I've noticed a pattern among the most successful ones.\n\nThey don't just work harder—they work smarter.\n\nHere's what sets them apart:\n\n→ Clear systems and processes\n→ Data-driven decision making\n→ Continuous optimization\n→ Focus on high-leverage activities\n\nThe question isn't whether you should implement these strategies.\n\nIt's: which one will you start with today?\n\nDrop a comment with your biggest challenge, and let's solve it together.\n\n#BusinessStrategy #Leadership #Growth`,
-      
-      facebookPost: `🌟 ${topic.charAt(0).toUpperCase() + topic.slice(1)} Made Simple\n\nWe get it—running a business is overwhelming. There's always more to do than time allows.\n\nBut what if you could achieve more by doing less?\n\nHere's how:\n✅ Prioritize ruthlessly\n✅ Automate repetitive tasks\n✅ Delegate what others can do\n✅ Focus on what only YOU can do\n\nIt's not about working 24/7. It's about working on the right things.\n\nWhat's one task you could automate this week? Share below! 👇\n\n#SmallBusiness #Entrepreneurship #ProductivityTips`,
-    };
+    // Check if OpenAI is configured
+    if (!process.env.OPENAI_API_KEY) {
+      console.warn("[CONTENT_CAPSULE] OPENAI_API_KEY not configured. Using fallback content.");
+      return generateFallbackContent(topic, tone, businessName);
+    }
 
-    // Log AI generation for analytics
-    await ctx.runMutation(internal.audit.write, {
-      businessId: args.businessId,
-      action: "content_capsule_generated",
-      entityType: "content_capsule",
-      entityId: args.businessId,
-      details: {
-        topic,
-        tone,
-        platforms: args.platforms,
-      },
-    });
+    try {
+      // Generate content using OpenAI
+      const prompt = `You are a content marketing expert creating a comprehensive content capsule for ${businessName}.
 
-    return content;
+Business Context:
+- Topic: ${topic}
+- Tone: ${tone}
+- Brand Voice: ${brandVoice}
+- Platforms: ${args.platforms.join(", ")}
+
+Generate a complete content capsule with the following components:
+
+1. Weekly Post: A comprehensive social media post (200-250 words) with emojis and hashtags
+2. Email Subject: An engaging subject line (under 60 characters)
+3. Email Body: A professional email (300-400 words) with clear structure
+4. Tweets: Three distinct tweets (under 280 characters each) with hashtags
+5. LinkedIn Post: A professional LinkedIn post (400-500 words) with strategic formatting
+6. Facebook Post: An engaging Facebook post (250-300 words) with call-to-action
+
+Format your response as JSON with these exact keys: weeklyPost, emailSubject, emailBody, tweets (array), linkedinPost, facebookPost
+
+Make all content actionable, engaging, and aligned with the ${tone} tone.`;
+
+      const result = await ctx.runAction(api.openai.generate, {
+        prompt,
+        model: "gpt-4o-mini",
+        temperature: 0.8,
+        maxTokens: 2000,
+      });
+
+      // Parse AI response
+      let content;
+      try {
+        // Try to extract JSON from the response
+        const jsonMatch = result.text.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          content = JSON.parse(jsonMatch[0]);
+        } else {
+          throw new Error("No JSON found in response");
+        }
+      } catch (parseError) {
+        console.warn("[CONTENT_CAPSULE] Failed to parse AI response, using fallback");
+        return generateFallbackContent(topic, tone, businessName);
+      }
+
+      // Validate and ensure all required fields exist
+      const validatedContent = {
+        weeklyPost: content.weeklyPost || generateFallbackContent(topic, tone, businessName).weeklyPost,
+        emailSubject: content.emailSubject || `Your Weekly ${topic} Insights`,
+        emailBody: content.emailBody || generateFallbackContent(topic, tone, businessName).emailBody,
+        tweets: Array.isArray(content.tweets) && content.tweets.length >= 3 
+          ? content.tweets.slice(0, 3) 
+          : generateFallbackContent(topic, tone, businessName).tweets,
+        linkedinPost: content.linkedinPost || generateFallbackContent(topic, tone, businessName).linkedinPost,
+        facebookPost: content.facebookPost || generateFallbackContent(topic, tone, businessName).facebookPost,
+      };
+
+      // Log AI generation for analytics
+      await ctx.runMutation(internal.audit.write, {
+        businessId: args.businessId,
+        action: "content_capsule_generated",
+        entityType: "content_capsule",
+        entityId: args.businessId,
+        details: {
+          topic,
+          tone,
+          platforms: args.platforms,
+          aiGenerated: true,
+        },
+      });
+
+      return validatedContent;
+    } catch (error: any) {
+      console.error("[CONTENT_CAPSULE] OpenAI generation failed:", error.message);
+      
+      // Log error and fall back to template content
+      await ctx.runMutation(internal.audit.write, {
+        businessId: args.businessId,
+        action: "content_capsule_generation_failed",
+        entityType: "content_capsule",
+        entityId: args.businessId,
+        details: {
+          error: error.message,
+          fallbackUsed: true,
+        },
+      });
+
+      return generateFallbackContent(topic, tone, businessName);
+    }
   },
 });
+
+/**
+ * Fallback content generator when OpenAI is unavailable
+ */
+function generateFallbackContent(topic: string, tone: string, businessName: string) {
+  return {
+    weeklyPost: `🚀 Weekly Insight: ${topic}
+
+This week, we're focusing on strategies that drive real results. Here's what you need to know:
+
+✨ Key takeaway: Success comes from consistent action
+💡 Pro tip: Start small, scale smart
+🎯 Action item: Implement one new strategy today
+
+#BusinessGrowth #Productivity #Success`,
+    
+    emailSubject: `Your Weekly ${topic.charAt(0).toUpperCase() + topic.slice(1)} Insights`,
+    
+    emailBody: `Hi there!
+
+Welcome to this week's insights on ${topic}.
+
+We've been analyzing the latest trends and strategies that successful businesses are using, and we're excited to share what we've learned.
+
+Here are the top 3 insights:
+
+1. Focus on high-impact activities
+2. Leverage automation where possible
+3. Build systems that scale
+
+Ready to implement these strategies? Let's dive deeper.
+
+Best regards,
+${businessName}`,
+    
+    tweets: [
+      `🎯 ${topic}: The secret to success? Consistency over intensity. Small daily actions compound into massive results. #BusinessTips`,
+      `💡 Quick tip: Automate the repetitive, focus on the strategic. Your time is your most valuable asset. #Productivity`,
+      `🚀 Growth hack: Document your processes. What's repeatable is scalable. #BusinessGrowth`,
+    ],
+    
+    linkedinPost: `${topic.charAt(0).toUpperCase() + topic.slice(1)}: A Strategic Perspective
+
+After working with hundreds of businesses, I've noticed a pattern among the most successful ones.
+
+They don't just work harder—they work smarter.
+
+Here's what sets them apart:
+
+→ Clear systems and processes
+→ Data-driven decision making
+→ Continuous optimization
+→ Focus on high-leverage activities
+
+The question isn't whether you should implement these strategies.
+
+It's: which one will you start with today?
+
+Drop a comment with your biggest challenge, and let's solve it together.
+
+#BusinessStrategy #Leadership #Growth`,
+    
+    facebookPost: `🌟 ${topic.charAt(0).toUpperCase() + topic.slice(1)} Made Simple
+
+We get it—running a business is overwhelming. There's always more to do than time allows.
+
+But what if you could achieve more by doing less?
+
+Here's how:
+✅ Prioritize ruthlessly
+✅ Automate repetitive tasks
+✅ Delegate what others can do
+✅ Focus on what only YOU can do
+
+It's not about working 24/7. It's about working on the right things.
+
+What's one task you could automate this week? Share below! 👇
+
+#SmallBusiness #Entrepreneurship #ProductivityTips`,
+  };
+}
 
 /**
  * Publish content capsule to social platforms

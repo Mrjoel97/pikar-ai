@@ -1,3 +1,610 @@
-   auth.addHttpRoutes(http, {
-     domain: process.env.CONVEX_SITE_URL,
-   });
+// Dependencies to install:
+- [ ] pnpm add twitter-api-v2
+- [ ] pnpm add linkedin-api-client
+- [ ] pnpm add fb-graph-api
+- [ ] pnpm add @tiptap/react @tiptap/starter-kit
+- [ ] pnpm add papaparse @types/papaparse (CSV parsing)
+- [ ] pnpm add pg (PostgreSQL client)
+- [ ] pnpm add mysql2 (MySQL client)
+- [ ] pnpm add mongodb (MongoDB client)
+- [ ] pnpm add saml2-js
+- [ ] pnpm add node-scim2-client
+
+// Environment variables needed:
+- [ ] TWITTER_CLIENT_ID
+- [ ] TWITTER_CLIENT_SECRET
+- [ ] LINKEDIN_CLIENT_ID
+- [ ] LINKEDIN_CLIENT_SECRET
+- [ ] FACEBOOK_APP_ID
+- [ ] FACEBOOK_APP_SECRET
+- [ ] OPENAI_API_KEY
+- [ ] DATABASE_URL (PostgreSQL)
+- [ ] DATABASE_URL (MySQL)
+- [ ] DATABASE_URL (MongoDB)
+
+// src/convex/emailsActions.ts
+- [ ] Complete Resend integration for bulk sending
+- [ ] Implement email template rendering
+- [ ] Add personalization token replacement
+- [ ] Track opens and clicks via pixel/redirect
+- [ ] Handle bounces and unsubscribes
+
+// src/convex/emailAnalytics.ts
+- [ ] Calculate open rates per campaign
+- [ ] Track click-through rates
+- [ ] Measure conversion attribution
+- [ ] Generate A/B test results
+
+// src/convex/contacts.ts
+- [ ] Implement contact list management
+- [ ] Add CSV import with validation
+- [ ] Create segmentation logic
+- [ ] Handle duplicate detection
+
+// src/components/email/CampaignComposer.tsx
+- [ ] Connect to emails.createCampaign mutation
+- [ ] Add rich text editor (TipTap or similar)
+- [ ] Implement template library
+- [ ] Add personalization token picker
+- [ ] Show preview with sample data
+
+// src/components/email/AudienceSelector.tsx
+- [ ] Load real contact lists
+- [ ] Implement segment builder UI
+- [ ] Show estimated reach
+- [ ] Validate against tier limits
+
+// src/components/dashboards/solopreneur/EmailCampaignAnalytics.tsx
+- [ ] Replace demo data with real campaign metrics
+- [ ] Add funnel visualization
+- [ ] Show revenue attribution
+- [ ] Implement date comparison
+
+// src/convex/contentCapsules.ts
+- [ ] Complete capsule creation mutation
+- [ ] Store capsule templates
+- [ ] Link capsules to social posts
+- [ ] Link capsules to email campaigns
+- [ ] Track capsule performance
+
+// src/convex/openai.ts
+- [ ] Implement content generation from capsule brief
+- [ ] Generate variations for different platforms
+- [ ] Create image prompts for DALL-E
+- [ ] Add tone/voice customization
+- [ ] Set up usage tracking for AI generations
+
+// src/convex/contentCapsulesData.ts
+- [ ] Store generated content versions
+- [ ] Track which versions were used
+- [ ] Calculate ROI per capsule
+
+// src/components/dashboards/solopreneur/ContentCapsule.tsx
+- [ ] Complete wizard steps 2-5
+- [ ] Connect to contentCapsules.create mutation
+- [ ] Show generation progress
+- [ ] Add edit/regenerate capability
+
+// src/components/dashboards/solopreneur/capsule/CapsuleLibrary.tsx
+- [ ] Load real capsules from backend
+- [ ] Implement search and filter
+- [ ] Add duplicate capsule feature
+- [ ] Show usage statistics
+
+// src/components/dashboards/solopreneur/capsule/CapsuleAnalytics.tsx
+- [ ] Display performance metrics
+- [ ] Compare capsule variants
+- [ ] Show conversion funnel
+
+// src/convex/customerSegmentation.ts
+- [ ] Implement RFM (Recency, Frequency, Monetary) scoring
+- [ ] Create dynamic segment rules engine
+- [ ] Calculate segment sizes in real-time
+- [ ] Track segment movement over time
+
+// src/convex/customerSegmentationData.ts
+- [ ] Store segment definitions
+- [ ] Cache segment membership
+- [ ] Update segments on contact changes
+
+// src/components/dashboards/solopreneur/CustomerSegmentation.tsx
+- [ ] Replace demo segments with real data
+- [ ] Add segment builder UI
+- [ ] Show segment overlap analysis
+- [ ] Implement export to CSV
+
+// src/convex/voiceNotes.ts
+- [ ] Implement file upload to Convex storage
+- [ ] Integrate Whisper API for transcription
+- [ ] Extract action items from transcripts
+- [ ] Link notes to initiatives
+
+// src/components/dashboards/solopreneur/VoiceNotes.tsx
+- [ ] Implement audio recording
+- [ ] Add file upload with progress
+- [ ] Show transcription status
+- [ ] Display extracted action items
+
+// src/components/dashboards/VoiceNotes.tsx (global)
+- [ ] Connect to real voiceNotes query
+- [ ] Add playback controls
+- [ ] Implement search
+
+// src/convex/initiatives.ts (Brain Dump)
+- [ ] Complete addBrainDump mutation
+- [ ] Implement tagging system
+- [ ] Add search functionality
+- [ ] Convert dumps to tasks/workflows
+
+// src/convex/teamChat.ts
+- [ ] Implement real-time messaging
+- [ ] Add thread support
+- [ ] Store message history
+- [ ] Handle file attachments
+- [ ] Add @mentions and notifications
+
+// src/convex/teamGoals.ts
+- [ ] Create goal tracking system
+- [ ] Link goals to workflows
+- [ ] Calculate progress automatically
+- [ ] Send goal reminders
+
+// src/convex/workflowAssignments.ts
+- [ ] Assign workflows to team members
+- [ ] Track assignment status
+- [ ] Send assignment notifications
+- [ ] Calculate workload distribution
+
+// src/components/team/TeamChat.tsx
+- [ ] Build real-time chat interface
+- [ ] Add message threading
+- [ ] Implement file sharing
+- [ ] Show typing indicators
+
+// src/components/team/GoalsTracker.tsx
+- [ ] Display team goals with progress
+- [ ] Add goal creation dialog
+- [ ] Show goal dependencies
+- [ ] Implement goal templates
+
+// src/components/dashboards/startup/WorkflowAssignments.tsx
+- [ ] Replace demo data with real assignments
+- [ ] Add drag-and-drop reassignment
+- [ ] Show workload balance
+- [ ] Filter by team member
+
+// src/convex/customerJourney.ts
+- [ ] Track customer touchpoints
+- [ ] Calculate journey stage transitions
+- [ ] Identify drop-off points
+- [ ] Measure time in each stage
+
+// src/convex/revenueAttribution.ts
+- [ ] Attribute revenue to touchpoints
+- [ ] Calculate multi-touch attribution
+- [ ] Track campaign ROI
+- [ ] Generate attribution reports
+
+// src/pages/CustomerJourney.tsx
+- [ ] Build visual journey map
+- [ ] Show real customer flow data
+- [ ] Add stage editing capability
+- [ ] Display conversion rates per stage
+
+// src/components/dashboards/startup/CustomerJourneyMap.tsx
+- [ ] Replace demo journey with real data
+- ] Add drill-down to individual customers
+- [ ] Show journey anomalies
+
+// src/convex/analyticsEngine.ts
+- [ ] Calculate MRR (Monthly Recurring Revenue)
+- [ ] Track customer acquisition cost (CAC)
+- [ ] Measure customer lifetime value (LTV)
+- [ ] Calculate churn rate
+- [ ] Generate cohort analysis
+
+// src/convex/kpis.ts
+- [ ] Aggregate KPIs from multiple sources
+- [ ] Store historical snapshots
+- [ ] Calculate trends and forecasts
+- [ ] Alert on anomalies
+
+// src/components/dashboards/startup/GrowthMetrics.tsx
+- [ ] Display real growth metrics
+- [ ] Add trend charts
+- [ ] Show cohort retention
+- [ ] Implement metric comparisons
+
+// src/pages/Analytics.tsx
+- [ ] Build comprehensive analytics dashboard
+- [ ] Add custom report builder
+- [ ] Implement data export
+- [ ] Show predictive insights
+
+// src/convex/workflowTemplates.ts
+- [ ] Store workflow templates
+- [ ] Implement template versioning
+- [ ] Add template marketplace
+- [ ] Track template usage
+
+// src/convex/workflows.ts
+- [ ] Create workflow from template
+- [ ] Customize template parameters
+- [ ] Clone existing workflows
+- [ ] Share workflows across businesses
+
+// src/pages/WorkflowTemplates.tsx
+- [ ] Display template gallery
+- [ ] Add template preview
+- [ ] Implement template search
+- [ ] Show template ratings
+
+// src/components/workflows/WorkflowBuilder.tsx
+- [ ] Complete visual workflow editor
+- [ ] Add node library
+- [ ] Implement connection validation
+- [ ] Test workflow execution
+
+// src/convex/departmentKpis.ts
+- [ ] Calculate department-specific KPIs
+- [ ] Track budget vs. actual
+- [ ] Measure department efficiency
+- [ ] Generate department reports
+
+// src/convex/departmentBudgets.ts
+- [ ] Manage department budgets
+- [ ] Track spending by category
+- [ ] Alert on budget overruns
+- [ ] Forecast future spending
+
+// src/components/departments/MarketingDashboard.tsx
+- [ ] Show campaign performance
+- [ ] Display lead generation metrics
+- [ ] Track marketing spend ROI
+- [ ] Add channel attribution
+
+// src/components/departments/SalesDashboard.tsx
+- [ ] Display pipeline metrics
+- [ ] Show deal velocity
+- [ ] Track quota attainment
+- [ ] Add forecasting
+
+// src/components/departments/OpsDashboard.tsx
+- [ ] Show operational efficiency
+- [ ] Track SLA compliance
+- [ ] Display resource utilization
+- [ ] Add incident tracking
+
+// src/components/departments/FinanceDashboard.tsx
+- [ ] Display financial statements
+- [ ] Show cash flow analysis
+- [ ] Track AR/AP aging
+- [ ] Add budget variance reports
+
+// src/convex/governance.ts
+- [ ] Implement policy enforcement engine
+- [ ] Track policy violations
+- [ ] Generate compliance reports
+- [ ] Calculate governance score
+
+// src/convex/governanceAutomation.ts
+- [ ] Auto-escalate policy violations
+- [ ] Send compliance reminders
+- [ ] Enforce approval workflows
+- [ ] Audit trail generation
+
+// src/convex/governanceRules.ts
+- [ ] Define rule evaluation logic
+- [ ] Implement rule conditions
+- [ ] Track rule effectiveness
+- [ ] Version control for rules
+
+// src/convex/complianceReports.ts
+- [ ] Generate SOC 2 reports
+- [ ] Create GDPR compliance reports
+- [ ] Track data retention policies
+- [ ] Audit access logs
+
+// src/components/governance/PolicyManagement.tsx
+- [ ] Build policy editor
+- [ ] Show policy distribution status
+- [ ] Track acknowledgments
+- [ ] Display policy analytics
+
+// src/components/governance/GovernanceAutomationSettings.tsx
+- [ ] Configure automation rules
+- [ ] Set escalation paths
+- [ ] Define SLA thresholds
+- [ ] Test rule logic
+
+// src/components/governance/EscalationQueue.tsx
+- [ ] Display pending escalations
+- [ ] Add resolution workflow
+- [ ] Track escalation metrics
+- [ ] Show escalation history
+
+// src/components/compliance/ComplianceReportGenerator.tsx
+- [ ] Build report template selector
+- [ ] Generate reports on demand
+- [ ] Schedule recurring reports
+- [ ] Export to PDF/Excel
+
+// src/convex/riskAnalytics.ts
+- [ ] Calculate risk scores
+- [ ] Identify risk trends
+- [ ] Generate risk heatmap data
+- [ ] Predict future risks
+
+// src/convex/capa.ts (Corrective/Preventive Actions)
+- [ ] Track CAPA items
+- [ ] Link CAPAs to risks
+- [ ] Monitor CAPA effectiveness
+- [ ] Generate CAPA reports
+
+// src/components/risk/RiskHeatmap.tsx
+- [ ] Display interactive risk matrix
+- [ ] Add drill-down to risk details
+- [ ] Show risk mitigation plans
+- [ ] Track risk over time
+
+// src/components/risk/RiskTrendChart.tsx
+- [ ] Show risk trends by category
+- [ ] Add predictive analytics
+- [ ] Display risk velocity
+- [ ] Compare risk across departments
+
+// src/components/compliance/CapaConsole.tsx
+- [ ] Display CAPA workflow
+- [ ] Track CAPA status
+- [ ] Show effectiveness metrics
+- [ ] Generate CAPA reports
+
+// src/convex/vendors.ts
+- [ ] Track vendor performance metrics
+- [ ] Calculate vendor risk scores
+- [ ] Monitor contract renewals
+- [ ] Aggregate vendor spend
+
+// src/convex/portfolioManagement.ts
+- [ ] Aggregate metrics across businesses
+- [ ] Calculate portfolio-level KPIs
+- [ ] Identify cross-business opportunities
+- [ ] Generate consolidated reports
+
+// src/convex/enterpriseMetrics.ts
+- [ ] Track enterprise-wide metrics
+- [ ] Calculate business unit performance
+- [ ] Measure synergies
+- [ ] Forecast portfolio growth
+
+// src/pages/VendorManagement.tsx
+- [ ] Build vendor directory
+- [ ] Add vendor onboarding workflow
+- [ ] Show vendor performance dashboard
+- [ ] Implement vendor comparison
+
+// src/components/vendors/VendorPerformanceDialog.tsx
+- [ ] Display detailed vendor metrics
+- [ ] Show contract details
+- [ ] Track deliverables
+- [ ] Add performance reviews
+
+// src/convex/dataWarehouse/etlPipelines.ts
+- [ ] Implement data extraction from sources
+- [ ] Build transformation logic
+- [ ] Load data to warehouse tables
+- [ ] Schedule pipeline runs
+- [ ] Handle pipeline failures
+
+// src/convex/dataWarehouse/dataSources.ts
+- [ ] Connect to external databases
+- [ ] Integrate with SaaS APIs
+- [ ] Handle authentication
+- [ ] Validate data schemas
+
+// src/convex/dataWarehouse/dataQuality.ts
+- [ ] Implement data validation rules
+- [ ] Detect data anomalies
+- [ ] Calculate data quality scores
+- [ ] Generate quality reports
+
+// src/convex/dataWarehouse/dataExports.ts
+- [ ] Export to CSV/Excel
+- [ ] Export to external databases
+- [ ] Schedule recurring exports
+- [ ] Track export history
+
+// src/components/enterprise/DataWarehouseManager.tsx
+- [ ] Build pipeline builder UI
+- [ ] Show pipeline execution status
+- [ ] Display data lineage
+- [ ] Add data preview
+
+// src/components/enterprise/warehouse/PipelineBuilder.tsx
+- [ ] Visual pipeline designer
+- [ ] Add transformation steps
+- [ ] Configure scheduling
+- [ ] Test pipeline logic
+
+// src/components/enterprise/warehouse/QualityDashboard.tsx
+- [ ] Display quality metrics
+- ] Show data issues
+- [ ] Track quality trends
+- [ ] Add quality rules editor
+
+// src/components/enterprise/PortfolioDashboard.tsx
+- [ ] Display portfolio overview
+- [ ] Show business comparison
+- [ ] Add drill-down to business details
+- [ ] Implement portfolio analytics
+
+// src/components/enterprise/portfolio/BusinessComparisonTab.tsx
+- [ ] Compare business metrics
+- [ ] Show relative performance
+- [ ] Identify best practices
+- [ ] Add benchmarking
+
+// src/components/enterprise/portfolio/PredictiveInsightsTab.tsx
+- [ ] Display ML-based predictions
+- [ ] Show growth forecasts
+- [ ] Identify risks and opportunities
+- [ ] Add scenario planning
+
+// src/convex/enterpriseSecurity.ts
+- [ ] Implement threat detection
+- [ ] Track security incidents
+- [ ] Calculate security scores
+- [ ] Generate security reports
+
+// src/convex/kms.ts (Key Management)
+- [ ] Implement key rotation
+- [ ] Track key usage
+- [ ] Enforce encryption policies
+- [ ] Audit key access
+
+// src/convex/scim.ts (User Provisioning)
+- [ ] Implement SCIM 2.0 protocol
+- [ ] Sync users from IdP
+- [ ] Handle user lifecycle
+- [ ] Track provisioning events
+
+// src/convex/saml.ts (SSO)
+- [ ] Implement SAML 2.0 flow
+- [ ] Handle IdP metadata
+- [ ] Validate SAML assertions
+- [ ] Track SSO sessions
+
+// src/components/enterprise/SecurityDashboard.tsx
+- [ ] Display security posture
+- [ ] Show threat intelligence
+- [ ] Track incidents
+- [ ] Add compliance status
+
+// src/components/enterprise/security/ThreatIntelligenceTab.tsx
+- [ ] Display threat feeds
+- [ ] Show vulnerability scans
+- [ ] Track security patches
+- [ ] Add threat hunting tools
+
+// src/components/kms/KmsConfiguration.tsx
+- [ ] Configure encryption policies
+- [ ] Manage key lifecycle
+- [ ] Show key usage analytics
+- [ ] Add key rotation scheduler
+
+// src/components/scim/ScimConfiguration.tsx
+- [ ] Configure SCIM endpoints
+- [ ] Map user attributes
+- [ ] Test provisioning
+- [ ] Show sync status
+
+// src/components/sso/SsoConfiguration.tsx
+- [ ] Configure SAML IdP
+- [ ] Upload IdP metadata
+- [ ] Test SSO flow
+- [ ] Show SSO analytics
+
+// src/convex/workforceAnalytics.ts
+- [ ] Track employee performance
+- [ ] Calculate productivity metrics
+- [ ] Measure skill gaps
+- [ ] Predict attrition risk
+- [ ] Optimize resource allocation
+
+// src/components/dashboards/enterprise/WorkforceDashboard.tsx
+- [ ] Display workforce overview
+- [ ] Show performance metrics
+- [ ] Track skill inventory
+- [ ] Add capacity planning
+
+// src/components/dashboards/enterprise/workforce/PerformanceTab.tsx
+- [ ] Show individual performance
+- [ ] Track goals and OKRs
+- [ ] Display peer comparisons
+- [ ] Add performance reviews
+
+// src/components/dashboards/enterprise/workforce/SkillsTab.tsx
+- [ ] Display skill matrix
+- [ ] Identify skill gaps
+- [ ] Track training completion
+- [ ] Add skill recommendations
+
+// src/components/dashboards/enterprise/workforce/AttritionTab.tsx
+- [ ] Show attrition risk scores
+- [ ] Track turnover trends
+- [ ] Identify retention factors
+- [ ] Add intervention recommendations
+
+// src/convex/billing.ts
+- [ ] Complete Stripe webhook handler
+- [ ] Implement subscription lifecycle
+- [ ] Handle payment failures
+- [ ] Manage plan upgrades/downgrades
+- [ ] Calculate usage-based billing
+
+// src/convex/billingInternal.ts
+- [ ] Apply subscription changes
+- [ ] Update tier entitlements
+- [ ] Track billing events
+- [ ] Generate invoices
+
+// src/pages/Pricing.tsx
+- [ ] Display pricing tiers
+- [ ] Add plan comparison
+- [ ] Implement checkout flow
+- [ ] Show current plan status
+
+// src/pages/Settings.tsx (Billing section)
+- [ ] Display billing history
+- [ ] Show payment methods
+- [ ] Add upgrade/downgrade UI
+- [ ] Display usage metrics
+
+// src/convex/entitlements.ts
+- [ ] Enforce tier limits consistently
+- [ ] Add usage tracking
+- [ ] Implement soft/hard limits
+- [ ] Generate usage reports
+
+// src/convex/featureFlags.ts
+- [ ] Add A/B testing support
+- [ ] Implement gradual rollouts
+- [ ] Track flag usage
+- [ ] Add flag analytics
+
+// src/convex/audit.ts
+- [ ] Complete audit trail for all mutations
+- [ ] Implement audit search
+- [ ] Generate audit reports
+- [ ] Track data changes
+
+// src/convex/telemetry.ts
+- [ ] Track user actions
+- [ ] Measure feature usage
+- [ ] Calculate engagement metrics
+- [ ] Generate usage reports
+
+// All dashboards
+- [ ] Replace isGuest checks with proper entitlement checks
+- [ ] Show upgrade prompts when limits reached
+- [ ] Display feature availability by tier
+- [ ] Add usage progress bars
+
+// src/convex/notifications.ts
+- [ ] Implement notification delivery
+- [ ] Add email notifications via Resend
+- [ ] Support in-app notifications
+- [ ] Track notification preferences
+- [ ] Handle notification batching
+
+// src/components/NotificationsCenter.tsx
+- [ ] Display notification feed
+- [ ] Mark as read/unread
+- [ ] Filter by type
+- [ ] Add notification settings
+
+Configure Resend domain verification
+- [ ] Configure OpenAI Whisper API access
+- [ ] Set up Convex file storage limits
+- [ ] Configure database connection strings
+- [ ] Configure IdP integration
