@@ -851,7 +851,7 @@ function CRMSyncCard({ businessId }: { businessId: string }) {
             {syncStatus.pendingConflicts} Conflicts
           </Badge>
         )}
-        <Button size="sm" variant="outline" onClick={() => navigate("/crm-integration-hub")}>
+        <Button size="sm" variant="outline" onClick={() => window.location.href = "/crm-integration-hub"}>
           Manage
         </Button>
       </div>

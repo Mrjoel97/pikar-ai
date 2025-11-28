@@ -7,7 +7,7 @@ import { Database } from "lucide-react";
 
 export default function DataWarehouse() {
   const { user } = useAuth();
-  const business = useQuery(api.businesses.getCurrentBusiness, user ? {} : "skip");
+  const business = useQuery(api.businesses.currentUserBusiness, user ? undefined : "skip");
 
   if (!user) {
     return (

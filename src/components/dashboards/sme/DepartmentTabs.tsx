@@ -1,5 +1,6 @@
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
+import { useNavigate } from "react-router";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -21,6 +22,7 @@ interface DepartmentTabsProps {
 }
 
 export function DepartmentTabs({ businessId, isGuest, kpiDoc }: DepartmentTabsProps) {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = React.useState("overview");
 
   return (

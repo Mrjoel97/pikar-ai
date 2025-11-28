@@ -132,6 +132,7 @@ export default function Dashboard() {
     }
     
     // Redirect to onboarding if authenticated but no business setup (only after business query completes)
+    // Check for null specifically, not undefined (which means still loading)
     if (!isLoading && isAuthenticated && business === null && !guestMode) {
       hasRedirectedRef.current = true;
       navigate("/onboarding");
