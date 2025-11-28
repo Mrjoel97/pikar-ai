@@ -2,8 +2,12 @@ import { httpRouter } from "convex/server";
 import { httpAction } from "./_generated/server";
 import { internal, api } from "./_generated/api";
 import Stripe from "stripe";
+import { auth } from "./auth";
 
 const http = httpRouter();
+
+// Register auth HTTP routes (CRITICAL: Required for auth to work)
+auth.addHttpRoutes(http);
 
 // Add webhook to trigger workflows externally
 http.route({
