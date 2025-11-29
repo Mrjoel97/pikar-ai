@@ -11,6 +11,13 @@ export const route = action({
   },
   handler: async (ctx, args): Promise<{ response: string; sources?: any[] }> => {
     try {
+      // Check for OpenAI API key
+      if (!process.env.OPENAI_API_KEY) {
+        return {
+          response: "AI features require OpenAI API key. Please configure OPENAI_API_KEY in your environment variables.",
+        };
+      }
+
       const contextBlocks: string[] = [];
       const sources: any[] = [];
 
@@ -45,8 +52,8 @@ export const route = action({
         ? `${args.message}\n\nRelevant context:\n${contextBlocks.join('\n\n')}`
         : args.message;
 
-      // Generate response using existing OpenAI integration
-      const response: any = await (ctx as any).runAction(
+      // Generate response using OpenAI integration
+      const response: any = await ctx.runAction(
         "openai:generate" as any,
         {
           prompt: enhancedMessage,
