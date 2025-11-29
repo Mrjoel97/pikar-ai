@@ -490,3 +490,47 @@ export const determineWinner = action({
     };
   },
 });
+
+// Add new mutation to link experiments with email campaigns
+export const linkExperimentToCampaign = mutation({
+  args: {
+    experimentId: v.id("experiments"),
+    campaignId: v.id("emails"),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+
+    const experiment = await ctx.db.get(args.experimentId);
+    if (!experiment) throw new Error("Experiment not found");
+
+    const campaign = await ctx.db.get(args.campaignId);
+    if (!campaign) throw new Error("Campaign not found");
+
+    // Update campaign with experiment reference
+    await ctx.db.patch(args.campaignId, {
+      experimentId: args.experimentId,
+    });
+
+    return { success: true };
+  },
+});
+
+// Add new query to get experiments for a campaign
+export const getExperimentForCampaign = query({
+  args: { campaignId: v.id("emails") },
+  handler: async (ctx, args) => {
+    const campaign = await ctx.db.get(args.campaignId);
+    if (!campaign || !campaign.experimentId) return null;
+
+    const experiment = await ctx.db.get(campaign.experimentId as Id<"experiments">);
+    if (!experiment) return null;
+
+    const variants = await ctx.db
+      .query("experimentVariants")
+      .withIndex("by_experiment", (q) => q.eq("experimentId", experiment._id))
+      .collect();
+
+    return { ...experiment, variants };
+  },
+});

@@ -776,3 +776,130 @@ export const checkRenewalAlerts = internalMutation({
     }
   },
 });
+
+// Add new mutation to calculate and update vendor performance score
+export const calculatePerformanceScore = mutation({
+  args: {
+    vendorId: v.id("vendors"),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Unauthorized");
+
+    const vendor = await ctx.db.get(args.vendorId);
+    if (!vendor) throw new Error("Vendor not found");
+
+    // Get recent performance metrics (last 6 months)
+    const sixMonthsAgo = Date.now() - (180 * 24 * 60 * 60 * 1000);
+    const metrics = await ctx.db
+      .query("vendorPerformanceMetrics")
+      .filter((q) =>
+        q.and(
+          q.eq(q.field("vendorId"), args.vendorId),
+          q.gte(q.field("recordedAt"), sixMonthsAgo)
+        )
+      )
+      .collect();
+
+    if (metrics.length === 0) {
+      return { score: 0, message: "No performance data available" };
+    }
+
+    // Calculate weighted average score
+    const weights = {
+      onTimeDelivery: 0.3,
+      qualityScore: 0.3,
+      responsiveness: 0.2,
+      costEfficiency: 0.2,
+    };
+
+    let totalScore = 0;
+    for (const metric of metrics) {
+      const weightedScore = 
+        (metric.onTimeDelivery * weights.onTimeDelivery) +
+        (metric.qualityScore * weights.qualityScore) +
+        (metric.responsiveness * weights.responsiveness) +
+        (metric.costEfficiency * weights.costEfficiency);
+      totalScore += weightedScore;
+    }
+
+    const avgScore = Math.round(totalScore / metrics.length);
+
+    // Calculate trend (improving/declining/stable)
+    let trend: "improving" | "declining" | "stable" = "stable";
+    if (metrics.length >= 3) {
+      const recent = metrics.slice(-3).map(m => m.overallScore);
+      const older = metrics.slice(0, 3).map(m => m.overallScore);
+      const recentAvg = recent.reduce((a, b) => a + b, 0) / recent.length;
+      const olderAvg = older.reduce((a, b) => a + b, 0) / older.length;
+      
+      if (recentAvg > olderAvg + 5) trend = "improving";
+      else if (recentAvg < olderAvg - 5) trend = "declining";
+    }
+
+    // Determine risk level based on score
+    let riskLevel: "low" | "medium" | "high" = "medium";
+    if (avgScore >= 80) riskLevel = "low";
+    else if (avgScore < 60) riskLevel = "high";
+
+    // Update vendor with calculated score
+    await ctx.db.patch(args.vendorId, {
+      performanceScore: avgScore,
+      riskLevel,
+      lastReviewDate: Date.now(),
+    });
+
+    // Audit log
+    await ctx.db.insert("audit_logs", {
+      businessId: vendor.businessId,
+      action: "vendor_score_calculated",
+      entityType: "vendor",
+      entityId: args.vendorId,
+      details: { score: avgScore, trend, riskLevel, metricsCount: metrics.length },
+      createdAt: Date.now(),
+    });
+
+    return { 
+      score: avgScore, 
+      trend, 
+      riskLevel,
+      metricsAnalyzed: metrics.length,
+      message: "Performance score calculated successfully" 
+    };
+  },
+});
+
+// Add new query to get vendor performance insights
+export const getVendorPerformanceInsights = query({
+  args: {
+    businessId: v.id("businesses"),
+  },
+  handler: async (ctx, args) => {
+    const vendors = await ctx.db
+      .query("vendors")
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .collect();
+
+    const insights = {
+      topPerformers: vendors
+        .filter(v => v.performanceScore >= 80)
+        .sort((a, b) => b.performanceScore - a.performanceScore)
+        .slice(0, 5),
+      atRisk: vendors
+        .filter(v => v.performanceScore < 60 || v.riskLevel === "high")
+        .sort((a, b) => a.performanceScore - b.performanceScore)
+        .slice(0, 5),
+      needsReview: vendors
+        .filter(v => {
+          const daysSinceReview = (Date.now() - v.lastReviewDate) / (24 * 60 * 60 * 1000);
+          return daysSinceReview > 90;
+        })
+        .slice(0, 5),
+      averageScore: vendors.length > 0
+        ? Math.round(vendors.reduce((sum, v) => sum + v.performanceScore, 0) / vendors.length)
+        : 0,
+    };
+
+    return insights;
+  },
+});

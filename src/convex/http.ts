@@ -3,6 +3,7 @@ import { httpAction } from "./_generated/server";
 import { internal, api } from "./_generated/api";
 import Stripe from "stripe";
 import { auth } from "./auth";
+import { Id } from "./_generated/dataModel";
 
 const http = httpRouter();
 
@@ -14,6 +15,21 @@ http.route({
   path: "/api/trigger",
   method: "POST",
   handler: httpAction(async (ctx, req) => {
+    // Rate limiting: 100 requests per minute per key
+    const rateLimitKey = getRateLimitKey(req);
+    if (checkRateLimit(rateLimitKey, 100, 60000)) {
+      return new Response(
+        JSON.stringify({ error: "Rate limit exceeded. Try again later." }), 
+        { 
+          status: 429,
+          headers: { 
+            "Content-Type": "application/json",
+            "Retry-After": "60"
+          }
+        }
+      );
+    }
+
     try {
       const body = await req.json();
       const { workflowId, startedBy, params, dryRun } = body || {};
@@ -21,7 +37,6 @@ http.route({
         return new Response(JSON.stringify({ error: "workflowId and startedBy are required" }), { status: 400 });
       }
 
-      // Use optional function references to avoid compile-time errors if missing
       const simulateRef = (api as any).workflows?.simulateWorkflow;
       const runRef = (api as any).workflows?.runWorkflow;
 
@@ -53,6 +68,15 @@ http.route({
   path: "/api/workflows/webhook/:eventKey",
   method: "POST",
   handler: httpAction(async (ctx, req) => {
+    // Rate limiting: 200 requests per minute
+    const rateLimitKey = getRateLimitKey(req);
+    if (checkRateLimit(rateLimitKey, 200, 60000)) {
+      return new Response(
+        JSON.stringify({ error: "Rate limit exceeded" }), 
+        { status: 429, headers: { "Content-Type": "application/json", "Retry-After": "60" } }
+      );
+    }
+
     const url = new URL(req.url);
     const segments = url.pathname.split("/");
     const eventKey = segments[segments.length - 1] || null;
@@ -61,7 +85,6 @@ http.route({
     }
 
     try {
-      // Optional function reference
       const getRef = (internal as any).workflows?.getWorkflowsByWebhook;
       const workflows = getRef ? await ctx.runQuery(getRef, { eventKey }) : [];
 
@@ -831,3 +854,44 @@ http.route({
 });
 
 export default http;
+
+// Add rate limiting helper at the top of the file after imports
+const rateLimitStore = new Map<string, { count: number; resetAt: number }>();
+
+/**
+ * Rate limiting middleware
+ * @param key - Unique identifier for rate limit (e.g., IP, API key, user ID)
+ * @param limit - Maximum requests allowed
+ * @param windowMs - Time window in milliseconds
+ * @returns true if rate limit exceeded, false otherwise
+ */
+function checkRateLimit(key: string, limit: number, windowMs: number): boolean {
+  const now = Date.now();
+  const record = rateLimitStore.get(key);
+
+  if (!record || now > record.resetAt) {
+    rateLimitStore.set(key, { count: 1, resetAt: now + windowMs });
+    return false;
+  }
+
+  if (record.count >= limit) {
+    return true; // Rate limit exceeded
+  }
+
+  record.count++;
+  return false;
+}
+
+/**
+ * Extract rate limit key from request
+ * Priority: API key > User ID > IP address
+ */
+function getRateLimitKey(req: Request, userId?: string): string {
+  const apiKey = req.headers.get("x-api-key");
+  if (apiKey) return `api:${apiKey}`;
+  
+  if (userId) return `user:${userId}`;
+  
+  const ip = req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || "unknown";
+  return `ip:${ip}`;
+}

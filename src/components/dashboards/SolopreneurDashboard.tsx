@@ -172,6 +172,8 @@ import EmailCampaignAnalytics from "./solopreneur/EmailCampaignAnalytics";
 import ContentCapsule from "./solopreneur/ContentCapsule";
 import CustomerSegmentation from "./solopreneur/CustomerSegmentation";
 import SocialPerformance from "./solopreneur/SocialPerformance";
+import { InvoiceWidget } from "./solopreneur/InvoiceWidget";
+import { ContentCalendarWidget } from "./solopreneur/ContentCalendarWidget";
 
 function SolopreneurDashboard({ business: businessProp }: { business?: any }) {
   // Use auth status early to guard queries when not authenticated
@@ -3452,6 +3454,12 @@ function SolopreneurDashboard({ business: businessProp }: { business?: any }) {
       <div className="col-span-full">
         <RoiDashboard businessId={business?._id} userId={user?._id} />
       </div>
+
+      {/* Add Invoice Widget */}
+      <InvoiceWidget businessId={businessId} />
+
+      {/* Add Content Calendar Widget */}
+      <ContentCalendarWidget businessId={businessId} userId={user?._id || null} />
 
       <LazyLoadErrorBoundary moduleName="Email Campaign Analytics">
         <Suspense fallback={<div className="text-muted-foreground">Loading email analytics...</div>}>

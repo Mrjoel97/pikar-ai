@@ -126,6 +126,7 @@ import type * as playbookVersions from "../playbookVersions.js";
 import type * as playbooks from "../playbooks.js";
 import type * as policyManagement from "../policyManagement.js";
 import type * as portfolioManagement from "../portfolioManagement.js";
+import type * as rateLimiting from "../rateLimiting.js";
 import type * as revenueAttribution from "../revenueAttribution.js";
 import type * as riskAnalytics from "../riskAnalytics.js";
 import type * as roiCalculations from "../roiCalculations.js";
@@ -303,6 +304,7 @@ declare const fullApi: ApiFromModules<{
   playbooks: typeof playbooks;
   policyManagement: typeof policyManagement;
   portfolioManagement: typeof portfolioManagement;
+  rateLimiting: typeof rateLimiting;
   revenueAttribution: typeof revenueAttribution;
   riskAnalytics: typeof riskAnalytics;
   roiCalculations: typeof roiCalculations;
