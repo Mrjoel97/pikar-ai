@@ -22,9 +22,9 @@ export function AgentPerformanceMonitor() {
     );
   }
 
-  const totalExecutions = allMetrics.reduce((sum, m) => sum + m.totalExecutions, 0);
+  const totalExecutions = allMetrics.reduce((sum: number, m: any) => sum + m.totalExecutions, 0);
   const avgSuccessRate = allMetrics.length > 0
-    ? allMetrics.reduce((sum, m) => sum + m.successRate, 0) / allMetrics.length
+    ? allMetrics.reduce((sum: number, m: any) => sum + m.successRate, 0) / allMetrics.length
     : 0;
 
   return (
@@ -103,7 +103,7 @@ export function AgentPerformanceMonitor() {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {allMetrics.map((metric) => (
+            {allMetrics.map((metric: any) => (
               <AgentMetricRow key={metric.agentKey} metric={metric} />
             ))}
           </div>

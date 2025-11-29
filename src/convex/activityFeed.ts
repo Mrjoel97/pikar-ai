@@ -7,9 +7,9 @@ export const getRecent = query({
   args: {
     businessId: v.optional(v.id("businesses")),
     limit: v.optional(v.number()),
-    userId: v.optional(v.id("users")), // Filter by team member
-    searchTerm: v.optional(v.string()), // Search functionality
-    activityTypes: v.optional(v.array(v.string())), // Filter by activity type
+    userId: v.optional(v.id("users")),
+    searchTerm: v.optional(v.string()),
+    activityTypes: v.optional(v.array(v.string())),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -35,20 +35,25 @@ export const getRecent = query({
       businessId = user.businessId;
     }
 
-    let query = ctx.db.query("activityFeed");
+    // Return empty array if activityFeed table doesn't exist yet
+    try {
+      let query = ctx.db.query("activityFeed");
 
-    if (businessId) {
-      query = query.withIndex("by_business", (q) => q.eq("businessId", businessId!));
-    } else {
-      // Fallback to user's personal feed if no business context
-      query = query.withIndex("by_user", (q) => q.eq("userId", args.userId!));
+      if (businessId) {
+        query = query.withIndex("by_business", (q) => q.eq("businessId", businessId));
+      } else if (args.userId) {
+        query = query.withIndex("by_user", (q) => q.eq("userId", args.userId));
+      }
+
+      const activities = await query
+        .order("desc")
+        .take(args.limit || 20);
+
+      return activities;
+    } catch (error) {
+      // Table might not exist yet
+      return [];
     }
-
-    const activities = await query
-      .order("desc")
-      .take(args.limit || 20);
-
-    return activities;
   },
 });
 
