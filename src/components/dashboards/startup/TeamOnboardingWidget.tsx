@@ -34,11 +34,11 @@ export function TeamOnboardingWidget({ businessId }: TeamOnboardingWidgetProps) 
     }
   };
 
-  const activeOnboarding = onboardingData?.filter(o => o.status === "in_progress") || [];
-  const completedOnboarding = onboardingData?.filter(o => o.status === "completed") || [];
-  const pendingOnboarding = onboardingData?.filter(o => o.status === "pending") || [];
+  const activeOnboarding = onboardingData?.filter((o: any) => o.status === "in_progress") || [];
+  const completedOnboarding = onboardingData?.filter((o: any) => o.status === "completed") || [];
+  const pendingOnboarding = onboardingData?.filter((o: any) => o.status === "pending") || [];
 
-  const totalProgress = onboardingData?.reduce((sum, o) => sum + (o.progress || 0), 0) || 0;
+  const totalProgress = onboardingData?.reduce((sum: number, o: any) => sum + (o.progress || 0), 0) || 0;
   const avgProgress = onboardingData && onboardingData.length > 0 
     ? totalProgress / onboardingData.length 
     : 0;
@@ -89,7 +89,7 @@ export function TeamOnboardingWidget({ businessId }: TeamOnboardingWidgetProps) 
             <p className="text-sm text-muted-foreground">No active onboarding</p>
           ) : (
             <div className="space-y-2">
-              {activeOnboarding.slice(0, 3).map((onboarding) => (
+              {activeOnboarding.slice(0, 3).map((onboarding: any) => (
                 <div 
                   key={onboarding._id}
                   className="flex items-center justify-between p-2 rounded-lg border hover:bg-accent cursor-pointer transition-colors"

@@ -63,7 +63,7 @@ export function VendorPerformanceWidget({ businessId }: VendorPerformanceWidgetP
             <p className="text-sm text-muted-foreground">No top performers yet</p>
           ) : (
             <div className="space-y-2">
-              {insights.topPerformers.slice(0, 3).map((vendor) => (
+              {insights.topPerformers.slice(0, 3).map((vendor: any) => (
                 <div 
                   key={vendor._id}
                   className="flex items-center justify-between p-2 rounded-lg border border-green-200 bg-green-50 hover:bg-green-100 cursor-pointer transition-colors"
@@ -97,7 +97,7 @@ export function VendorPerformanceWidget({ businessId }: VendorPerformanceWidgetP
             <p className="text-sm text-muted-foreground">No vendors at risk</p>
           ) : (
             <div className="space-y-2">
-              {insights.atRisk.slice(0, 3).map((vendor) => (
+              {insights.atRisk.slice(0, 3).map((vendor: any) => (
                 <div 
                   key={vendor._id}
                   className="flex items-center justify-between p-2 rounded-lg border border-red-200 bg-red-50 hover:bg-red-100 cursor-pointer transition-colors"

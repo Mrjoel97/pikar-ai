@@ -24,12 +24,12 @@ export function ContentCalendarWidget({ businessId, userId }: ContentCalendarWid
     businessId && userId ? { businessId, userId, startDate, endDate } : "skip"
   );
 
-  const todayEvents = events?.filter(e => {
+  const todayEvents = events?.filter((e) => {
     const eventDate = startOfDay(new Date(e.scheduledAt || 0)).getTime();
     return eventDate === startDate;
   }) || [];
 
-  const upcomingEvents = events?.filter(e => {
+  const upcomingEvents = events?.filter((e) => {
     const eventDate = startOfDay(new Date(e.scheduledAt || 0)).getTime();
     return eventDate > startDate;
   }) || [];

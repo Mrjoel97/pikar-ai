@@ -19,8 +19,8 @@ export function ABTestingWidget({ businessId }: ABTestingWidgetProps) {
     businessId ? { businessId } : "skip"
   );
 
-  const runningExperiments = experiments?.filter(e => e.status === "running") || [];
-  const completedExperiments = experiments?.filter(e => e.status === "completed") || [];
+  const runningExperiments = experiments?.filter((e: any) => e.status === "running") || [];
+  const completedExperiments = experiments?.filter((e: any) => e.status === "completed") || [];
 
   const recentExperiments = experiments?.slice(0, 3) || [];
 
@@ -63,7 +63,7 @@ export function ABTestingWidget({ businessId }: ABTestingWidgetProps) {
             <p className="text-sm text-muted-foreground">No experiments yet</p>
           ) : (
             <div className="space-y-2">
-              {recentExperiments.map((experiment) => (
+              {recentExperiments.map((experiment: any) => (
                 <div 
                   key={experiment._id}
                   className="flex items-center justify-between p-2 rounded-lg border hover:bg-accent cursor-pointer transition-colors"

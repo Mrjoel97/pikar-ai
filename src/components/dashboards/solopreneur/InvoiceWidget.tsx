@@ -19,10 +19,10 @@ export function InvoiceWidget({ businessId }: InvoiceWidgetProps) {
     businessId ? { businessId } : "skip"
   );
 
-  const draftCount = invoices?.filter(inv => inv.status === "draft").length || 0;
-  const sentCount = invoices?.filter(inv => inv.status === "sent").length || 0;
-  const overdueCount = invoices?.filter(inv => inv.status === "overdue").length || 0;
-  const totalRevenue = invoices?.filter(inv => inv.status === "paid")
+  const draftCount = invoices?.filter((inv) => inv.status === "draft").length || 0;
+  const sentCount = invoices?.filter((inv) => inv.status === "sent").length || 0;
+  const overdueCount = invoices?.filter((inv) => inv.status === "overdue").length || 0;
+  const totalRevenue = invoices?.filter((inv) => inv.status === "paid")
     .reduce((sum, inv) => sum + inv.total, 0) || 0;
 
   const recentInvoices = invoices?.slice(0, 3) || [];
