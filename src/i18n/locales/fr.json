@@ -1,0 +1,77 @@
+{
+  "common": {
+    "loading": "Chargement...",
+    "error": "Erreur",
+    "success": "Succès",
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "delete": "Supprimer",
+    "edit": "Modifier",
+    "create": "Créer",
+    "search": "Rechercher...",
+    "logout": "Déconnexion",
+    "settings": "Paramètres",
+    "dashboard": "Tableau de bord",
+    "menu": "Menu",
+    "user": "Utilisateur"
+  },
+  "nav": {
+    "dashboard": "Tableau de bord",
+    "agents": "Agents IA",
+    "workflows": "Flux de travail",
+    "analytics": "Analytique",
+    "business": "Entreprise",
+    "settings": "Paramètres",
+    "admin": "Administrateur",
+    "branding": "Image de marque",
+    "support": "Support"
+  },
+  "auth": {
+    "signIn": "Se connecter",
+    "signUp": "S'inscrire",
+    "email": "E-mail",
+    "password": "Mot de passe",
+    "forgotPassword": "Mot de passe oublié?",
+    "resetPassword": "Réinitialiser le mot de passe",
+    "verifyCode": "Vérifier le code",
+    "sendCode": "Envoyer le code"
+  },
+  "dashboard": {
+    "welcome": "Bienvenue",
+    "overview": "Aperçu",
+    "recentActivity": "Activité récente",
+    "quickActions": "Actions rapides",
+    "stats": "Statistiques"
+  },
+  "social": {
+    "title": "Comptes de médias sociaux",
+    "description": "Connectez et gérez vos comptes de médias sociaux",
+    "connect": "Connecter",
+    "disconnect": "Déconnecter",
+    "reconnect": "Reconnecter",
+    "connected": "Connecté",
+    "notConnected": "Non connecté",
+    "healthy": "Sain",
+    "attention": "Attention",
+    "permissions": "Autorisations",
+    "accountsConnected": "compte(s) connecté(s)"
+  },
+  "crm": {
+    "title": "Hub d'intégration CRM",
+    "description": "Synchronisation bidirectionnelle avec résolution de conflits en temps réel",
+    "connections": "Connexions",
+    "syncStatus": "État de synchronisation",
+    "conflicts": "Conflits",
+    "history": "Historique",
+    "sync": "Synchroniser",
+    "lastSync": "Dernière synchronisation",
+    "noConflicts": "Aucun conflit détecté. Toutes les données sont synchronisées!",
+    "resolveConflict": "Résoudre le conflit"
+  },
+  "language": {
+    "select": "Sélectionner la langue",
+    "english": "Anglais",
+    "spanish": "Espagnol",
+    "french": "Français"
+  }
+}

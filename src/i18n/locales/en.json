@@ -1,0 +1,77 @@
+{
+  "common": {
+    "loading": "Loading...",
+    "error": "Error",
+    "success": "Success",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "create": "Create",
+    "search": "Search...",
+    "logout": "Logout",
+    "settings": "Settings",
+    "dashboard": "Dashboard",
+    "menu": "Menu",
+    "user": "User"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "agents": "AI Agents",
+    "workflows": "Workflows",
+    "analytics": "Analytics",
+    "business": "Business",
+    "settings": "Settings",
+    "admin": "Admin",
+    "branding": "Branding",
+    "support": "Support"
+  },
+  "auth": {
+    "signIn": "Sign In",
+    "signUp": "Sign Up",
+    "email": "Email",
+    "password": "Password",
+    "forgotPassword": "Forgot Password?",
+    "resetPassword": "Reset Password",
+    "verifyCode": "Verify Code",
+    "sendCode": "Send Code"
+  },
+  "dashboard": {
+    "welcome": "Welcome",
+    "overview": "Overview",
+    "recentActivity": "Recent Activity",
+    "quickActions": "Quick Actions",
+    "stats": "Statistics"
+  },
+  "social": {
+    "title": "Social Media Accounts",
+    "description": "Connect and manage your social media accounts",
+    "connect": "Connect",
+    "disconnect": "Disconnect",
+    "reconnect": "Reconnect",
+    "connected": "Connected",
+    "notConnected": "Not Connected",
+    "healthy": "Healthy",
+    "attention": "Attention",
+    "permissions": "Permissions",
+    "accountsConnected": "account(s) connected"
+  },
+  "crm": {
+    "title": "CRM Integration Hub",
+    "description": "Bidirectional sync with real-time conflict resolution",
+    "connections": "Connections",
+    "syncStatus": "Sync Status",
+    "conflicts": "Conflicts",
+    "history": "History",
+    "sync": "Sync",
+    "lastSync": "Last sync",
+    "noConflicts": "No conflicts detected. All data is in sync!",
+    "resolveConflict": "Resolve Conflict"
+  },
+  "language": {
+    "select": "Select Language",
+    "english": "English",
+    "spanish": "Spanish",
+    "french": "French"
+  }
+}

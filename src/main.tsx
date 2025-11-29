@@ -7,6 +7,7 @@ import { createRoot } from "react-dom/client";
 import { MemoryRouter, Route, Routes, useLocation, Navigate, useNavigate } from "react-router";
 import { motion, AnimatePresence } from "framer-motion";
 import "./index.css";
+import "./i18n/config";
 import Landing from "./pages/Landing.tsx";
 import NotFound from "./pages/NotFound.tsx";
 import "./types/global.d.ts";
