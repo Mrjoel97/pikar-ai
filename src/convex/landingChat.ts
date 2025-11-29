@@ -3,6 +3,7 @@
 import { action } from "./_generated/server";
 import { v } from "convex/values";
 import { api } from "./_generated/api";
+import { internal } from "./_generated/api";
 
 /**
  * Landing Page Chatbot - Pre-sales support and product information
@@ -10,16 +11,16 @@ import { api } from "./_generated/api";
 export const sendMessage = action({
   args: {
     message: v.string(),
-    conversationHistory: v.optional(v.array(v.object({
-      role: v.union(v.literal("user"), v.literal("assistant")),
-      content: v.string(),
-    }))),
+    conversationHistory: v.optional(v.array(v.any())),
   },
   handler: async (ctx, args) => {
-    const { message, conversationHistory = [] } = args;
+    const startTime = Date.now();
+    
+    try {
+      const { message, conversationHistory = [] } = args;
 
-    // System prompt with Pikar AI product information
-    const systemPrompt = `You are a helpful AI assistant for Pikar AI, an AI-powered business automation platform.
+      // System prompt with Pikar AI product information
+      const systemPrompt = `You are a helpful AI assistant for Pikar AI, an AI-powered business automation platform.
 
 Key Product Information:
 - Pikar AI offers workflow automation, AI agents, and business intelligence across 4 tiers
@@ -46,30 +47,52 @@ Your role:
 
 Keep responses concise (2-3 sentences) unless more detail is requested.`;
 
-    // Build conversation context
-    const messages = [
-      { role: "system" as const, content: systemPrompt },
-      ...conversationHistory.slice(-6), // Keep last 6 messages for context
-      { role: "user" as const, content: message },
-    ];
+      // Build conversation context
+      const messages = [
+        { role: "system" as const, content: systemPrompt },
+        ...conversationHistory.slice(-6), // Keep last 6 messages for context
+        { role: "user" as const, content: message },
+      ];
 
-    try {
-      // Use OpenAI to generate response
-      const prompt = messages.map(m => `${m.role}: ${m.content}`).join("\n\n");
-      
-      const response = await ctx.runAction(api.openai.generate, {
-        prompt,
-        model: "gpt-4o-mini",
-        temperature: 0.7,
-        maxTokens: 300,
-      });
+      try {
+        // Use OpenAI to generate response
+        const prompt = messages.map(m => `${m.role}: ${m.content}`).join("\n\n");
+        
+        const response = await ctx.runAction(api.openai.generate, {
+          prompt,
+          model: "gpt-4o-mini",
+          temperature: 0.7,
+          maxTokens: 300,
+        });
 
-      const assistantMessage = (response as any)?.text || "I'm here to help! Could you please rephrase your question?";
+        const assistantMessage = (response as any)?.text || "I'm here to help! Could you please rephrase your question?";
 
-      return {
-        message: assistantMessage,
-        success: true,
-      };
+        const responseTime = Date.now() - startTime;
+        
+        // Record successful execution
+        await ctx.runMutation(internal.agentPerformance.recordExecution, {
+          agentKey: "landing_chat",
+          status: "success" as const,
+          responseTime,
+        });
+
+        return {
+          message: assistantMessage,
+          success: true,
+        };
+      } catch (error: any) {
+        const responseTime = Date.now() - startTime;
+        
+        // Record failed execution
+        await ctx.runMutation(internal.agentPerformance.recordExecution, {
+          agentKey: "landing_chat",
+          status: "failure" as const,
+          responseTime,
+          errorMessage: error.message,
+        });
+
+        throw error;
+      }
     } catch (error) {
       console.error("Landing chat error:", error);
       

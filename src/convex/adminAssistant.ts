@@ -3,6 +3,7 @@
 import { action } from "./_generated/server";
 import { v } from "convex/values";
 import { api } from "./_generated/api";
+import { internal } from "./_generated/api";
 
 async function validateAdminAccess(ctx: any, args: any) {
   if (args.adminToken) {
@@ -148,6 +149,116 @@ Provide a helpful response based on the query and context.`;
         notice: "AI assistant encountered an error. Falling back to basic mode.",
         steps: [],
       };
+    }
+  },
+});
+
+export const chat = action({
+  args: {
+    message: v.string(),
+    conversationHistory: v.optional(v.array(v.any())),
+  },
+  handler: async (ctx, args) => {
+    const startTime = Date.now();
+    
+    try {
+      // Check for OpenAI API key
+      if (!process.env.OPENAI_API_KEY) {
+        return {
+          summaryText: "OpenAI API key not configured. Please add OPENAI_API_KEY to environment variables.",
+          notice: "AI features require OpenAI API key configuration.",
+          steps: [],
+        };
+      }
+
+      // Gather context based on allowed tools
+      const steps: Array<{ tool: string; title: string; data: any }> = [];
+
+      if (toolsAllowed.includes("health")) {
+        try {
+          const healthStatus = await ctx.runQuery(api.health.envStatus);
+          steps.push({
+            tool: "health",
+            title: "System Health Check",
+            data: healthStatus,
+          });
+        } catch (err) {
+          steps.push({
+            tool: "health",
+            title: "Health Check Failed",
+            data: { error: String(err).slice(0, 200) },
+          });
+        }
+      }
+
+      if (toolsAllowed.includes("flags")) {
+        try {
+          const flags = await ctx.runQuery(api.featureFlags.listFlags as any);
+          steps.push({
+            tool: "flags",
+            title: "Feature Flags",
+            data: { count: flags?.length || 0, flags: flags?.slice(0, 5) },
+          });
+        } catch (err) {
+          steps.push({
+            tool: "flags",
+            title: "Feature Flags Check Failed",
+            data: { error: String(err).slice(0, 200) },
+          });
+        }
+      }
+
+      // Build context for AI
+      const contextStr = steps.map(s => 
+        `[${s.tool}] ${s.title}: ${JSON.stringify(s.data)}`
+      ).join("\n\n");
+
+      const fullPrompt = `${systemPrompt}
+
+User query: ${message}
+
+Current system context:
+${contextStr || "No context available"}
+
+Provide a helpful response based on the query and context.`;
+
+      // Generate AI response
+      const response = await ctx.runAction(api.openai.generate, {
+        prompt: fullPrompt,
+        model: "gpt-4o-mini",
+        temperature: 0.7,
+        maxTokens: 500,
+      });
+
+      const summaryText = (response as any)?.text || "I'm here to help with admin tasks. What would you like to know?";
+
+      const responseTime = Date.now() - startTime;
+      
+      // Record successful execution
+      await ctx.runMutation(internal.agentPerformance.recordExecution, {
+        agentKey: "admin_assistant",
+        status: "success" as const,
+        responseTime,
+      });
+
+      return {
+        summaryText,
+        steps,
+        mode,
+        dryRun,
+      };
+    } catch (error: any) {
+      const responseTime = Date.now() - startTime;
+      
+      // Record failed execution
+      await ctx.runMutation(internal.agentPerformance.recordExecution, {
+        agentKey: "admin_assistant",
+        status: "failure" as const,
+        responseTime,
+        errorMessage: error.message,
+      });
+
+      throw error;
     }
   },
 });

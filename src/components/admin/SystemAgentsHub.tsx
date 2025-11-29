@@ -19,6 +19,7 @@ import { PlaybookEditDialog } from "./PlaybookEditDialog";
 import { AgentConfigSection } from "./AgentConfigSection";
 import { AgentVersionsDrawer } from "./AgentVersionsDrawer";
 import { PlaybookVersionsDrawer } from "./PlaybookVersionsDrawer";
+import { AgentPerformanceMonitor } from "./AgentPerformanceMonitor";
 
 type Agent = {
   _id: string;
@@ -986,17 +987,14 @@ export function SystemAgentsHub() {
         </div>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
+      <Tabs defaultValue="catalog" className="space-y-6">
         <TabsList>
           <TabsTrigger value="catalog">Agent Catalog</TabsTrigger>
-          <TabsTrigger value="playbooks">Orchestrations</TabsTrigger>
-          <TabsTrigger value="training">Training</TabsTrigger>
-          <TabsTrigger value="evaluations">Evaluations</TabsTrigger>
-          <TabsTrigger value="activity">Activity</TabsTrigger>
-          <TabsTrigger value="datasets">Datasets</TabsTrigger>
+          <TabsTrigger value="performance">Performance Monitor</TabsTrigger>
+          <TabsTrigger value="config">Configuration</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="catalog" className="space-y-4">
+        <TabsContent value="catalog" className="space-y-6">
           {/* Filters */}
           <div className="flex gap-4 items-center">
             <Input
@@ -1142,136 +1140,11 @@ export function SystemAgentsHub() {
           </div>
         </TabsContent>
 
-        <TabsContent value="playbooks" className="space-y-4">
-          {/* Header row with bulk actions */}
-          <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold">Orchestrations</h3>
-            <Button
-              variant="default"
-              onClick={handlePublishAllPlaybooks}
-              disabled={isAdmin !== true || (uiPlaybooks || []).length === 0}
-            >
-              Activate All Playbooks
-            </Button>
-          </div>
-
-          {/* Filters */}
-          <div className="flex gap-4 items-center">
-            <Input
-              placeholder="Search playbooks..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="max-w-sm"
-            />
-            <Select value={activeFilter} onValueChange={setActiveFilter}>
-              <SelectTrigger className="w-32">
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All</SelectItem>
-                <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="inactive">Inactive</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Playbooks Table */}
-          <div className="border rounded-lg">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Playbook Key</TableHead>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Version</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {/* Show helpful empty state when no playbooks are visible */}
-                {uiPlaybooks.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={5}>
-                      <div className="text-sm text-muted-foreground">
-                        No playbooks found. Clear filters above. If you just published, refresh in a few seconds.
-                        You must be an admin to view and manage playbooks — use /admin-auth or add your email to ADMIN_EMAILS.
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  uiPlaybooks.map((playbook: Playbook) => (
-                    <TableRow key={playbook._id}>
-                      <TableCell className="font-mono text-sm">{playbook.playbook_key}</TableCell>
-                      <TableCell>{playbook.display_name}</TableCell>
-                      <TableCell>{playbook.version}</TableCell>
-                      <TableCell>
-                        <Badge variant={playbook.active ? "default" : "secondary"}>
-                          {playbook.active ? "Active" : "Inactive"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex gap-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => setEditingPlaybook(playbook)}
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleTogglePlaybook(playbook.playbook_key, playbook.version, !playbook.active)}
-                            disabled={isAdmin !== true}
-                          >
-                            {playbook.active ? <PowerOff className="h-4 w-4" /> : <Power className="h-4 w-4" />}
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handlePublishPlaybook(playbook)}
-                            disabled={isAdmin !== true}
-                          >
-                            Publish
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleRollbackPlaybook(playbook)}
-                            disabled={isAdmin !== true}
-                          >
-                            Rollback
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleRunPlaybook(playbook)}
-                            disabled={isAdmin !== true}
-                          >
-                            Run
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => {
-                              setSelectedPlaybookKey(playbook.playbook_key);
-                              setPlaybookVersionsOpen(true);
-                            }}
-                            disabled={isAdmin !== true}
-                          >
-                            Versions
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
+        <TabsContent value="performance">
+          <AgentPerformanceMonitor />
         </TabsContent>
 
-        <TabsContent value="training" className="space-y-4">
+        <TabsContent value="config" className="space-y-4">
           <Card>
             <CardHeader>
               <CardTitle>Train & Publish</CardTitle>
@@ -1429,192 +1302,6 @@ export function SystemAgentsHub() {
                   Created set: <span className="font-mono">{createdSetId}</span>
                 </div>
               )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="evaluations" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Evaluation Sets</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="text-sm">
-                Latest Summary:{" "}
-                <Badge variant={(evalSummary as any)?.allPassing ? "default" : "secondary"}>
-                  {(evalSummary as any)?.allPassing ? "All Passing" : "Has Failures"}
-                </Badge>
-                <span className="ml-2 text-muted-foreground">
-                  {typeof (evalSummary as any)?.passCount === "number" &&
-                    typeof (evalSummary as any)?.failCount === "number" && (
-                      <>Pass: {(evalSummary as any).passCount} · Fail: {(evalSummary as any).failCount}</>
-                    )}
-                </span>
-              </div>
-
-              <div className="border rounded-lg overflow-hidden">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Created</TableHead>
-                      <TableHead>Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {(evalSets || []).map((s: any) => (
-                      <TableRow key={String(s._id)}>
-                        <TableCell>{s.name}</TableCell>
-                        <TableCell>{new Date(s._creationTime || Date.now()).toLocaleString()}</TableCell>
-                        <TableCell>
-                          <div className="flex gap-2">
-                            <Button size="sm" variant="outline" onClick={() => handleRunEval(String(s._id))}>
-                              Run
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => setViewRunsSetId(String(s._id))}
-                            >
-                              Runs
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-
-              {viewRunsSetId && (
-                <div className="space-y-2">
-                  <div className="text-sm font-medium">Recent Runs for Set {viewRunsSetId}</div>
-                  <div className="border rounded-lg overflow-hidden">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Started</TableHead>
-                          <TableHead>Status</TableHead>
-                          <TableHead>Pass</TableHead>
-                          <TableHead>Fail</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {(evalRuns || []).map((r: any) => (
-                          <TableRow key={String(r._id)}>
-                            <TableCell>{new Date(r.startedAt || r._creationTime || Date.now()).toLocaleString()}</TableCell>
-                            <TableCell>{r.status || "unknown"}</TableCell>
-                            <TableCell>{r.passCount ?? 0}</TableCell>
-                            <TableCell>{r.failCount ?? 0}</TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="activity">
-          <div className="text-center py-8 text-muted-foreground">
-            Activity logs coming in Phase 6
-          </div>
-        </TabsContent>
-
-        <TabsContent value="datasets" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Datasets (lightweight)</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <DatasetCreator
-                onCreate={async (payload) => {
-                  try {
-                    await createDataset(payload as any);
-                    toast.success("Dataset created");
-                  } catch {
-                    toast.error("Failed to create dataset");
-                  }
-                }}
-              />
-              <div className="text-sm text-muted-foreground">
-                Link datasets to a selected agent to indicate training context. This is metadata-only for now.
-              </div>
-              <div className="border rounded-lg overflow-hidden">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Title</TableHead>
-                      <TableHead>Type</TableHead>
-                      <TableHead>Linked Agents</TableHead>
-                      <TableHead>Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {(datasets || []).map((d: any) => (
-                      <TableRow key={String(d._id)}>
-                        <TableCell>{d.title}</TableCell>
-                        <TableCell><Badge variant="secondary">{d.sourceType}</Badge></TableCell>
-                        <TableCell className="text-xs">
-                          {(d.linkedAgentKeys || []).join(", ") || "—"}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex gap-2">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={async () => {
-                                try {
-                                  await ingestVectors({ datasetId: d._id } as any);
-                                  toast.success("Vectors ingested");
-                                } catch {
-                                  toast.error("Failed to ingest vectors");
-                                }
-                              }}
-                            >
-                              Ingest Vectors
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              disabled={!selectedAgentKey || isAdmin !== true}
-                              onClick={async () => {
-                                if (!selectedAgentKey) return;
-                                try {
-                                  await linkDataset({ datasetId: d._id, agent_key: selectedAgentKey } as any);
-                                  toast.success("Linked dataset");
-                                } catch {
-                                  toast.error("Failed to link");
-                                }
-                              }}
-                            >
-                              Link to {selectedAgentKey || "agent"}
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              disabled={!selectedAgentKey || isAdmin !== true}
-                              onClick={async () => {
-                                if (!selectedAgentKey) return;
-                                try {
-                                  await unlinkDataset({ datasetId: d._id, agent_key: selectedAgentKey } as any);
-                                  toast.success("Unlinked dataset");
-                                } catch {
-                                  toast.error("Failed to unlink");
-                                }
-                              }}
-                            >
-                              Unlink
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
             </CardContent>
           </Card>
         </TabsContent>

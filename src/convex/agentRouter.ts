@@ -2,14 +2,16 @@
 
 import { action } from "./_generated/server";
 import { v } from "convex/values";
+import { internal } from "./_generated/api";
 
 export const route = action({
   args: {
     message: v.string(),
-    businessId: v.optional(v.id("businesses")),
-    agentKey: v.optional(v.string()),
+    context: v.optional(v.any()),
   },
-  handler: async (ctx, args): Promise<{ response: string; sources?: any[] }> => {
+  handler: async (ctx, args) => {
+    const startTime = Date.now();
+    
     try {
       // Check for OpenAI API key
       if (!process.env.OPENAI_API_KEY) {
@@ -61,14 +63,31 @@ export const route = action({
         }
       );
 
+      const responseTime = Date.now() - startTime;
+      
+      // Record successful execution
+      await ctx.runMutation(internal.agentPerformance.recordExecution, {
+        agentKey: "agent_router",
+        status: "success" as const,
+        responseTime,
+      });
+
       return { 
         response: response.text || "I apologize, but I couldn't generate a response.", 
         sources: sources.length > 0 ? sources : undefined 
       };
-    } catch (error) {
-      return { 
-        response: `I encountered an error: ${String(error).slice(0, 200)}. Please try again.` 
-      };
+    } catch (error: any) {
+      const responseTime = Date.now() - startTime;
+      
+      // Record failed execution
+      await ctx.runMutation(internal.agentPerformance.recordExecution, {
+        agentKey: "agent_router",
+        status: "failure" as const,
+        responseTime,
+        errorMessage: error.message,
+      });
+
+      throw error;
     }
   },
 });

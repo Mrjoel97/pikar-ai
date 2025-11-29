@@ -577,3 +577,22 @@ export const seedEnterpriseTemplates = action({
     return { ok: true };
   },
 });
+
+// Add performance tracking helper at the end
+import { internal } from "./_generated/api";
+
+/**
+ * Helper to record agent execution (call from actions)
+ */
+export const recordAgentExecution = mutation({
+  args: {
+    agentKey: v.string(),
+    businessId: v.optional(v.id("businesses")),
+    status: v.union(v.literal("success"), v.literal("failure")),
+    responseTime: v.optional(v.number()),
+    errorMessage: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    return await ctx.runMutation(internal.agentPerformance.recordExecution, args);
+  },
+});
