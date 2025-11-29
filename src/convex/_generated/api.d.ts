@@ -100,6 +100,7 @@ import type * as kms from "../kms.js";
 import type * as kmsActions from "../kmsActions.js";
 import type * as knowledge from "../knowledge.js";
 import type * as kpis from "../kpis.js";
+import type * as landingChat from "../landingChat.js";
 import type * as learningContent from "../learningContent.js";
 import type * as learningContentActions from "../learningContentActions.js";
 import type * as lib_aiAgents_admin from "../lib/aiAgents/admin.js";
@@ -275,6 +276,7 @@ declare const fullApi: ApiFromModules<{
   kmsActions: typeof kmsActions;
   knowledge: typeof knowledge;
   kpis: typeof kpis;
+  landingChat: typeof landingChat;
   learningContent: typeof learningContent;
   learningContentActions: typeof learningContentActions;
   "lib/aiAgents/admin": typeof lib_aiAgents_admin;
