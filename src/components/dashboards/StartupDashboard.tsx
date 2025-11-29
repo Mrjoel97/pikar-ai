@@ -68,6 +68,8 @@ import { CollaborationFeed } from "./startup/CollaborationFeed";
 import { WorkflowAssignments } from "./startup/WorkflowAssignments";
 import { CustomerJourneyMap } from "./startup/CustomerJourneyMap";
 import { RevenueAttribution } from "./startup/RevenueAttribution";
+import { TeamOnboardingWidget } from "./startup/TeamOnboardingWidget";
+import { ABTestingWidget } from "./startup/ABTestingWidget";
 
 export function StartupDashboard() {
   const { user } = useAuth();
@@ -391,6 +393,12 @@ const pendingApprovals = useQuery(
           <WorkflowAssignments businessId={businessId || ""} userId={businessId || ""} />
         </Suspense>
       </LazyLoadErrorBoundary>
+      </div>
+
+      {/* Phase 1: Team Onboarding & A/B Testing Widgets */}
+      <div className="grid gap-6 lg:grid-cols-2">
+        <TeamOnboardingWidget businessId={businessId} />
+        <ABTestingWidget businessId={businessId} />
       </div>
 
       <LazyLoadErrorBoundary moduleName="Customer Journey Map">

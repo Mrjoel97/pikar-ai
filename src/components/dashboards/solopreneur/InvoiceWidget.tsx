@@ -11,6 +11,15 @@ interface InvoiceWidgetProps {
   businessId: Id<"businesses"> | null;
 }
 
+interface Invoice {
+  _id: Id<"invoices">;
+  status: "draft" | "sent" | "paid" | "overdue";
+  total: number;
+  amount?: number;
+  invoiceNumber: string;
+  clientName: string;
+}
+
 export function InvoiceWidget({ businessId }: InvoiceWidgetProps) {
   const navigate = useNavigate();
   
@@ -19,13 +28,18 @@ export function InvoiceWidget({ businessId }: InvoiceWidgetProps) {
     businessId ? { businessId } : "skip"
   );
 
-  const draftCount = invoices?.filter((inv) => inv.status === "draft").length || 0;
-  const sentCount = invoices?.filter((inv) => inv.status === "sent").length || 0;
-  const overdueCount = invoices?.filter((inv) => inv.status === "overdue").length || 0;
-  const totalRevenue = invoices?.filter((inv) => inv.status === "paid")
-    .reduce((sum, inv) => sum + inv.total, 0) || 0;
+  const draftCount = invoices?.filter((inv: Invoice) => inv.status === "draft").length || 0;
+  const sentCount = invoices?.filter((inv: Invoice) => inv.status === "sent").length || 0;
+  const overdueCount = invoices?.filter((inv: Invoice) => inv.status === "overdue").length || 0;
+  const totalRevenue = invoices?.filter((inv: Invoice) => inv.status === "paid")
+    .reduce((sum: number, inv: Invoice) => sum + inv.total, 0) || 0;
 
-  const recentInvoices = invoices?.slice(0, 3) || [];
+  const totalInvoiced = invoices?.reduce((sum: number, inv: Invoice) => sum + (inv.amount || 0), 0) || 0;
+  const totalPaid = invoices?.filter((inv: Invoice) => inv.status === "paid").reduce((sum: number, inv: Invoice) => sum + (inv.amount || 0), 0) || 0;
+  const totalPending = invoices?.filter((inv: Invoice) => inv.status === "pending" as any).reduce((sum: number, inv: Invoice) => sum + (inv.amount || 0), 0) || 0;
+  const totalOverdue = invoices?.filter((inv: Invoice) => inv.status === "overdue").reduce((sum: number, inv: Invoice) => sum + (inv.amount || 0), 0) || 0;
+
+  const recentInvoices = invoices?.slice(0, 5) || [];
 
   return (
     <Card>
@@ -76,7 +90,7 @@ export function InvoiceWidget({ businessId }: InvoiceWidgetProps) {
             <p className="text-sm text-muted-foreground">No invoices yet</p>
           ) : (
             <div className="space-y-2">
-              {recentInvoices.map((invoice) => (
+              {recentInvoices.map((invoice: Invoice) => (
                 <div 
                   key={invoice._id}
                   className="flex items-center justify-between p-2 rounded-lg border hover:bg-accent cursor-pointer transition-colors"

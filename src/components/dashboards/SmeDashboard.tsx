@@ -37,6 +37,7 @@ import { demoData as importedDemoData } from "@/lib/demoData";
 import { DepartmentTabs } from "./sme/DepartmentTabs";
 import { GovernancePanel } from "./sme/GovernancePanel";
 import { ComplianceRisk } from "./sme/ComplianceRisk";
+import { VendorPerformanceWidget } from "./sme/VendorPerformanceWidget";
 import { IntegrationHub } from "@/components/integrations/IntegrationHub";
 
 export function SmeDashboard() {
@@ -370,6 +371,13 @@ export function SmeDashboard() {
           </Suspense>
         </LazyLoadErrorBoundary>
       </div>
+
+      {/* Phase 1: Vendor Performance Widget */}
+      <LazyLoadErrorBoundary moduleName="Vendor Performance">
+        <Suspense fallback={<div className="text-muted-foreground">Loading vendor performance...</div>}>
+          <VendorPerformanceWidget businessId={businessId as Id<"businesses"> | null} />
+        </Suspense>
+      </LazyLoadErrorBoundary>
 
       <LazyLoadErrorBoundary moduleName="Integration Hub">
         <Suspense fallback={<div className="text-muted-foreground">Loading integrations...</div>}>

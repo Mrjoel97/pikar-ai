@@ -13,6 +13,14 @@ interface ContentCalendarWidgetProps {
   userId: Id<"users"> | null;
 }
 
+interface CalendarEvent {
+  id: Id<"scheduleSlots"> | Id<"socialPosts"> | Id<"emails">;
+  type: "schedule" | "social" | "email";
+  title: string;
+  scheduledAt?: number;
+  status?: string;
+}
+
 export function ContentCalendarWidget({ businessId, userId }: ContentCalendarWidgetProps) {
   const navigate = useNavigate();
   
@@ -24,12 +32,12 @@ export function ContentCalendarWidget({ businessId, userId }: ContentCalendarWid
     businessId && userId ? { businessId, userId, startDate, endDate } : "skip"
   );
 
-  const todayEvents = events?.filter((e) => {
+  const todayEvents = events?.filter((e: CalendarEvent) => {
     const eventDate = startOfDay(new Date(e.scheduledAt || 0)).getTime();
     return eventDate === startDate;
   }) || [];
 
-  const upcomingEvents = events?.filter((e) => {
+  const upcomingEvents = events?.filter((e: CalendarEvent) => {
     const eventDate = startOfDay(new Date(e.scheduledAt || 0)).getTime();
     return eventDate > startDate;
   }) || [];
@@ -76,7 +84,7 @@ export function ContentCalendarWidget({ businessId, userId }: ContentCalendarWid
             <p className="text-sm text-muted-foreground">No content scheduled today</p>
           ) : (
             <div className="space-y-2">
-              {todayEvents.slice(0, 3).map((event) => (
+              {todayEvents.slice(0, 3).map((event: CalendarEvent) => (
                 <div 
                   key={event.id}
                   className={`flex items-center gap-2 p-2 rounded-lg border ${getEventColor(event.type)}`}
@@ -104,7 +112,7 @@ export function ContentCalendarWidget({ businessId, userId }: ContentCalendarWid
             <p className="text-sm text-muted-foreground">No upcoming content</p>
           ) : (
             <div className="space-y-2">
-              {upcomingEvents.slice(0, 3).map((event) => (
+              {upcomingEvents.slice(0, 3).map((event: CalendarEvent) => (
                 <div 
                   key={event.id}
                   className="flex items-center justify-between p-2 rounded-lg border hover:bg-accent cursor-pointer transition-colors"
