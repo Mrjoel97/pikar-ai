@@ -101,16 +101,16 @@ export function CRMConnectionManager({ businessId }: CRMConnectionManagerProps) 
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Link className="h-5 w-5" />
+          <CardTitle className="flex items-center gap-2 text-base md:text-lg">
+            <Link className="h-4 w-4 md:h-5 md:w-5" />
             CRM Connections
           </CardTitle>
-          <CardDescription>
+          <CardDescription className="text-xs md:text-sm">
             Sign in to connect your CRM and sync contacts, deals, and activities
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-xs md:text-sm text-muted-foreground">
             Please sign in to manage CRM connections.
           </p>
         </CardContent>
@@ -121,30 +121,43 @@ export function CRMConnectionManager({ businessId }: CRMConnectionManagerProps) 
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Database className="h-5 w-5" />
+        <CardTitle className="flex items-center gap-2 text-base md:text-lg lg:text-xl">
+          <Database className="h-4 w-4 md:h-5 md:w-5" />
           CRM Integration Hub
         </CardTitle>
-        <CardDescription>
+        <CardDescription className="text-xs md:text-sm">
           Bidirectional sync with real-time conflict resolution
         </CardDescription>
       </CardHeader>
       <CardContent>
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="connections">Connections</TabsTrigger>
-            <TabsTrigger value="sync">Sync Status</TabsTrigger>
-            <TabsTrigger value="conflicts">
-              Conflicts {conflicts && conflicts.length > 0 && (
-                <Badge variant="destructive" className="ml-2">{conflicts.length}</Badge>
+          <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 h-auto gap-1">
+            <TabsTrigger value="connections" className="text-xs md:text-sm px-2 py-1.5">
+              <span className="hidden sm:inline">Connections</span>
+              <span className="sm:hidden">Conn.</span>
+            </TabsTrigger>
+            <TabsTrigger value="sync" className="text-xs md:text-sm px-2 py-1.5">
+              <span className="hidden sm:inline">Sync Status</span>
+              <span className="sm:hidden">Sync</span>
+            </TabsTrigger>
+            <TabsTrigger value="conflicts" className="text-xs md:text-sm px-2 py-1.5">
+              <span className="hidden sm:inline">Conflicts</span>
+              <span className="sm:hidden">Conf.</span>
+              {conflicts && conflicts.length > 0 && (
+                <Badge variant="destructive" className="ml-1 text-[10px] px-1 py-0">
+                  {conflicts.length}
+                </Badge>
               )}
             </TabsTrigger>
-            <TabsTrigger value="history">History</TabsTrigger>
+            <TabsTrigger value="history" className="text-xs md:text-sm px-2 py-1.5">
+              <span className="hidden sm:inline">History</span>
+              <span className="sm:hidden">Hist.</span>
+            </TabsTrigger>
           </TabsList>
 
           {/* Connections Tab */}
-          <TabsContent value="connections" className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <TabsContent value="connections" className="space-y-3 mt-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {platforms.map((platform) => {
                 const connection = connections?.find(
                   (c: any) => c.platform === platform.id && c.isActive
@@ -152,63 +165,73 @@ export function CRMConnectionManager({ businessId }: CRMConnectionManagerProps) 
                 const isConnected = !!connection;
 
                 return (
-                  <Card key={platform.id}>
-                    <CardContent className="p-4">
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center gap-2">
-                          <div className={`w-3 h-3 rounded-full ${platform.color}`} />
-                          <span className="font-medium">{platform.name}</span>
+                  <Card key={platform.id} className="overflow-hidden">
+                    <CardContent className="p-3 md:p-4">
+                      <div className="flex items-center justify-between mb-3 gap-2">
+                        <div className="flex items-center gap-2 min-w-0 flex-1">
+                          <div className={`w-2.5 h-2.5 md:w-3 md:h-3 rounded-full ${platform.color} flex-shrink-0`} />
+                          <span className="font-medium text-xs md:text-sm truncate">{platform.name}</span>
                         </div>
                         {isConnected ? (
-                          <Badge variant="outline" className="text-green-600 border-green-600">
-                            <CheckCircle className="h-3 w-3 mr-1" />
-                            Connected
+                          <Badge variant="outline" className="text-green-600 border-green-600 text-[10px] md:text-xs flex-shrink-0 px-1.5 py-0">
+                            <CheckCircle className="h-2.5 w-2.5 md:h-3 md:w-3 mr-0.5 md:mr-1" />
+                            <span className="hidden sm:inline">Connected</span>
                           </Badge>
                         ) : (
-                          <Badge variant="outline" className="text-gray-500">
-                            <XCircle className="h-3 w-3 mr-1" />
-                            Not Connected
+                          <Badge variant="outline" className="text-gray-500 text-[10px] md:text-xs flex-shrink-0 px-1.5 py-0">
+                            <XCircle className="h-2.5 w-2.5 md:h-3 md:w-3 mr-0.5 md:mr-1" />
+                            <span className="hidden sm:inline">Not Connected</span>
                           </Badge>
                         )}
                       </div>
 
                       {isConnected && connection ? (
                         <div className="space-y-2">
-                          <p className="text-xs text-muted-foreground">
-                            Account: {connection.accountName}
+                          <p className="text-[10px] md:text-xs text-muted-foreground truncate">
+                            <span className="hidden sm:inline">Account: </span>{connection.accountName}
                           </p>
                           {connection.lastSyncAt && (
-                            <p className="text-xs text-muted-foreground">
-                              Last sync: {new Date(connection.lastSyncAt).toLocaleString()}
+                            <p className="text-[10px] md:text-xs text-muted-foreground truncate">
+                              <span className="hidden sm:inline">Last sync: </span>
+                              <span className="sm:hidden">Synced: </span>
+                              {new Date(connection.lastSyncAt).toLocaleString(undefined, { 
+                                month: 'short', 
+                                day: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
                             </p>
                           )}
-                          <div className="flex gap-2">
+                          <div className="flex flex-col sm:flex-row gap-1.5 md:gap-2">
                             <Button
                               size="sm"
                               variant="outline"
+                              className="w-full sm:w-auto text-[10px] md:text-xs h-7 md:h-8 px-2 md:px-3"
                               onClick={() => handleSync(connection._id)}
                               disabled={syncing === connection._id}
                             >
-                              <RefreshCw className={`h-3 w-3 mr-1 ${syncing === connection._id ? "animate-spin" : ""}`} />
-                              Quick Sync
+                              <RefreshCw className={`h-2.5 w-2.5 md:h-3 md:w-3 mr-1 ${syncing === connection._id ? "animate-spin" : ""}`} />
+                              Sync
                             </Button>
                             <Button
                               size="sm"
                               variant="outline"
+                              className="w-full sm:w-auto text-[10px] md:text-xs h-7 md:h-8 px-2 md:px-3"
                               onClick={() => handleDisconnect(connection._id)}
                             >
-                              <Unlink className="h-3 w-3 mr-1" />
-                              Disconnect
+                              <Unlink className="h-2.5 w-2.5 md:h-3 md:w-3 mr-1" />
+                              <span className="hidden sm:inline">Disconnect</span>
+                              <span className="sm:hidden">Remove</span>
                             </Button>
                           </div>
                         </div>
                       ) : (
                         <Button
                           size="sm"
-                          className="w-full"
+                          className="w-full text-[10px] md:text-xs h-7 md:h-8"
                           onClick={() => handleConnect(platform.id as any)}
                         >
-                          <Link className="h-3 w-3 mr-1" />
+                          <Link className="h-2.5 w-2.5 md:h-3 md:w-3 mr-1" />
                           Connect
                         </Button>
                       )}
@@ -220,60 +243,69 @@ export function CRMConnectionManager({ businessId }: CRMConnectionManagerProps) 
           </TabsContent>
 
           {/* Sync Status Tab */}
-          <TabsContent value="sync" className="space-y-4">
+          <TabsContent value="sync" className="space-y-3 mt-3">
             {connections && connections.length > 0 ? (
               connections.map((conn: any) => (
                 <Card key={conn._id}>
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center gap-2">
-                        <div className={`w-3 h-3 rounded-full ${
+                  <CardContent className="p-3 md:p-4">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 mb-3">
+                      <div className="flex items-center gap-2 min-w-0 flex-1">
+                        <div className={`w-2.5 h-2.5 md:w-3 md:h-3 rounded-full flex-shrink-0 ${ 
                           platforms.find(p => p.id === conn.platform)?.color
                         }`} />
-                        <span className="font-medium capitalize">{conn.platform}</span>
-                        <Badge variant={conn.isActive ? "default" : "secondary"}>
+                        <span className="font-medium capitalize text-xs md:text-sm truncate">{conn.platform}</span>
+                        <Badge variant={conn.isActive ? "default" : "secondary"} className="text-[10px] md:text-xs px-1.5 py-0">
                           {conn.isActive ? "Active" : "Inactive"}
                         </Badge>
                       </div>
-                      <div className="flex gap-2">
+                      <div className="flex flex-col sm:flex-row gap-1.5 md:gap-2 w-full sm:w-auto">
                         <Button
                           size="sm"
                           variant="outline"
+                          className="w-full sm:w-auto text-[10px] md:text-xs h-7 md:h-8 px-2 md:px-3"
                           onClick={() => handleBidirectionalSync(conn._id, "contacts")}
                           disabled={syncing === conn._id}
                         >
-                          <TrendingUp className="h-3 w-3 mr-1" />
-                          Sync Contacts
+                          <TrendingUp className="h-2.5 w-2.5 md:h-3 md:w-3 mr-1" />
+                          Contacts
                         </Button>
                         <Button
                           size="sm"
                           variant="outline"
+                          className="w-full sm:w-auto text-[10px] md:text-xs h-7 md:h-8 px-2 md:px-3"
                           onClick={() => handleBidirectionalSync(conn._id, "deals")}
                           disabled={syncing === conn._id}
                         >
-                          <TrendingUp className="h-3 w-3 mr-1" />
-                          Sync Deals
+                          <TrendingUp className="h-2.5 w-2.5 md:h-3 md:w-3 mr-1" />
+                          Deals
                         </Button>
                       </div>
                     </div>
 
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between text-sm">
+                    <div className="space-y-1.5 md:space-y-2">
+                      <div className="flex items-center justify-between text-[10px] md:text-xs">
                         <span className="text-muted-foreground">Last Sync</span>
-                        <span className="flex items-center gap-1">
-                          <Clock className="h-3 w-3" />
-                          {conn.lastSyncAt
-                            ? new Date(conn.lastSyncAt).toLocaleString()
-                            : "Never"}
+                        <span className="flex items-center gap-1 truncate">
+                          <Clock className="h-2.5 w-2.5 md:h-3 md:w-3 flex-shrink-0" />
+                          <span className="truncate text-[10px] md:text-xs">
+                            {conn.lastSyncAt
+                              ? new Date(conn.lastSyncAt).toLocaleString(undefined, {
+                                  month: 'short',
+                                  day: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                })
+                              : "Never"}
+                          </span>
                         </span>
                       </div>
-                      <div className="flex items-center justify-between text-sm">
+                      <div className="flex items-center justify-between text-[10px] md:text-xs">
                         <span className="text-muted-foreground">Account</span>
-                        <span>{conn.accountName}</span>
+                        <span className="truncate max-w-[60%] text-right">{conn.accountName}</span>
                       </div>
                       {syncing === conn._id && (
-                        <div className="space-y-1">
-                          <div className="flex items-center justify-between text-xs">
+                        <div className="space-y-1 pt-1">
+                          <div className="flex items-center justify-between text-[10px]">
                             <span>Syncing...</span>
                             <span>In Progress</span>
                           </div>
@@ -286,7 +318,7 @@ export function CRMConnectionManager({ businessId }: CRMConnectionManagerProps) 
               ))
             ) : (
               <Alert>
-                <AlertDescription>
+                <AlertDescription className="text-xs md:text-sm">
                   No active connections. Connect a CRM to start syncing.
                 </AlertDescription>
               </Alert>
@@ -294,39 +326,40 @@ export function CRMConnectionManager({ businessId }: CRMConnectionManagerProps) 
           </TabsContent>
 
           {/* Conflicts Tab */}
-          <TabsContent value="conflicts" className="space-y-4">
+          <TabsContent value="conflicts" className="space-y-3 mt-3">
             {conflicts && conflicts.length > 0 ? (
               conflicts.map((conflict: any) => (
                 <Card key={conflict._id}>
-                  <CardContent className="p-4">
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex items-start gap-2">
-                        <AlertTriangle className="h-4 w-4 text-yellow-600 mt-0.5" />
-                        <div>
-                          <p className="font-medium text-sm">{conflict.conflictType.replace(/_/g, " ")}</p>
-                          <p className="text-xs text-muted-foreground">{conflict.contactEmail}</p>
+                  <CardContent className="p-3 md:p-4">
+                    <div className="flex items-start justify-between mb-2 md:mb-3 gap-2">
+                      <div className="flex items-start gap-2 min-w-0 flex-1">
+                        <AlertTriangle className="h-3.5 w-3.5 md:h-4 md:w-4 text-yellow-600 mt-0.5 flex-shrink-0" />
+                        <div className="min-w-0 flex-1">
+                          <p className="font-medium text-xs md:text-sm truncate">{conflict.conflictType.replace(/_/g, " ")}</p>
+                          <p className="text-[10px] md:text-xs text-muted-foreground truncate">{conflict.contactEmail}</p>
                         </div>
                       </div>
-                      <Badge variant="outline" className="text-yellow-600 border-yellow-600">
+                      <Badge variant="outline" className="text-yellow-600 border-yellow-600 text-[10px] md:text-xs flex-shrink-0 px-1.5 py-0">
                         Pending
                       </Badge>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-3 mb-3 text-sm">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-2 md:mb-3">
                       <div className="p-2 rounded bg-muted">
-                        <p className="text-xs font-medium mb-1">Local Data</p>
-                        <p className="text-xs">{JSON.stringify(conflict.localData)}</p>
+                        <p className="text-[10px] md:text-xs font-medium mb-1">Local Data</p>
+                        <p className="text-[10px] break-all line-clamp-3">{JSON.stringify(conflict.localData)}</p>
                       </div>
                       <div className="p-2 rounded bg-muted">
-                        <p className="text-xs font-medium mb-1">Remote Data</p>
-                        <p className="text-xs">{JSON.stringify(conflict.remoteData)}</p>
+                        <p className="text-[10px] md:text-xs font-medium mb-1">Remote Data</p>
+                        <p className="text-[10px] break-all line-clamp-3">{JSON.stringify(conflict.remoteData)}</p>
                       </div>
                     </div>
 
-                    <div className="flex gap-2">
+                    <div className="flex flex-col sm:flex-row gap-1.5 md:gap-2">
                       <Button
                         size="sm"
                         variant="outline"
+                        className="w-full sm:w-auto text-[10px] md:text-xs h-7 md:h-8 px-2 md:px-3"
                         onClick={() => handleResolveConflict(conflict._id, "keep_local")}
                       >
                         Keep Local
@@ -334,6 +367,7 @@ export function CRMConnectionManager({ businessId }: CRMConnectionManagerProps) 
                       <Button
                         size="sm"
                         variant="outline"
+                        className="w-full sm:w-auto text-[10px] md:text-xs h-7 md:h-8 px-2 md:px-3"
                         onClick={() => handleResolveConflict(conflict._id, "keep_remote")}
                       >
                         Keep Remote
@@ -341,6 +375,7 @@ export function CRMConnectionManager({ businessId }: CRMConnectionManagerProps) 
                       <Button
                         size="sm"
                         variant="outline"
+                        className="w-full sm:w-auto text-[10px] md:text-xs h-7 md:h-8 px-2 md:px-3"
                         onClick={() => handleResolveConflict(conflict._id, "merge")}
                       >
                         Merge
@@ -351,8 +386,8 @@ export function CRMConnectionManager({ businessId }: CRMConnectionManagerProps) 
               ))
             ) : (
               <Alert>
-                <CheckCircle className="h-4 w-4" />
-                <AlertDescription>
+                <CheckCircle className="h-3.5 w-3.5 md:h-4 md:w-4" />
+                <AlertDescription className="text-xs md:text-sm">
                   No conflicts detected. All data is in sync!
                 </AlertDescription>
               </Alert>
@@ -360,10 +395,10 @@ export function CRMConnectionManager({ businessId }: CRMConnectionManagerProps) 
           </TabsContent>
 
           {/* History Tab */}
-          <TabsContent value="history" className="space-y-4">
+          <TabsContent value="history" className="space-y-3 mt-3">
             <Alert>
-              <Clock className="h-4 w-4" />
-              <AlertDescription>
+              <Clock className="h-3.5 w-3.5 md:h-4 md:w-4" />
+              <AlertDescription className="text-xs md:text-sm">
                 Sync history will appear here. Recent syncs, errors, and resolutions are tracked.
               </AlertDescription>
             </Alert>

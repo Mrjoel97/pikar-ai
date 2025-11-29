@@ -133,17 +133,17 @@ export function AccountConnector({ businessId }: AccountConnectorProps) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Link className="h-5 w-5" />
+          <CardTitle className="flex items-center gap-2 text-base md:text-lg">
+            <Link className="h-4 w-4 md:h-5 md:w-5" />
             Social Media Accounts
           </CardTitle>
-          <CardDescription>
+          <CardDescription className="text-xs md:text-sm">
             Connect your social media accounts to schedule and publish posts
           </CardDescription>
         </CardHeader>
         <CardContent>
           <Alert>
-            <AlertDescription>
+            <AlertDescription className="text-xs md:text-sm">
               Please sign in to connect your social media accounts.
             </AlertDescription>
           </Alert>
@@ -155,17 +155,17 @@ export function AccountConnector({ businessId }: AccountConnectorProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Link className="h-5 w-5" />
+        <CardTitle className="flex items-center gap-2 text-base md:text-lg lg:text-xl">
+          <Link className="h-4 w-4 md:h-5 md:w-5" />
           Social Media Accounts
         </CardTitle>
-        <CardDescription>
+        <CardDescription className="text-xs md:text-sm">
           Connect and manage your social media accounts for automated posting
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-3 md:space-y-4">
         {/* Available Platforms */}
-        <div className="space-y-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {platforms.map((platform) => {
             const account = connectedAccounts?.find(
               (acc: any) => acc.platform === platform.id
@@ -175,17 +175,17 @@ export function AccountConnector({ businessId }: AccountConnectorProps) {
             const PlatformIcon = platform.icon;
 
             return (
-              <Card key={platform.id} className="relative">
-                <CardContent className="p-4">
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex items-center gap-3">
-                      <div className={`w-10 h-10 rounded-lg ${platform.color} flex items-center justify-center`}>
-                        <PlatformIcon className="h-5 w-5 text-white" />
+              <Card key={platform.id} className="relative overflow-hidden">
+                <CardContent className="p-3 md:p-4">
+                  <div className="flex items-start justify-between mb-2 md:mb-3 gap-2">
+                    <div className="flex items-center gap-2 min-w-0 flex-1">
+                      <div className={`w-7 h-7 md:w-8 md:h-8 lg:w-10 lg:h-10 rounded-lg ${platform.color} flex items-center justify-center flex-shrink-0`}>
+                        <PlatformIcon className="h-3.5 w-3.5 md:h-4 md:w-4 lg:h-5 lg:w-5 text-white" />
                       </div>
-                      <div>
-                        <h3 className="font-medium">{platform.name}</h3>
+                      <div className="min-w-0 flex-1">
+                        <h3 className="font-medium text-xs md:text-sm lg:text-base truncate">{platform.name}</h3>
                         {isConnected && account && (
-                          <p className="text-xs text-muted-foreground">
+                          <p className="text-[10px] md:text-xs text-muted-foreground truncate">
                             @{account.accountName}
                           </p>
                         )}
@@ -195,51 +195,62 @@ export function AccountConnector({ businessId }: AccountConnectorProps) {
                     {isConnected ? (
                       <Badge 
                         variant={health?.status === "healthy" ? "default" : "destructive"}
-                        className="flex items-center gap-1"
+                        className="flex items-center gap-0.5 md:gap-1 text-[10px] md:text-xs flex-shrink-0 px-1.5 py-0"
                       >
                         {health?.status === "healthy" ? (
-                          <CheckCircle className="h-3 w-3" />
+                          <CheckCircle className="h-2.5 w-2.5 md:h-3 md:w-3" />
                         ) : (
-                          <AlertTriangle className="h-3 w-3" />
+                          <AlertTriangle className="h-2.5 w-2.5 md:h-3 md:w-3" />
                         )}
-                        {health?.status === "healthy" ? "Connected" : "Needs Attention"}
+                        <span className="hidden sm:inline">{health?.status === "healthy" ? "Connected" : "Attention"}</span>
                       </Badge>
                     ) : (
-                      <Badge variant="outline" className="text-gray-500">
-                        <XCircle className="h-3 w-3 mr-1" />
-                        Not Connected
+                      <Badge variant="outline" className="text-gray-500 text-[10px] md:text-xs flex-shrink-0 px-1.5 py-0">
+                        <XCircle className="h-2.5 w-2.5 md:h-3 md:w-3 mr-0.5 md:mr-1" />
+                        <span className="hidden sm:inline">Not Connected</span>
                       </Badge>
                     )}
                   </div>
 
                   {isConnected && account ? (
-                    <div className="space-y-3">
+                    <div className="space-y-2 md:space-y-3">
                       {/* Health Status */}
                       {health && health.status !== "healthy" && (
-                        <Alert variant="destructive" className="py-2">
-                          <AlertDescription className="text-xs">
+                        <Alert variant="destructive" className="py-1.5 md:py-2">
+                          <AlertDescription className="text-[10px] md:text-xs">
                             {health.message}
                           </AlertDescription>
                         </Alert>
                       )}
 
                       {/* Account Details */}
-                      <div className="space-y-1 text-xs text-muted-foreground">
-                        <p>Connected: {new Date(account.connectedAt).toLocaleDateString()}</p>
+                      <div className="space-y-0.5 md:space-y-1 text-[10px] md:text-xs text-muted-foreground">
+                        <p className="truncate">
+                          <span className="hidden sm:inline">Connected: </span>
+                          {new Date(account.connectedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                        </p>
                         {account.lastUsedAt && (
-                          <p>Last used: {new Date(account.lastUsedAt).toLocaleDateString()}</p>
+                          <p className="truncate">
+                            <span className="hidden sm:inline">Last used: </span>
+                            <span className="sm:hidden">Used: </span>
+                            {new Date(account.lastUsedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                          </p>
                         )}
                         {account.tokenExpiresAt && (
-                          <p>Token expires: {new Date(account.tokenExpiresAt).toLocaleDateString()}</p>
+                          <p className="truncate">
+                            <span className="hidden sm:inline">Token expires: </span>
+                            <span className="sm:hidden">Expires: </span>
+                            {new Date(account.tokenExpiresAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                          </p>
                         )}
                       </div>
 
                       {/* Permissions */}
                       <div className="space-y-1">
-                        <p className="text-xs font-medium">Permissions:</p>
+                        <p className="text-[10px] md:text-xs font-medium">Permissions:</p>
                         <div className="flex flex-wrap gap-1">
                           {platform.permissions.map((perm) => (
-                            <Badge key={perm} variant="secondary" className="text-xs">
+                            <Badge key={perm} variant="secondary" className="text-[10px] px-1.5 py-0">
                               {perm}
                             </Badge>
                           ))}
@@ -247,38 +258,40 @@ export function AccountConnector({ businessId }: AccountConnectorProps) {
                       </div>
 
                       {/* Actions */}
-                      <div className="flex gap-2 pt-2">
+                      <div className="flex flex-col sm:flex-row gap-1.5 md:gap-2 pt-1 md:pt-2">
                         {health?.status !== "healthy" && (
                           <Button
                             size="sm"
                             variant="default"
+                            className="w-full sm:w-auto text-[10px] md:text-xs h-7 md:h-8 px-2 md:px-3"
                             onClick={() => handleConnect(platform.id as any)}
                           >
-                            <RefreshCw className="h-3 w-3 mr-1" />
+                            <RefreshCw className="h-2.5 w-2.5 md:h-3 md:w-3 mr-1" />
                             Reconnect
                           </Button>
                         )}
                         <Button
                           size="sm"
                           variant="outline"
+                          className="w-full sm:w-auto text-[10px] md:text-xs h-7 md:h-8 px-2 md:px-3"
                           onClick={() => handleDisconnect(account._id)}
                           disabled={disconnecting === account._id}
                         >
-                          <Unlink className="h-3 w-3 mr-1" />
+                          <Unlink className="h-2.5 w-2.5 md:h-3 md:w-3 mr-1" />
                           Disconnect
                         </Button>
                       </div>
                     </div>
                   ) : (
-                    <div className="space-y-3">
+                    <div className="space-y-2 md:space-y-3">
                       {/* Permissions Preview */}
                       <div className="space-y-1">
-                        <p className="text-xs font-medium text-muted-foreground">
+                        <p className="text-[10px] md:text-xs font-medium text-muted-foreground">
                           Will request permissions:
                         </p>
                         <div className="flex flex-wrap gap-1">
                           {platform.permissions.map((perm) => (
-                            <Badge key={perm} variant="outline" className="text-xs">
+                            <Badge key={perm} variant="outline" className="text-[10px] px-1.5 py-0">
                               {perm}
                             </Badge>
                           ))}
@@ -287,10 +300,10 @@ export function AccountConnector({ businessId }: AccountConnectorProps) {
 
                       <Button
                         size="sm"
-                        className="w-full"
+                        className="w-full text-[10px] md:text-xs h-7 md:h-8"
                         onClick={() => handleConnect(platform.id as any)}
                       >
-                        <Link className="h-3 w-3 mr-1" />
+                        <Link className="h-2.5 w-2.5 md:h-3 md:w-3 mr-1" />
                         Connect {platform.name}
                       </Button>
                     </div>
@@ -303,12 +316,12 @@ export function AccountConnector({ businessId }: AccountConnectorProps) {
 
         {/* Summary */}
         {connectedAccounts && connectedAccounts.length > 0 && (
-          <div className="pt-4 border-t">
-            <div className="flex items-center justify-between text-sm">
+          <div className="pt-3 md:pt-4 border-t">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs md:text-sm">
               <span className="text-muted-foreground">
                 {connectedAccounts.length} account{connectedAccounts.length !== 1 ? "s" : ""} connected
               </span>
-              <Badge variant="outline">
+              <Badge variant="outline" className="text-[10px] md:text-xs px-1.5 py-0">
                 {connectedAccounts.filter((acc: any) => {
                   const health = getAccountHealth(acc);
                   return health.status === "healthy";
