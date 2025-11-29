@@ -55,16 +55,51 @@ export function AccountConnector({ businessId }: AccountConnectorProps) {
     },
   ];
 
-  const handleConnect = (platform: "twitter" | "linkedin" | "facebook") => {
+  const handleConnect = async (platform: "twitter" | "linkedin" | "facebook") => {
     if (!businessId) {
       toast.error("Please sign in to connect a social account");
       return;
     }
     
-    // In production, this would redirect to OAuth provider
-    toast.info(`OAuth flow for ${platform} would open here`, {
-      description: "This will redirect you to authenticate with the platform"
-    });
+    try {
+      // Get OAuth URL from backend
+      const authUrl = await fetch(`/api/social/oauth/${platform}?businessId=${businessId}`).then(r => r.json());
+      
+      // Open OAuth popup
+      const width = 600;
+      const height = 700;
+      const left = window.screenX + (window.outerWidth - width) / 2;
+      const top = window.screenY + (window.outerHeight - height) / 2;
+      
+      const popup = window.open(
+        authUrl.url || `${window.location.origin}/auth/callback/${platform}`,
+        `${platform}_oauth`,
+        `width=${width},height=${height},left=${left},top=${top}`
+      );
+
+      // Listen for OAuth callback
+      const handleMessage = (event: MessageEvent) => {
+        if (event.data.type === "oauth_success" && event.data.platform === platform) {
+          toast.success(`${platform} connected successfully!`);
+          window.removeEventListener("message", handleMessage);
+        } else if (event.data.type === "oauth_error" && event.data.platform === platform) {
+          toast.error(`Failed to connect ${platform}: ${event.data.error}`);
+          window.removeEventListener("message", handleMessage);
+        }
+      };
+
+      window.addEventListener("message", handleMessage);
+
+      // Cleanup if popup is closed
+      const checkClosed = setInterval(() => {
+        if (popup?.closed) {
+          clearInterval(checkClosed);
+          window.removeEventListener("message", handleMessage);
+        }
+      }, 1000);
+    } catch (error: any) {
+      toast.error(`Failed to initiate ${platform} OAuth: ${error.message}`);
+    }
   };
 
   const handleDisconnect = async (accountId: Id<"socialAccounts">) => {

@@ -72,6 +72,233 @@ export const initiateOAuth: any = internalAction({
 });
 
 /**
+ * Exchange OAuth code for access token
+ */
+export const exchangeOAuthCode = internalAction({
+  args: {
+    platform: v.union(
+      v.literal("twitter"),
+      v.literal("linkedin"),
+      v.literal("facebook"),
+      v.literal("meta"),
+      v.literal("youtube"),
+      v.literal("google")
+    ),
+    code: v.string(),
+    businessId: v.id("businesses"),
+    redirectUri: v.optional(v.string()),
+  },
+  handler: async (ctx, args): Promise<{
+    success: boolean;
+    accessToken?: string;
+    refreshToken?: string;
+    expiresAt?: number;
+    accountId?: string;
+    accountName?: string;
+    error?: string;
+  }> => {
+    const config: any = await ctx.runQuery(internal.socialApiConfigs.getConfigForAuth, {
+      businessId: args.businessId,
+      platform: args.platform,
+    });
+
+    if (!config) {
+      return {
+        success: false,
+        error: `No active API configuration found for ${args.platform}`,
+      };
+    }
+
+    const callbackUrl =
+      args.redirectUri ||
+      config.callbackUrl ||
+      `${process.env.CONVEX_SITE_URL}/auth/callback/${args.platform}`;
+
+    try {
+      let tokenResponse: any;
+      
+      switch (args.platform) {
+        case "twitter": {
+          // Twitter OAuth 2.0 token exchange
+          const tokenUrl = "https://api.twitter.com/2/oauth2/token";
+          const basicAuth = Buffer.from(`${config.clientId}:${config.clientSecret}`).toString("base64");
+          
+          const response = await fetch(tokenUrl, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/x-www-form-urlencoded",
+              "Authorization": `Basic ${basicAuth}`,
+            },
+            body: new URLSearchParams({
+              code: args.code,
+              grant_type: "authorization_code",
+              redirect_uri: callbackUrl,
+              code_verifier: "challenge", // In production, use PKCE
+            }),
+          });
+
+          if (!response.ok) {
+            const error = await response.text();
+            throw new Error(`Twitter token exchange failed: ${error}`);
+          }
+
+          tokenResponse = await response.json();
+          
+          // Get user info
+          const userResponse = await fetch("https://api.twitter.com/2/users/me", {
+            headers: {
+              "Authorization": `Bearer ${tokenResponse.access_token}`,
+            },
+          });
+          
+          const userData = await userResponse.json();
+          
+          return {
+            success: true,
+            accessToken: tokenResponse.access_token,
+            refreshToken: tokenResponse.refresh_token,
+            expiresAt: Date.now() + (tokenResponse.expires_in * 1000),
+            accountId: userData.data?.id,
+            accountName: userData.data?.username,
+          };
+        }
+
+        case "linkedin": {
+          // LinkedIn OAuth 2.0 token exchange
+          const tokenUrl = "https://www.linkedin.com/oauth/v2/accessToken";
+          
+          const response = await fetch(tokenUrl, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/x-www-form-urlencoded",
+            },
+            body: new URLSearchParams({
+              grant_type: "authorization_code",
+              code: args.code,
+              redirect_uri: callbackUrl,
+              client_id: config.clientId,
+              client_secret: config.clientSecret,
+            }),
+          });
+
+          if (!response.ok) {
+            const error = await response.text();
+            throw new Error(`LinkedIn token exchange failed: ${error}`);
+          }
+
+          tokenResponse = await response.json();
+          
+          // Get user info
+          const userResponse = await fetch("https://api.linkedin.com/v2/me", {
+            headers: {
+              "Authorization": `Bearer ${tokenResponse.access_token}`,
+            },
+          });
+          
+          const userData = await userResponse.json();
+          
+          return {
+            success: true,
+            accessToken: tokenResponse.access_token,
+            refreshToken: tokenResponse.refresh_token,
+            expiresAt: Date.now() + (tokenResponse.expires_in * 1000),
+            accountId: userData.id,
+            accountName: `${userData.localizedFirstName} ${userData.localizedLastName}`,
+          };
+        }
+
+        case "facebook":
+        case "meta": {
+          // Facebook/Meta OAuth token exchange
+          const tokenUrl = "https://graph.facebook.com/v18.0/oauth/access_token";
+          
+          const response = await fetch(
+            `${tokenUrl}?client_id=${config.clientId}&client_secret=${config.clientSecret}&code=${args.code}&redirect_uri=${encodeURIComponent(callbackUrl)}`
+          );
+
+          if (!response.ok) {
+            const error = await response.text();
+            throw new Error(`Facebook token exchange failed: ${error}`);
+          }
+
+          tokenResponse = await response.json();
+          
+          // Get user info
+          const userResponse = await fetch(
+            `https://graph.facebook.com/me?access_token=${tokenResponse.access_token}`
+          );
+          
+          const userData = await userResponse.json();
+          
+          return {
+            success: true,
+            accessToken: tokenResponse.access_token,
+            expiresAt: Date.now() + (tokenResponse.expires_in * 1000),
+            accountId: userData.id,
+            accountName: userData.name,
+          };
+        }
+
+        case "youtube":
+        case "google": {
+          // Google OAuth 2.0 token exchange
+          const tokenUrl = "https://oauth2.googleapis.com/token";
+          
+          const response = await fetch(tokenUrl, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/x-www-form-urlencoded",
+            },
+            body: new URLSearchParams({
+              code: args.code,
+              client_id: config.clientId,
+              client_secret: config.clientSecret,
+              redirect_uri: callbackUrl,
+              grant_type: "authorization_code",
+            }),
+          });
+
+          if (!response.ok) {
+            const error = await response.text();
+            throw new Error(`Google token exchange failed: ${error}`);
+          }
+
+          tokenResponse = await response.json();
+          
+          // Get user info
+          const userResponse = await fetch(
+            `https://www.googleapis.com/oauth2/v2/userinfo?access_token=${tokenResponse.access_token}`
+          );
+          
+          const userData = await userResponse.json();
+          
+          return {
+            success: true,
+            accessToken: tokenResponse.access_token,
+            refreshToken: tokenResponse.refresh_token,
+            expiresAt: Date.now() + (tokenResponse.expires_in * 1000),
+            accountId: userData.id,
+            accountName: userData.email,
+          };
+        }
+
+        default:
+          return {
+            success: false,
+            error: `Unsupported platform: ${args.platform}`,
+          };
+      }
+    } catch (error: any) {
+      console.error(`[${args.platform.toUpperCase()}] OAuth exchange error:`, error);
+      return {
+        success: false,
+        error: error.message,
+      };
+    }
+  },
+});
+
+/**
  * Helper function for retry logic with exponential backoff
  */
 async function withRetry<T>(
