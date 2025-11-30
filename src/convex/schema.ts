@@ -2649,14 +2649,21 @@ const schema = defineSchema({
   revenueConversions: defineTable({
     businessId: v.id("businesses"),
     contactId: v.id("contacts"),
-    amount: v.number(),
-    currency: v.string(),
-    convertedAt: v.number(),
-    attributionModel: v.string(),
-    touchpointIds: v.array(v.id("revenueTouchpoints")),
+    revenue: v.number(),
+    amount: v.optional(v.number()),
+    currency: v.optional(v.string()),
+    conversionType: v.string(),
+    touchpointCount: v.number(),
+    attributions: v.any(),
+    metadata: v.optional(v.any()),
+    convertedAt: v.optional(v.number()),
+    timestamp: v.number(),
+    attributionModel: v.optional(v.string()),
+    touchpointIds: v.optional(v.array(v.id("revenueTouchpoints"))),
   })
     .index("by_business", ["businessId"])
-    .index("by_contact", ["contactId"]),
+    .index("by_contact", ["contactId"])
+    .index("by_business_and_timestamp", ["businessId", "timestamp"]),
 
   // Training & Support
   trainingSessions: defineTable({
