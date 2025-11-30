@@ -2485,8 +2485,13 @@ const schema = defineSchema({
     operation: v.string(),
     userId: v.optional(v.id("users")),
     timestamp: v.number(),
+    configId: v.optional(v.id("kmsConfigs")),
+    success: v.optional(v.boolean()),
+    dataSize: v.optional(v.number()),
+    dataType: v.optional(v.string()),
   })
-    .index("by_business", ["businessId"]),
+    .index("by_business", ["businessId"])
+    .index("by_business_and_timestamp", ["businessId", "timestamp"]),
 
   // Social Media Management
   socialAccounts: defineTable({
