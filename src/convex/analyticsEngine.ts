@@ -164,6 +164,9 @@ export const getMetricTrend = query({
   handler: async (ctx, args) => {
     const cutoff = args.timeRange ? Date.now() - args.timeRange : Date.now() - 30 * 24 * 60 * 60 * 1000;
 
+    if (!args.metricId) {
+      return [];
+    }
     const history = await ctx.db
       .query("metricHistory")
       .withIndex("by_metric", (q) => q.eq("metricId", args.metricId))
@@ -523,7 +526,8 @@ export const trackEvent = mutation({
     const eventId = await ctx.db.insert("analyticsEvents", {
       businessId: args.businessId,
       eventType: args.eventType,
-      eventData: args.eventData,
+      eventName: args.eventType,
+      properties: args.eventData,
       userId: args.userId,
       timestamp: Date.now(),
     });

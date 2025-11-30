@@ -94,9 +94,10 @@ export const recordExecution = mutation({
         return null;
       }
 
+      const finalBusinessId = args.businessId || fallbackBusiness!._id;
       const executionId = await ctx.db.insert("agentExecutions", {
       agentId,
-      businessId: (args.businessId || fallbackBusiness!._id) as Id<"businesses">,
+      businessId: finalBusinessId,
       status: args.status,
       responseTime: args.responseTime,
       timestamp: now,

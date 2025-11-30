@@ -593,7 +593,7 @@ export const seedEnterpriseTemplates = action({
 /**
  * Helper to record agent execution (call from actions)
  */
-export const recordAgentExecution = mutation({
+export const recordAgentExecution: any = mutation({
   args: {
     agentKey: v.string(),
     businessId: v.optional(v.id("businesses")),

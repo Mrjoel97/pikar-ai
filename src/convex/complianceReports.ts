@@ -168,7 +168,7 @@ export const getReportHistory = query({
 });
 
 // Enhanced: Generate compliance report with evidence
-export const generateComplianceReport = action({
+export const generateComplianceReport: any = action({
   args: {
     businessId: v.id("businesses"),
     templateId: v.id("reportTemplates"),
