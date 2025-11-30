@@ -110,15 +110,17 @@ export const getTeamMembers = query({
       });
     }
 
-    // Add team members
-    for (const memberId of business.teamMembers) {
-      const member = await ctx.db.get(memberId);
-      if (member) {
-        members.push({
-          id: member._id,
-          name: member.name ?? member.email ?? "Unknown",
-          email: member.email,
-        });
+    // Add team members - handle undefined teamMembers array
+    if (business.teamMembers && Array.isArray(business.teamMembers)) {
+      for (const memberId of business.teamMembers) {
+        const member = await ctx.db.get(memberId);
+        if (member) {
+          members.push({
+            id: member._id,
+            name: member.name ?? member.email ?? "Unknown",
+            email: member.email,
+          });
+        }
       }
     }
 
