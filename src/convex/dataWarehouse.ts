@@ -98,7 +98,7 @@ export const getWarehouseAnalytics = query({
     const jobs = await ctx.db
       .query("dataWarehouseJobs")
       .withIndex("by_business", (q) => q.eq("businessId", args.businessId!))
-      .filter((q) => q.gte(q.field("startTime"), startTime))
+      .filter((q) => q.gte(q.field("startedAt"), startTime))
       .collect();
 
     const pipelines = await ctx.db
@@ -112,8 +112,8 @@ export const getWarehouseAnalytics = query({
       .filter((q) => q.gte(q.field("startTime"), startTime))
       .collect();
 
-    const totalRecordsProcessed = jobs.reduce((sum, j) => sum + j.recordsProcessed, 0);
-    const totalRecordsFailed = jobs.reduce((sum, j) => sum + j.recordsFailed, 0);
+    const totalRecordsProcessed = jobs.reduce((sum, j) => sum + (j.recordsProcessed || 0), 0);
+    const totalRecordsFailed = 0; // Not tracked in current schema
     const successfulJobs = jobs.filter((j) => j.status === "completed").length;
     const failedJobs = jobs.filter((j) => j.status === "failed").length;
 
@@ -127,9 +127,9 @@ export const getWarehouseAnalytics = query({
     return {
       sources: {
         total: sources.length,
-        connected: sources.filter((s) => s.status === "connected").length,
-        syncing: sources.filter((s) => s.status === "syncing").length,
-        error: sources.filter((s) => s.status === "error").length,
+        connected: sources.filter((s) => s.isActive).length,
+        syncing: 0,
+        error: sources.filter((s) => !s.isActive).length,
       },
       jobs: {
         total: jobs.length,

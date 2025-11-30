@@ -75,14 +75,16 @@ export const createDataSource = mutation({
     const sourceId = await ctx.db.insert("dataWarehouseSources", {
       businessId: args.businessId,
       name: args.name,
-      type: args.type,
-      connectionString: args.connectionString,
-      credentials: args.credentials,
-      syncSchedule: args.syncSchedule,
-      status: "disconnected",
-      config: args.config,
+      type: "database" as const,
+      config: {
+        ...args.config,
+        connectionString: args.connectionString,
+        credentials: args.credentials,
+        syncSchedule: args.syncSchedule,
+        originalType: args.type,
+      },
+      isActive: false,
       createdAt: now,
-      updatedAt: now,
     });
 
     await ctx.db.insert("audit_logs", {
@@ -122,11 +124,14 @@ export const updateDataSource = mutation({
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Unauthorized");
 
-    const { sourceId, ...updates } = args;
-    await ctx.db.patch(sourceId, {
-      ...updates,
-      updatedAt: Date.now(),
-    });
+    const { sourceId, name, connectionString, credentials, syncSchedule, status, config } = args;
+    
+    const updateData: any = {};
+    if (config !== undefined) updateData.config = config;
+    if (name !== undefined) updateData.name = name;
+    if (status !== undefined) updateData.isActive = status === "connected";
+    
+    await ctx.db.patch(sourceId, updateData);
 
     return sourceId;
   },
@@ -172,8 +177,7 @@ export const triggerSync = mutation({
     if (!source) throw new Error("Source not found");
 
     await ctx.db.patch(args.sourceId, {
-      status: "syncing",
-      updatedAt: Date.now(),
+      isActive: true,
     });
 
     await ctx.scheduler.runAfter(
@@ -210,7 +214,7 @@ export const executeETLJob = internalAction({
 
       await ctx.runMutation("dataWarehouse/dataSources:updateDataSource" as any, {
         sourceId: args.sourceId,
-        status: "connected",
+        config: { status: "connected" },
       });
     } catch (error: any) {
       status = "failed";
@@ -218,7 +222,7 @@ export const executeETLJob = internalAction({
 
       await ctx.runMutation("dataWarehouse/dataSources:updateDataSource" as any, {
         sourceId: args.sourceId,
-        status: "error",
+        config: { status: "error" },
       });
     }
 
@@ -264,7 +268,15 @@ export const recordJobExecution = internalMutation({
     errors: v.optional(v.array(v.string())),
   },
   handler: async (ctx, args) => {
-    await ctx.db.insert("dataWarehouseJobs", args);
+    const { startTime, endTime, recordsFailed, errors, ...jobData } = args;
+    
+    await ctx.db.insert("dataWarehouseJobs", {
+      ...jobData,
+      startedAt: startTime,
+      completedAt: endTime,
+      recordsProcessed: args.recordsProcessed,
+      errorMessage: errors?.join("; "),
+    });
   },
 });
 
