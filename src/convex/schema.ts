@@ -2339,21 +2339,29 @@ const schema = defineSchema({
   // KMS Configuration
   kmsConfigs: defineTable({
     businessId: v.id("businesses"),
+    provider: v.union(v.literal("aws"), v.literal("azure"), v.literal("google")),
     keyId: v.string(),
-    keyType: v.string(),
-    algorithm: v.string(),
-    status: v.union(v.literal("active"), v.literal("rotating"), v.literal("disabled")),
+    region: v.optional(v.string()),
+    keyVaultUrl: v.optional(v.string()),
+    projectId: v.optional(v.string()),
+    location: v.optional(v.string()),
+    keyRing: v.optional(v.string()),
+    credentials: v.optional(v.string()),
+    active: v.boolean(),
     createdAt: v.number(),
-    rotatedAt: v.optional(v.number()),
+    updatedAt: v.optional(v.number()),
   })
     .index("by_business", ["businessId"]),
 
   kmsEncryptionPolicies: defineTable({
     businessId: v.id("businesses"),
     name: v.string(),
-    description: v.optional(v.string()),
-    rules: v.any(),
-    isActive: v.boolean(),
+    description: v.string(),
+    targetTables: v.array(v.string()),
+    targetFields: v.array(v.string()),
+    encryptionLevel: v.union(v.literal("field"), v.literal("record"), v.literal("table")),
+    mandatory: v.boolean(),
+    active: v.boolean(),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
@@ -2460,12 +2468,13 @@ const schema = defineSchema({
   // KMS Key Rotations
   kmsKeyRotations: defineTable({
     businessId: v.id("businesses"),
-    keyId: v.string(),
-    oldKeyVersion: v.string(),
-    newKeyVersion: v.string(),
-    status: v.union(v.literal("pending"), v.literal("completed"), v.literal("failed")),
-    startedAt: v.number(),
-    completedAt: v.optional(v.number()),
+    configId: v.id("kmsConfigs"),
+    rotationIntervalDays: v.number(),
+    autoRotate: v.boolean(),
+    nextRotationDate: v.number(),
+    lastRotationDate: v.number(),
+    status: v.union(v.literal("scheduled"), v.literal("completed"), v.literal("failed")),
+    createdAt: v.number(),
   })
     .index("by_business", ["businessId"]),
 
@@ -2628,23 +2637,23 @@ const schema = defineSchema({
   // Revenue Attribution
   revenueTouchpoints: defineTable({
     businessId: v.id("businesses"),
-    contactId: v.optional(v.id("contacts")),
+    contactId: v.id("contacts"),
     channel: v.union(
       v.literal("email"),
       v.literal("social"),
       v.literal("paid"),
       v.literal("referral"),
+      v.literal("organic"),
       v.literal("direct")
     ),
     campaignId: v.optional(v.string()),
-    touchpointType: v.string(),
-    value: v.optional(v.number()),
     timestamp: v.number(),
     metadata: v.optional(v.any()),
   })
     .index("by_business", ["businessId"])
     .index("by_contact", ["contactId"])
-    .index("by_channel", ["channel"]),
+    .index("by_channel", ["channel"])
+    .index("by_contact_and_business", ["contactId", "businessId"]),
 
   revenueConversions: defineTable({
     businessId: v.id("businesses"),
