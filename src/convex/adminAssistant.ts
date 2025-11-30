@@ -96,7 +96,7 @@ Provide clear, actionable responses. If suggesting changes, explain the impact.`
 
       if (toolsAllowed.includes("flags")) {
         try {
-          const flags = await ctx.runQuery(api.featureFlags.listFlags as any);
+          const flags = await ctx.runQuery(api.featureFlags.getFeatureFlags as any, {});
           steps.push({
             tool: "flags",
             title: "Feature Flags",
@@ -157,9 +157,36 @@ export const chat = action({
   args: {
     message: v.string(),
     conversationHistory: v.optional(v.array(v.any())),
+    mode: v.optional(v.union(
+      v.literal("explain"),
+      v.literal("confirm"),
+      v.literal("auto")
+    )),
+    toolsAllowed: v.optional(v.array(v.string())),
+    dryRun: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
+    const { message, mode = "explain", toolsAllowed = [], dryRun = false } = args;
     const startTime = Date.now();
+    
+    // System prompt for admin assistant
+    const systemPrompt = `You are an AI admin assistant for Pikar AI platform.
+
+Your capabilities:
+- Check system health and environment status
+- List and explain feature flags
+- Review alerts and notifications
+- Provide agent configuration insights
+
+Mode: ${mode}
+- "explain": Provide read-only analysis and recommendations
+- "confirm": Suggest actions but require confirmation
+- "auto": Execute actions automatically (use cautiously)
+
+Available tools: ${toolsAllowed.join(", ")}
+Dry run: ${dryRun ? "Yes (no actual changes)" : "No (live mode)"}
+
+Provide clear, actionable responses. If suggesting changes, explain the impact.`;
     
     try {
       // Check for OpenAI API key

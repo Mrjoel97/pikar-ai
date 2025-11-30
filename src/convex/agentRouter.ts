@@ -8,6 +8,8 @@ export const route = action({
   args: {
     message: v.string(),
     context: v.optional(v.any()),
+    businessId: v.optional(v.id("businesses")),
+    agentKey: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const startTime = Date.now();

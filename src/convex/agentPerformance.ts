@@ -88,9 +88,15 @@ export const recordExecution = mutation({
     }
 
     // Record the execution
-    const executionId = await ctx.db.insert("agentExecutions", {
+      const fallbackBusiness = await ctx.db.query("businesses").first();
+      if (!agentId || (!args.businessId && !fallbackBusiness)) {
+        console.warn("Could not create execution record: missing agentId or businessId");
+        return null;
+      }
+
+      const executionId = await ctx.db.insert("agentExecutions", {
       agentId,
-      businessId: args.businessId || (await ctx.db.query("businesses").first())?._id!,
+      businessId: args.businessId || fallbackBusiness!._id,
       status: args.status,
       responseTime: args.responseTime,
       timestamp: now,
@@ -204,10 +210,72 @@ export const getAllAgentsMetrics = query({
     
     const metrics = [];
     for (const agent of catalog) {
-      const agentMetrics = await getAgentMetrics(ctx, {
-        agentKey: agent.agent_key,
-        timeRange: args.timeRange,
-      });
+      // Call the query handler directly with proper context
+      const agentMetrics = await ctx.db.query("aiAgents")
+        .withIndex("by_type", (q) => q.eq("type", agent.agent_key))
+        .collect()
+        .then(async (agents) => {
+          if (agents.length === 0) {
+            return {
+              agentKey: agent.agent_key,
+              totalExecutions: 0,
+              successCount: 0,
+              failureCount: 0,
+              successRate: 0,
+              avgResponseTime: 0,
+              recentExecutions: [],
+            };
+          }
+
+          const now = Date.now();
+          const timeRange = args.timeRange || "7d";
+          let startTime = 0;
+          if (timeRange === "24h") startTime = now - 24 * 60 * 60 * 1000;
+          else if (timeRange === "7d") startTime = now - 7 * 24 * 60 * 60 * 1000;
+          else if (timeRange === "30d") startTime = now - 30 * 24 * 60 * 60 * 1000;
+
+          const allExecutions = [];
+          for (const agent of agents) {
+            const executions = await ctx.db
+              .query("agentExecutions")
+              .withIndex("by_agent", (q) => q.eq("agentId", agent._id))
+              .filter((q) => q.gte(q.field("timestamp"), startTime))
+              .collect();
+            allExecutions.push(...executions);
+          }
+
+          const totalExecutions = allExecutions.length;
+          const successCount = allExecutions.filter((e) => e.status === "success").length;
+          const failureCount = allExecutions.filter((e) => e.status === "failure").length;
+          const successRate = totalExecutions > 0 ? (successCount / totalExecutions) * 100 : 0;
+
+          const responseTimes = allExecutions
+            .filter((e) => e.responseTime !== undefined)
+            .map((e) => e.responseTime!);
+          const avgResponseTime = responseTimes.length > 0
+            ? responseTimes.reduce((a, b) => a + b, 0) / responseTimes.length
+            : 0;
+
+          const recentExecutions = allExecutions
+            .sort((a, b) => b.timestamp - a.timestamp)
+            .slice(0, 10)
+            .map((e) => ({
+              timestamp: e.timestamp,
+              status: e.status,
+              responseTime: e.responseTime,
+              errorMessage: e.errorMessage,
+            }));
+
+          return {
+            agentKey: agent.agent_key,
+            totalExecutions,
+            successCount,
+            failureCount,
+            successRate: Math.round(successRate * 100) / 100,
+            avgResponseTime: Math.round(avgResponseTime),
+            recentExecutions,
+          };
+        });
       
       metrics.push({
         agentKey: agent.agent_key,

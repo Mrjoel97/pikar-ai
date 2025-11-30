@@ -46,7 +46,7 @@ export const getRecent = query({
       } else if (args.userId) {
         activitiesQuery = ctx.db
           .query("activityFeed")
-          .withIndex("by_user", (q) => q.eq("userId", args.userId));
+          .withIndex("by_user", (q) => q.eq("userId", args.userId as Id<"users">));
       } else {
         activitiesQuery = ctx.db.query("activityFeed");
       }
