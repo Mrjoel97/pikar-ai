@@ -38,7 +38,13 @@ export const sendMessage = action({
     dryRun: v.optional(v.boolean()),
     adminToken: v.optional(v.string()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<{
+    summaryText: string;
+    notice?: string;
+    steps: Array<{ tool: string; title: string; data: any }>;
+    mode?: string;
+    dryRun?: boolean;
+  }> => {
     const { message, mode = "explain", toolsAllowed = [], dryRun = false, adminToken } = args;
 
     // Validate admin access
@@ -116,24 +122,17 @@ Provide clear, actionable responses. If suggesting changes, explain the impact.`
         `[${s.tool}] ${s.title}: ${JSON.stringify(s.data)}`
       ).join("\n\n");
 
-      const fullPrompt = `${systemPrompt}
-
-User query: ${message}
-
-Current system context:
-${contextStr || "No context available"}
-
-Provide a helpful response based on the query and context.`;
+      const fullPrompt = `${systemPrompt}\n\nUser query: ${message}\n\nCurrent system context:\n${contextStr || "No context available"}\n\nProvide a helpful response based on the query and context.`;
 
       // Generate AI response
-      const response = await ctx.runAction(api.openai.generate, {
+      const response: any = await ctx.runAction(api.openai.generate, {
         prompt: fullPrompt,
         model: "gpt-4o-mini",
         temperature: 0.7,
         maxTokens: 500,
       });
 
-      const summaryText = (response as any)?.text || "I'm here to help with admin tasks. What would you like to know?";
+      const summaryText: string = (response as any)?.text || "I'm here to help with admin tasks. What would you like to know?";
 
       return {
         summaryText,
@@ -165,7 +164,13 @@ export const chat = action({
     toolsAllowed: v.optional(v.array(v.string())),
     dryRun: v.optional(v.boolean()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<{
+    summaryText: string;
+    notice?: string;
+    steps: Array<{ tool: string; title: string; data: any }>;
+    mode?: string;
+    dryRun?: boolean;
+  }> => {
     const { message, mode = "explain", toolsAllowed = [], dryRun = false } = args;
     const startTime = Date.now();
     
@@ -240,24 +245,17 @@ Provide clear, actionable responses. If suggesting changes, explain the impact.`
         `[${s.tool}] ${s.title}: ${JSON.stringify(s.data)}`
       ).join("\n\n");
 
-      const fullPrompt = `${systemPrompt}
-
-User query: ${message}
-
-Current system context:
-${contextStr || "No context available"}
-
-Provide a helpful response based on the query and context.`;
+      const fullPrompt = `${systemPrompt}\n\nUser query: ${message}\n\nCurrent system context:\n${contextStr || "No context available"}\n\nProvide a helpful response based on the query and context.`;
 
       // Generate AI response
-      const response = await ctx.runAction(api.openai.generate, {
+      const response: any = await ctx.runAction(api.openai.generate, {
         prompt: fullPrompt,
         model: "gpt-4o-mini",
         temperature: 0.7,
         maxTokens: 500,
       });
 
-      const summaryText = (response as any)?.text || "I'm here to help with admin tasks. What would you like to know?";
+      const summaryText: string = (response as any)?.text || "I'm here to help with admin tasks. What would you like to know?";
 
       const responseTime = Date.now() - startTime;
       
