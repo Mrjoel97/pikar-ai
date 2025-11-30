@@ -31,8 +31,11 @@ export const createCustomMetric = mutation({
       name: args.name,
       description: args.description,
       dataSource: args.dataSource,
-      definition: args.definition,
-      visualization: args.visualization,
+      metricType: args.metricType,
+      aggregationField: args.aggregationField,
+      filters: args.filters,
+      groupBy: args.groupBy,
+      formula: args.formula,
       isActive: true,
       lastCalculated: undefined,
       currentValue: undefined,
@@ -75,6 +78,7 @@ export const listCustomMetrics = query({
 export const calculateMetric = mutation({
   args: { metricId: v.id("customMetrics") },
   handler: async (ctx, args) => {
+    if (!args.metricId) throw new Error("Metric ID required");
     const metric = await ctx.db.get(args.metricId);
     if (!metric) throw new Error("Metric not found");
 

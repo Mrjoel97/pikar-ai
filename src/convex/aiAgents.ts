@@ -1,8 +1,7 @@
 import { mutation, query, internalMutation, internalQuery, action } from "./_generated/server";
 import { v } from "convex/values";
-import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
-import { api } from "./_generated/api";
+import { api, internal } from "./_generated/api";
 import {
   PikarError,
   ErrorCode,
@@ -35,27 +34,19 @@ export const initSolopreneurAgent = mutation({
       .filter((q) => q.eq(q.field("type"), "executive"))
       .first();
 
-    const agentData = {
-      name: "Executive Agent",
-      type: "executive" as const,
-      businessId: args.businessId,
-      isActive: true,
-      performance: {
-        successRate: 0,
-        tasksCompleted: 0,
-      },
-      config: {
-        businessSummary: args.businessSummary,
-        brandVoice: args.brandVoice,
-        timezone: args.timezone,
-      },
-    };
-
     if (existing) {
-      await ctx.db.patch(existing._id, agentData);
+      await ctx.db.patch(existing._id, {
+        name: "Executive Agent",
+        isActive: true,
+      });
       return existing._id;
     } else {
-      return await ctx.db.insert("aiAgents", agentData);
+      return await ctx.db.insert("aiAgents", {
+        name: "Executive Agent",
+        type: "executive" as const,
+        businessId: args.businessId,
+        isActive: true,
+      });
     }
   },
 });
@@ -598,9 +589,6 @@ export const seedEnterpriseTemplates = action({
     return { ok: true };
   },
 });
-
-// Add performance tracking helper at the end
-import { internal } from "./_generated/api";
 
 /**
  * Helper to record agent execution (call from actions)
