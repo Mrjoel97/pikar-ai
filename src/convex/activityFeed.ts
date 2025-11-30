@@ -37,15 +37,21 @@ export const getRecent = query({
 
     // Return empty array if activityFeed table doesn't exist yet
     try {
-      let query = ctx.db.query("activityFeed");
+      let activitiesQuery;
 
       if (businessId) {
-        query = query.withIndex("by_business", (q) => q.eq("businessId", businessId));
+        activitiesQuery = ctx.db
+          .query("activityFeed")
+          .withIndex("by_business", (q) => q.eq("businessId", businessId));
       } else if (args.userId) {
-        query = query.withIndex("by_user", (q) => q.eq("userId", args.userId));
+        activitiesQuery = ctx.db
+          .query("activityFeed")
+          .withIndex("by_user", (q) => q.eq("userId", args.userId));
+      } else {
+        activitiesQuery = ctx.db.query("activityFeed");
       }
 
-      const activities = await query
+      const activities = await activitiesQuery
         .order("desc")
         .take(args.limit || 20);
 
