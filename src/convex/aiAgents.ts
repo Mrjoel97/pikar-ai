@@ -27,16 +27,37 @@ export const initSolopreneurAgent = mutation({
     businessSummary: v.optional(v.string()),
     brandVoice: v.optional(v.string()),
     timezone: v.optional(v.string()),
-    automations: v.optional(
-      v.object({
-        invoicing: v.optional(v.boolean()),
-        emailDrafts: v.optional(v.boolean()),
-        socialPosts: v.optional(v.boolean()),
-      })
-    ),
-    docFileIds: v.optional(v.array(v.id("_storage"))), // optional initial uploads
   },
-  handler: (ctx, args): Promise<any> => training.initSolopreneurAgent(ctx, args),
+  handler: async (ctx, args) => {
+    const existing = await ctx.db
+      .query("aiAgents")
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .filter((q) => q.eq(q.field("type"), "executive"))
+      .first();
+
+    const agentData = {
+      name: "Executive Agent",
+      type: "executive" as const,
+      businessId: args.businessId,
+      isActive: true,
+      performance: {
+        successRate: 0,
+        tasksCompleted: 0,
+      },
+      config: {
+        businessSummary: args.businessSummary,
+        brandVoice: args.brandVoice,
+        timezone: args.timezone,
+      },
+    };
+
+    if (existing) {
+      await ctx.db.patch(existing._id, agentData);
+      return existing._id;
+    } else {
+      return await ctx.db.insert("aiAgents", agentData);
+    }
+  },
 });
 
 // Summarize recent uploads for onboarding preview

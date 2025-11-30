@@ -507,3 +507,39 @@ export const listExports = query({
       .take(20);
   },
 });
+
+export const trackEvent = mutation({
+  args: {
+    businessId: v.id("businesses"),
+    eventType: v.string(),
+    eventData: v.any(),
+    userId: v.optional(v.id("users")),
+  },
+  handler: async (ctx, args) => {
+    const eventId = await ctx.db.insert("analyticsEvents", {
+      businessId: args.businessId,
+      eventType: args.eventType,
+      eventData: args.eventData,
+      userId: args.userId,
+      timestamp: Date.now(),
+    });
+
+    return eventId;
+  },
+});
+
+export const getEventsByBusiness = query({
+  args: {
+    businessId: v.id("businesses"),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const events = await ctx.db
+      .query("analyticsEvents")
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .order("desc")
+      .take(args.limit || 50);
+
+    return events;
+  },
+});
