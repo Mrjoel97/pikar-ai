@@ -66,14 +66,14 @@ export const trackStage = mutation({
     if (currentStage) {
       await ctx.db.patch(currentStage._id, { exitedAt: now });
 
-      // Record transition
-      await ctx.db.insert("customerJourneyTransitions", {
-        businessId: args.businessId,
-        contactId: args.contactId,
-        fromStage: currentStage.stage,
-        toStage: args.stage,
-        transitionedAt: now,
-      });
+    // Record transition
+    await ctx.db.insert("customerJourneyTransitions", {
+      businessId: args.businessId,
+      contactId: args.contactId,
+      fromStage: currentStage.stage,
+      toStage: args.stage,
+      transitionedAt: now,
+    });
     } else {
       // First stage entry
       await ctx.db.insert("customerJourneyTransitions", {
@@ -91,9 +91,6 @@ export const trackStage = mutation({
       contactId: args.contactId,
       stage: args.stage,
       enteredAt: now,
-      exitedAt: undefined,
-      description: undefined,
-      metrics: undefined,
       touchpoints: [],
     });
 
@@ -127,15 +124,18 @@ export const getJourneyAnalytics = query({
     // Calculate stage distribution
     const stageDistribution: Record<string, number> = {};
     for (const stage of stages) {
-      stageDistribution[stage.stage] = (stageDistribution[stage.stage] || 0) + 1;
+      const stageKey = stage.stage || "unknown";
+      stageDistribution[stageKey] = (stageDistribution[stageKey] || 0) + 1;
     }
 
     // Calculate average durations
     const stageDurations: Record<string, number[]> = {};
     for (const stage of stages) {
+      if (!stage.enteredAt) continue;
       const duration = Math.floor((Date.now() - stage.enteredAt) / (24 * 60 * 60 * 1000));
-      if (!stageDurations[stage.stage]) stageDurations[stage.stage] = [];
-      stageDurations[stage.stage].push(duration);
+      const stageKey = stage.stage || "unknown";
+      if (!stageDurations[stageKey]) stageDurations[stageKey] = [];
+      stageDurations[stageKey].push(duration);
     }
 
     const averageDurations: Record<string, number> = {};
@@ -148,11 +148,13 @@ export const getJourneyAnalytics = query({
     // Calculate transition flow
     const transitionFlow: Record<string, Record<string, number>> = {};
     for (const transition of transitions) {
-      if (!transitionFlow[transition.fromStage]) {
-        transitionFlow[transition.fromStage] = {};
+      const fromKey = transition.fromStage || "unknown";
+      const toKey = transition.toStage || "unknown";
+      if (!transitionFlow[fromKey]) {
+        transitionFlow[fromKey] = {};
       }
-      transitionFlow[transition.fromStage][transition.toStage] =
-        (transitionFlow[transition.fromStage][transition.toStage] || 0) + 1;
+      transitionFlow[fromKey][toKey] =
+        (transitionFlow[fromKey][toKey] || 0) + 1;
     }
 
     return {
@@ -221,6 +223,7 @@ export const autoAdvanceJourneys = internalMutation({
           contactId: contact._id,
           stage: "awareness",
           enteredAt: now,
+          touchpoints: [],
         });
         
         await ctx.db.insert("customerJourneyTransitions", {
@@ -229,7 +232,6 @@ export const autoAdvanceJourneys = internalMutation({
           fromStage: "none",
           toStage: "awareness",
           transitionedAt: now,
-          triggeredBy: "automation",
         });
         advanced++;
       } else if (currentStage.stage === "awareness" && lastEngaged > sevenDaysAgo) {
@@ -241,6 +243,7 @@ export const autoAdvanceJourneys = internalMutation({
           contactId: contact._id,
           stage: "consideration",
           enteredAt: now,
+          touchpoints: [],
         });
         
         await ctx.db.insert("customerJourneyTransitions", {
@@ -249,8 +252,6 @@ export const autoAdvanceJourneys = internalMutation({
           fromStage: "awareness",
           toStage: "consideration",
           transitionedAt: now,
-          triggeredBy: "automation",
-          metadata: { reason: "recent_engagement" },
         });
         advanced++;
       } else if (currentStage.stage === "consideration" && lastEngaged > sevenDaysAgo) {
@@ -262,6 +263,7 @@ export const autoAdvanceJourneys = internalMutation({
           contactId: contact._id,
           stage: "decision",
           enteredAt: now,
+          touchpoints: [],
         });
         
         await ctx.db.insert("customerJourneyTransitions", {
@@ -270,8 +272,6 @@ export const autoAdvanceJourneys = internalMutation({
           fromStage: "consideration",
           toStage: "decision",
           transitionedAt: now,
-          triggeredBy: "automation",
-          metadata: { reason: "high_engagement" },
         });
         advanced++;
       }
@@ -298,15 +298,15 @@ export const getContactsByStage = query({
   handler: async (ctx, args) => {
     const stages = await ctx.db
       .query("customerJourneyStages")
-      .withIndex("by_business_and_stage", (q) => 
-        q.eq("businessId", args.businessId).eq("stage", args.stage)
-      )
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .filter((q) => q.eq(q.field("stage"), args.stage))
       .collect();
 
     const currentStages = stages.filter((s) => !s.exitedAt);
     
     const contacts = await Promise.all(
       currentStages.map(async (s) => {
+        if (!s.contactId) return null;
         const contact = await ctx.db.get(s.contactId);
         return contact ? { ...contact, stageEnteredAt: s.enteredAt } : null;
       })
@@ -325,9 +325,8 @@ export const getTouchpointAnalytics = query({
 
     const touchpoints = await ctx.db
       .query("revenueTouchpoints")
-      .withIndex("by_business_and_timestamp", (q) =>
-        q.eq("businessId", args.businessId).gte("timestamp", cutoff)
-      )
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .filter((q) => q.gte(q.field("timestamp"), cutoff))
       .collect();
 
     // Channel distribution
@@ -391,10 +390,13 @@ export const getConversionFunnel = query({
       // Count contacts who reached this stage
       const stageRecords = await ctx.db
         .query("customerJourneyStages")
-        .withIndex("by_business_and_stage", (q) =>
-          q.eq("businessId", args.businessId).eq("stage", stage as any)
+        .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+        .filter((q) => 
+          q.and(
+            q.eq(q.field("stage"), stage),
+            q.gte(q.field("enteredAt"), cutoff)
+          )
         )
-        .filter((q) => q.gte(q.field("enteredAt"), cutoff))
         .collect();
 
       const count = stageRecords.length;
@@ -542,12 +544,11 @@ export const getOptimizationSuggestions = query({
     // Check touchpoint diversity
     const recentTouchpoints = await ctx.db
       .query("revenueTouchpoints")
-      .withIndex("by_business_and_timestamp", (q) =>
-        q.eq("businessId", args.businessId).gte("timestamp", Date.now() - 30 * 24 * 60 * 60 * 1000)
-      )
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .filter((q) => q.gte(q.field("timestamp"), Date.now() - 30 * 24 * 60 * 60 * 1000))
       .collect();
 
-    const uniqueChannels = new Set(recentTouchpoints.map((t) => t.channel));
+    const uniqueChannels = new Set(recentTouchpoints.map((t) => t.channel || "unknown"));
     if (uniqueChannels.size < 3) {
       suggestions.push({
         type: "info",
@@ -566,7 +567,14 @@ export const trackTouchpoint = mutation({
   args: {
     businessId: v.id("businesses"),
     contactId: v.id("contacts"),
-    channel: v.string(),
+    channel: v.union(
+      v.literal("email"),
+      v.literal("social"),
+      v.literal("paid"),
+      v.literal("organic"),
+      v.literal("referral"),
+      v.literal("direct")
+    ),
     campaignId: v.optional(v.string()),
     metadata: v.optional(v.any()),
   },
@@ -576,7 +584,6 @@ export const trackTouchpoint = mutation({
       contactId: args.contactId,
       channel: args.channel,
       campaignId: args.campaignId,
-      metadata: args.metadata,
       timestamp: Date.now(),
     });
   },
@@ -620,7 +627,7 @@ export const moveContactToStage = mutation({
       contactId: args.contactId,
       stage: args.newStage,
       enteredAt: Date.now(),
-      metadata: args.metadata,
+      touchpoints: [],
     });
 
     // Record transition
@@ -630,8 +637,6 @@ export const moveContactToStage = mutation({
       fromStage: fromStage as any,
       toStage: args.newStage,
       transitionedAt: Date.now(),
-      triggeredBy: args.triggeredBy,
-      metadata: args.metadata,
     });
 
     return { success: true, fromStage, toStage: args.newStage };
