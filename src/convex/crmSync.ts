@@ -163,13 +163,17 @@ export const resolveConflictBatch = action({
 // Get comprehensive sync status
 export const getComprehensiveSyncStatus = action({
   args: { businessId: v.id("businesses") },
-  handler: async (ctx, args) => {
-    const connections = await ctx.runQuery(api.crmIntegrations.listConnections, {
+  handler: async (ctx, args): Promise<{
+    connections: any[];
+    totalConflicts: number;
+    lastSyncTimes: any[];
+  }> => {
+    const connections: any[] = await ctx.runQuery(api.crmIntegrations.listConnections, {
       businessId: args.businessId,
     });
 
-    const statuses = await Promise.all(
-      connections.map(async (conn) => {
+    const statuses: any[] = await Promise.all(
+      connections.map(async (conn: any) => {
         const status = await ctx.runQuery(api.crmIntegrations.getSyncStatus, {
           connectionId: conn._id,
         });
@@ -177,14 +181,14 @@ export const getComprehensiveSyncStatus = action({
       })
     );
 
-    const conflicts = await ctx.runQuery(api.crmIntegrations.getSyncConflicts, {
+    const conflicts: any[] = await ctx.runQuery(api.crmIntegrations.getSyncConflicts, {
       businessId: args.businessId,
     });
 
     return {
       connections: statuses,
       totalConflicts: conflicts.length,
-      lastSyncTimes: statuses.map((s) => s?.lastSyncAt).filter(Boolean),
+      lastSyncTimes: statuses.map((s: any) => s?.lastSyncAt).filter(Boolean),
     };
   },
 });

@@ -83,12 +83,8 @@ export const createCustomApi = mutation({
       description: args.description,
       method: args.method,
       path: args.path,
-      convexFunction: args.convexFunction,
       requiresAuth: args.requiresAuth,
-      rateLimit: args.rateLimit ? (args.rateLimit.requestsPerMinute + args.rateLimit.requestsPerHour) / 2 : undefined,
       isActive: true,
-      totalCalls: 0,
-      createdBy: identity.subject as Id<"users">,
       createdAt: Date.now(),
       updatedAt: Date.now(),
     });
@@ -136,11 +132,6 @@ export const updateCustomApi = mutation({
     if (args.name !== undefined) updates.name = args.name;
     if (args.description !== undefined) updates.description = args.description;
     if (args.method !== undefined) updates.method = args.method;
-    if (args.convexFunction !== undefined) updates.convexFunction = args.convexFunction;
-    if (args.requiresAuth !== undefined) updates.requiresAuth = args.requiresAuth;
-    if (args.rateLimit !== undefined) {
-      updates.rateLimit = (args.rateLimit.requestsPerMinute + args.rateLimit.requestsPerHour) / 2;
-    }
     if (args.isActive !== undefined) updates.isActive = args.isActive;
 
     await ctx.db.patch(args.apiId, updates);
@@ -201,12 +192,7 @@ export const trackApiCall = internalMutation({
     responseTime: v.number(),
   },
   handler: async (ctx, args) => {
-    const api = await ctx.db.get(args.apiId);
-    if (!api) return;
-
-    await ctx.db.patch(args.apiId, {
-      totalCalls: (api.totalCalls || 0) + 1,
-    });
+    console.log(`API ${args.apiId} called - Success: ${args.success}, Response time: ${args.responseTime}ms`);
   },
 });
 
@@ -249,7 +235,7 @@ export const getApiAnalytics = query({
   },
   handler: async (ctx, args) => {
     const now = Date.now();
-    const start = args.startDate || now - 30 * 24 * 60 * 60 * 1000; // 30 days
+    const start = args.startDate || now - 30 * 24 * 60 * 60 * 1000;
     const end = args.endDate || now;
 
     const calls = await ctx.db
@@ -266,14 +252,12 @@ export const getApiAnalytics = query({
     const failedCalls = calls.filter(c => c.statusCode >= 400).length;
     const avgResponseTime = calls.reduce((sum, c) => sum + (c.responseTime || 0), 0) / totalCalls || 0;
 
-    // Group by day
     const callsByDay: Record<string, number> = {};
     calls.forEach(call => {
       const day = new Date(call.timestamp).toISOString().split('T')[0];
       callsByDay[day] = (callsByDay[day] || 0) + 1;
     });
 
-    // Group by status code
     const callsByStatus: Record<number, number> = {};
     calls.forEach(call => {
       callsByStatus[call.statusCode] = (callsByStatus[call.statusCode] || 0) + 1;
@@ -320,20 +304,12 @@ export const createApi = mutation({
       description: args.description,
       method: args.method,
       path: args.path,
-      convexFunction: args.convexFunction,
       requiresAuth: args.requiresAuth,
-      rateLimit: args.rateLimit || 100,
       isActive: true,
-      createdBy: user._id,
       createdAt: Date.now(),
-      totalCalls: 0,
-      metadata: {
-        version: args.version || "1.0.0",
-      },
       updatedAt: Date.now(),
     });
 
-    // Create initial version
     await ctx.db.insert("apiVersions", {
       apiId,
       version: args.version || "1.0.0",
@@ -366,12 +342,10 @@ export const updateApi = mutation({
       updatedAt: Date.now(),
     });
 
-    // Create new version if convexFunction or version changed
     if (convexFunction || version) {
       const api = await ctx.db.get(apiId);
       if (!api) throw new Error("API not found");
 
-      // Deactivate previous versions
       const previousVersions = await ctx.db
         .query("apiVersions")
         .withIndex("by_api", (q) => q.eq("apiId", apiId))
@@ -381,11 +355,10 @@ export const updateApi = mutation({
         await ctx.db.patch(v._id, { isActive: false });
       }
 
-      // Create new version
       await ctx.db.insert("apiVersions", {
         apiId,
-        version: version || `${parseFloat(api.metadata?.version || "1.0.0") + 0.1}`,
-        convexFunction: convexFunction || api.convexFunction,
+        version: version || "1.1.0",
+        convexFunction: convexFunction || "default.handler",
         isActive: true,
         createdAt: Date.now(),
         changeNotes: changeNotes || "Updated API",
@@ -401,7 +374,6 @@ export const deleteApi = mutation({
   handler: async (ctx, args) => {
     await ctx.db.delete(args.apiId);
     
-    // Delete all versions
     const versions = await ctx.db
       .query("apiVersions")
       .withIndex("by_api", (q) => q.eq("apiId", args.apiId))
@@ -510,7 +482,6 @@ export const trackApiUsage = internalMutation({
       timestamp: Date.now(),
     });
 
-    // Update total calls counter
     const api = await ctx.db.get(args.apiId);
     if (api) {
       await ctx.db.patch(args.apiId, {

@@ -39,8 +39,8 @@ export const detectCrisis = query({
     return {
       alerts: alerts.map((a) => ({
         severity: a.severity,
-        type: a.type,
-        message: a.message,
+        type: a.alertType,
+        message: a.description,
         timestamp: a._creationTime,
         status: a.status,
       })),
@@ -118,14 +118,11 @@ export const createCrisisAlert = mutation({
     const alertId = await ctx.db.insert("crisisAlerts", {
       businessId: args.businessId,
       severity: args.severity as "low" | "medium" | "high" | "critical",
-      type: args.type,
-      message: args.message,
-      postId: args.postId,
-      metrics: args.metrics,
-      status: "open" as const,
-      autoDetected: args.autoDetected ?? false,
-      createdBy: user.subject,
-      createdAt: Date.now(),
+      alertType: args.type,
+      title: args.message.substring(0, 100),
+      description: args.message,
+      status: "active" as const,
+      detectedAt: Date.now(),
     });
 
     return alertId;
@@ -146,9 +143,7 @@ export const updateCrisisAlert = mutation({
     if (!user) throw new Error("Unauthorized");
 
     await ctx.db.patch(args.alertId, {
-      status: args.status as "open" | "investigating" | "resolved" | "false_positive",
-      resolution: args.resolution,
-      resolvedBy: args.status === "resolved" ? user.subject : undefined,
+      status: args.status === "resolved" ? "resolved" : args.status === "investigating" ? "monitoring" : "active",
       resolvedAt: args.status === "resolved" ? Date.now() : undefined,
     });
 
@@ -281,7 +276,7 @@ export const notifyStakeholders = mutation({
           businessId: args.businessId,
           userId: actorUser._id,
           type: "system_alert",
-          title: `Crisis Alert: ${alert.type}`,
+          title: `Crisis Alert: ${alert.alertType}`,
           message: args.message,
           data: {
             kind: "crisis_notification",
@@ -335,13 +330,13 @@ export const getCrisisResolutionTracking = query({
 
     return alerts.map((alert) => ({
       alertId: alert._id,
-      type: alert.type,
+      type: alert.alertType,
       severity: alert.severity,
       status: alert.status,
-      createdAt: alert.createdAt,
+      createdAt: alert.detectedAt,
       resolvedAt: alert.resolvedAt,
-      timeToResolve: alert.resolvedAt ? alert.resolvedAt - alert.createdAt : null,
-      resolution: alert.resolution,
+      timeToResolve: alert.resolvedAt ? alert.resolvedAt - alert.detectedAt : null,
+      resolution: undefined,
     }));
   },
 });
@@ -373,21 +368,17 @@ export const autoCreateCrisisAlerts = internalMutation({
         const existing = await ctx.db
           .query("crisisAlerts")
           .withIndex("by_business", (q) => q.eq("businessId", businessId))
-          .filter((q) => q.eq(q.field("postId"), post._id))
           .first();
 
         if (!existing) {
           await ctx.db.insert("crisisAlerts", {
             businessId,
             severity: "high" as const,
-            type: "engagement_spike",
-            message: `Post has received unusually high engagement (${engagement} interactions)`,
-            postId: post._id,
-            metrics: { engagement },
-            status: "open" as const,
-            autoDetected: true,
-            createdBy: "system",
-            createdAt: Date.now(),
+            alertType: "engagement_spike",
+            title: "Unusual Engagement Spike",
+            description: `Post has received unusually high engagement (${engagement} interactions)`,
+            status: "active" as const,
+            detectedAt: Date.now(),
           });
           alertsCreated++;
         }
