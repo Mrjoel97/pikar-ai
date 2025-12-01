@@ -73,8 +73,6 @@ export const trackStage = mutation({
         fromStage: currentStage.stage,
         toStage: args.stage,
         transitionedAt: now,
-        triggeredBy: args.triggeredBy || "manual",
-        metadata: args.metadata,
       });
     } else {
       // First stage entry
@@ -84,8 +82,6 @@ export const trackStage = mutation({
         fromStage: "none",
         toStage: args.stage,
         transitionedAt: now,
-        triggeredBy: args.triggeredBy || "manual",
-        metadata: args.metadata,
       });
     }
 
@@ -95,7 +91,10 @@ export const trackStage = mutation({
       contactId: args.contactId,
       stage: args.stage,
       enteredAt: now,
-      metadata: args.metadata,
+      exitedAt: undefined,
+      description: undefined,
+      metrics: undefined,
+      touchpoints: [],
     });
 
     return stageId;

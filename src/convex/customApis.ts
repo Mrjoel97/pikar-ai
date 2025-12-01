@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { query, mutation, internalMutation, internalAction } from "./_generated/server";
+import { internal } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
 
 /**
@@ -415,7 +416,7 @@ export const getRateLimitStatus = query({
       .filter((q) => q.eq(q.field("clientId"), args.clientId))
       .collect();
 
-    const limit = api.rateLimit || 100;
+    const limit = 100; // Default rate limit
     const remaining = Math.max(0, limit - recentCalls.length);
     const resetTime = now + oneHour;
 
@@ -445,7 +446,7 @@ export const getApiDocs = query({
       method: api.method,
       path: api.path,
       requiresAuth: api.requiresAuth,
-      rateLimit: api.rateLimit,
+      rateLimit: 100, // Default rate limit
       versions: versions.map(v => ({
         version: v.version,
         isActive: v.isActive,
@@ -490,13 +491,6 @@ export const trackApiUsage = internalMutation({
       endpoint: args.endpoint,
       timestamp: Date.now(),
     });
-
-    const api = await ctx.db.get(args.apiId);
-    if (api) {
-      await ctx.db.patch(args.apiId, {
-        totalCalls: (api.totalCalls || 0) + 1,
-      });
-    }
   },
 });
 

@@ -475,7 +475,7 @@ export const markScheduleRun = internalMutation({
     if (!sched) return;
     const now = Date.now();
     const next = computeNextRun(sched.frequency as any, now);
-    await ctx.db.patch(scheduleId, { lastRun: now, nextRun: next });
+    await ctx.db.patch(scheduleId, { lastRunAt: now, nextRunAt: next });
   },
 });
 
