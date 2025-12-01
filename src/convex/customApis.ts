@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { query, mutation, internalMutation } from "./_generated/server";
+import { query, mutation, internalMutation, internalAction } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
 
 /**
@@ -188,11 +188,20 @@ export const deleteCustomApi = mutation({
 export const trackApiCall = internalMutation({
   args: {
     apiId: v.id("customApis"),
-    success: v.boolean(),
+    clientId: v.string(),
+    statusCode: v.number(),
     responseTime: v.number(),
   },
   handler: async (ctx, args) => {
-    console.log(`API ${args.apiId} called - Success: ${args.success}, Response time: ${args.responseTime}ms`);
+    // Insert into apiCallLogs table
+    await ctx.db.insert("apiCallLogs", {
+      apiId: args.apiId,
+      clientId: args.clientId,
+      statusCode: args.statusCode,
+      responseTime: args.responseTime,
+      endpoint: "", // Add endpoint if needed
+      timestamp: Date.now(),
+    });
   },
 });
 
@@ -488,5 +497,64 @@ export const trackApiUsage = internalMutation({
         totalCalls: (api.totalCalls || 0) + 1,
       });
     }
+  },
+});
+
+export const executeApi = internalAction({
+  args: {
+    apiId: v.id("customApis"),
+    requestData: v.any(),
+  },
+  handler: async (ctx, args) => {
+    const api = await ctx.runQuery(internal.customApis.getApi, {
+      apiId: args.apiId,
+    });
+
+    if (!api) {
+      throw new Error("API not found");
+    }
+
+    // Track the API call
+    await ctx.runMutation(internal.customApis.trackApiCall, {
+      apiId: args.apiId,
+      clientId: "internal",
+      statusCode: 200,
+      responseTime: 0,
+    });
+
+    // Execute the API logic here
+    return { success: true, data: args.requestData };
+  },
+});
+
+export const getApiMetrics = query({
+  args: {
+    apiId: v.id("customApis"),
+  },
+  handler: async (ctx, args) => {
+    const api = await ctx.db.get(args.apiId);
+    if (!api) {
+      return null;
+    }
+
+    // Get call logs for metrics
+    const logs = await ctx.db
+      .query("apiCallLogs")
+      .withIndex("by_api_and_timestamp", (q) => q.eq("apiId", args.apiId))
+      .collect();
+
+    const totalCalls = logs.length;
+    const avgResponseTime = logs.length > 0
+      ? logs.reduce((sum, log) => sum + log.responseTime, 0) / logs.length
+      : 0;
+
+    return {
+      api,
+      metrics: {
+        totalCalls,
+        avgResponseTime,
+        lastCall: logs.length > 0 ? logs[logs.length - 1].timestamp : null,
+      },
+    };
   },
 });
