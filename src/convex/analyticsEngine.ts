@@ -164,9 +164,6 @@ export const getMetricTrend = query({
   handler: async (ctx, args) => {
     const cutoff = args.timeRange ? Date.now() - args.timeRange : Date.now() - 30 * 24 * 60 * 60 * 1000;
 
-    if (!args.metricId) {
-      return [];
-    }
     const history = await ctx.db
       .query("metricHistory")
       .withIndex("by_metric", (q) => q.eq("metricId", args.metricId))

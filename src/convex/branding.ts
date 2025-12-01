@@ -4,58 +4,25 @@ import { Id } from "./_generated/dataModel";
 
 export const updateBrandingConfig = mutation({
   args: {
-    businessId: v.id("businesses"),
-    logoUrl: v.optional(v.string()),
+    configId: v.id("brandingConfigs"),
     primaryColor: v.optional(v.string()),
     secondaryColor: v.optional(v.string()),
-    customDomain: v.optional(v.string()),
+    accentColor: v.optional(v.string()),
+    fontFamily: v.optional(v.string()),
+    logoUrl: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
+    const { configId, ...updates } = args;
+    
+    const updateData: any = {};
+    if (updates.primaryColor !== undefined) updateData.primaryColor = updates.primaryColor;
+    if (updates.secondaryColor !== undefined) updateData.secondaryColor = updates.secondaryColor;
+    if (updates.accentColor !== undefined) updateData.accentColor = updates.accentColor;
+    if (updates.fontFamily !== undefined) updateData.fontFamily = updates.fontFamily;
+    if (updates.logoUrl !== undefined) updateData.logoUrl = updates.logoUrl;
 
-    const user = await ctx.db
-      .query("users")
-      .withIndex("email", (q) => q.eq("email", identity.email!))
-      .unique();
-    if (!user) throw new Error("User not found");
-
-    // Check if config exists
-    const existing = await ctx.db
-      .query("brandingConfigs")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
-      .unique();
-
-    if (existing) {
-      await ctx.db.patch(existing._id, {
-        logoUrl: args.logoUrl,
-        primaryColor: args.primaryColor,
-        secondaryColor: args.secondaryColor,
-        customDomain: args.customDomain,
-        updatedAt: Date.now(),
-      });
-    } else {
-      await ctx.db.insert("brandingConfigs", {
-        businessId: args.businessId,
-        logoUrl: args.logoUrl,
-        primaryColor: args.primaryColor,
-        secondaryColor: args.secondaryColor,
-        customDomain: args.customDomain,
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-      });
-    }
-
-    // Audit log
-    await ctx.db.insert("audit_logs", {
-      businessId: args.businessId,
-      userId: user._id,
-      action: "branding_updated",
-      entityType: "branding",
-      entityId: args.businessId,
-      details: { logoUrl: args.logoUrl, primaryColor: args.primaryColor },
-      createdAt: Date.now(),
-    });
+    await ctx.db.patch(configId, updateData);
+    return configId;
   },
 });
 

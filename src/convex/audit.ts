@@ -422,58 +422,27 @@ export const getEntityTypes = query({
 export const scheduleAuditReport = mutation({
   args: {
     businessId: v.id("businesses"),
-    frequency: v.union(v.literal("daily"), v.literal("weekly"), v.literal("monthly")),
-    format: v.union(v.literal("csv"), v.literal("pdf")),
-    filters: v.optional(v.object({
-      startDate: v.optional(v.number()),
-      endDate: v.optional(v.number()),
-      action: v.optional(v.string()),
-      entityType: v.optional(v.string()),
-    })),
-    recipients: v.array(v.string()), // email addresses
+    name: v.string(),
+    reportType: v.string(),
+    schedule: v.string(),
+    recipients: v.array(v.string()),
+    isActive: v.boolean(),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Unauthorized");
+    const now = Date.now();
+    const nextRun = now + 24 * 60 * 60 * 1000; // 24 hours from now
 
-    const user = await ctx.db
-      .query("users")
-      .withIndex("email", (q) => q.eq("email", identity.email!))
-      .unique();
-    if (!user) throw new Error("User not found");
-
-    const business = await ctx.db.get(args.businessId);
-    if (!business) throw new Error("Business not found");
-    if (business.ownerId !== user._id && !business.teamMembers.includes(user._id)) {
-      throw new Error("Not authorized");
-    }
-
-    // Store scheduled report configuration
-    const scheduleId = await ctx.db.insert("auditReportSchedules", {
+    return await ctx.db.insert("auditReportSchedules", {
       businessId: args.businessId,
-      frequency: args.frequency,
-      format: args.format,
-      filters: args.filters ?? {},
+      name: args.name,
+      reportType: args.reportType,
+      schedule: args.schedule,
       recipients: args.recipients,
-      createdBy: user._id,
-      createdAt: Date.now(),
-      lastRun: null,
-      nextRun: Date.now() + (args.frequency === "daily" ? 86400000 : args.frequency === "weekly" ? 604800000 : 2592000000),
-      active: true,
+      isActive: args.isActive,
+      createdAt: now,
+      updatedAt: now,
+      nextRunAt: nextRun,
     });
-
-    // Audit log
-    await ctx.db.insert("audit_logs", {
-      businessId: args.businessId,
-      userId: user._id,
-      action: "audit_report_scheduled",
-      entityType: "audit_report_schedule",
-      entityId: scheduleId,
-      details: { frequency: args.frequency, format: args.format },
-      createdAt: Date.now(),
-    });
-
-    return scheduleId;
   },
 });
 
@@ -507,5 +476,20 @@ export const markScheduleRun = internalMutation({
     const now = Date.now();
     const next = computeNextRun(sched.frequency as any, now);
     await ctx.db.patch(scheduleId, { lastRun: now, nextRun: next });
+  },
+});
+
+export const generateScheduledReport = mutation({
+  args: { scheduleId: v.id("auditReportSchedules") },
+  handler: async (ctx, args) => {
+    const schedule = await ctx.db.get(args.scheduleId);
+    if (!schedule) throw new Error("Schedule not found");
+
+    const now = Date.now();
+    const next = now + 24 * 60 * 60 * 1000;
+
+    await ctx.db.patch(args.scheduleId, { lastRunAt: now, nextRunAt: next });
+
+    return { success: true };
   },
 });

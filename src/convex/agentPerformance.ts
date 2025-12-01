@@ -114,6 +114,7 @@ export const recordExecution = mutation({
 export const getAgentMetrics = query({
   args: {
     agentKey: v.string(),
+    businessId: v.optional(v.id("businesses")),
     timeRange: v.optional(v.union(
       v.literal("24h"),
       v.literal("7d"),
@@ -131,10 +132,16 @@ export const getAgentMetrics = query({
     else if (timeRange === "30d") startTime = now - 30 * 24 * 60 * 60 * 1000;
 
     // Find all agent instances with this type
-    const agents = await ctx.db
-      .query("aiAgents")
-      .withIndex("by_type", (q) => q.eq("type", args.agentKey))
-      .collect();
+    const agents = args.businessId
+      ? await ctx.db
+          .query("aiAgents")
+          .withIndex("by_business", (q) => q.eq("businessId", args.businessId!))
+          .filter((q) => q.eq(q.field("type"), args.agentKey))
+          .collect()
+      : await ctx.db
+          .query("aiAgents")
+          .withIndex("by_type", (q) => q.eq("type", args.agentKey))
+          .collect();
 
     if (agents.length === 0) {
       return {
