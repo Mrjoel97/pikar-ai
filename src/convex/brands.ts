@@ -87,7 +87,6 @@ export const createBrand = mutation({
       primaryColor: args.primaryColor || "#000000",
       secondaryColor: args.secondaryColor || "#666666",
       isDefault: args.isDefault ?? false,
-      isActive: true,
       createdBy: user._id,
       createdAt: Date.now(),
       updatedAt: Date.now(),

@@ -20,9 +20,8 @@ export const write = internalMutation({
       businessId: args.businessId,
       action: args.action,
       entityType: args.entityType,
-      // Ensure non-optional string
       entityId: args.entityId ?? "",
-      details: {
+      metadata: {
         ...args.details,
         correlationId: args.details?.correlationId,
         businessId: args.businessId,
@@ -48,7 +47,7 @@ export const logGovernanceEvent = internalMutation({
       action: args.action,
       entityType: "workflow",
       entityId: args.workflowId,
-      details: args.details ?? {},
+      metadata: args.details ?? {},
       createdAt: Date.now(),
     });
   },
@@ -91,7 +90,7 @@ export const logWin = mutation({
       action: "win",
       entityType: "productivity",
       entityId: "",
-      details: {
+      metadata: {
         winType: args.winType,
         timeSavedMinutes: args.timeSavedMinutes,
         ...(args.details ?? {}),
@@ -231,11 +230,11 @@ export const winsSummary = query({
       if (l.createdAt < since) break;
       if (l.action === "win") {
         wins += 1;
-        const ts = Number(l.details?.timeSavedMinutes ?? 0) || 0;
+        const ts = Number(l.metadata?.timeSavedMinutes ?? 0) || 0;
         totalTimeSavedMinutes += ts;
         recent.push({
           at: l.createdAt,
-          winType: typeof l.details?.winType === "string" ? l.details.winType : undefined,
+          winType: typeof l.metadata?.winType === "string" ? l.metadata.winType : undefined,
           timeSavedMinutes: ts,
         });
       }
@@ -366,12 +365,12 @@ export const searchAuditLogs = query({
     if (args.searchTerm) {
       const term = args.searchTerm.toLowerCase();
       logs = logs.filter((l) => {
-        const detailsStr = JSON.stringify(l.details || {}).toLowerCase();
+        const metadataStr = JSON.stringify(l.metadata || {}).toLowerCase();
         return (
           l.action.toLowerCase().includes(term) ||
           l.entityType.toLowerCase().includes(term) ||
           l.entityId.toLowerCase().includes(term) ||
-          detailsStr.includes(term)
+          metadataStr.includes(term)
         );
       });
     }

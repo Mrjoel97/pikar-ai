@@ -66,12 +66,12 @@ export const trackStage = mutation({
     if (currentStage) {
       await ctx.db.patch(currentStage._id, { exitedAt: now });
 
-    // Record transition
+      // Record transition
     await ctx.db.insert("customerJourneyTransitions", {
       businessId: args.businessId,
       contactId: args.contactId,
-      fromStage: currentStage.stage,
-      toStage: args.stage,
+      fromStage: currentStage.stage as string,
+      toStage: args.stage as string,
       transitionedAt: now,
     });
     } else {
@@ -91,7 +91,7 @@ export const trackStage = mutation({
       contactId: args.contactId,
       stage: args.stage,
       enteredAt: now,
-      touchpoints: [],
+      touchpoints: [] as string[],
     });
 
     return stageId;
@@ -223,7 +223,7 @@ export const autoAdvanceJourneys = internalMutation({
           contactId: contact._id,
           stage: "awareness",
           enteredAt: now,
-          touchpoints: [],
+          touchpoints: [] as string[],
         });
         
         await ctx.db.insert("customerJourneyTransitions", {
@@ -243,7 +243,7 @@ export const autoAdvanceJourneys = internalMutation({
           contactId: contact._id,
           stage: "consideration",
           enteredAt: now,
-          touchpoints: [],
+          touchpoints: [] as string[],
         });
         
         await ctx.db.insert("customerJourneyTransitions", {
@@ -263,7 +263,7 @@ export const autoAdvanceJourneys = internalMutation({
           contactId: contact._id,
           stage: "decision",
           enteredAt: now,
-          touchpoints: [],
+          touchpoints: [] as string[],
         });
         
         await ctx.db.insert("customerJourneyTransitions", {
@@ -627,7 +627,7 @@ export const moveContactToStage = mutation({
       contactId: args.contactId,
       stage: args.newStage,
       enteredAt: Date.now(),
-      touchpoints: [],
+      touchpoints: [] as string[],
     });
 
     // Record transition
