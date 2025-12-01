@@ -1,28 +1,53 @@
 import { v } from "convex/values";
-import { mutation, query, internalMutation } from "./_generated/server";
+import { query, mutation, internalMutation } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
 
-export const updateBrandingConfig = mutation({
+export const getBrandConfig = query({
+  args: { businessId: v.id("businesses") },
+  handler: async (ctx, args) => {
+    const config = await ctx.db
+      .query("brandingConfigs")
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .first();
+
+    return config || null;
+  },
+});
+
+export const updateBrandConfig = mutation({
   args: {
-    configId: v.id("brandingConfigs"),
-    primaryColor: v.optional(v.string()),
-    secondaryColor: v.optional(v.string()),
+    businessId: v.id("businesses"),
+    primaryColor: v.string(),
+    secondaryColor: v.string(),
     accentColor: v.optional(v.string()),
-    fontFamily: v.optional(v.string()),
     logoUrl: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const { configId, ...updates } = args;
-    
-    const updateData: any = {};
-    if (updates.primaryColor !== undefined) updateData.primaryColor = updates.primaryColor;
-    if (updates.secondaryColor !== undefined) updateData.secondaryColor = updates.secondaryColor;
-    if (updates.accentColor !== undefined) updateData.accentColor = updates.accentColor;
-    if (updates.fontFamily !== undefined) updateData.fontFamily = updates.fontFamily;
-    if (updates.logoUrl !== undefined) updateData.logoUrl = updates.logoUrl;
+    const existing = await ctx.db
+      .query("brandingConfigs")
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .first();
 
-    await ctx.db.patch(configId, updateData);
-    return configId;
+    if (existing) {
+      await ctx.db.patch(existing._id, {
+        primaryColor: args.primaryColor,
+        secondaryColor: args.secondaryColor,
+        accentColor: args.accentColor,
+        logoUrl: args.logoUrl,
+        updatedAt: Date.now(),
+      });
+      return existing._id;
+    } else {
+      return await ctx.db.insert("brandingConfigs", {
+        businessId: args.businessId,
+        primaryColor: args.primaryColor,
+        secondaryColor: args.secondaryColor,
+        accentColor: args.accentColor,
+        logoUrl: args.logoUrl,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      });
+    }
   },
 });
 
@@ -33,8 +58,8 @@ export const getBrandingConfig = query({
 
     const config = await ctx.db
       .query("brandingConfigs")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId as Id<"businesses">))
-      .unique();
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .first();
 
     return config;
   },
@@ -121,7 +146,7 @@ export const createThemeVersion = mutation({
       brandId: args.brandId,
       name: args.name,
       description: args.description,
-      version: versionNumber,
+      version: versionNumber.toString(),
       theme: args.theme,
       isActive: false,
       createdBy: user._id,
@@ -264,7 +289,7 @@ export const uploadBrandAsset = mutation({
       businessId: args.businessId,
       brandId: args.brandId,
       name: args.name,
-      type: args.type,
+      type: args.type === "icon" || args.type === "font" ? "other" : args.type,
       url: args.url,
       fileSize: args.fileSize,
       mimeType: args.mimeType,
@@ -359,8 +384,7 @@ export const configureCustomDomain = mutation({
       businessId: args.businessId,
       brandId: args.brandId,
       domain: args.domain,
-      sslEnabled: args.sslEnabled ?? true,
-      verified: false,
+      status: "pending" as const,
       dnsRecords: {
         type: "CNAME",
         name: args.domain,
@@ -392,7 +416,7 @@ export const verifyDomain = mutation({
     // In production, this would check DNS records
     // For now, we'll simulate verification
     await ctx.db.patch(args.domainId, {
-      verified: true,
+      status: "verified" as const,
       verifiedAt: Date.now(),
     });
 
@@ -426,6 +450,8 @@ export const getCustomDomains = query({
 /**
  * Track branding analytics
  */
+import { internalMutation } from "./_generated/server";
+
 export const trackBrandingEvent = internalMutation({
   args: {
     businessId: v.id("businesses"),

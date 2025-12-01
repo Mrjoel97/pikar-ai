@@ -37,6 +37,7 @@ http.route({
         return new Response(JSON.stringify({ error: "workflowId and startedBy are required" }), { status: 400 });
       }
 
+      const { api } = await import("./_generated/api");
       const simulateRef = (api as any).workflows?.simulateWorkflow;
       const runRef = (api as any).workflows?.runWorkflow;
 

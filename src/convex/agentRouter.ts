@@ -2,95 +2,35 @@
 
 import { action } from "./_generated/server";
 import { v } from "convex/values";
-import { internal } from "./_generated/api";
+import { api } from "./_generated/api";
 
-export const route = action({
+export const routeRequest: any = action({
   args: {
-    message: v.string(),
+    businessId: v.id("businesses"),
+    request: v.string(),
     context: v.optional(v.any()),
-    businessId: v.optional(v.id("businesses")),
-    agentKey: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const startTime = Date.now();
-    
-    try {
-      // Check for OpenAI API key
-      if (!process.env.OPENAI_API_KEY) {
-        return {
-          response: "AI features require OpenAI API key. Please configure OPENAI_API_KEY in your environment variables.",
-        };
-      }
+    // Simple routing logic - can be enhanced with AI
+    const agents = await ctx.runQuery(api.aiAgents.listByBusiness, {
+      businessId: args.businessId,
+    });
 
-      const contextBlocks: string[] = [];
-      const sources: any[] = [];
-
-      // Perform semantic search to retrieve relevant context
-      if (args.businessId) {
-        try {
-          const searchResults: any = await ctx.runAction("knowledge:semanticSearch" as any, {
-            text: args.message,
-            matchThreshold: 0.7,
-            matchCount: 5,
-            agentType: args.agentKey || "executive",
-            businessId: args.businessId,
-          });
-
-          if (searchResults && Array.isArray(searchResults) && searchResults.length > 0) {
-            for (const result of searchResults) {
-              contextBlocks.push(`[Context from ${result.documentId || "knowledge base"}]: ${result.preview}`);
-              sources.push({
-                documentId: result.documentId,
-                preview: result.preview,
-                score: result.score,
-              });
-            }
-          }
-        } catch (searchError) {
-          console.warn("Vector search failed, continuing without context:", searchError);
-        }
-      }
-
-      // Prepare enhanced prompt with context
-      const enhancedMessage = contextBlocks.length > 0 
-        ? `${args.message}\n\nRelevant context:\n${contextBlocks.join('\n\n')}`
-        : args.message;
-
-      // Generate response using OpenAI integration
-      const response: any = await ctx.runAction(
-        "openai:generate" as any,
-        {
-          prompt: enhancedMessage,
-          maxTokens: 500,
-        }
-      );
-
-      const responseTime = Date.now() - startTime;
-      
-      // Record successful execution
-      await ctx.runMutation(internal.agentPerformance.recordExecution, {
-        agentKey: "agent_router",
-        status: "success" as const,
-        responseTime,
-      });
-
-      return { 
-        response: response.text || "I apologize, but I couldn't generate a response.", 
-        sources: sources.length > 0 ? sources : undefined 
-      };
-    } catch (error: any) {
-      const responseTime = Date.now() - startTime;
-      
-      // Record failed execution
-      await ctx.runMutation(internal.agentPerformance.recordExecution, {
-        agentKey: "agent_router",
-        status: "failure" as const,
-        responseTime,
-        errorMessage: error.message,
-      });
-
-      throw error;
+    if (agents.length === 0) {
+      throw new Error("No agents available");
     }
+
+    // Route to first active agent for now
+    const activeAgent = agents.find(a => a.isActive);
+    if (!activeAgent) {
+      throw new Error("No active agents available");
+    }
+
+    return {
+      agentId: activeAgent._id,
+      agentName: activeAgent.name,
+      confidence: 0.8,
+    };
   },
 });
 
