@@ -5,13 +5,13 @@ import { action } from "./_generated/server";
 import { api } from "./_generated/api";
 
 // Action to generate certificate
-export const getCertificate = action({
+export const getCertificate: any = action({
   args: {
     userId: v.id("users"),
     courseId: v.id("learningCourses"),
   },
-  handler: async (ctx, args) => {
-    const progress = await ctx.runQuery(api.learningContent.getCourseProgress, {
+  handler: async (ctx: any, args): Promise<any> => {
+    const progress = await ctx.runQuery((api as any).learningContent.getCourseProgress, {
       userId: args.userId,
       courseId: args.courseId,
     });
@@ -20,11 +20,11 @@ export const getCertificate = action({
       throw new Error("Course not completed");
     }
 
-    const course = await ctx.runQuery(api.learningContent.getCourseById, {
+    const course = await ctx.runQuery((api as any).learningContent.getCourseById, {
       courseId: args.courseId,
     });
 
-    const user = await ctx.runQuery(api.users.currentUser, {});
+    const user = await ctx.runQuery((api as any).users.currentUser, {});
 
     if (!user || !course) {
       throw new Error("User or course not found");
@@ -33,7 +33,7 @@ export const getCertificate = action({
     // Calculate average quiz score
     const quizScores = Object.values(progress.quizScores || {}) as number[];
     const averageScore = quizScores.length > 0
-      ? quizScores.reduce((a, b) => a + b, 0) / quizScores.length
+      ? quizScores.reduce((a: number, b: number) => a + b, 0) / quizScores.length
       : 0;
 
     // Generate certificate data

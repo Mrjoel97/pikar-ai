@@ -12,7 +12,7 @@ export const routeRequest: any = action({
   },
   handler: async (ctx: any, args) => {
     // Simple routing logic - can be enhanced with AI
-    const agents = await ctx.runQuery(api.aiAgents.getByBusiness, {
+    const agents = await (ctx as any).runQuery("aiAgents:getByBusiness" as any, {
       businessId: args.businessId,
     });
 

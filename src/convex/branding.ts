@@ -7,7 +7,7 @@ export const getBrandConfig = query({
   handler: async (ctx: any, args) => {
     const config = await ctx.db
       .query("brandingConfigs")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId))
       .first();
 
     return config || null;
@@ -25,7 +25,7 @@ export const updateBrandConfig = mutation({
   handler: async (ctx: any, args) => {
     const existing = await ctx.db
       .query("brandingConfigs")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId))
       .first();
 
     if (existing) {
@@ -58,7 +58,7 @@ export const getBrandingConfig = query({
 
     const config = await ctx.db
       .query("brandingConfigs")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId))
       .first();
 
     return config;
@@ -79,7 +79,7 @@ export const verifyCustomDomain = mutation({
 
     const user = await ctx.db
       .query("users")
-      .withIndex("email", (q) => q.eq("email", identity.email!))
+      .withIndex("email", (q: any) => q.eq("email", identity.email!))
       .unique();
     if (!user) throw new Error("User not found");
 
@@ -129,14 +129,14 @@ export const createThemeVersion = mutation({
 
     const user = await ctx.db
       .query("users")
-      .withIndex("email", (q) => q.eq("email", identity.email!))
+      .withIndex("email", (q: any) => q.eq("email", identity.email!))
       .unique();
     if (!user) throw new Error("User not found");
 
     // Get current version number
     const existingVersions = await ctx.db
       .query("themeVersions")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId))
       .collect();
 
     const versionNumber = existingVersions.length + 1;
@@ -179,13 +179,13 @@ export const getThemeVersions = query({
   handler: async (ctx: any, args) => {
     let query = ctx.db
       .query("themeVersions")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId));
+      .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId));
 
     const versions = await query.collect();
 
     // Filter by brand if specified
     return args.brandId
-      ? versions.filter((v) => v.brandId === args.brandId)
+      ? versions.filter((v: any) => v.brandId === args.brandId)
       : versions;
   },
 });
@@ -203,7 +203,7 @@ export const activateThemeVersion = mutation({
 
     const user = await ctx.db
       .query("users")
-      .withIndex("email", (q) => q.eq("email", identity.email!))
+      .withIndex("email", (q: any) => q.eq("email", identity.email!))
       .unique();
     if (!user) throw new Error("User not found");
 
@@ -213,7 +213,7 @@ export const activateThemeVersion = mutation({
     // Deactivate all other versions for this business/brand
     const allVersions = await ctx.db
       .query("themeVersions")
-      .withIndex("by_business", (q) => q.eq("businessId", version.businessId))
+      .withIndex("by_business", (q: any) => q.eq("businessId", version.businessId))
       .collect();
 
     for (const v of allVersions) {
@@ -228,7 +228,7 @@ export const activateThemeVersion = mutation({
     // Update branding config with active theme
     const existingConfig = await ctx.db
       .query("brandingConfigs")
-      .withIndex("by_business", (q) => q.eq("businessId", version.businessId))
+      .withIndex("by_business", (q: any) => q.eq("businessId", version.businessId))
       .unique();
 
     if (existingConfig) {
@@ -281,7 +281,7 @@ export const uploadBrandAsset = mutation({
 
     const user = await ctx.db
       .query("users")
-      .withIndex("email", (q) => q.eq("email", identity.email!))
+      .withIndex("email", (q: any) => q.eq("email", identity.email!))
       .unique();
     if (!user) throw new Error("User not found");
 
@@ -322,18 +322,18 @@ export const getBrandAssets = query({
   handler: async (ctx: any, args) => {
     let query = ctx.db
       .query("brandAssets")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId));
+      .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId));
 
     let assets = await query.collect();
 
     // Filter by brand if specified
     if (args.brandId) {
-      assets = assets.filter((a) => a.brandId === args.brandId);
+      assets = assets.filter((a: any) => a.brandId === args.brandId);
     }
 
     // Filter by type if specified
     if (args.type) {
-      assets = assets.filter((a) => a.type === args.type);
+      assets = assets.filter((a: any) => a.type === args.type);
     }
 
     return assets;
@@ -376,7 +376,7 @@ export const configureCustomDomain = mutation({
 
     const user = await ctx.db
       .query("users")
-      .withIndex("email", (q) => q.eq("email", identity.email!))
+      .withIndex("email", (q: any) => q.eq("email", identity.email!))
       .unique();
     if (!user) throw new Error("User not found");
 
@@ -435,12 +435,12 @@ export const getCustomDomains = query({
   handler: async (ctx: any, args) => {
     let query = ctx.db
       .query("customDomains")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId));
+      .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId));
 
     let domains = await query.collect();
 
     if (args.brandId) {
-      domains = domains.filter((d) => d.brandId === args.brandId);
+      domains = domains.filter((d: any) => d.brandId === args.brandId);
     }
 
     return domains;
@@ -481,26 +481,26 @@ export const getBrandingAnalytics = query({
   handler: async (ctx: any, args) => {
     let query = ctx.db
       .query("brandingAnalytics")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId));
+      .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId));
 
     let events = await query.collect();
 
     // Filter by brand
     if (args.brandId) {
-      events = events.filter((e) => e.brandId === args.brandId);
+      events = events.filter((e: any) => e.brandId === args.brandId);
     }
 
     // Filter by date range
     if (args.startDate) {
-      events = events.filter((e) => e.timestamp >= args.startDate!);
+      events = events.filter((e: any) => e.timestamp >= args.startDate!);
     }
     if (args.endDate) {
-      events = events.filter((e) => e.timestamp <= args.endDate!);
+      events = events.filter((e: any) => e.timestamp <= args.endDate!);
     }
 
     // Aggregate analytics
     const totalEvents = events.length;
-    const eventsByType = events.reduce((acc, e) => {
+    const eventsByType = events.reduce((acc: any, e: any) => {
       acc[e.eventType] = (acc[e.eventType] || 0) + 1;
       return acc;
     }, {} as Record<string, number>);
@@ -531,11 +531,11 @@ export const getActiveTheme = query({
   handler: async (ctx: any, args) => {
     const versions = await ctx.db
       .query("themeVersions")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId))
       .collect();
 
     const activeVersion = versions.find(
-      (v) => v.isActive && (!args.brandId || v.brandId === args.brandId)
+      (v: any) => v.isActive && (!args.brandId || v.brandId === args.brandId)
     );
 
     return activeVersion || null;

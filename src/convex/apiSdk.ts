@@ -14,7 +14,7 @@ export const generateSdk = action({
     code: v.string(),
   }),
   handler: async (ctx, args): Promise<{ language: string; code: string }> => {
-    const apiData = await ctx.runQuery(api.customApis.getApiById, { apiId: args.apiId });
+    const apiData = await (ctx as any).runQuery("customApis:getApiById" as any, { apiId: args.apiId });
     if (!apiData) throw new Error("API not found");
 
     const baseUrl = process.env.CONVEX_SITE_URL || "https://your-app.convex.site";

@@ -31,7 +31,7 @@ export const createExperiment = mutation({
 
     const user = await ctx.db
       .query("users")
-      .withIndex("email", (q) => q.eq("email", identity.email!))
+      .withIndex("email", (q: any) => q.eq("email", identity.email!))
       .unique();
     if (!user) throw new Error("User not found");
 

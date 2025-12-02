@@ -26,7 +26,7 @@ export const createInvoiceTemplate = mutation({
       createdBy: user.subject as Id<"users">,
       createdAt: Date.now(),
       updatedAt: Date.now(),
-    });
+    } as any);
 
     return templateId;
   },
@@ -54,7 +54,7 @@ export const updateInvoiceTemplate = mutation({
     await ctx.db.patch(templateId, {
       ...updates,
       updatedAt: Date.now(),
-    });
+    } as any);
 
     return templateId;
   },
@@ -110,7 +110,7 @@ export const createInvoice = mutation({
       createdBy: user.subject as Id<"users">,
       createdAt: Date.now(),
       updatedAt: Date.now(),
-    });
+    } as any);
 
     // Log audit event
     await ctx.db.insert("audit_logs", {
@@ -143,7 +143,7 @@ export const markInvoicePaid = mutation({
       status: "paid",
       paidAt: args.paidAt || Date.now(),
       updatedAt: Date.now(),
-    });
+    } as any);
 
     // Log audit event
     await ctx.db.insert("audit_logs", {

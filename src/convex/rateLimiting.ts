@@ -30,19 +30,19 @@ export const getRateLimitUsage = query({
     // Query API usage logs (you'll need to create this table in schema)
     const usage = await ctx.db
       .query("apiUsageLogs")
-      .withIndex("by_business_and_time", (q) =>
+      .withIndex("by_business_and_time", (q: any) =>
         q.eq("businessId", args.businessId).gte("timestamp", startTime)
       )
       .collect();
 
     const totalRequests = usage.length;
-    const successfulRequests = usage.filter(u => u.statusCode < 400).length;
-    const rateLimitedRequests = usage.filter(u => u.statusCode === 429).length;
-    const errorRequests = usage.filter(u => u.statusCode >= 500).length;
+    const successfulRequests = usage.filter((u: any) => u.statusCode < 400).length;
+    const rateLimitedRequests = usage.filter((u: any) => u.statusCode === 429).length;
+    const errorRequests = usage.filter((u: any) => u.statusCode >= 500).length;
 
     // Group by endpoint
     const byEndpoint: Record<string, number> = {};
-    usage.forEach(u => {
+    usage.forEach((u: any) => {
       byEndpoint[u.endpoint] = (byEndpoint[u.endpoint] || 0) + 1;
     });
 

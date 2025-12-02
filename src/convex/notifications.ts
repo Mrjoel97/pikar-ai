@@ -856,13 +856,13 @@ export const handleNotificationAction = mutation({
           status: "approved",
           approvedBy: user._id,
           approvedAt: Date.now(),
-        });
+        } as any);
       } else if (args.action === "reject") {
         await ctx.db.patch(approvalId, {
           status: "rejected",
           reviewedBy: user._id,
           /* removed rejectedAt: not present in schema */
-        });
+        } as any);
       }
     }
 

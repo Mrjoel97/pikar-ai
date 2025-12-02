@@ -8,10 +8,10 @@ import { Id } from "./_generated/dataModel";
  */
 export const listWebhooks = query({
   args: { businessId: v.id("businesses") },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     return await ctx.db
       .query("webhooks")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId))
       .collect();
   },
 });
@@ -21,7 +21,7 @@ export const listWebhooks = query({
  */
 export const getWebhook = query({
   args: { webhookId: v.id("webhooks") },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) {
       throw new Error("Unauthorized");
@@ -40,15 +40,15 @@ export const getWebhookAnalytics = query({
     startDate: v.optional(v.number()),
     endDate: v.optional(v.number()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const now = Date.now();
     const start = args.startDate || now - 7 * 24 * 60 * 60 * 1000; // 7 days
     const end = args.endDate || now;
 
     const deliveries = await ctx.db
       .query("webhookDeliveries")
-      .withIndex("by_webhook", (q) => q.eq("webhookId", args.webhookId))
-      .filter((q) => 
+      .withIndex("by_webhook", (q: any) => q.eq("webhookId", args.webhookId))
+      .filter((q: any) => 
         q.and(
           q.gte(q.field("createdAt"), start),
           q.lte(q.field("createdAt"), end)
@@ -57,13 +57,13 @@ export const getWebhookAnalytics = query({
       .collect();
 
     const totalDeliveries = deliveries.length;
-    const successful = deliveries.filter(d => d.status === "success").length;
-    const failed = deliveries.filter(d => d.status === "failed").length;
-    const pending = deliveries.filter(d => d.status === "pending").length;
+    const successful = deliveries.filter((d: any) => d.status === "success").length;
+    const failed = deliveries.filter((d: any) => d.status === "failed").length;
+    const pending = deliveries.filter((d: any) => d.status === "pending").length;
 
     // Group by day
     const deliveriesByDay: Record<string, { success: number; failed: number }> = {};
-    deliveries.forEach(delivery => {
+    deliveries.forEach((delivery: any) => {
       const day = new Date(delivery.createdAt).toISOString().split('T')[0];
       if (!deliveriesByDay[day]) {
         deliveriesByDay[day] = { success: 0, failed: 0 };
@@ -73,7 +73,7 @@ export const getWebhookAnalytics = query({
     });
 
     // Average attempts
-    const avgAttempts = deliveries.reduce((sum, d) => sum + d.attempts, 0) / totalDeliveries || 0;
+    const avgAttempts = deliveries.reduce((sum: number, d: any) => sum + d.attempts, 0) / totalDeliveries || 0;
 
     return {
       totalDeliveries,
@@ -93,7 +93,7 @@ export const getWebhookAnalytics = query({
  */
 export const getWebhookTemplates = query({
   args: {},
-  handler: async (ctx) => {
+  handler: async (ctx: any) => {
     return [
       {
         id: "workflow-complete",
@@ -151,13 +151,13 @@ export const createWebhook = mutation({
       retryDelay: v.number(),
     })),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Unauthorized");
 
     const user = await ctx.db
       .query("users")
-      .withIndex("email", (q) => q.eq("email", identity.email!))
+      .withIndex("email", (q: any) => q.eq("email", identity.email!))
       .first();
     if (!user) throw new Error("User not found");
 
@@ -187,7 +187,7 @@ export const updateWebhook = mutation({
     events: v.optional(v.array(v.string())),
     active: v.optional(v.boolean()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const { webhookId, ...updates } = args;
     await ctx.db.patch(webhookId, {
       ...updates,
@@ -201,7 +201,7 @@ export const updateWebhook = mutation({
  */
 export const deleteWebhook = mutation({
   args: { webhookId: v.id("webhooks") },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     await ctx.db.delete(args.webhookId);
   },
 });
@@ -211,7 +211,7 @@ export const deleteWebhook = mutation({
  */
 export const testWebhook = mutation({
   args: { webhookId: v.id("webhooks") },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const webhook = await ctx.db.get(args.webhookId);
     if (!webhook) throw new Error("Webhook not found");
 
@@ -223,7 +223,7 @@ export const testWebhook = mutation({
     };
 
     // Schedule webhook delivery
-    await ctx.scheduler.runAfter(0, internal.webhooksActions.deliverWebhook, {
+    await ctx.scheduler.runAfter(0, (internal as any).webhooksActions.deliverWebhook, {
       webhookId: args.webhookId,
       event: "webhook.test",
       payload: testPayload,
@@ -241,10 +241,10 @@ export const getWebhookDeliveries = query({
     webhookId: v.id("webhooks"),
     limit: v.optional(v.number()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const deliveries = await ctx.db
       .query("webhookDeliveries")
-      .withIndex("by_webhook", (q) => q.eq("webhookId", args.webhookId))
+      .withIndex("by_webhook", (q: any) => q.eq("webhookId", args.webhookId))
       .order("desc")
       .take(args.limit || 50);
 
@@ -257,12 +257,12 @@ export const getWebhookDeliveries = query({
  */
 export const retryWebhookDelivery = mutation({
   args: { deliveryId: v.id("webhookDeliveries") },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const delivery = await ctx.db.get(args.deliveryId);
     if (!delivery) throw new Error("Delivery not found");
 
     // Schedule retry
-    await ctx.scheduler.runAfter(0, internal.webhooksActions.deliverWebhook, {
+    await ctx.scheduler.runAfter(0, (internal as any).webhooksActions.deliverWebhook, {
       webhookId: delivery.webhookId,
       event: delivery.event,
       payload: delivery.payload,
@@ -286,7 +286,7 @@ export const recordDelivery = internalMutation({
     errorMessage: v.optional(v.string()),
     responseStatus: v.optional(v.number()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     await ctx.db.insert("webhookDeliveries", {
       webhookId: args.webhookId,
       businessId: args.businessId,
@@ -308,7 +308,7 @@ export const recordDelivery = internalMutation({
  */
 export const getWebhookStats = query({
   args: { webhookId: v.id("webhooks") },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) {
       throw new Error("Unauthorized");
@@ -316,12 +316,12 @@ export const getWebhookStats = query({
 
     const deliveries = await ctx.db
       .query("webhookDeliveries")
-      .withIndex("by_webhook", (q) => q.eq("webhookId", args.webhookId))
+      .withIndex("by_webhook", (q: any) => q.eq("webhookId", args.webhookId))
       .collect();
 
     const total = deliveries.length;
-    const successful = deliveries.filter((d) => d.status === "success").length;
-    const failed = deliveries.filter((d) => d.status === "failed").length;
+    const successful = deliveries.filter((d: any) => d.status === "success").length;
+    const failed = deliveries.filter((d: any) => d.status === "failed").length;
 
     return {
       total,

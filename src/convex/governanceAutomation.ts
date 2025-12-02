@@ -213,12 +213,12 @@ export const getRemediationHistory = query({
     if (args.businessId) {
       remediations = await ctx.db
         .query("governanceRemediations")
-        .withIndex("by_business", (q) => q.eq("businessId", args.businessId!))
+        .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId!))
         .collect();
     } else if (args.workflowId) {
       remediations = await ctx.db
         .query("governanceRemediations")
-        .withIndex("by_workflow", (q) => q.eq("workflowId", args.workflowId!))
+        .withIndex("by_workflow", (q: any) => q.eq("workflowId", args.workflowId!))
         .collect();
     } else {
       remediations = await ctx.db.query("governanceRemediations").collect();
@@ -226,11 +226,11 @@ export const getRemediationHistory = query({
 
     // Filter by status if provided
     if (args.status) {
-      remediations = remediations.filter((r) => r.status === args.status);
+      remediations = remediations.filter((r: any) => r.status === args.status);
     }
 
     // Sort by most recent first
-    remediations.sort((a, b) => b.appliedAt - a.appliedAt);
+    remediations.sort((a: any, b: any) => b.appliedAt - a.appliedAt);
 
     // Apply limit
     if (args.limit) {
@@ -239,7 +239,7 @@ export const getRemediationHistory = query({
 
     // Enrich with workflow details
     const enriched = await Promise.all(
-      remediations.map(async (rem) => {
+      remediations.map(async (rem: any) => {
         const workflow = await ctx.db.get(rem.workflowId);
         return {
           ...rem,
@@ -322,7 +322,7 @@ export const checkAndAutoEscalate = internalMutation({
       // Load settings per business
       const settings = await ctx.db
         .query("governanceAutomationSettings")
-        .withIndex("by_business", (q) => q.eq("businessId", bizId))
+        .withIndex("by_business", (q: any) => q.eq("businessId", bizId))
         .first();
 
       if (!settings) return 0;
@@ -333,7 +333,7 @@ export const checkAndAutoEscalate = internalMutation({
       // Get all workflows for this business
       const workflows = await ctx.db
         .query("workflows")
-        .withIndex("by_business", (q) => q.eq("businessId", bizId))
+        .withIndex("by_business", (q: any) => q.eq("businessId", bizId))
         .collect();
 
       // Count violations by type per workflow
@@ -361,8 +361,8 @@ export const checkAndAutoEscalate = internalMutation({
           // Check if already escalated (pending)
           const existing = await ctx.db
             .query("governanceEscalations")
-            .withIndex("by_workflow", (q) => q.eq("workflowId", data.workflowId))
-            .filter((q) => q.eq(q.field("status"), "pending"))
+            .withIndex("by_workflow", (q: any) => q.eq("workflowId", data.workflowId))
+            .filter((q: any) => q.eq(q.field("status"), "pending"))
             .first();
 
           if (!existing) {
@@ -417,25 +417,25 @@ export const getEscalations = query({
 
     const escalations = await ctx.db
       .query("governanceEscalations")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId!))
+      .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId!))
       .collect();
 
     // Filter by status if provided
     const filtered = args.status
-      ? escalations.filter((e) => e.status === args.status)
+      ? escalations.filter((e: any) => e.status === args.status)
       : escalations;
 
     // Get automation settings for SLA calculation
     const settings = await ctx.db
       .query("governanceAutomationSettings")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId!))
+      .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId!))
       .first();
 
     const escalationSlaHours = 48; // Default 48 hours for escalation resolution
 
     // Enrich with workflow details and SLA tracking
     const enriched = await Promise.all(
-      filtered.map(async (esc) => {
+      filtered.map(async (esc: any) => {
         const workflow = await ctx.db.get(esc.workflowId);
         const now = Date.now();
         const slaDeadline = esc.createdAt + escalationSlaHours * 60 * 60 * 1000;
@@ -513,7 +513,7 @@ export const getGovernanceScoreTrend = query({
     const days = args.days || 30;
     const workflows = await ctx.db
       .query("workflows")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId!))
+      .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId!))
       .collect();
 
     const total = workflows.length;
@@ -530,7 +530,7 @@ export const getGovernanceScoreTrend = query({
 
     // Calculate current score
     const compliant = workflows.filter(
-      (w) => !w.governanceHealth || w.governanceHealth.score >= 80
+      (w: any) => !w.governanceHealth || w.governanceHealth.score >= 80
     ).length;
     const currentScore = Math.round((compliant / total) * 100);
 
@@ -549,7 +549,7 @@ export const getGovernanceScoreTrend = query({
 
     // Breakdown by department (using region as proxy)
     const byDepartment: Record<string, { compliant: number; total: number }> = {};
-    workflows.forEach((w) => {
+    workflows.forEach((w: any) => {
       const dept = w.region || "general";
       if (!byDepartment[dept]) {
         byDepartment[dept] = { compliant: 0, total: 0 };
@@ -568,7 +568,7 @@ export const getGovernanceScoreTrend = query({
       role_diversity: 0,
     };
 
-    workflows.forEach((w) => {
+    workflows.forEach((w: any) => {
       if (w.governanceHealth?.issues) {
         w.governanceHealth.issues.forEach((issue: string) => {
           if (issue.includes("approval step")) byPolicyType.missing_approval++;
@@ -615,7 +615,7 @@ export const getAutomationSettings = query({
 
     const settings = await ctx.db
       .query("governanceAutomationSettings")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId!))
+      .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId!))
       .first();
 
     return (
@@ -656,7 +656,7 @@ export const updateAutomationSettings = mutation({
   handler: async (ctx: any, args) => {
     const existing = await ctx.db
       .query("governanceAutomationSettings")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId))
       .first();
 
     if (existing) {

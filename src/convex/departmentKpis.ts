@@ -17,7 +17,7 @@ export const getMarketingKpis = query({
       v.literal("1y")
     )),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     // Guest-safe: return demo data if no businessId
     if (!args.businessId) {
       return {
@@ -106,7 +106,7 @@ export const getSalesKpis = query({
       v.literal("1y")
     )),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     // Guest-safe: return demo data
     if (!args.businessId) {
       return {
@@ -194,7 +194,7 @@ export const getOpsKpis = query({
       v.literal("1y")
     )),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     // Guest-safe: return demo data
     if (!args.businessId) {
       return {
@@ -276,7 +276,7 @@ export const getFinanceKpis = query({
       v.literal("1y")
     )),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     // Guest-safe: return demo data
     if (!args.businessId) {
       return {
@@ -369,7 +369,7 @@ export const getCrossDepartmentAnalytics = query({
       v.literal("1y")
     )),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     return {
       // Marketing → Sales alignment
       leadToCustomerConversion: {
@@ -424,7 +424,7 @@ export const getBudgetTracking = query({
       v.literal("1y")
     )),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     return {
       summary: {
         totalBudget: 500000,
@@ -464,7 +464,7 @@ export const getPerformanceBenchmarks = query({
     businessId: v.id("businesses"),
     industry: v.optional(v.string()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     return {
       marketing: {
         metric: "CAC",
@@ -510,7 +510,7 @@ export const getResourceAllocation = query({
   args: {
     businessId: v.id("businesses"),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     return {
       currentAllocation: [
         { department: "Marketing", headcount: 8, budget: 100000, revenue: 320000, roiPerHead: 40000 },
@@ -559,7 +559,7 @@ export const getCampaignDrilldown = query({
       v.literal("1y")
     )),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     return {
       campaign: {
         id: args.campaignId || "campaign_001",
@@ -603,7 +603,7 @@ export const getDealPipelineDrilldown = query({
     stage: v.optional(v.string()),
     repId: v.optional(v.string()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     return {
       deals: [
         { id: "deal_001", name: "Acme Corp", value: 25000, stage: "Proposal", probability: 60, rep: "Sarah Chen", daysInStage: 8, nextAction: "Follow-up call" },
@@ -640,7 +640,7 @@ export const exportDepartmentData = mutation({
       v.literal("1y")
     )),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     // In production, this would generate actual export files
     // For now, return metadata about the export
     return {
@@ -663,7 +663,7 @@ export const collectDepartmentKpis = internalMutation({
   args: {
     businessId: v.id("businesses"),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const businessId = args.businessId;
     const now = Date.now();
     const dateKey = new Date(now).toISOString().split('T')[0]; // YYYY-MM-DD
@@ -677,17 +677,17 @@ export const collectDepartmentKpis = internalMutation({
     // === MARKETING KPIs ===
     const campaigns = await ctx.db
       .query("emailCampaigns")
-      .withIndex("by_business_and_status", (q) => q.eq("businessId", businessId))
-      .filter((q) => q.gte(q.field("_creationTime"), cutoff30d))
+      .withIndex("by_business_and_status", (q: any) => q.eq("businessId", businessId))
+      .filter((q: any) => q.gte(q.field("_creationTime"), cutoff30d))
       .collect();
 
     const contacts = await ctx.db
       .query("contacts")
-      .withIndex("by_business", (q) => q.eq("businessId", businessId))
+      .withIndex("by_business", (q: any) => q.eq("businessId", businessId))
       .collect();
 
     const totalSpend = campaigns.length * 500; // Estimate $500 per campaign
-    const totalRevenue = campaigns.filter(c => c.status === "sent").length * 2500;
+    const totalRevenue = campaigns.filter((c: any) => c.status === "sent").length * 2500;
     const marketingROI = totalSpend > 0 ? totalRevenue / totalSpend : 0;
     const avgCAC = contacts.length > 0 ? totalSpend / contacts.length : 0;
     const conversionRate = contacts.length > 0 ? (campaigns.length / contacts.length) * 100 : 0;
@@ -695,44 +695,44 @@ export const collectDepartmentKpis = internalMutation({
     // === SALES KPIs ===
     const deals = await ctx.db
       .query("crmDeals")
-      .withIndex("by_business", (q) => q.eq("businessId", businessId))
+      .withIndex("by_business", (q: any) => q.eq("businessId", businessId))
       .collect();
 
-    const closedDeals = deals.filter(d => d.stage === "Closed Won");
+    const closedDeals = deals.filter((d: any) => d.stage === "Closed Won");
     const totalDeals = deals.length;
     const winRate = totalDeals > 0 ? (closedDeals.length / totalDeals) * 100 : 0;
     const avgDealSize = closedDeals.length > 0 
-      ? closedDeals.reduce((sum, d) => sum + (d.value || 0), 0) / closedDeals.length 
+      ? closedDeals.reduce((sum: any, d: any) => sum + (d.value || 0), 0) / closedDeals.length 
       : 0;
     const pipelineVelocity = 28; // Days - would need more complex calculation
 
     // === OPERATIONS KPIs ===
     const workflowRuns = await ctx.db
       .query("workflowRuns")
-      .withIndex("by_business", (q) => q.eq("businessId", businessId))
-      .filter((q) => q.gte(q.field("startedAt"), cutoff7d))
+      .withIndex("by_business", (q: any) => q.eq("businessId", businessId))
+      .filter((q: any) => q.gte(q.field("startedAt"), cutoff7d))
       .collect();
 
-    const completedRuns = workflowRuns.filter(r => r.status === "succeeded");
+    const completedRuns = workflowRuns.filter((r: any) => r.status === "succeeded");
     const avgCycleTime = completedRuns.length > 0
-      ? completedRuns.reduce((sum, r) => {
+      ? completedRuns.reduce((sum: any, r: any) => {
           const duration = (r.completedAt || now) - r.startedAt;
           return sum + duration;
         }, 0) / completedRuns.length / (1000 * 60 * 60 * 24) // Convert to days
       : 0;
     const throughput = workflowRuns.length / 7; // Per day
     const defectRate = workflowRuns.length > 0 
-      ? (workflowRuns.filter(r => r.status === "failed").length / workflowRuns.length) * 100 
+      ? (workflowRuns.filter((r: any) => r.status === "failed").length / workflowRuns.length) * 100 
       : 0;
 
     // === FINANCE KPIs ===
     const revenueEvents = await ctx.db
       .query("revenueEvents")
-      .withIndex("by_business", (q) => q.eq("businessId", businessId))
-      .filter((q) => q.gte(q.field("timestamp"), cutoff30d))
+      .withIndex("by_business", (q: any) => q.eq("businessId", businessId))
+      .filter((q: any) => q.gte(q.field("timestamp"), cutoff30d))
       .collect();
 
-    const totalCashFlow = revenueEvents.reduce((sum, e) => sum + e.amount, 0);
+    const totalCashFlow = revenueEvents.reduce((sum: any, e: any) => sum + e.amount, 0);
     const monthlyRevenue = totalCashFlow / (30 / 30); // Normalize to monthly
     const burnRate = 45000; // Would need expense tracking
     const runway = burnRate > 0 ? (totalCashFlow / burnRate) : 0;
@@ -740,7 +740,7 @@ export const collectDepartmentKpis = internalMutation({
     // Store aggregated KPIs in dashboardKpis table
     const existingSnapshot = await ctx.db
       .query("dashboardKpis")
-      .withIndex("by_business_and_date", (q) => 
+      .withIndex("by_business_and_date", (q: any) => 
         q.eq("businessId", businessId).eq("date", dateKey)
       )
       .first();
@@ -750,7 +750,7 @@ export const collectDepartmentKpis = internalMutation({
       date: dateKey,
       // Marketing
       visitors: contacts.length * 10, // Estimate
-      subscribers: contacts.filter(c => c.status === "subscribed").length,
+      subscribers: contacts.filter((c: any) => c.status === "subscribed").length,
       engagement: conversionRate,
       revenue: totalRevenue,
       // Deltas (would calculate from previous day)
@@ -799,7 +799,7 @@ export const collectDepartmentKpis = internalMutation({
  */
 export const collectAllBusinessKpis = internalMutation({
   args: {},
-  handler: async (ctx) => {
+  handler: async (ctx: any) => {
     const businesses = await ctx.db.query("businesses").collect();
     
     let collected = 0;

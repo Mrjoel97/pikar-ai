@@ -64,7 +64,7 @@ export function AgentPerformanceMonitor() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {allMetrics.filter(m => m.active).length}
+              {allMetrics.filter((m: any) => m.active).length}
             </div>
             <p className="text-xs text-muted-foreground">
               Out of {allMetrics.length} total

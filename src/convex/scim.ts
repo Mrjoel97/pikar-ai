@@ -55,7 +55,7 @@ export const getAttributeMappings = query({
   handler: async (ctx: any, args) => {
     const mappings = await ctx.db
       .query("scimAttributeMappings")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId))
       .collect();
 
     return mappings.length > 0 ? mappings : [
@@ -113,7 +113,7 @@ export const updateAttributeMappings = mutation({
     // Delete existing mappings
     const existing = await ctx.db
       .query("scimAttributeMappings")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId))
       .collect();
 
     for (const mapping of existing) {
@@ -157,7 +157,7 @@ export const syncUserFromIdP = internalMutation({
     // Check if user exists by email
     const existingUser = await ctx.db
       .query("users")
-      .withIndex("email", (q) => q.eq("email", args.email))
+      .withIndex("email", (q: any) => q.eq("email", args.email))
       .first();
 
     let userId: Id<"users">;
@@ -182,7 +182,7 @@ export const syncUserFromIdP = internalMutation({
     // Store SCIM mapping
     const existingMapping = await ctx.db
       .query("scimUserMappings")
-      .withIndex("by_scim_id", (q) => q.eq("scimId", args.scimId))
+      .withIndex("by_scim_id", (q: any) => q.eq("scimId", args.scimId))
       .first();
 
     if (existingMapping) {
@@ -238,7 +238,7 @@ export const syncGroupFromIdP = internalMutation({
     // Check if group exists
     const existingGroup = await ctx.db
       .query("scimGroupMappings")
-      .withIndex("by_scim_id", (q) => q.eq("scimId", args.scimId))
+      .withIndex("by_scim_id", (q: any) => q.eq("scimId", args.scimId))
       .first();
 
     if (existingGroup) {
@@ -292,17 +292,17 @@ export const getSyncLogs = query({
     let query = ctx.db.query("scimSyncLog");
 
     if (args.businessId) {
-      query = query.withIndex("by_business", (q) => q.eq("businessId", args.businessId));
+      query = query.withIndex("by_business", (q: any) => q.eq("businessId", args.businessId));
     }
 
     let logs = await query.order("desc").take(limit * 2);
 
     // Apply filters
     if (args.entityType) {
-      logs = logs.filter(log => log.entityType === args.entityType);
+      logs = logs.filter((log: any) => log.entityType === args.entityType);
     }
     if (args.status) {
-      logs = logs.filter(log => log.status === args.status);
+      logs = logs.filter((log: any) => log.status === args.status);
     }
 
     return logs.slice(0, limit);
@@ -320,20 +320,20 @@ export const getSyncStats = query({
     let query = ctx.db.query("scimSyncLog");
     
     if (args.businessId) {
-      query = query.withIndex("by_business", (q) => q.eq("businessId", args.businessId));
+      query = query.withIndex("by_business", (q: any) => q.eq("businessId", args.businessId));
     }
 
     const logs = await query.order("desc").take(100);
 
     const last24h = Date.now() - 24 * 60 * 60 * 1000;
-    const recentLogs = logs.filter(log => log.timestamp > last24h);
+    const recentLogs = logs.filter((log: any) => log.timestamp > last24h);
 
     return {
       totalSyncs: logs.length,
       last24h: recentLogs.length,
-      usersSynced: recentLogs.filter(l => l.entityType === "user").length,
-      groupsSynced: recentLogs.filter(l => l.entityType === "group").length,
-      errors: recentLogs.filter(l => l.status === "error").length,
+      usersSynced: recentLogs.filter((l: any) => l.entityType === "user").length,
+      groupsSynced: recentLogs.filter((l: any) => l.entityType === "group").length,
+      errors: recentLogs.filter((l: any) => l.status === "error").length,
       lastSync: logs[0]?.timestamp ?? null,
     };
   },
@@ -351,12 +351,12 @@ export const getProvisionedUsers = query({
     const limit = args.limit ?? 50;
     const mappings = await ctx.db
       .query("scimUserMappings")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId))
       .order("desc")
       .take(limit);
 
     const users = await Promise.all(
-      mappings.map(async (mapping) => {
+      mappings.map(async (mapping: any) => {
         const user = await ctx.db.get(mapping.userId);
         return {
           ...mapping,
@@ -381,7 +381,7 @@ export const getProvisionedGroups = query({
     const limit = args.limit ?? 50;
     const groups = await ctx.db
       .query("scimGroupMappings")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId))
       .order("desc")
       .take(limit);
 
@@ -455,7 +455,7 @@ export const deprovisionUser = mutation({
 
     const mapping = await ctx.db
       .query("scimUserMappings")
-      .withIndex("by_scim_id", (q) => q.eq("scimId", args.scimId))
+      .withIndex("by_scim_id", (q: any) => q.eq("scimId", args.scimId))
       .first();
 
     if (!mapping) throw new Error("User mapping not found");
@@ -491,7 +491,7 @@ export const getScimConfig = query({
   handler: async (ctx: any, args) => {
     const tokens = await ctx.db
       .query("api_keys")
-      .filter((q) => 
+      .filter((q: any) => 
         q.and(
           q.eq(q.field("tenantId"), args.businessId),
           q.eq(q.field("name"), "SCIM Bearer Token")
@@ -501,7 +501,7 @@ export const getScimConfig = query({
 
     const mappings = await ctx.db
       .query("scimAttributeMappings")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId))
       .collect();
 
     return {

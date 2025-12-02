@@ -33,7 +33,7 @@ export const initSolopreneurAgent = mutation({
     timezone: v.optional(v.string()),
     businessSummary: v.optional(v.string()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const userId = await getAuthUserId(ctx);
     if (!userId) throw new Error("Not authenticated");
 
@@ -42,7 +42,7 @@ export const initSolopreneurAgent = mutation({
     if (!businessId) {
       const existing = await ctx.db
         .query("businesses")
-        .withIndex("by_owner", (q) => q.eq("ownerId", userId))
+        .withIndex("by_owner", (q: any) => q.eq("ownerId", userId))
         .unique()
         .catch(() => null);
 
@@ -64,7 +64,7 @@ export const initSolopreneurAgent = mutation({
     const existingProfile = await ctx.db
       .query("agentProfiles")
       // Query by business first; then we can reuse the same profile for this user if present
-      .withIndex("by_business", (q) => q.eq("businessId", businessId))
+      .withIndex("by_business", (q: any) => q.eq("businessId", businessId))
       .unique()
       .catch(() => null);
 
@@ -109,7 +109,7 @@ export const summarizeUploads = query({
   args: {
     limit: v.optional(v.number()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const userId = await getAuthUserId(ctx);
     if (!userId) return [];
 
@@ -117,7 +117,7 @@ export const summarizeUploads = query({
 
     const uploads = await ctx.db
       .query("uploads")
-      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .withIndex("by_user", (q: any) => q.eq("userId", userId))
       .order("desc")
       .take(limit);
 
@@ -165,7 +165,7 @@ export const runQuickAnalytics = query({
   args: {
     businessId: v.optional(v.id("businesses")),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const userId = await getAuthUserId(ctx);
     if (!userId) {
       return {
@@ -185,7 +185,7 @@ export const runQuickAnalytics = query({
     if (!businessId) {
       const biz = await ctx.db
         .query("businesses")
-        .withIndex("by_owner", (q) => q.eq("ownerId", userId))
+        .withIndex("by_owner", (q: any) => q.eq("ownerId", userId))
         .unique()
         .catch(() => null);
       if (biz) businessId = biz._id;
@@ -207,21 +207,21 @@ export const runQuickAnalytics = query({
     if (businessId) {
       const recentRevenue = await ctx.db
         .query("revenueEvents")
-        .withIndex("by_business", (q) => q.eq("businessId", businessId!))
-        .filter((q) => q.gte(q.field("timestamp"), sevenDaysAgo))
+        .withIndex("by_business", (q: any) => q.eq("businessId", businessId!))
+        .filter((q: any) => q.gte(q.field("timestamp"), sevenDaysAgo))
         .collect();
       const previousRevenue = await ctx.db
         .query("revenueEvents")
-        .withIndex("by_business", (q) => q.eq("businessId", businessId!))
-        .filter((q) => 
+        .withIndex("by_business", (q: any) => q.eq("businessId", businessId!))
+        .filter((q: any) => 
           q.and(
             q.gte(q.field("timestamp"), fourteenDaysAgo),
             q.lt(q.field("timestamp"), sevenDaysAgo)
           )
         )
         .collect();
-      const recentTotal = recentRevenue.reduce((sum, e) => sum + e.amount, 0);
-      const previousTotal = previousRevenue.reduce((sum, e) => sum + e.amount, 0);
+      const recentTotal = recentRevenue.reduce((sum: any, e: any) => sum + e.amount, 0);
+      const previousTotal = previousRevenue.reduce((sum: any, e: any) => sum + e.amount, 0);
       revenueDelta = calculateDelta(recentTotal, previousTotal);
     }
 
@@ -230,8 +230,8 @@ export const runQuickAnalytics = query({
     if (businessId) {
       const recentSubs = await ctx.db
         .query("contacts")
-        .withIndex("by_business", (q) => q.eq("businessId", businessId!))
-        .filter((q) => 
+        .withIndex("by_business", (q: any) => q.eq("businessId", businessId!))
+        .filter((q: any) => 
           q.and(
             q.gte(q.field("createdAt"), sevenDaysAgo),
             q.eq(q.field("status"), "subscribed")
@@ -240,8 +240,8 @@ export const runQuickAnalytics = query({
         .collect();
       const previousSubs = await ctx.db
         .query("contacts")
-        .withIndex("by_business", (q) => q.eq("businessId", businessId!))
-        .filter((q) => 
+        .withIndex("by_business", (q: any) => q.eq("businessId", businessId!))
+        .filter((q: any) => 
           q.and(
             q.gte(q.field("createdAt"), fourteenDaysAgo),
             q.lt(q.field("createdAt"), sevenDaysAgo),
@@ -257,17 +257,17 @@ export const runQuickAnalytics = query({
     if (businessId) {
       const recentCampaigns = await ctx.db
         .query("emailCampaigns")
-        .withIndex("by_business_and_status", (q) => 
+        .withIndex("by_business_and_status", (q: any) => 
           q.eq("businessId", businessId!).eq("status", "sent")
         )
-        .filter((q) => q.gte(q.field("scheduledAt"), sevenDaysAgo))
+        .filter((q: any) => q.gte(q.field("scheduledAt"), sevenDaysAgo))
         .collect();
       const previousCampaigns = await ctx.db
         .query("emailCampaigns")
-        .withIndex("by_business_and_status", (q) => 
+        .withIndex("by_business_and_status", (q: any) => 
           q.eq("businessId", businessId!).eq("status", "sent")
         )
-        .filter((q) => 
+        .filter((q: any) => 
           q.and(
             q.gte(q.field("scheduledAt"), fourteenDaysAgo),
             q.lt(q.field("scheduledAt"), sevenDaysAgo)
@@ -283,7 +283,7 @@ export const runQuickAnalytics = query({
     if (businessId) {
       const rev = await ctx.db
         .query("key_metrics")
-        .withIndex("by_business_and_metricKey", (q) =>
+        .withIndex("by_business_and_metricKey", (q: any) =>
           q.eq("businessId", businessId!).eq("metricKey", "revenue_90d"),
         )
         .order("desc")
@@ -292,7 +292,7 @@ export const runQuickAnalytics = query({
     } else {
       const rev = await ctx.db
         .query("key_metrics")
-        .withIndex("by_user_and_metricKey", (q) =>
+        .withIndex("by_user_and_metricKey", (q: any) =>
           q.eq("userId", userId).eq("metricKey", "revenue_90d"),
         )
         .order("desc")
@@ -305,7 +305,7 @@ export const runQuickAnalytics = query({
     if (businessId) {
       const churn = await ctx.db
         .query("key_metrics")
-        .withIndex("by_business_and_metricKey", (q) =>
+        .withIndex("by_business_and_metricKey", (q: any) =>
           q.eq("businessId", businessId!).eq("metricKey", "churn_rate_30d"),
         )
         .order("desc")
@@ -314,7 +314,7 @@ export const runQuickAnalytics = query({
     } else {
       const churn = await ctx.db
         .query("key_metrics")
-        .withIndex("by_user_and_metricKey", (q) =>
+        .withIndex("by_user_and_metricKey", (q: any) =>
           q.eq("userId", userId).eq("metricKey", "churn_rate_30d"),
         )
         .order("desc")
@@ -348,7 +348,7 @@ export const supportTriageSuggest = action({
     subject: v.optional(v.string()),
     body: v.string(),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const userId = await getAuthUserId(ctx);
     // Return suggestions even if unauthenticated (guest demo)
     const text = (args.body || "").toLowerCase();
@@ -429,7 +429,7 @@ export const generateContentCapsule = action({
       })
     ),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const userId = await getAuthUserId(ctx);
     if (!userId) throw new Error("Not authenticated");
 
@@ -465,30 +465,7 @@ export const generateContentCapsule = action({
       aggressive: "Push for high-tempo, frequent engagement.",
     };
 
-    const systemPrompt = `You are a content generation assistant for a solopreneur business.
-
-Tone: ${toneInstructions[tone]}
-Persona: ${personaInstructions[persona]}
-Cadence: ${cadenceInstructions[cadence]}
-
-Generate a content package with:
-1. Weekly Post (150-200 words): A momentum check-in highlighting the top product/offer
-2. Email Subject (8-12 words): Compelling subject line
-3. Email Body (200-250 words): Value-driven email with a clear CTA
-4. Three Tweet Variants (each 200-280 characters): Short, punchy, shareable
-
-Business Context:
-- Top Product/Offer: ${topProduct}
-- 90-day Revenue: $${revenue.toFixed(2)}
-- Churn Alert: ${churnAlert ? "Yes - re-engagement needed" : "No - healthy retention"}
-
-Return ONLY valid JSON in this exact format:
-{
-  "weeklyPost": "...",
-  "emailSubject": "...",
-  "emailBody": "...",
-  "tweets": ["...", "...", "..."]
-}`;
+    const systemPrompt = `You are a content generation assistant for a solopreneur business.\n\nTone: ${toneInstructions[tone]}\nPersona: ${personaInstructions[persona]}\nCadence: ${cadenceInstructions[cadence]}\n\nGenerate a content package with:\n1. Weekly Post (150-200 words): A momentum check-in highlighting the top product/offer\n2. Email Subject (8-12 words): Compelling subject line\n3. Email Body (200-250 words): Value-driven email with a clear CTA\n4. Three Tweet Variants (each 200-280 characters): Short, punchy, shareable\n\nBusiness Context:\n- Top Product/Offer: ${topProduct}\n- 90-day Revenue: $${revenue.toFixed(2)}\n- Churn Alert: ${churnAlert ? "Yes - re-engagement needed" : "No - healthy retention"}\n\nReturn ONLY valid JSON in this exact format:\n{\n  "weeklyPost": "...",\n  "emailSubject": "...",\n  "emailBody": "...",\n  "tweets": ["...", "...", "..."]\n}`;
 
     try {
       const { generate } = await import("./openai");

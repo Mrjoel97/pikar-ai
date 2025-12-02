@@ -8,7 +8,7 @@ export const getChannels = query({
   handler: async (ctx: any, args) => {
     const channels = await ctx.db
       .query("teamChannels")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId))
       .collect();
     return channels;
   },
@@ -26,22 +26,22 @@ export const getMessages = query({
     // Get only top-level messages (no parent)
     const messages = await ctx.db
       .query("teamMessages")
-      .withIndex("by_business_and_channel", (q) => 
+      .withIndex("by_business_and_channel", (q: any) => 
         q.eq("businessId", args.channelId).eq("channelId", args.channelId)
       )
-      .filter((q) => q.eq(q.field("parentMessageId"), undefined))
+      .filter((q: any) => q.eq(q.field("parentMessageId"), undefined))
       .order("desc")
       .take(limit);
 
     // Get sender info for each message
     const messagesWithUsers = await Promise.all(
-      messages.map(async (msg) => {
+      messages.map(async (msg: any) => {
         const sender = await ctx.db.get(msg.senderId);
         
         // Get reply count for threading
         const replies = await ctx.db
           .query("teamMessages")
-          .withIndex("by_parent", (q) => q.eq("parentMessageId", msg._id))
+          .withIndex("by_parent", (q: any) => q.eq("parentMessageId", msg._id))
           .collect();
         
         return {
@@ -62,12 +62,12 @@ export const getThreadReplies = query({
   handler: async (ctx: any, args) => {
     const replies = await ctx.db
       .query("teamMessages")
-      .withIndex("by_parent", (q) => q.eq("parentMessageId", args.parentMessageId))
+      .withIndex("by_parent", (q: any) => q.eq("parentMessageId", args.parentMessageId))
       .order("asc")
       .collect();
 
     const repliesWithUsers = await Promise.all(
-      replies.map(async (msg) => {
+      replies.map(async (msg: any) => {
         const sender = await ctx.db.get(msg.senderId);
         return {
           ...msg,
@@ -90,23 +90,23 @@ export const searchMessages = query({
   handler: async (ctx: any, args) => {
     let messages = await ctx.db
       .query("teamMessages")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId))
       .collect();
 
     // Filter by channel if specified
     if (args.channelId) {
-      messages = messages.filter((m) => m.channelId === args.channelId);
+      messages = messages.filter((m: any) => m.channelId === args.channelId);
     }
 
     // Search in content
     const searchLower = args.searchTerm.toLowerCase();
-    const filtered = messages.filter((m) =>
+    const filtered = messages.filter((m: any) =>
       m.content.toLowerCase().includes(searchLower)
     );
 
     // Get sender info
     const messagesWithUsers = await Promise.all(
-      filtered.slice(0, 50).map(async (msg) => {
+      filtered.slice(0, 50).map(async (msg: any) => {
         const sender = await ctx.db.get(msg.senderId);
         return {
           ...msg,
@@ -127,7 +127,7 @@ export const getUsersForMention = query({
     if (!business) return [];
 
     const users = await Promise.all(
-      business.teamMembers.map(async (userId) => {
+      business.teamMembers.map(async (userId: any) => {
         const user = await ctx.db.get(userId);
         return user ? { 
           _id: user._id, 
@@ -160,7 +160,7 @@ export const sendMessage = mutation({
 
     const user = await ctx.db
       .query("users")
-      .withIndex("email", (q) => q.eq("email", identity.email!))
+      .withIndex("email", (q: any) => q.eq("email", identity.email!))
       .unique();
 
     if (!user) throw new Error("User not found");
@@ -187,7 +187,7 @@ export const sendMessage = mutation({
           // Find user by name or email
           const mentionedUser = await ctx.db
             .query("users")
-            .filter((q) => 
+            .filter((q: any) => 
               q.or(
                 q.eq(q.field("name"), mention),
                 q.eq(q.field("email"), `${mention}@`)
@@ -235,7 +235,7 @@ export const sendReply = mutation({
 
     const user = await ctx.db
       .query("users")
-      .withIndex("email", (q) => q.eq("email", identity.email!))
+      .withIndex("email", (q: any) => q.eq("email", identity.email!))
       .unique();
 
     if (!user) throw new Error("User not found");
@@ -278,7 +278,7 @@ export const sendReply = mutation({
       for (const mention of mentions) {
         const mentionedUser = await ctx.db
           .query("users")
-          .filter((q) => 
+          .filter((q: any) => 
             q.or(
               q.eq(q.field("name"), mention),
               q.eq(q.field("email"), `${mention}@`)
@@ -318,7 +318,7 @@ export const addReaction = mutation({
 
     const user = await ctx.db
       .query("users")
-      .withIndex("email", (q) => q.eq("email", identity.email!))
+      .withIndex("email", (q: any) => q.eq("email", identity.email!))
       .unique();
 
     if (!user) throw new Error("User not found");
@@ -328,14 +328,14 @@ export const addReaction = mutation({
 
     // Check if user already reacted with this emoji
     const existingReaction = message.reactions.find(
-      (r) => r.userId === user._id && r.emoji === args.emoji
+      (r: any) => r.userId === user._id && r.emoji === args.emoji
     );
 
     if (existingReaction) {
       // Remove reaction
       await ctx.db.patch(args.messageId, {
         reactions: message.reactions.filter(
-          (r) => !(r.userId === user._id && r.emoji === args.emoji)
+          (r: any) => !(r.userId === user._id && r.emoji === args.emoji)
         ),
       });
     } else {
@@ -361,7 +361,7 @@ export const createChannel = mutation({
 
     const user = await ctx.db
       .query("users")
-      .withIndex("email", (q) => q.eq("email", identity.email!))
+      .withIndex("email", (q: any) => q.eq("email", identity.email!))
       .unique();
 
     if (!user) throw new Error("User not found");
@@ -391,7 +391,7 @@ export const deleteMessage = mutation({
 
     const user = await ctx.db
       .query("users")
-      .withIndex("email", (q) => q.eq("email", identity.email!))
+      .withIndex("email", (q: any) => q.eq("email", identity.email!))
       .unique();
 
     if (!user || message.senderId !== user._id) {
@@ -417,7 +417,7 @@ export const editMessage = mutation({
 
     const user = await ctx.db
       .query("users")
-      .withIndex("email", (q) => q.eq("email", identity.email!))
+      .withIndex("email", (q: any) => q.eq("email", identity.email!))
       .unique();
 
     if (!user || message.senderId !== user._id) {

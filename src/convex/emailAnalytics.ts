@@ -13,22 +13,22 @@ export const getBusinessCampaignMetrics = query({
     
     const campaigns = await ctx.db
       .query("emailCampaigns")
-      .withIndex("by_business_and_status", (q) => q.eq("businessId", args.businessId))
+      .withIndex("by_business_and_status", (q: any) => q.eq("businessId", args.businessId))
       .order("desc")
       .take(limit);
 
     const campaignMetrics = await Promise.all(
-      campaigns.map(async (campaign) => {
+      campaigns.map(async (campaign: any) => {
         const events = await ctx.db
           .query("emailEvents")
-          .withIndex("by_campaign", (q) => q.eq("campaignId", campaign._id))
+          .withIndex("by_campaign", (q: any) => q.eq("campaignId", campaign._id))
           .collect();
 
-        const sent = events.filter((e) => e.eventType === "sent").length;
-        const opened = events.filter((e) => e.eventType === "opened").length;
-        const clicked = events.filter((e) => e.eventType === "clicked").length;
-        const bounced = events.filter((e) => e.eventType === "bounced").length;
-        const unsubscribed = events.filter((e) => e.eventType === "unsubscribed").length;
+        const sent = events.filter((e: any) => e.eventType === "sent").length;
+        const opened = events.filter((e: any) => e.eventType === "opened").length;
+        const clicked = events.filter((e: any) => e.eventType === "clicked").length;
+        const bounced = events.filter((e: any) => e.eventType === "bounced").length;
+        const unsubscribed = events.filter((e: any) => e.eventType === "unsubscribed").length;
 
         // Calculate conversion metrics
         const conversions = 0; // Conversion tracking to be implemented
@@ -37,8 +37,8 @@ export const getBusinessCampaignMetrics = query({
         // Calculate revenue attribution
         const revenueEvents = await ctx.db
           .query("revenueEvents")
-          .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
-          .filter((q) => 
+          .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId))
+          .filter((q: any) => 
             q.and(
               q.eq(q.field("source"), "email"),
               q.eq(q.field("metadata.campaignId"), campaign._id)
@@ -46,7 +46,7 @@ export const getBusinessCampaignMetrics = query({
           )
           .collect();
 
-        const totalRevenue = revenueEvents.reduce((sum, e) => sum + e.amount, 0);
+        const totalRevenue = revenueEvents.reduce((sum: any, e: any) => sum + e.amount, 0);
 
         return {
           campaignId: campaign._id,
@@ -105,14 +105,14 @@ export const getRealTimeMetrics = query({
 
     const recentEvents = await ctx.db
       .query("emailEvents")
-      .withIndex("by_campaign", (q) => q.eq("campaignId", args.campaignId))
-      .filter((q) => q.gte(q.field("timestamp"), last24Hours))
+      .withIndex("by_campaign", (q: any) => q.eq("campaignId", args.campaignId))
+      .filter((q: any) => q.gte(q.field("timestamp"), last24Hours))
       .collect();
 
     // Group events by hour
     const hourlyMetrics = new Map<number, { opens: number; clicks: number; conversions: number }>();
     
-    recentEvents.forEach((event) => {
+    recentEvents.forEach((event: any) => {
       const hour = Math.floor(event.timestamp / (60 * 60 * 1000));
       const metrics = hourlyMetrics.get(hour) || { opens: 0, clicks: 0, conversions: 0 };
       
@@ -133,8 +133,8 @@ export const getRealTimeMetrics = query({
     return {
       last24Hours: timeSeriesData,
       currentMetrics: {
-        opens: recentEvents.filter((e) => e.eventType === "opened").length,
-        clicks: recentEvents.filter((e) => e.eventType === "clicked").length,
+        opens: recentEvents.filter((e: any) => e.eventType === "opened").length,
+        clicks: recentEvents.filter((e: any) => e.eventType === "clicked").length,
         conversions: 0, // Conversion tracking to be implemented
       },
     };
@@ -149,12 +149,12 @@ export const getConversionFunnel = query({
   handler: async (ctx: any, args) => {
     const events = await ctx.db
       .query("emailEvents")
-      .withIndex("by_campaign", (q) => q.eq("campaignId", args.campaignId))
+      .withIndex("by_campaign", (q: any) => q.eq("campaignId", args.campaignId))
       .collect();
 
-    const sent = events.filter((e) => e.eventType === "sent").length;
-    const opened = events.filter((e) => e.eventType === "opened").length;
-    const clicked = events.filter((e) => e.eventType === "clicked").length;
+    const sent = events.filter((e: any) => e.eventType === "sent").length;
+    const opened = events.filter((e: any) => e.eventType === "opened").length;
+    const clicked = events.filter((e: any) => e.eventType === "clicked").length;
     const converted = 0; // Conversion tracking to be implemented
 
     return {
@@ -186,8 +186,8 @@ export const getRevenueAttribution = query({
 
     const revenueEvents = await ctx.db
       .query("revenueEvents")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
-      .filter((q) =>
+      .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId))
+      .filter((q: any) =>
         q.and(
           q.eq(q.field("source"), "email"),
           q.gte(q.field("timestamp"), startDate),
@@ -199,7 +199,7 @@ export const getRevenueAttribution = query({
     // Group by campaign
     const campaignRevenue = new Map<string, { revenue: number; conversions: number; campaignId: string }>();
     
-    revenueEvents.forEach((event) => {
+    revenueEvents.forEach((event: any) => {
       const campaignId = event.metadata?.campaignId as string;
       if (campaignId) {
         const current = campaignRevenue.get(campaignId) || { revenue: 0, conversions: 0, campaignId };
@@ -223,7 +223,7 @@ export const getRevenueAttribution = query({
     );
 
     return {
-      totalRevenue: revenueEvents.reduce((sum, e) => sum + e.amount, 0),
+      totalRevenue: revenueEvents.reduce((sum: any, e: any) => sum + e.amount, 0),
       totalConversions: revenueEvents.length,
       campaigns: attributionData.sort((a, b) => b.revenue - a.revenue),
     };
@@ -243,12 +243,12 @@ export const compareCampaigns = query({
 
         const events = await ctx.db
           .query("emailEvents")
-          .withIndex("by_campaign", (q) => q.eq("campaignId", campaignId))
+          .withIndex("by_campaign", (q: any) => q.eq("campaignId", campaignId))
           .collect();
 
-        const sent = events.filter((e) => e.eventType === "sent").length;
-        const opened = events.filter((e) => e.eventType === "opened").length;
-        const clicked = events.filter((e) => e.eventType === "clicked").length;
+        const sent = events.filter((e: any) => e.eventType === "sent").length;
+        const opened = events.filter((e: any) => e.eventType === "opened").length;
+        const clicked = events.filter((e: any) => e.eventType === "clicked").length;
         const converted = 0; // Conversion tracking to be implemented
 
         return {
@@ -276,7 +276,7 @@ export const getPredictiveInsights = action({
   },
   handler: async (ctx: any, args) => {
     // Get historical campaign data
-    const metrics = await ctx.runQuery(api.emailAnalytics.getBusinessCampaignMetrics, {
+    const metrics: any = await ctx.runQuery(api.emailAnalytics.getBusinessCampaignMetrics, {
       businessId: args.businessId,
       limit: 50,
     });
@@ -284,11 +284,11 @@ export const getPredictiveInsights = action({
     const { campaigns } = metrics;
 
     // Calculate trends
-    const recentCampaigns = campaigns.slice(0, 10);
-    const olderCampaigns = campaigns.slice(10, 20);
+    const recentCampaigns: any[] = campaigns.slice(0, 10);
+    const olderCampaigns: any[] = campaigns.slice(10, 20);
 
-    const avgRecentOpenRate = recentCampaigns.reduce((sum, c) => sum + c.openRate, 0) / recentCampaigns.length;
-    const avgOlderOpenRate = olderCampaigns.reduce((sum, c) => sum + c.openRate, 0) / olderCampaigns.length;
+    const avgRecentOpenRate = recentCampaigns.reduce((sum: any, c: any) => sum + c.openRate, 0) / recentCampaigns.length;
+    const avgOlderOpenRate = olderCampaigns.reduce((sum: any, c: any) => sum + c.openRate, 0) / olderCampaigns.length;
 
     const openRateTrend = avgRecentOpenRate - avgOlderOpenRate;
 

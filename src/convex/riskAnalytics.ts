@@ -3,7 +3,7 @@ import { v } from "convex/values";
 
 export const getRiskMatrix = query({
   args: { businessId: v.optional(v.id("businesses")) },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     // Guest/public: no business context → return empty matrix
     if (!args.businessId) {
       return {
@@ -14,7 +14,7 @@ export const getRiskMatrix = query({
     }
     const risks = await ctx.db
       .query("risks")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId!))
+      .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId!))
       .collect();
 
     // Group risks by probability (1-5) and impact (1-5)
@@ -31,7 +31,7 @@ export const getRiskMatrix = query({
     return {
       matrix,
       totalRisks: risks.length,
-      highRisks: risks.filter(r => r.probability >= 4 && r.impact >= 4).length,
+      highRisks: risks.filter((r: any) => r.probability >= 4 && r.impact >= 4).length,
     };
   },
 });
@@ -41,7 +41,7 @@ export const getRiskTrend = query({
     businessId: v.optional(v.id("businesses")),
     days: v.optional(v.number())
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     // Guest/public: no business context → return empty trend
     if (!args.businessId) {
       return {
@@ -58,25 +58,25 @@ export const getRiskTrend = query({
 
     const risks = await ctx.db
       .query("risks")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId!))
+      .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId!))
       .collect();
 
-    const recentRisks = risks.filter(r => r.createdAt >= cutoffTime);
-    const newRisks = recentRisks.filter(r => r.status === "identified");
-    const mitigatedRisks = recentRisks.filter(r => 
+    const recentRisks = risks.filter((r: any) => r.createdAt >= cutoffTime);
+    const newRisks = recentRisks.filter((r: any) => r.status === "identified");
+    const mitigatedRisks = recentRisks.filter((r: any) => 
       r.status === "mitigated" && r.updatedAt >= cutoffTime
     );
 
     // Calculate average risk score (probability * impact)
     const avgRiskScore = risks.length > 0
-      ? risks.reduce((sum, r) => sum + (r.probability * r.impact), 0) / risks.length
+      ? risks.reduce((sum: number, r: any) => sum + (r.probability * r.impact), 0) / risks.length
       : 0;
 
     // Group by category for trend analysis
     const byCategory: Record<string, number> = {};
     for (const risk of risks) {
       const category = risk.category || "uncategorized";
-      byCategory[category] = (byCategory[category] || 0) + (risk.probability * r.impact);
+      byCategory[category] = (byCategory[category] || 0) + (risk.probability * risk.impact);
     }
 
     // Generate daily trend data
@@ -85,9 +85,9 @@ export const getRiskTrend = query({
       const dayStart = Date.now() - i * 24 * 60 * 60 * 1000;
       const dayEnd = dayStart + 24 * 60 * 60 * 1000;
       
-      const dayRisks = risks.filter(r => r.createdAt <= dayEnd);
+      const dayRisks = risks.filter((r: any) => r.createdAt <= dayEnd);
       const dayScore = dayRisks.length > 0
-        ? dayRisks.reduce((sum, r) => sum + (r.probability * r.impact), 0) / dayRisks.length
+        ? dayRisks.reduce((sum: number, r: any) => sum + (r.probability * r.impact), 0) / dayRisks.length
         : 0;
 
       trendData.push({
@@ -114,7 +114,7 @@ export const getPredictiveRiskModel = query({
     businessId: v.optional(v.id("businesses")),
     forecastDays: v.optional(v.number())
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     if (!args.businessId) {
       return {
         predictions: [],
@@ -130,8 +130,8 @@ export const getPredictiveRiskModel = query({
 
     const risks = await ctx.db
       .query("risks")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId!))
-      .filter((q) => q.gte(q.field("createdAt"), cutoffTime))
+      .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId!))
+      .filter((q: any) => q.gte(q.field("createdAt"), cutoffTime))
       .collect();
 
     // Calculate weekly risk creation rate
@@ -139,14 +139,14 @@ export const getPredictiveRiskModel = query({
     for (let week = 0; week < 12; week++) {
       const weekStart = Date.now() - (week + 1) * 7 * 24 * 60 * 60 * 1000;
       const weekEnd = Date.now() - week * 7 * 24 * 60 * 60 * 1000;
-      const weekRisks = risks.filter(r => r.createdAt >= weekStart && r.createdAt < weekEnd);
+      const weekRisks = risks.filter((r: any) => r.createdAt >= weekStart && r.createdAt < weekEnd);
       weeklyRates.push(weekRisks.length);
     }
 
     // Simple linear regression for trend
-    const avgRate = weeklyRates.reduce((a, b) => a + b, 0) / weeklyRates.length;
-    const trend = weeklyRates.slice(0, 4).reduce((a, b) => a + b, 0) / 4 - 
-                  weeklyRates.slice(-4).reduce((a, b) => a + b, 0) / 4;
+    const avgRate = weeklyRates.reduce((a: any, b: any) => a + b, 0) / weeklyRates.length;
+    const trend = weeklyRates.slice(0, 4).reduce((a: any, b: any) => a + b, 0) / 4 - 
+                  weeklyRates.slice(-4).reduce((a: any, b: any) => a + b, 0) / 4;
 
     // Generate predictions
     const predictions = [];
@@ -154,7 +154,7 @@ export const getPredictiveRiskModel = query({
       const weekOffset = day / 7;
       const predictedRate = avgRate + (trend * weekOffset);
       const predictedScore = risks.length > 0
-        ? risks.reduce((sum, r) => sum + (r.probability * r.impact), 0) / risks.length
+        ? risks.reduce((sum: any, r: any) => sum + (r.probability * r.impact), 0) / risks.length
         : 0;
 
       predictions.push({
@@ -176,18 +176,18 @@ export const getPredictiveRiskModel = query({
 // NEW: Correlation analysis between risk categories
 export const getRiskCorrelations = query({
   args: { businessId: v.optional(v.id("businesses")) },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     if (!args.businessId) {
       return { correlations: [], strongCorrelations: [] };
     }
 
     const risks = await ctx.db
       .query("risks")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId!))
+      .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId!))
       .collect();
 
     // Group risks by category and time windows
-    const categories = Array.from(new Set(risks.map(r => r.category || "uncategorized")));
+    const categories = Array.from(new Set(risks.map((r: any) => r.category || "uncategorized")));
     const correlations = [];
 
     for (let i = 0; i < categories.length; i++) {
@@ -195,8 +195,8 @@ export const getRiskCorrelations = query({
         const cat1 = categories[i];
         const cat2 = categories[j];
 
-        const cat1Risks = risks.filter(r => (r.category || "uncategorized") === cat1);
-        const cat2Risks = risks.filter(r => (r.category || "uncategorized") === cat2);
+        const cat1Risks = risks.filter((r: any) => (r.category || "uncategorized") === cat1);
+        const cat2Risks = risks.filter((r: any) => (r.category || "uncategorized") === cat2);
 
         // Calculate temporal correlation (risks occurring within 7 days)
         let coOccurrences = 0;
@@ -224,8 +224,8 @@ export const getRiskCorrelations = query({
     }
 
     return {
-      correlations: correlations.sort((a, b) => b.correlation - a.correlation),
-      strongCorrelations: correlations.filter(c => c.correlation > 0.7),
+      correlations: correlations.sort((a: any, b: any) => b.correlation - a.correlation),
+      strongCorrelations: correlations.filter((c: any) => c.correlation > 0.7),
     };
   },
 });
@@ -240,7 +240,7 @@ export const simulateRiskScenario = query({
       probabilityShift: v.number(), // -2 to +2
     }),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     if (!args.businessId) {
       return {
         scenarioName: args.scenario.name,
@@ -253,10 +253,10 @@ export const simulateRiskScenario = query({
 
     const risks = await ctx.db
       .query("risks")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId!))
+      .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId!))
       .collect();
 
-    const currentScore = risks.reduce((sum, r) => sum + (r.probability * r.impact), 0);
+    const currentScore = risks.reduce((sum: number, r: any) => sum + (r.probability * r.impact), 0);
 
     // Apply scenario modifications
     let projectedScore = 0;
@@ -302,22 +302,22 @@ export const simulateRiskScenario = query({
 // NEW: AI-powered mitigation recommendations
 export const getMitigationRecommendations = query({
   args: { businessId: v.optional(v.id("businesses")) },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     if (!args.businessId) {
       return { recommendations: [], priorityActions: [] };
     }
 
     const risks = await ctx.db
       .query("risks")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId!))
-      .filter((q) => q.neq(q.field("status"), "mitigated"))
+      .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId!))
+      .filter((q: any) => q.neq(q.field("status"), "mitigated"))
       .collect();
 
     const recommendations = [];
     const priorityActions = [];
 
     // Analyze high-impact risks
-    const criticalRisks = risks.filter(r => r.probability * r.impact >= 16);
+    const criticalRisks = risks.filter((r: any) => r.probability * r.impact >= 16);
     if (criticalRisks.length > 0) {
       priorityActions.push({
         priority: "critical",
@@ -337,7 +337,7 @@ export const getMitigationRecommendations = query({
 
     for (const [category, catRisks] of Object.entries(categoryGroups)) {
       if (catRisks.length >= 3) {
-        const avgScore = catRisks.reduce((sum, r) => sum + (r.probability * r.impact), 0) / catRisks.length;
+        const avgScore = catRisks.reduce((sum: any, r: any) => sum + (r.probability * r.impact), 0) / catRisks.length;
         
         recommendations.push({
           category,
@@ -350,7 +350,7 @@ export const getMitigationRecommendations = query({
     }
 
     // Trend-based recommendations
-    const recentRisks = risks.filter(r => r.createdAt > Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const recentRisks = risks.filter((r: any) => r.createdAt > Date.now() - 30 * 24 * 60 * 60 * 1000);
     if (recentRisks.length > risks.length * 0.4) {
       priorityActions.push({
         priority: "high",
@@ -361,8 +361,8 @@ export const getMitigationRecommendations = query({
     }
 
     return {
-      recommendations: recommendations.sort((a, b) => b.avgRiskScore - a.avgRiskScore),
-      priorityActions: priorityActions.sort((a, b) => 
+      recommendations: recommendations.sort((a: any, b: any) => b.avgRiskScore - a.avgRiskScore),
+      priorityActions: priorityActions.sort((a: any, b: any) => 
         (a.priority === "critical" ? 0 : 1) - (b.priority === "critical" ? 0 : 1)
       ),
       totalRisksAnalyzed: risks.length,
@@ -376,7 +376,7 @@ export const getAdvancedTrendForecast = query({
     businessId: v.optional(v.id("businesses")),
     forecastDays: v.optional(v.number()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     if (!args.businessId) {
       return {
         forecast: [],
@@ -391,8 +391,8 @@ export const getAdvancedTrendForecast = query({
 
     const risks = await ctx.db
       .query("risks")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId!))
-      .filter((q) => q.gte(q.field("createdAt"), cutoffTime))
+      .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId!))
+      .filter((q: any) => q.gte(q.field("createdAt"), cutoffTime))
       .collect();
 
     // Calculate monthly averages
@@ -400,18 +400,18 @@ export const getAdvancedTrendForecast = query({
     for (let month = 0; month < 6; month++) {
       const monthStart = Date.now() - (month + 1) * 30 * 24 * 60 * 60 * 1000;
       const monthEnd = Date.now() - month * 30 * 24 * 60 * 60 * 1000;
-      const monthRisks = risks.filter(r => r.createdAt >= monthStart && r.createdAt < monthEnd);
+      const monthRisks = risks.filter((r: any) => r.createdAt >= monthStart && r.createdAt < monthEnd);
       
       const avgScore = monthRisks.length > 0
-        ? monthRisks.reduce((sum, r) => sum + (r.probability * r.impact), 0) / monthRisks.length
+        ? monthRisks.reduce((sum: any, r: any) => sum + (r.probability * r.impact), 0) / monthRisks.length
         : 0;
       
       monthlyScores.push(avgScore);
     }
 
     // Detect seasonality (simple variance check)
-    const avgMonthly = monthlyScores.reduce((a, b) => a + b, 0) / monthlyScores.length;
-    const variance = monthlyScores.reduce((sum, score) => sum + Math.pow(score - avgMonthly, 2), 0) / monthlyScores.length;
+    const avgMonthly = monthlyScores.reduce((a: any, b: any) => a + b, 0) / monthlyScores.length;
+    const variance = monthlyScores.reduce((sum: any, score: any) => sum + Math.pow(score - avgMonthly, 2), 0) / monthlyScores.length;
     const seasonalityDetected = variance > avgMonthly * 0.5;
 
     // Generate forecast

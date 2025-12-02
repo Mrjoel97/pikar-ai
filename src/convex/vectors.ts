@@ -55,7 +55,7 @@ export const storeDocumentEmbeddings = mutation({
       agentKeys: v.optional(v.array(v.string())),
     })),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const now = Date.now();
     for (const c of args.chunks) {
       await ctx.db.insert("vectorChunks", {
@@ -76,8 +76,8 @@ export const storeDocumentEmbeddings = mutation({
 // Get embeddings (chunks) by documentId
 export const getDocumentEmbeddings = query({
   args: { documentId: v.string() },
-  handler: async (ctx, args) => {
-    const all = await ctx.db.query("vectorChunks").withIndex("by_scope", q => q.eq("scope", "business")).collect();
+  handler: async (ctx: any, args) => {
+    const all = await ctx.db.query("vectorChunks").withIndex("by_scope", (q: any) => q.eq("scope", "business")).collect();
     return all.filter((r: any) => r?.meta?.documentId === args.documentId);
   },
 });
@@ -90,7 +90,7 @@ export const findSimilarDocuments = query({
     matchCount: v.optional(v.number()),
     agentType: v.optional(v.string()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const sourceChunks: any[] = await ctx.runQuery(api.vectors.getDocumentEmbeddings, { documentId: args.documentId });
     if (!sourceChunks.length) return [];
     const dim: number = (sourceChunks[0]?.embedding || []).length;
@@ -135,22 +135,22 @@ export const semanticSearch = query({
     businessId: v.optional(v.id("businesses")),
     datasetId: v.optional(v.id("agentDatasets")),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     let pool: any[] = [];
     if (args.datasetId) {
       pool = await ctx.db
         .query("vectorChunks")
-        .withIndex("by_dataset", (qi) => qi.eq("datasetId", args.datasetId as Id<"agentDatasets">))
+        .withIndex("by_dataset", (qi: any) => qi.eq("datasetId", args.datasetId as Id<"agentDatasets">))
         .collect();
     } else if (args.businessId) {
       pool = await ctx.db
         .query("vectorChunks")
-        .withIndex("by_business", (qi) => qi.eq("businessId", args.businessId as Id<"businesses">))
+        .withIndex("by_business", (qi: any) => qi.eq("businessId", args.businessId as Id<"businesses">))
         .collect();
     } else {
       pool = await ctx.db
         .query("vectorChunks")
-        .withIndex("by_scope", (qi) => qi.eq("scope", "global"))
+        .withIndex("by_scope", (qi: any) => qi.eq("scope", "global"))
         .collect();
     }
 
@@ -191,7 +191,7 @@ export const adminIngestChunks = mutation({
     datasetId: v.optional(v.id("agentDatasets")),
     agentKeys: v.optional(v.array(v.string())),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const isAdmin = await ctx.runQuery(api.admin.getIsAdmin, {});
     if (!isAdmin) throw new Error("Admin access required");
 
@@ -245,7 +245,7 @@ export const ingestFromInitiatives = internalMutation({
       channel: v.optional(v.string()),
     })),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     // 16-dim deterministic embedding for V8 safety
     const dim = 16;
     const buckets: number[] = Array.from({ length: dim }, () => 0);

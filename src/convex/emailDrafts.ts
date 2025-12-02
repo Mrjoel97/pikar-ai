@@ -13,13 +13,13 @@ export const saveDraft = mutation({
       aiGenerated: v.optional(v.boolean()),
     })),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Not authenticated");
 
     const user = await ctx.db
       .query("users")
-      .withIndex("email", (q) => q.eq("email", identity.email!))
+      .withIndex("email", (q: any) => q.eq("email", identity.email!))
       .first();
 
     if (!user) throw new Error("User not found");
@@ -51,7 +51,7 @@ export const updateDraft = mutation({
     tone: v.optional(v.union(v.literal("concise"), v.literal("friendly"), v.literal("premium"))),
     status: v.optional(v.union(v.literal("draft"), v.literal("sent"), v.literal("archived"))),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Not authenticated");
 
@@ -77,7 +77,7 @@ export const deleteDraft = mutation({
   args: {
     draftId: v.id("emailDrafts"),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Not authenticated");
 
@@ -96,7 +96,7 @@ export const listDrafts = query({
     status: v.optional(v.union(v.literal("draft"), v.literal("sent"), v.literal("archived"))),
     limit: v.optional(v.number()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) return [];
 
@@ -105,7 +105,7 @@ export const listDrafts = query({
     if (args.status !== undefined) {
       return await ctx.db
         .query("emailDrafts")
-        .withIndex("by_business_and_status", (q) => 
+        .withIndex("by_business_and_status", (q: any) => 
           q.eq("businessId", args.businessId).eq("status", args.status!)
         )
         .order("desc")
@@ -114,7 +114,7 @@ export const listDrafts = query({
 
     return await ctx.db
       .query("emailDrafts")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId))
       .order("desc")
       .take(limit);
   },
@@ -124,7 +124,7 @@ export const getDraft = query({
   args: {
     draftId: v.id("emailDrafts"),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     return await ctx.db.get(args.draftId);
   },
 });

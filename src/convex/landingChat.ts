@@ -8,12 +8,12 @@ import { internal } from "./_generated/api";
 /**
  * Landing Page Chatbot - Pre-sales support and product information
  */
-export const sendMessage = action({
+export const sendMessage: any = action({
   args: {
     message: v.string(),
     conversationHistory: v.optional(v.array(v.any())),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args): Promise<any> => {
     const startTime = Date.now();
     
     try {

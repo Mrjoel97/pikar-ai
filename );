@@ -1,81 +1,146 @@
         if (jsonMatch) {
           capsule = JSON.parse(jsonMatch[1]);
-        } else {
-          throw new Error("Failed to parse AI response as JSON");
         }
       }
 
-      // Validate structure
-      if (
-        !capsule.weeklyPost ||
-        !capsule.emailSubject ||
-        !capsule.emailBody ||
-        !Array.isArray(capsule.tweets) ||
-        capsule.tweets.length !== 3
-      ) {
-        throw new Error("Invalid capsule structure from AI");
-      }
-
-      // Log audit event
-      await ctx.runMutation("audit:log" as any, {
-        businessId: args.businessId,
-        userId,
-        action: "content_capsule_generated",
-        details: {
-          tone,
-          persona,
-          cadence,
-          topProduct,
-          aiGenerated: true,
-        },
-      });
-
-      return {
-        success: true,
-        capsule: {
-          weeklyPost: capsule.weeklyPost,
-          emailSubject: capsule.emailSubject,
-          emailBody: capsule.emailBody,
-          tweets: capsule.tweets,
-        },
-      };
-    } catch (error: any) {
-      console.error("Content capsule generation error:", error);
-      
-      // Fallback to template-based generation
-      const cadenceCopy =
-        cadence === "light"
-          ? "light weekly"
-          : cadence === "aggressive"
-            ? "high-tempo"
-            : "steady weekly";
-
-      const churnCopy = churnAlert
-        ? "Churn risk spotted — re-engage now."
-        : "Healthy retention — keep cadence.";
-
-      return {
-        success: true,
-        capsule: {
-          weeklyPost: `Weekly update: momentum check, ${cadenceCopy} plan, and a quick spotlight on ${topProduct}. ${churnCopy}`,
-          emailSubject: `This week's quick win: ${topProduct}`,
-          emailBody: `Here's your ${cadenceCopy} nudge. Highlight: ${topProduct}. Rolling 90-day revenue at $${revenue.toFixed(2)}. ${churnAlert ? "Let's re-activate quiet subscribers with a friendly value note." : "Stay consistent and keep delivering value."}`,
-          tweets: [
-            `Ship > perfect. This week: feature ${topProduct} and keep your streak alive.`,
-            `Consistency compounds. One quick post today = momentum for the week.`,
-            `Tiny wins add up. Spotlight ${topProduct} in under 90 words.`,
-          ],
-        },
-        fallback: true,
-      };
+      return capsule;
+    } catch (error) {
+      console.error("Error generating content capsule:", error);
+      throw new Error("Failed to generate content capsule");
     }
   },
 });
 
+// Seed a few simple one-click templates for Solopreneurs
 export const seedOneClickTemplates = mutation({
-  // ... keep existing code
+  args: {
+    businessId: v.optional(v.id("businesses")),
+  },
+  handler: async (ctx: any, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Not authenticated");
+
+    // Ensure business
+    let businessId = args.businessId ?? null;
+    if (!businessId) {
+      const biz = await ctx.db
+        .query("businesses")
+        .withIndex("by_owner", (q: any) => q.eq("ownerId", userId))
+        .unique()
+        .catch(() => null);
+      if (!biz) throw new Error("No business found; initialize via initSolopreneurAgent first.");
+      businessId = biz._id;
+    }
+
+    const templates = [
+      {
+        name: "Solopreneur — Launch Post",
+        description: "Announce a new offering with a friendly, concise tone.",
+        category: "content",
+        steps: [
+          { type: "draft", role: "content", title: "Draft launch post" },
+          { type: "review", role: "owner", title: "Review & tweak" },
+          { type: "publish", role: "owner", title: "Publish on socials" },
+        ],
+        tags: ["solopreneur", "launch", "social"],
+      },
+      {
+        name: "Solopreneur — Weekly Newsletter",
+        description: "Lightweight weekly update to nurture your audience.",
+        category: "content",
+        steps: [
+          { type: "outline", role: "content", title: "Outline topics" },
+          { type: "draft", role: "content", title: "Draft newsletter" },
+          { type: "send", role: "owner", title: "Send via Email Campaigns" },
+        ],
+        tags: ["solopreneur", "newsletter", "email"],
+      },
+      {
+        name: "Solopreneur — Product Highlight",
+        description: "Quick product spotlight with clear CTA.",
+        category: "content",
+        steps: [
+          { type: "draft", role: "content", title: "Draft highlight copy" },
+          { type: "review", role: "owner", title: "Review & finalize" },
+          { type: "publish", role: "owner", title: "Publish across channels" },
+        ],
+        tags: ["solopreneur", "product", "cta"],
+      },
+    ] as const;
+
+    let created = 0;
+    for (const t of templates) {
+      // Avoid dupes by name
+      const exists = await ctx.db
+        .query("workflowTemplates")
+        .withIndex("by_name", (q: any) => q.eq("name", t.name))
+        .unique()
+        .catch(() => null);
+      if (!exists) {
+        await ctx.db.insert("workflowTemplates", {
+          name: t.name,
+          description: t.description,
+          category: t.category,
+          steps: t.steps as any,
+          recommendedAgents: ["content"],
+          industryTags: HIGH_TRACTION_INDUSTRIES,
+          tags: t.tags,
+          createdBy: userId,
+          createdAt: Date.now(),
+          tier: "solopreneur",
+        } as any);
+        created++;
+      }
+    }
+    return { ok: true as const, created };
+  },
 });
 
+// Add: forgetUploads mutation to clear user uploads and agent doc refs
 export const forgetUploads = mutation({
-  // ... keep existing code
+  args: {},
+  handler: async (ctx: any) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Not authenticated");
+
+    // Resolve the user's business (owner)
+    const business = await ctx.db
+      .query("businesses")
+      .withIndex("by_owner", (q: any) => q.eq("ownerId", userId))
+      .unique()
+      .catch(() => null);
+
+    // If we have a business, clear agent doc refs for that business
+    if (business) {
+      const profile = await ctx.db
+        .query("agentProfiles")
+        .withIndex("by_business", (q: any) => q.eq("businessId", business._id))
+        .unique()
+        .catch(() => null);
+
+      if (profile) {
+        await ctx.db.patch(profile._id, {
+          docRefs: [],
+          trainingNotes: "",
+          lastUpdated: Date.now(),
+        } as any);
+      }
+    }
+
+    // Delete uploads owned by this user (best-effort)
+    const toDelete = await ctx.db
+      .query("uploads")
+      .withIndex("by_user", (q: any) => q.eq("userId", userId))
+      .collect();
+
+    for (const u of toDelete) {
+      try {
+        await ctx.db.delete(u._id);
+      } catch {
+        // ignore best-effort failures
+      }
+    }
+
+    return { ok: true as const, deleted: toDelete.length };
+  },
 });

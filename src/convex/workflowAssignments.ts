@@ -18,21 +18,21 @@ export const getAssignedSteps = query({
 
     let query = ctx.db
       .query("workflowSteps")
-      .withIndex("by_assignee", (q) => q.eq("assigneeId", args.userId));
+      .withIndex("by_assignee", (q: any) => q.eq("assigneeId", args.userId));
 
     if (args.businessId) {
-      query = query.filter((q) => q.eq(q.field("businessId"), args.businessId));
+      query = query.filter((q: any) => q.eq(q.field("businessId"), args.businessId));
     }
 
     if (args.status) {
-      query = query.filter((q) => q.eq(q.field("status"), args.status));
+      query = query.filter((q: any) => q.eq(q.field("status"), args.status));
     }
 
     const steps = await query.collect();
 
     // Get workflow details for each step
   const stepsWithWorkflows = await Promise.all(
-    steps.map(async (step) => {
+    steps.map(async (step: any) => {
       const workflow = await ctx.db.get(step.workflowId);
       return {
         ...step,
@@ -62,8 +62,8 @@ export const getStepsDueSoon = query({
 
     const steps = await ctx.db
       .query("workflowSteps")
-      .withIndex("by_assignee", (q) => q.eq("assigneeId", args.userId))
-      .filter((q) => 
+      .withIndex("by_assignee", (q: any) => q.eq("assigneeId", args.userId))
+      .filter((q: any) => 
         q.and(
           q.neq(q.field("status"), "completed"),
           q.lte(q.field("dueDate"), dueTime),
@@ -74,7 +74,7 @@ export const getStepsDueSoon = query({
 
     // Get workflow details
     const stepsWithWorkflows = await Promise.all(
-      steps.map(async (step) => {
+      steps.map(async (step: any) => {
         const workflow = await ctx.db.get(step.workflowId);
         return {
           ...step,
@@ -181,7 +181,7 @@ export const assignStep = mutation({
 
     const user = await ctx.db
       .query("users")
-      .filter((q) => q.eq(q.field("email"), identity.email))
+      .filter((q: any) => q.eq(q.field("email"), identity.email))
       .first();
 
     if (!user) {
@@ -282,7 +282,7 @@ export const updateStepStatus = mutation({
 
     const user = await ctx.db
       .query("users")
-      .filter((q) => q.eq(q.field("email"), identity.email))
+      .filter((q: any) => q.eq(q.field("email"), identity.email))
       .first();
 
     if (!user) {
@@ -392,20 +392,20 @@ export const getAssignmentAnalytics = query({
 
     const steps = await ctx.db
       .query("workflowSteps")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId))
       .collect();
 
     const totalSteps = steps.length;
-    const assignedSteps = steps.filter(s => s.assigneeId).length;
-    const completedSteps = steps.filter(s => s.status === "completed").length;
-    const overdueTasks = steps.filter(s => 
+    const assignedSteps = steps.filter((s: any) => s.assigneeId).length;
+    const completedSteps = steps.filter((s: any) => s.status === "completed").length;
+    const overdueTasks = steps.filter((s: any) => 
       s.dueDate && s.dueDate < Date.now() && s.status !== "completed"
     ).length;
 
     // Group by assignee
     const assigneeStats: Record<string, { assigned: number; completed: number; overdue: number }> = {};
     
-    steps.forEach(step => {
+    steps.forEach((step: any) => {
       if (step.assigneeId) {
         const assigneeId = step.assigneeId;
         if (!assigneeStats[assigneeId]) {

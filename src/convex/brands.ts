@@ -5,7 +5,7 @@ import type { Id } from "./_generated/dataModel";
 // List all brands for a business
 export const listBrands = query({
   args: { businessId: v.id("businesses") },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) {
       throw new Error("[ERR_NOT_AUTHENTICATED] Not authenticated");
@@ -13,7 +13,7 @@ export const listBrands = query({
 
     const brands = await ctx.db
       .query("brands")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId))
       .collect();
 
     return brands;
@@ -23,7 +23,7 @@ export const listBrands = query({
 // Get a single brand by ID
 export const getBrand = query({
   args: { brandId: v.id("brands") },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) {
       throw new Error("[ERR_NOT_AUTHENTICATED] Not authenticated");
@@ -50,7 +50,7 @@ export const createBrand = mutation({
     website: v.optional(v.string()),
     isDefault: v.optional(v.boolean()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) {
       throw new Error("[ERR_NOT_AUTHENTICATED] Not authenticated");
@@ -58,7 +58,7 @@ export const createBrand = mutation({
 
     const user = await ctx.db
       .query("users")
-      .withIndex("email", (q) => q.eq("email", identity.email!))
+      .withIndex("email", (q: any) => q.eq("email", identity.email!))
       .first();
 
     if (!user) {
@@ -69,7 +69,7 @@ export const createBrand = mutation({
     if (args.isDefault) {
       const existingBrands = await ctx.db
         .query("brands")
-        .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+        .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId))
         .collect();
 
       for (const brand of existingBrands) {
@@ -122,7 +122,7 @@ export const updateBrand = mutation({
     isDefault: v.optional(v.boolean()),
     isActive: v.optional(v.boolean()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) {
       throw new Error("[ERR_NOT_AUTHENTICATED] Not authenticated");
@@ -130,7 +130,7 @@ export const updateBrand = mutation({
 
     const user = await ctx.db
       .query("users")
-      .withIndex("email", (q) => q.eq("email", identity.email!))
+      .withIndex("email", (q: any) => q.eq("email", identity.email!))
       .first();
 
     if (!user) {
@@ -146,7 +146,7 @@ export const updateBrand = mutation({
     if (args.isDefault) {
       const existingBrands = await ctx.db
         .query("brands")
-        .withIndex("by_business", (q) => q.eq("businessId", brand.businessId))
+        .withIndex("by_business", (q: any) => q.eq("businessId", brand.businessId))
         .collect();
 
       for (const b of existingBrands) {
@@ -182,7 +182,7 @@ export const updateBrand = mutation({
 // Delete a brand
 export const deleteBrand = mutation({
   args: { brandId: v.id("brands") },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) {
       throw new Error("[ERR_NOT_AUTHENTICATED] Not authenticated");
@@ -190,7 +190,7 @@ export const deleteBrand = mutation({
 
     const user = await ctx.db
       .query("users")
-      .withIndex("email", (q) => q.eq("email", identity.email!))
+      .withIndex("email", (q: any) => q.eq("email", identity.email!))
       .first();
 
     if (!user) {
@@ -229,7 +229,7 @@ export const deleteBrand = mutation({
 // Get the default brand for a business
 export const getDefaultBrand = query({
   args: { businessId: v.id("businesses") },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) {
       return null;
@@ -237,7 +237,7 @@ export const getDefaultBrand = query({
 
     const brand = await ctx.db
       .query("brands")
-      .withIndex("by_business_and_default", (q) =>
+      .withIndex("by_business_and_default", (q: any) =>
         q.eq("businessId", args.businessId).eq("isDefault", true)
       )
       .first();
@@ -255,7 +255,7 @@ export const getBrandAnalytics = query({
     brandId: v.optional(v.id("brands")),
     timeRange: v.optional(v.string()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     if (!args.businessId) {
       return {
         posts: 0,
@@ -269,7 +269,7 @@ export const getBrandAnalytics = query({
     // Get social posts for this brand
     let postsQuery = ctx.db
       .query("socialPosts")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId!));
+      .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId!));
 
     const posts = await postsQuery.collect();
     
@@ -279,11 +279,11 @@ export const getBrandAnalytics = query({
       : posts;
 
     const totalImpressions = brandPosts.reduce(
-      (sum, p) => sum + (p.performanceMetrics?.impressions || 0),
+      (sum: any, p: any) => sum + (p.performanceMetrics?.impressions || 0),
       0
     );
     const totalEngagements = brandPosts.reduce(
-      (sum, p) => sum + (p.performanceMetrics?.engagements || 0),
+      (sum: any, p: any) => sum + (p.performanceMetrics?.engagements || 0),
       0
     );
 
@@ -293,9 +293,9 @@ export const getBrandAnalytics = query({
       engagements: totalEngagements,
       engagementRate: totalImpressions > 0 ? (totalEngagements / totalImpressions) * 100 : 0,
       topPosts: brandPosts
-        .sort((a, b) => (b.performanceMetrics?.engagements || 0) - (a.performanceMetrics?.engagements || 0))
+        .sort((a: any, b: any) => (b.performanceMetrics?.engagements || 0) - (a.performanceMetrics?.engagements || 0))
         .slice(0, 5)
-        .map((p) => ({
+        .map((p: any) => ({
           postId: p._id,
           content: p.content.substring(0, 100),
           engagements: p.performanceMetrics?.engagements || 0,
@@ -312,14 +312,14 @@ export const compareBrandPerformance = query({
     businessId: v.optional(v.id("businesses")),
     timeRange: v.optional(v.string()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     if (!args.businessId) {
       return [];
     }
 
     const brands = await ctx.db
       .query("brands")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId!))
+      .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId!))
       .collect();
 
     const comparison = [];
@@ -350,7 +350,7 @@ export const getBrandAssets = query({
     businessId: v.optional(v.id("businesses")),
     brandId: v.optional(v.id("brands")),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     if (!args.businessId) {
       return [];
     }

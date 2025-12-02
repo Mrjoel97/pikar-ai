@@ -53,7 +53,7 @@ export function AgentCollaborationUI({ businessId }: { businessId: Id<"businesse
           <div>
             <label className="text-sm font-medium">Select Agents (min 2)</label>
             <div className="grid grid-cols-2 gap-2 mt-2">
-              {agents?.map((agent) => (
+              {agents?.map((agent: any) => (
                 <Button
                   key={agent._id}
                   variant={selectedAgents.includes(agent._id) ? "default" : "outline"}
@@ -91,7 +91,7 @@ export function AgentCollaborationUI({ businessId }: { businessId: Id<"businesse
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {collaborations?.map((collab) => (
+            {collaborations?.map((collab: any) => (
               <div key={collab._id} className="border rounded-lg p-4">
                 <div className="flex items-start justify-between mb-2">
                   <div>
@@ -106,7 +106,7 @@ export function AgentCollaborationUI({ businessId }: { businessId: Id<"businesse
                 </div>
 
                 <div className="space-y-2 mt-4">
-                  {collab.messages.slice(-3).map((msg, idx) => (
+                  {collab.messages.slice(-3).map((msg: any, idx: number) => (
                     <div key={idx} className="flex items-start gap-2 text-sm">
                       <CheckCircle className="h-4 w-4 text-green-500 mt-0.5" />
                       <div>

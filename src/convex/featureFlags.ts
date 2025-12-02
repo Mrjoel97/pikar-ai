@@ -5,7 +5,7 @@ import { api } from "./_generated/api";
 // Make getFeatureFlags fully guest-safe; never require auth and never throw
 export const getFeatureFlags = query({
   args: { businessId: v.optional(v.id("businesses")) },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     try {
       const allFlags = await ctx.db.query("featureFlags").collect();
       const globalFlags = allFlags.filter((f: any) => f.businessId === undefined);
@@ -26,7 +26,7 @@ export const isFeatureEnabled = query({
     userTier: v.optional(v.string()),
     businessTier: v.optional(v.string()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) return false;
 
@@ -53,9 +53,9 @@ export const isFeatureEnabled = query({
     const rollout: number =
       typeof flag.rolloutPercentage === "number" ? flag.rolloutPercentage : 100;
     if (rollout < 100) {
-      const basis = identity.subject || identity.email || "anon";
-      const hash = Array.from(basis).reduce(
-        (a, ch) => ((a << 5) - a + ch.charCodeAt(0)) | 0,
+      const basis = String(identity.subject || identity.email || "anon");
+      const hash = Array.from(basis).reduce<number>(
+        (a: number, ch: string) => ((a << 5) - a + ch.charCodeAt(0)) | 0,
         0
       );
       const pct = Math.abs(hash) % 100;
@@ -89,7 +89,7 @@ export const upsertFeatureFlag = mutation({
       })
     ),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Not authenticated");
 
@@ -130,7 +130,7 @@ export const upsertFeatureFlag = mutation({
 // Mutation to toggle a feature flag
 export const toggleFeatureFlag = mutation({
   args: { flagId: v.id("featureFlags") },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) {
       throw new Error("Not authenticated");
@@ -153,7 +153,7 @@ export const toggleFeatureFlag = mutation({
 // Ensure analytics is also guest-safe
 export const getFeatureFlagAnalytics = query({
   args: { businessId: v.optional(v.id("businesses")) },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     try {
       const allFlags: any[] = await (ctx.db as any).query("featureFlags" as any).collect();
       const flags = args.businessId
@@ -190,7 +190,7 @@ export const updateFeatureFlag = mutation({
     businessId: v.optional(v.union(v.id("businesses"), v.null())),
     isEnabled: v.optional(v.boolean()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) {
       throw new Error("Not authenticated");
@@ -232,7 +232,7 @@ export const solopreneurExecAssistantEnabled = query({
   args: {
     businessId: v.optional(v.id("businesses")),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     try {
       // Try to find an explicit flag scoped to tenant first
       const flags = await ctx.db.query("featureFlags").collect();
@@ -274,7 +274,7 @@ export const setSolopreneurExecAssistant = mutation({
     enabled: v.boolean(),
     businessId: v.optional(v.id("businesses")),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     // Admin gate via existing admin getIsAdmin check
     const isAdmin = await ctx.runQuery(api.admin.getIsAdmin as any, {});
     if (!isAdmin) {

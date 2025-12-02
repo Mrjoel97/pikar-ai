@@ -602,6 +602,7 @@ export const recordAgentExecution: any = mutation({
     errorMessage: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    return await ctx.runMutation(internal.agentPerformance.recordExecution, args);
+    // Use string reference to avoid type instantiation depth issues
+    return await (ctx as any).runMutation("agentPerformance:recordExecution" as any, args);
   },
 });

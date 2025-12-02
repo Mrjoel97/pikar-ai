@@ -15,13 +15,13 @@ export const createGoal = mutation({
     assignedTo: v.optional(v.array(v.id("users"))),
     category: v.optional(v.string()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Not authenticated");
 
     const user = await ctx.db
       .query("users")
-      .withIndex("email", (q) => q.eq("email", identity.email!))
+      .withIndex("email", (q: any) => q.eq("email", identity.email!))
       .unique();
     if (!user) throw new Error("User not found");
 
@@ -68,35 +68,35 @@ export const listGoals = query({
     status: v.optional(v.union(v.literal("active"), v.literal("completed"), v.literal("archived"))),
     category: v.optional(v.string()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) return [];
 
     const user = await ctx.db
       .query("users")
-      .withIndex("email", (q) => q.eq("email", identity.email!))
+      .withIndex("email", (q: any) => q.eq("email", identity.email!))
       .unique();
     if (!user) return [];
 
     let goals = await ctx.db
       .query("teamGoals")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId))
       .order("desc")
       .collect();
 
     // Filter by status if provided
     if (args.status) {
-      goals = goals.filter(g => g.status === args.status);
+      goals = goals.filter((g: any) => g.status === args.status);
     }
 
     // Filter by category if provided
     if (args.category) {
-      goals = goals.filter(g => g.category === args.category);
+      goals = goals.filter((g: any) => g.category === args.category);
     }
 
     // Enrich with creator info and progress
     const enriched = await Promise.all(
-      goals.map(async (goal) => {
+      goals.map(async (goal: any) => {
         const creator = await ctx.db.get(goal.createdBy);
         const creatorName = creator && 'name' in creator && creator.name ? creator.name : "Unknown";
         
@@ -126,13 +126,13 @@ export const updateProgress = mutation({
     currentValue: v.number(),
     note: v.optional(v.string()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Not authenticated");
 
     const user = await ctx.db
       .query("users")
-      .withIndex("email", (q) => q.eq("email", identity.email!))
+      .withIndex("email", (q: any) => q.eq("email", identity.email!))
       .unique();
     if (!user) throw new Error("User not found");
 
@@ -234,13 +234,13 @@ export const updateGoal = mutation({
     category: v.optional(v.string()),
     status: v.optional(v.union(v.literal("active"), v.literal("completed"), v.literal("archived"))),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Not authenticated");
 
     const user = await ctx.db
       .query("users")
-      .withIndex("email", (q) => q.eq("email", identity.email!))
+      .withIndex("email", (q: any) => q.eq("email", identity.email!))
       .unique();
     if (!user) throw new Error("User not found");
 
@@ -268,13 +268,13 @@ export const updateGoal = mutation({
 // Delete a goal
 export const deleteGoal = mutation({
   args: { goalId: v.id("teamGoals") },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Not authenticated");
 
     const user = await ctx.db
       .query("users")
-      .withIndex("email", (q) => q.eq("email", identity.email!))
+      .withIndex("email", (q: any) => q.eq("email", identity.email!))
       .unique();
     if (!user) throw new Error("User not found");
 
@@ -298,19 +298,19 @@ export const deleteGoal = mutation({
 // Get goal update history
 export const getGoalHistory = query({
   args: { goalId: v.id("teamGoals") },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) return [];
 
     const updates = await ctx.db
       .query("goalUpdates")
-      .withIndex("by_goal", (q) => q.eq("goalId", args.goalId))
+      .withIndex("by_goal", (q: any) => q.eq("goalId", args.goalId))
       .order("desc")
       .take(50);
 
     // Enrich with user info
     const enriched = await Promise.all(
-      updates.map(async (update) => {
+      updates.map(async (update: any) => {
         const user = await ctx.db.get(update.updatedBy);
         const userName = user && 'name' in user && user.name ? user.name : "Unknown";
         return {
@@ -327,21 +327,21 @@ export const getGoalHistory = query({
 // Get goals summary/stats
 export const getGoalsSummary = query({
   args: { businessId: v.id("businesses") },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) return null;
 
     const goals = await ctx.db
       .query("teamGoals")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId))
       .collect();
 
-    const active = goals.filter(g => g.status === "active");
-    const completed = goals.filter(g => g.status === "completed");
-    const overdue = active.filter(g => g.deadline && g.deadline < Date.now());
+    const active = goals.filter((g: any) => g.status === "active");
+    const completed = goals.filter((g: any) => g.status === "completed");
+    const overdue = active.filter((g: any) => g.deadline && g.deadline < Date.now());
 
     const totalProgress = active.length > 0
-      ? active.reduce((sum, g) => {
+      ? active.reduce((sum: any, g: any) => {
           const progress = g.targetValue > 0 ? (g.currentValue / g.targetValue) * 100 : 0;
           return sum + Math.min(100, progress);
         }, 0) / active.length
@@ -363,7 +363,7 @@ export const getTeamContributions = query({
     businessId: v.id("businesses"),
     days: v.optional(v.number()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) return [];
 
@@ -373,8 +373,8 @@ export const getTeamContributions = query({
     // Get all goal updates in the time period
     const updates = await ctx.db
       .query("goalUpdates")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
-      .filter((q) => q.gte(q.field("timestamp"), cutoff))
+      .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId))
+      .filter((q: any) => q.gte(q.field("timestamp"), cutoff))
       .collect();
 
     // Group by user
@@ -421,28 +421,28 @@ export const getTeamContributions = query({
 // Add: Get goals dashboard summary with milestones
 export const getDashboardSummary = query({
   args: { businessId: v.id("businesses") },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) return null;
 
     const goals = await ctx.db
       .query("teamGoals")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId))
       .collect();
 
-    const active = goals.filter(g => g.status === "active");
-    const completed = goals.filter(g => g.status === "completed");
-    const overdue = active.filter(g => g.deadline && g.deadline < Date.now());
+    const active = goals.filter((g: any) => g.status === "active");
+    const completed = goals.filter((g: any) => g.status === "completed");
+    const overdue = active.filter((g: any) => g.deadline && g.deadline < Date.now());
 
     // Calculate milestones (goals near completion)
-    const nearCompletion = active.filter(g => {
+    const nearCompletion = active.filter((g: any) => {
       const progress = g.targetValue > 0 ? (g.currentValue / g.targetValue) * 100 : 0;
       return progress >= 75 && progress < 100;
     });
 
     // Recent completions (last 7 days)
     const weekAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
-    const recentCompletions = completed.filter(g => g.updatedAt >= weekAgo);
+    const recentCompletions = completed.filter((g: any) => g.updatedAt >= weekAgo);
 
     return {
       total: goals.length,
@@ -451,7 +451,7 @@ export const getDashboardSummary = query({
       overdue: overdue.length,
       nearCompletion: nearCompletion.length,
       recentCompletions: recentCompletions.length,
-      topGoals: active.slice(0, 3).map(g => ({
+      topGoals: active.slice(0, 3).map((g: any) => ({
         _id: g._id,
         title: g.title,
         progress: g.targetValue > 0 ? Math.min(100, Math.round((g.currentValue / g.targetValue) * 100)) : 0,

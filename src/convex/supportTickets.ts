@@ -14,7 +14,7 @@ export const createTicket = mutation({
     category: v.string(),
     createdBy: v.id("users"),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const ticketId = await ctx.db.insert("supportTickets", {
       businessId: args.businessId,
       subject: args.subject,
@@ -45,7 +45,7 @@ export const updateTicketStatus = mutation({
       v.literal("closed")
     ),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     await ctx.db.patch(args.ticketId, {
       status: args.status,
       updatedAt: Date.now(),
@@ -62,16 +62,16 @@ export const getTicketAnalytics = query({
   args: {
     businessId: v.id("businesses"),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const tickets = await ctx.db
       .query("supportTickets")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId))
       .collect();
 
     const total = tickets.length;
-    const open = tickets.filter((t) => t.status === "open").length;
-    const inProgress = tickets.filter((t) => t.status === "in_progress").length;
-    const resolved = tickets.filter((t) => t.status === "resolved").length;
+    const open = tickets.filter((t: any) => t.status === "open").length;
+    const inProgress = tickets.filter((t: any) => t.status === "in_progress").length;
+    const resolved = tickets.filter((t: any) => t.status === "resolved").length;
 
     const avgResponseTime = tickets.length > 0 ? 2.5 : 0; // hours (simulated)
     const satisfactionScore = 4.2; // out of 5 (simulated)
@@ -102,21 +102,21 @@ export const listTickets = query({
     )),
     priority: v.optional(v.union(v.literal("low"), v.literal("medium"), v.literal("high"), v.literal("critical"))),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     let tickets = await ctx.db
       .query("supportTickets")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId))
       .collect();
 
     if (args.status) {
-      tickets = tickets.filter((t) => t.status === args.status);
+      tickets = tickets.filter((t: any) => t.status === args.status);
     }
 
     if (args.priority) {
-      tickets = tickets.filter((t) => t.priority === args.priority);
+      tickets = tickets.filter((t: any) => t.priority === args.priority);
     }
 
-    return tickets.sort((a, b) => b.createdAt - a.createdAt);
+    return tickets.sort((a: any, b: any) => b.createdAt - a.createdAt);
   },
 });
 
@@ -128,7 +128,7 @@ export const triageTicket = action({
     subject: v.string(),
     description: v.string(),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     // Simulate AI triage analysis
     const keywords = args.description.toLowerCase();
     
@@ -179,7 +179,7 @@ export const assignPriority = mutation({
     ticketId: v.id("supportTickets"),
     priority: v.union(v.literal("low"), v.literal("medium"), v.literal("high"), v.literal("critical")),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     await ctx.db.patch(args.ticketId, {
       priority: args.priority,
       updatedAt: Date.now(),
@@ -198,7 +198,7 @@ export const suggestResponse = action({
     description: v.string(),
     category: v.string(),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     // Simulate AI response generation
     const templates = {
       technical: [

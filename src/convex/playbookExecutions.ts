@@ -11,7 +11,7 @@ export const createExecution = mutation({
     triggeredBy: v.optional(v.id("users")),
     input: v.optional(v.any()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const executionId = await ctx.db.insert("playbookExecutions", {
       businessId: args.businessId,
       playbookKey: args.playbookKey,
@@ -44,7 +44,7 @@ export const updateExecutionStatus = internalMutation({
     error: v.optional(v.string()),
     result: v.optional(v.any()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const execution = await ctx.db.get(args.executionId);
     if (!execution) throw new Error("Execution not found");
 
@@ -77,7 +77,7 @@ export const addExecutionStep = internalMutation({
     stepResult: v.optional(v.any()),
     stepError: v.optional(v.string()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const execution = await ctx.db.get(args.executionId);
     if (!execution) throw new Error("Execution not found");
 
@@ -97,7 +97,7 @@ export const addExecutionStep = internalMutation({
 // Get execution by ID
 export const getExecution = query({
   args: { executionId: v.id("playbookExecutions") },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     return await ctx.db.get(args.executionId);
   },
 });
@@ -108,12 +108,12 @@ export const listExecutions = query({
     businessId: v.id("businesses"),
     limit: v.optional(v.number()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const limit = Math.min(args.limit || 20, 100);
     
     return await ctx.db
       .query("playbookExecutions")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId))
       .order("desc")
       .take(limit);
   },
@@ -122,7 +122,7 @@ export const listExecutions = query({
 // Retry a failed execution
 export const retryExecution = mutation({
   args: { executionId: v.id("playbookExecutions") },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const execution = await ctx.db.get(args.executionId);
     if (!execution) throw new Error("Execution not found");
 

@@ -263,7 +263,7 @@ export const logEncryptionOperation = mutation({
       success: args.success,
       errorMessage: args.errorMessage,
       timestamp: Date.now(),
-    });
+    } as any);
   },
 });
 
@@ -298,19 +298,19 @@ export const getKmsAnalytics = query({
     const decryptOperations = logs.filter((l) => l.operation === "decrypt").length;
     const successfulOperations = logs.filter((l) => l.success).length;
     const failedOperations = totalOperations - successfulOperations;
-    const totalDataSize = logs.reduce((sum, l) => sum + l.dataSize, 0);
+    const totalDataSize = logs.reduce((sum, l) => sum + (l.dataSize || 0), 0);
 
     // Group by data type
     const byDataType = logs.reduce((acc: any[], log) => {
       const existing = acc.find((item) => item.dataType === log.dataType);
       if (existing) {
         existing.count++;
-        existing.dataSize += log.dataSize;
+        existing.dataSize += (log.dataSize || 0);
       } else {
         acc.push({
           dataType: log.dataType,
           count: 1,
-          dataSize: log.dataSize,
+          dataSize: (log.dataSize || 0),
         });
       }
       return acc;

@@ -90,14 +90,14 @@ export const createCampaign = mutation({
       body: v.string(),
     })),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     try {
       const identity = await ctx.auth.getUserIdentity();
       if (!identity) throw createAuthError("Not authenticated");
 
       const user = await ctx.db
         .query("users")
-        .withIndex("email", (q) => q.eq("email", identity.email!))
+        .withIndex("email", (q: any) => q.eq("email", identity.email!))
         .unique();
       if (!user) throw new Error("User not found");
 
@@ -269,7 +269,7 @@ export const createCampaign = mutation({
 
 export const getCampaignQuery = internalQuery({
   args: { campaignId: v.id("emails") },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     return await ctx.db.get(args.campaignId);
   },
 });
@@ -286,7 +286,7 @@ export const updateCampaignStatus = internalMutation({
     ),
     lastError: v.optional(v.string()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     await ctx.db.patch(args.campaignId, {
       status: args.status,
       lastError: args.lastError,
@@ -297,7 +297,7 @@ export const updateCampaignStatus = internalMutation({
 
 export const getCampaignById = internalQuery({
   args: { campaignId: v.id("emails") },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     return await ctx.db.get(args.campaignId);
   },
 });
@@ -309,7 +309,7 @@ export const appendSendIdsAndComplete = internalMutation({
     status: v.union(v.literal("sent"), v.literal("failed")),
     lastError: v.optional(v.string()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const campaign = await ctx.db.get(args.campaignId);
     if (!campaign) return;
 
@@ -327,10 +327,10 @@ export const appendSendIdsAndComplete = internalMutation({
 // Public helpers for unsubscribe/token
 export const isUnsubscribedQuery = query({
   args: { businessId: v.id("businesses"), email: v.string() },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const doc = await ctx.db
       .query("emailUnsubscribes")
-      .withIndex("by_business_and_email", (q) => q.eq("businessId", args.businessId).eq("email", args.email))
+      .withIndex("by_business_and_email", (q: any) => q.eq("businessId", args.businessId).eq("email", args.email))
       .unique()
       .catch(() => null);
     return !!doc && doc.active === true;
@@ -339,10 +339,10 @@ export const isUnsubscribedQuery = query({
 
 export const ensureTokenMutation = internalMutation({
   args: { businessId: v.id("businesses"), email: v.string() },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const existing = await ctx.db
       .query("emailUnsubscribes")
-      .withIndex("by_business_and_email", (q) => q.eq("businessId", args.businessId).eq("email", args.email))
+      .withIndex("by_business_and_email", (q: any) => q.eq("businessId", args.businessId).eq("email", args.email))
       .unique()
       .catch(() => null);
     if (existing) return existing.token;
@@ -362,14 +362,14 @@ export const ensureTokenMutation = internalMutation({
 // Public query: list recent campaigns for a business (for UI)
 export const listCampaigns = query({
   args: { businessId: v.id("businesses") },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const rows = await ctx.db
       .query("emails")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId))
       .order("desc")
       .take(50);
 
-    return rows.filter((r) => r.type === "campaign").slice(0, 10);
+    return rows.filter((r: any) => r.type === "campaign").slice(0, 10);
   },
 });
 
@@ -381,7 +381,7 @@ export const listCampaignsByBusiness = query({
   args: {
     businessId: v.optional(v.id("businesses")),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     if (!args.businessId) {
       return [];
     }
@@ -391,20 +391,20 @@ export const listCampaignsByBusiness = query({
 
     const rows = await ctx.db
       .query("emails")
-      .withIndex("by_business", (q) => q.eq("businessId", businessId))
+      .withIndex("by_business", (q: any) => q.eq("businessId", businessId))
       .order("desc")
       .take(50);
 
-    return rows.filter((r) => r.type === "campaign").slice(0, 20);
+    return rows.filter((r: any) => r.type === "campaign").slice(0, 20);
   },
 });
 
 export const setUnsubscribeActive = internalMutation({
   args: { token: v.string() },
-  handler: async (ctx, { token }) => {
+  handler: async (ctx: any, { token }) => {
     const unsubscribe = await ctx.db
       .query("emailUnsubscribes")
-      .withIndex("by_token", (q) => q.eq("token", token))
+      .withIndex("by_token", (q: any) => q.eq("token", token))
       .unique();
 
     if (!unsubscribe) {
@@ -416,7 +416,7 @@ export const setUnsubscribeActive = internalMutation({
     // Sync contact status to unsubscribed if contact exists
     const contact = await ctx.db
       .query("contacts")
-      .withIndex("by_business_and_email", (q) => 
+      .withIndex("by_business_and_email", (q: any) => 
         q.eq("businessId", unsubscribe.businessId).eq("email", unsubscribe.email))
       .first();
 
@@ -444,13 +444,13 @@ export const setUnsubscribeActive = internalMutation({
 
 export const listDueScheduledCampaigns = internalQuery({
   args: {},
-  handler: async (ctx) => {
+  handler: async (ctx: any) => {
     const now = Date.now();
     const due: Array<Id<"emails">> = [];
 
     const query = ctx.db
       .query("emails")
-      .withIndex("by_status", (q) => q.eq("status", "scheduled"))
+      .withIndex("by_status", (q: any) => q.eq("status", "scheduled"))
       .order("asc");
 
     for await (const c of query) {
@@ -465,14 +465,14 @@ export const listDueScheduledCampaigns = internalQuery({
 
 export const processDueScheduledCampaigns = internalMutation({
   args: {},
-  handler: async (ctx) => {
+  handler: async (ctx: any) => {
     const now = Date.now();
     
     // Find campaigns due for sending (limit to 50 for safety)
     const dueCampaigns = await ctx.db
       .query("emails")
-      .withIndex("by_status", (q) => q.eq("status", "scheduled"))
-      .filter((q) => q.lte(q.field("scheduledAt"), now))
+      .withIndex("by_status", (q: any) => q.eq("status", "scheduled"))
+      .filter((q: any) => q.lte(q.field("scheduledAt"), now))
       .take(50);
 
     let processed = 0;
@@ -480,7 +480,7 @@ export const processDueScheduledCampaigns = internalMutation({
     for (const campaign of dueCampaigns) {
       // Reserve by marking as queued
       await ctx.db.patch(campaign._id, { 
-        status: "queued",
+        status: "queued", 
         lastError: undefined 
       });
       
@@ -504,14 +504,14 @@ export const processDueScheduledCampaigns = internalMutation({
 
 export const reserveDueScheduledCampaigns = internalMutation({
   args: {},
-  handler: async (ctx) => {
+  handler: async (ctx: any) => {
     const now = Date.now();
     const reservedIds: Array<Id<"emails">> = [];
 
     const due = await ctx.db
       .query("emails")
-      .withIndex("by_status", (q) => q.eq("status", "scheduled"))
-      .filter((q) => q.lte(q.field("scheduledAt"), now))
+      .withIndex("by_status", (q: any) => q.eq("status", "scheduled"))
+      .filter((q: any) => q.lte(q.field("scheduledAt"), now))
       .take(50);
 
     for (const campaign of due) {
@@ -530,7 +530,7 @@ export const reserveDueScheduledCampaigns = internalMutation({
 // Add: helper mutation to ensure unsubscribe token and return absolute URL
 export const getOrCreateUnsubscribeUrl: any = internalMutation({
   args: { businessId: v.id("businesses"), email: v.string() },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     // Ensure these are concrete types for TS
     const token: string = await ctx.runMutation("emails:ensureTokenMutation" as any, {
       businessId: args.businessId,

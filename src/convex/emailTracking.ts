@@ -15,7 +15,7 @@ export const recordEmailEvent = mutation({
     ),
     metadata: v.optional(v.any()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     await ctx.db.insert("emailEvents", {
       campaignId: args.campaignId,
       recipientEmail: args.recipientEmail,

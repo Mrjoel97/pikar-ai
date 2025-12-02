@@ -23,7 +23,7 @@ export const connectSocialAccount = mutation({
 
     const user = await ctx.db
       .query("users")
-      .withIndex("email", (q) => q.eq("email", identity.email!))
+      .withIndex("email", (q: any) => q.eq("email", identity.email!))
       .first();
     if (!user) {
       throw new Error("[ERR_USER_NOT_FOUND] User not found.");
@@ -53,8 +53,8 @@ export const connectSocialAccount = mutation({
 
     const connectedAccounts = await ctx.db
       .query("socialAccounts")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
-      .filter((q) => q.eq(q.field("isActive"), true))
+      .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId))
+      .filter((q: any) => q.eq(q.field("isActive"), true))
       .collect();
 
     const limit = platformLimits[tier] || 2;
@@ -67,7 +67,7 @@ export const connectSocialAccount = mutation({
     // Check if account already exists for this business/platform
     const existing = await ctx.db
       .query("socialAccounts")
-      .withIndex("by_business_and_platform", (q) =>
+      .withIndex("by_business_and_platform", (q: any) =>
         q.eq("businessId", args.businessId).eq("platform", args.platform)
       )
       .first();
@@ -141,7 +141,7 @@ export const disconnectSocialAccount = mutation({
 
     const user = await ctx.db
       .query("users")
-      .withIndex("email", (q) => q.eq("email", identity.email!))
+      .withIndex("email", (q: any) => q.eq("email", identity.email!))
       .first();
     if (!user) {
       throw new Error("[ERR_USER_NOT_FOUND] User not found.");
@@ -187,12 +187,12 @@ export const listConnectedAccounts = query({
 
     const accounts = await ctx.db
       .query("socialAccounts")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId!))
-      .filter((q) => q.eq(q.field("isActive"), true))
+      .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId!))
+      .filter((q: any) => q.eq(q.field("isActive"), true))
       .collect();
 
     // Don't expose tokens in query results
-    return accounts.map((acc) => ({
+    return accounts.map((acc: any) => ({
       _id: acc._id,
       platform: acc.platform,
       accountName: acc.accountName,
@@ -215,10 +215,10 @@ export const getAccountByPlatform = internalMutation({
   handler: async (ctx: any, args) => {
     const account = await ctx.db
       .query("socialAccounts")
-      .withIndex("by_business_and_platform", (q) =>
+      .withIndex("by_business_and_platform", (q: any) =>
         q.eq("businessId", args.businessId).eq("platform", args.platform)
       )
-      .filter((q) => q.eq(q.field("isActive"), true))
+      .filter((q: any) => q.eq(q.field("isActive"), true))
       .first();
 
     return account;
@@ -296,7 +296,7 @@ export const refreshAccessToken = mutation({
 
     const user = await ctx.db
       .query("users")
-      .withIndex("email", (q) => q.eq("email", identity.email!))
+      .withIndex("email", (q: any) => q.eq("email", identity.email!))
       .first();
     if (!user) {
       throw new Error("[ERR_USER_NOT_FOUND] User not found.");

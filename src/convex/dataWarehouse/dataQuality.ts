@@ -9,17 +9,17 @@ export const getQualityMetrics = query({
     businessId: v.optional(v.id("businesses")),
     sourceId: v.optional(v.id("dataWarehouseSources")),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     if (!args.businessId) return [];
 
     let metricsQuery = ctx.db
       .query("dataQualityMetrics")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId!));
+      .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId!));
 
     const metrics = await metricsQuery.order("desc").take(100);
 
     if (args.sourceId) {
-      return metrics.filter((m) => m.sourceId === args.sourceId);
+      return metrics.filter((m: any) => m.sourceId === args.sourceId);
     }
 
     return metrics;
@@ -49,7 +49,7 @@ export const createQualityCheck = mutation({
     schedule: v.string(),
     enabled: v.boolean(),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Unauthorized");
 
@@ -75,17 +75,17 @@ export const listQualityChecks = query({
     businessId: v.optional(v.id("businesses")),
     sourceId: v.optional(v.id("dataWarehouseSources")),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     if (!args.businessId) return [];
 
     let query = ctx.db
       .query("qualityChecks")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId!));
+      .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId!));
 
     const checks = await query.collect();
 
     if (args.sourceId) {
-      return checks.filter((c) => c.sourceId === args.sourceId);
+      return checks.filter((c: any) => c.sourceId === args.sourceId);
     }
 
     return checks;
@@ -94,7 +94,7 @@ export const listQualityChecks = query({
 
 export const runQualityCheck = mutation({
   args: { checkId: v.id("qualityChecks") },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Unauthorized");
 

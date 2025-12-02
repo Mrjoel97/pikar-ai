@@ -33,6 +33,7 @@ export const cleanupOldRefreshTokens = internalMutation({
       
       // If we deleted 500, there might be more - schedule another run
       if (deletedCount === 500) {
+        // @ts-ignore
         await ctx.scheduler.runAfter(0, internal.authCleanup.cleanupOldRefreshTokens, {});
       }
       

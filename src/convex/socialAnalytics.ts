@@ -10,7 +10,7 @@ export const getEngagementMetrics = query({
     businessId: v.optional(v.id("businesses")),
     timeRange: v.optional(v.union(v.literal("7d"), v.literal("30d"), v.literal("90d"), v.literal("1y"))),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     // Guest/public: no business context → return empty metrics
     if (!args.businessId) {
       return {
@@ -39,8 +39,8 @@ export const getEngagementMetrics = query({
 
     const posts = await ctx.db
       .query("socialPosts")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId!))
-      .filter((q) => q.gte(q.field("_creationTime"), cutoff))
+      .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId!))
+      .filter((q: any) => q.gte(q.field("_creationTime"), cutoff))
       .collect();
 
     let totalImpressions = 0;
@@ -89,7 +89,7 @@ export const getPostROI = query({
     businessId: v.optional(v.id("businesses")),
     timeRange: v.optional(v.union(v.literal("7d"), v.literal("30d"), v.literal("90d"), v.literal("1y"))),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     // Guest/public: no business context → return empty
     if (!args.businessId) {
       return {
@@ -114,16 +114,16 @@ export const getPostROI = query({
 
     const posts = await ctx.db
       .query("socialPosts")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId!))
-      .filter((q) => q.gte(q.field("_creationTime"), cutoff))
+      .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId!))
+      .filter((q: any) => q.gte(q.field("_creationTime"), cutoff))
       .collect();
 
     // Estimate cost per post (time + platform costs)
     const avgCostPerPost = 25; // $25 estimated cost per post (time + tools)
 
     const postROIs = posts
-      .filter((p) => p.performanceMetrics && p.status === "posted")
-      .map((post) => {
+      .filter((p: any) => p.performanceMetrics && p.status === "posted")
+      .map((post: any) => {
         const metrics = post.performanceMetrics!;
         // Estimate revenue: $0.50 per click, $2 per engagement
         const estimatedRevenue = (metrics.clicks * 0.5) + (metrics.engagements * 2);
@@ -142,10 +142,10 @@ export const getPostROI = query({
           publishedAt: post.postedAt || post._creationTime,
         };
       })
-      .sort((a, b) => b.roi - a.roi);
+      .sort((a: any, b: any) => b.roi - a.roi);
 
     const totalCost = posts.length * avgCostPerPost;
-    const totalRevenue = postROIs.reduce((sum, p) => sum + p.estimatedRevenue, 0);
+    const totalRevenue = postROIs.reduce((sum: any, p: any) => sum + p.estimatedRevenue, 0);
     const overallROI = totalCost > 0 ? totalRevenue / totalCost : 0;
 
     return {
@@ -168,7 +168,7 @@ export const getAudienceGrowth = query({
     businessId: v.optional(v.id("businesses")),
     timeRange: v.optional(v.union(v.literal("7d"), v.literal("30d"), v.literal("90d"), v.literal("1y"))),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     // Guest/public: no business context → return empty
     if (!args.businessId) {
       return {
@@ -193,8 +193,8 @@ export const getAudienceGrowth = query({
 
     const posts = await ctx.db
       .query("socialPosts")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId!))
-      .filter((q) => q.gte(q.field("_creationTime"), cutoff))
+      .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId!))
+      .filter((q: any) => q.gte(q.field("_creationTime"), cutoff))
       .collect();
 
     // Group posts by day and calculate cumulative impressions (proxy for audience reach)
@@ -205,10 +205,10 @@ export const getAudienceGrowth = query({
     for (let i = 0; i < daysInRange; i++) {
       const dayStart = cutoff + (i * dayMs);
       const dayEnd = dayStart + dayMs;
-      const dayPosts = posts.filter((p) => p._creationTime >= dayStart && p._creationTime < dayEnd);
+      const dayPosts = posts.filter((p: any) => p._creationTime >= dayStart && p._creationTime < dayEnd);
 
-      const dayImpressions = dayPosts.reduce((sum, p) => sum + (p.performanceMetrics?.impressions || 0), 0);
-      const dayEngagements = dayPosts.reduce((sum, p) => sum + (p.performanceMetrics?.engagements || 0), 0);
+      const dayImpressions = dayPosts.reduce((sum: any, p: any) => sum + (p.performanceMetrics?.impressions || 0), 0);
+      const dayEngagements = dayPosts.reduce((sum: any, p: any) => sum + (p.performanceMetrics?.engagements || 0), 0);
       
       // Estimate follower growth: 1% of impressions convert to followers
       const estimatedNewFollowers = Math.round(dayImpressions * 0.01);
@@ -242,7 +242,7 @@ export const generateInsights = query({
   args: {
     businessId: v.optional(v.id("businesses")),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     // Guest/public: no business context → return empty
     if (!args.businessId) {
       return {
@@ -262,8 +262,8 @@ export const generateInsights = query({
 
     const posts = await ctx.db
       .query("socialPosts")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId!))
-      .filter((q) => q.gte(q.field("_creationTime"), thirtyDaysAgo))
+      .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId!))
+      .filter((q: any) => q.gte(q.field("_creationTime"), thirtyDaysAgo))
       .collect();
 
     const insights: Array<{ type: string; priority: string; message: string; actionable: string }> = [];
@@ -313,10 +313,10 @@ export const generateInsights = query({
     }
 
     // Insight 3: Engagement rate
-    const postsWithMetrics = posts.filter((p) => p.performanceMetrics);
+    const postsWithMetrics = posts.filter((p: any) => p.performanceMetrics);
     if (postsWithMetrics.length > 0) {
-      const totalImpressions = postsWithMetrics.reduce((sum, p) => sum + (p.performanceMetrics?.impressions || 0), 0);
-      const totalEngagements = postsWithMetrics.reduce((sum, p) => sum + (p.performanceMetrics?.engagements || 0), 0);
+      const totalImpressions = postsWithMetrics.reduce((sum: any, p: any) => sum + (p.performanceMetrics?.impressions || 0), 0);
+      const totalEngagements = postsWithMetrics.reduce((sum: any, p: any) => sum + (p.performanceMetrics?.engagements || 0), 0);
       const engagementRate = totalImpressions > 0 ? (totalEngagements / totalImpressions) * 100 : 0;
 
       if (engagementRate < 2) {
@@ -358,17 +358,17 @@ export const generateInsights = query({
     }
 
     // Insight 5: AI-generated content performance
-    const aiPosts = posts.filter((p) => p.aiGenerated);
-    const manualPosts = posts.filter((p) => !p.aiGenerated);
+    const aiPosts = posts.filter((p: any) => p.aiGenerated);
+    const manualPosts = posts.filter((p: any) => !p.aiGenerated);
 
     if (aiPosts.length > 0 && manualPosts.length > 0) {
       const aiAvgEngagement = aiPosts
-        .filter((p) => p.performanceMetrics)
-        .reduce((sum, p) => sum + (p.performanceMetrics?.engagements || 0), 0) / aiPosts.length;
+        .filter((p: any) => p.performanceMetrics)
+        .reduce((sum: any, p: any) => sum + (p.performanceMetrics?.engagements || 0), 0) / aiPosts.length;
       
       const manualAvgEngagement = manualPosts
-        .filter((p) => p.performanceMetrics)
-        .reduce((sum, p) => sum + (p.performanceMetrics?.engagements || 0), 0) / manualPosts.length;
+        .filter((p: any) => p.performanceMetrics)
+        .reduce((sum: any, p: any) => sum + (p.performanceMetrics?.engagements || 0), 0) / manualPosts.length;
 
       if (aiAvgEngagement > manualAvgEngagement * 1.2) {
         insights.push({
@@ -400,7 +400,7 @@ export const getPlatformBreakdown = query({
     businessId: v.optional(v.id("businesses")),
     timeRange: v.optional(v.union(v.literal("7d"), v.literal("30d"), v.literal("90d"), v.literal("1y"))),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     // Guest/public: no business context → return empty
     if (!args.businessId) {
       return [];
@@ -417,8 +417,8 @@ export const getPlatformBreakdown = query({
 
     const posts = await ctx.db
       .query("socialPosts")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId!))
-      .filter((q) => q.gte(q.field("_creationTime"), cutoff))
+      .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId!))
+      .filter((q: any) => q.gte(q.field("_creationTime"), cutoff))
       .collect();
 
     const platformStats: Record<string, {
@@ -481,7 +481,7 @@ export const getMultiBrandMetrics = query({
       v.union(v.literal("7d"), v.literal("30d"), v.literal("90d"), v.literal("1y"))
     ),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     // Guest/public: no business context → return empty/defaults
     if (!args.businessId) {
       return {
@@ -503,22 +503,22 @@ export const getMultiBrandMetrics = query({
     // Get all brands for this business
     const brands = await ctx.db
       .query("brands")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId!))
-      .filter((q) => q.eq(q.field("isActive"), true))
+      .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId!))
+      .filter((q: any) => q.eq(q.field("isActive"), true))
       .collect();
 
     // Get all posts in time range
     const posts = await ctx.db
       .query("socialPosts")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId!))
-      .filter((q) => q.gte(q.field("_creationTime"), cutoff))
+      .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId!))
+      .filter((q: any) => q.gte(q.field("_creationTime"), cutoff))
       .collect();
 
     // Aggregate metrics by brand
-    const brandMetrics = brands.map((brand) => {
+    const brandMetrics = brands.map((brand: any) => {
       // In a real implementation, posts would have a brandId field
       // For now, we'll distribute posts evenly across brands
-      const brandPosts = posts.filter((_, idx) => idx % brands.length === brands.indexOf(brand));
+      const brandPosts = posts.filter((_: any, idx: any) => idx % brands.length === brands.indexOf(brand));
       
       let totalImpressions = 0;
       let totalEngagements = 0;
@@ -559,12 +559,12 @@ export const getMultiBrandMetrics = query({
     // Calculate totals
     const totals = {
       posts: posts.length,
-      impressions: brandMetrics.reduce((sum, b) => sum + b.impressions, 0),
-      engagements: brandMetrics.reduce((sum, b) => sum + b.engagements, 0),
-      clicks: brandMetrics.reduce((sum, b) => sum + b.clicks, 0),
-      shares: brandMetrics.reduce((sum, b) => sum + b.shares, 0),
-      comments: brandMetrics.reduce((sum, b) => sum + b.comments, 0),
-      likes: brandMetrics.reduce((sum, b) => sum + b.likes, 0),
+      impressions: brandMetrics.reduce((sum: any, b: any) => sum + b.impressions, 0),
+      engagements: brandMetrics.reduce((sum: any, b: any) => sum + b.engagements, 0),
+      clicks: brandMetrics.reduce((sum: any, b: any) => sum + b.clicks, 0),
+      shares: brandMetrics.reduce((sum: any, b: any) => sum + b.shares, 0),
+      comments: brandMetrics.reduce((sum: any, b: any) => sum + b.comments, 0),
+      likes: brandMetrics.reduce((sum: any, b: any) => sum + b.likes, 0),
     };
 
     return {
@@ -586,7 +586,7 @@ export const getCrossPlatformSummary = query({
       v.union(v.literal("7d"), v.literal("30d"), v.literal("90d"), v.literal("1y"))
     ),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     // Guest/public: no business context → return empty/defaults
     if (!args.businessId) {
       return {
@@ -608,18 +608,18 @@ export const getCrossPlatformSummary = query({
 
     const posts = await ctx.db
       .query("socialPosts")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId!))
-      .filter((q) => q.gte(q.field("_creationTime"), cutoff))
+      .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId!))
+      .filter((q: any) => q.gte(q.field("_creationTime"), cutoff))
       .collect();
 
     // Get connected accounts
     const accounts = await ctx.db
       .query("socialAccounts")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId!))
-      .filter((q) => q.eq(q.field("isActive"), true))
+      .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId!))
+      .filter((q: any) => q.eq(q.field("isActive"), true))
       .collect();
 
-    const platformSummary = {
+    const platformSummary: any = {
       twitter: { connected: false, posts: 0, engagement: 0 },
       linkedin: { connected: false, posts: 0, engagement: 0 },
       facebook: { connected: false, posts: 0, engagement: 0 },
@@ -647,7 +647,7 @@ export const getCrossPlatformSummary = query({
     }
 
     return {
-      platforms: Object.entries(platformSummary).map(([name, data]) => ({
+      platforms: Object.entries(platformSummary).map(([name, data]: any) => ({
         name,
         ...data,
         avgEngagement: data.posts > 0 ? Math.round(data.engagement / data.posts) : 0,
@@ -663,7 +663,7 @@ export const getSolopreneurSocialMetrics = query({
     businessId: v.id("businesses"),
     days: v.optional(v.number()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     // Pull all posts for the business via index; keep simple and fast
     const posts: any[] = await ctx.db
       .query("socialPosts")

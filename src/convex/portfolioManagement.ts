@@ -25,16 +25,16 @@ export const getPortfolioOverview = query({
 
     const initiatives = await ctx.db
       .query("initiatives")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId!))
+      .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId!))
       .collect();
 
-    const active = initiatives.filter((i) => i.status === "active");
-    const completed = initiatives.filter((i) => i.status === "completed");
+    const active = initiatives.filter((i: any) => i.status === "active");
+    const completed = initiatives.filter((i: any) => i.status === "completed");
 
     // Calculate portfolio metrics
     const portfolioMetrics = await ctx.db
       .query("portfolioMetrics")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId!))
+      .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId!))
       .first();
 
     return {
@@ -44,7 +44,7 @@ export const getPortfolioOverview = query({
       totalBudget: portfolioMetrics?.totalBudget || 0,
       totalSpent: portfolioMetrics?.totalSpent || 0,
       overallHealth: portfolioMetrics?.overallHealth || "unknown",
-      initiatives: initiatives.map((i) => ({
+      initiatives: initiatives.map((i: any) => ({
         id: i._id,
         name: i.name,
         status: i.status,
@@ -63,12 +63,12 @@ export const getInitiativeDependencies = query({
 
     const dependencies = await ctx.db
       .query("initiativeDependencies")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId!))
+      .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId!))
       .collect();
 
     // Enrich with initiative details
     const enriched = await Promise.all(
-      dependencies.map(async (dep) => {
+      dependencies.map(async (dep: any) => {
         const source = await ctx.db.get(dep.sourceInitiativeId);
         const target = await ctx.db.get(dep.targetInitiativeId);
         return {
@@ -130,15 +130,15 @@ export const getResourceAllocation = query({
 
     const allocations = await ctx.db
       .query("resourceAllocations")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId!))
+      .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId!))
       .collect();
 
-    const totalAllocated = allocations.reduce((sum, a) => sum + a.allocatedAmount, 0);
-    const totalCapacity = allocations.reduce((sum, a) => sum + a.capacity, 0);
+    const totalAllocated = allocations.reduce((sum: any, a: any) => sum + a.allocatedAmount, 0);
+    const totalCapacity = allocations.reduce((sum: any, a: any) => sum + a.capacity, 0);
 
     // Group by initiative
     const byInitiative = await Promise.all(
-      allocations.map(async (alloc) => {
+      allocations.map(async (alloc: any) => {
         const initiative = await ctx.db.get(alloc.initiativeId);
         return {
           initiativeId: alloc.initiativeId,
@@ -171,22 +171,22 @@ export const optimizeResourceAllocation = mutation({
     // Get current allocations (indexed)
     const allocations = await ctx.db
       .query("resourceAllocations")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId))
       .collect();
 
     // Get all initiatives for the business (indexed)
     const initiativesAll = await ctx.db
       .query("initiatives")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId))
       .collect();
 
     // In-memory filter to avoid Convex query.filter()
-    const activeInitiatives = initiativesAll.filter((i) => i.status === "active");
+    const activeInitiatives = initiativesAll.filter((i: any) => i.status === "active");
 
     // Simple optimization: suggest adjustments proportional to current allocation
-    const suggestions = activeInitiatives.map((initiative) => {
-      const currentAlloc = allocations.filter((a) => a.initiativeId === initiative._id);
-      const totalCurrent = currentAlloc.reduce((sum, a) => sum + a.allocatedAmount, 0);
+    const suggestions = activeInitiatives.map((initiative: any) => {
+      const currentAlloc = allocations.filter((a: any) => a.initiativeId === initiative._id);
+      const totalCurrent = currentAlloc.reduce((sum: any, a: any) => sum + a.allocatedAmount, 0);
 
       const adjustment = totalCurrent * 0.1; // +10% suggestion
       return {
@@ -217,11 +217,11 @@ export const getPortfolioRiskAssessment = query({
 
     const risks = await ctx.db
       .query("portfolioRisks")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId!))
+      .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId!))
       .collect();
 
     // Calculate overall risk score (weighted average)
-    const totalWeight = risks.reduce((sum, r) => sum + (r.impact * r.probability), 0);
+    const totalWeight = risks.reduce((sum: any, r: any) => sum + (r.impact * r.probability), 0);
     const overallScore = risks.length > 0 ? totalWeight / risks.length : 0;
 
     const riskLevel =
@@ -231,7 +231,7 @@ export const getPortfolioRiskAssessment = query({
 
     // Enrich with initiative details
     const enrichedRisks = await Promise.all(
-      risks.map(async (risk) => {
+      risks.map(async (risk: any) => {
         const initiative = risk.initiativeId ? await ctx.db.get(risk.initiativeId) : null;
         return {
           ...risk,
@@ -245,8 +245,8 @@ export const getPortfolioRiskAssessment = query({
       riskLevel,
       risks: enrichedRisks,
       mitigationStrategies: risks
-        .filter((r) => r.mitigationStrategy)
-        .map((r) => r.mitigationStrategy!),
+        .filter((r: any) => r.mitigationStrategy)
+        .map((r: any) => r.mitigationStrategy!),
     };
   },
 });
@@ -288,22 +288,22 @@ export const updatePortfolioMetrics = internalMutation({
   handler: async (ctx: any, args) => {
     const initiatives = await ctx.db
       .query("initiatives")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId))
       .collect();
 
     const allocations = await ctx.db
       .query("resourceAllocations")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId))
       .collect();
 
     const risks = await ctx.db
       .query("portfolioRisks")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId))
       .collect();
 
-    const totalBudget = allocations.reduce((sum, a) => sum + a.capacity, 0);
-    const totalSpent = allocations.reduce((sum, a) => sum + a.allocatedAmount, 0);
-    const activeRisks = risks.filter((r) => r.status === "active").length;
+    const totalBudget = allocations.reduce((sum: any, a: any) => sum + a.capacity, 0);
+    const totalSpent = allocations.reduce((sum: any, a: any) => sum + a.allocatedAmount, 0);
+    const activeRisks = risks.filter((r: any) => r.status === "active").length;
 
     const overallHealth =
       activeRisks > 5 ? "critical" :
@@ -312,7 +312,7 @@ export const updatePortfolioMetrics = internalMutation({
 
     const existing = await ctx.db
       .query("portfolioMetrics")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId))
       .first();
 
     if (existing) {
@@ -354,19 +354,19 @@ export const getCrossBusinessAnalytics = query({
     const allBusinesses = await ctx.db.query("businesses").collect();
     
     const businessMetrics = await Promise.all(
-      allBusinesses.map(async (business) => {
+      allBusinesses.map(async (business: any) => {
         const initiatives = await ctx.db
           .query("initiatives")
-          .withIndex("by_business", (q) => q.eq("businessId", business._id))
+          .withIndex("by_business", (q: any) => q.eq("businessId", business._id))
           .collect();
 
-        const completed = initiatives.filter((i) => i.status === "completed").length;
-        const active = initiatives.filter((i) => i.status === "active").length;
+        const completed = initiatives.filter((i: any) => i.status === "completed").length;
+        const active = initiatives.filter((i: any) => i.status === "active").length;
         const completionRate = initiatives.length > 0 ? (completed / initiatives.length) * 100 : 0;
 
         const metrics = await ctx.db
           .query("portfolioMetrics")
-          .withIndex("by_business", (q) => q.eq("businessId", business._id))
+          .withIndex("by_business", (q: any) => q.eq("businessId", business._id))
           .first();
 
         return {
@@ -421,13 +421,13 @@ export const getPerformanceBenchmarks = query({
     const allBusinesses = await ctx.db.query("businesses").collect();
     
     const scores = await Promise.all(
-      allBusinesses.map(async (business) => {
+      allBusinesses.map(async (business: any) => {
         const initiatives = await ctx.db
           .query("initiatives")
-          .withIndex("by_business", (q) => q.eq("businessId", business._id))
+          .withIndex("by_business", (q: any) => q.eq("businessId", business._id))
           .collect();
 
-        const completed = initiatives.filter((i) => i.status === "completed").length;
+        const completed = initiatives.filter((i: any) => i.status === "completed").length;
         const score = initiatives.length > 0 ? (completed / initiatives.length) * 100 : 0;
 
         return { businessId: business._id, score };
@@ -468,23 +468,23 @@ export const getPredictiveInsights = query({
 
     const initiatives = await ctx.db
       .query("initiatives")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId!))
+      .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId!))
       .collect();
 
     const risks = await ctx.db
       .query("portfolioRisks")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId!))
+      .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId!))
       .collect();
 
     // Simple predictive model based on historical patterns
-    const activeInitiatives = initiatives.filter((i) => i.status === "active");
-    const completedInitiatives = initiatives.filter((i) => i.status === "completed");
+    const activeInitiatives = initiatives.filter((i: any) => i.status === "active");
+    const completedInitiatives = initiatives.filter((i: any) => i.status === "completed");
     
     const avgCompletionTime = completedInitiatives.length > 0
-      ? completedInitiatives.reduce((sum, i) => sum + (i.endDate || Date.now()) - i.startDate, 0) / completedInitiatives.length
+      ? completedInitiatives.reduce((sum: any, i: any) => sum + (i.endDate || Date.now()) - i.startDate, 0) / completedInitiatives.length
       : 0;
 
-    const predictions = activeInitiatives.map((initiative) => {
+    const predictions = activeInitiatives.map((initiative: any) => {
       const elapsed = Date.now() - initiative.startDate;
       const progress = elapsed / avgCompletionTime;
       const estimatedCompletion = initiative.startDate + avgCompletionTime;
@@ -513,7 +513,7 @@ export const getPredictiveInsights = query({
       },
     ];
 
-    const riskForecasts = risks.map((risk) => ({
+    const riskForecasts = risks.map((risk: any) => ({
       riskId: risk._id,
       riskType: risk.riskType,
       currentImpact: risk.impact,
@@ -540,18 +540,18 @@ export const generateOptimizationRecommendations = mutation({
 
     const allocations = await ctx.db
       .query("resourceAllocations")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId))
       .collect();
 
     const initiatives = await ctx.db
       .query("initiatives")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId))
       .collect();
 
     const recommendations = [];
 
     // Identify over-allocated resources
-    const overAllocated = allocations.filter((a) => a.allocatedAmount > a.capacity * 0.9);
+    const overAllocated = allocations.filter((a: any) => a.allocatedAmount > a.capacity * 0.9);
     if (overAllocated.length > 0) {
       recommendations.push({
         type: "reduce_allocation",
@@ -562,7 +562,7 @@ export const generateOptimizationRecommendations = mutation({
     }
 
     // Identify under-utilized resources
-    const underUtilized = allocations.filter((a) => a.allocatedAmount < a.capacity * 0.5);
+    const underUtilized = allocations.filter((a: any) => a.allocatedAmount < a.capacity * 0.5);
     if (underUtilized.length > 0) {
       recommendations.push({
         type: "increase_utilization",

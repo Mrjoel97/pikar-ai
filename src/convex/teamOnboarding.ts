@@ -272,7 +272,7 @@ export const getUserOnboardingSession = query({
   handler: async (ctx: any, args) => {
     const session = await ctx.db
       .query("teamOnboarding")
-      .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .withIndex("by_user", (q: any) => q.eq("userId", args.userId))
       .order("desc")
       .first();
 
@@ -281,10 +281,10 @@ export const getUserOnboardingSession = query({
     // Get associated tasks
     const tasks = await ctx.db
       .query("tasks")
-      .withIndex("by_business", (q) => q.eq("businessId", session.businessId))
+      .withIndex("by_business", (q: any) => q.eq("businessId", session.businessId))
       .collect();
 
-    const onboardingTasks = tasks.filter(t => 
+    const onboardingTasks = tasks.filter((t: any) => 
       t.metadata?.onboardingSessionId === session._id
     );
 
@@ -323,13 +323,13 @@ export const getTeamOnboardingDashboard = query({
   handler: async (ctx: any, args) => {
     const sessions = await ctx.db
       .query("teamOnboarding")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId))
       .order("desc")
       .take(50);
 
-    const activeCount = sessions.filter(s => s.status === "in_progress").length;
-    const completedCount = sessions.filter(s => s.status === "completed").length;
-    const avgProgress = sessions.reduce((sum, s) => sum + s.progress, 0) / (sessions.length || 1);
+    const activeCount = sessions.filter((s: any) => s.status === "in_progress").length;
+    const completedCount = sessions.filter((s: any) => s.status === "completed").length;
+    const avgProgress = sessions.reduce((sum: any, s: any) => sum + s.progress, 0) / (sessions.length || 1);
 
     return {
       sessions,
@@ -355,7 +355,7 @@ export const getUserOnboarding = query({
 
     return await ctx.db
       .query("onboardingChecklists")
-      .withIndex("by_user_and_business", (q) =>
+      .withIndex("by_user_and_business", (q: any) =>
         q.eq("userId", args.userId).eq("businessId", args.businessId)
       )
       .first();
@@ -374,7 +374,7 @@ export const getUserPermissions = query({
 
     return await ctx.db
       .query("userRoles")
-      .withIndex("by_user_and_business", (q) =>
+      .withIndex("by_user_and_business", (q: any) =>
         q.eq("userId", args.userId).eq("businessId", args.businessId)
       )
       .first();
@@ -389,7 +389,7 @@ export const getOnboardingTemplate = query({
   handler: async (ctx: any, args) => {
     return await ctx.db
       .query("onboardingTemplates")
-      .withIndex("by_role", (q) => q.eq("role", args.role))
+      .withIndex("by_role", (q: any) => q.eq("role", args.role))
       .first();
   },
 });
@@ -410,7 +410,7 @@ export const listTeamOnboarding = query({
     try {
       return await ctx.db
         .query("onboardingChecklists")
-        .withIndex("by_business", (q) => q.eq("businessId", args.businessId!))
+        .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId!))
         .collect();
     } catch (error) {
       console.error("Error querying onboardingChecklists:", error);
@@ -432,7 +432,7 @@ export const completeOnboardingStep = mutation({
 
     const checklist = await ctx.db
       .query("onboardingChecklists")
-      .withIndex("by_user_and_business", (q) =>
+      .withIndex("by_user_and_business", (q: any) =>
         q.eq("userId", args.userId).eq("businessId", args.businessId)
       )
       .first();
@@ -486,7 +486,7 @@ export const resetOnboarding = mutation({
 
     const checklist = await ctx.db
       .query("onboardingChecklists")
-      .withIndex("by_user_and_business", (q) =>
+      .withIndex("by_user_and_business", (q: any) =>
         q.eq("userId", args.userId).eq("businessId", args.businessId)
       )
       .first();
@@ -534,7 +534,7 @@ export const assignRole = mutation({
 
     const user = await ctx.db
       .query("users")
-      .withIndex("email", (q) => q.eq("email", identity.email!))
+      .withIndex("email", (q: any) => q.eq("email", identity.email!))
       .first();
 
     if (!user) throw new Error("User not found");
@@ -542,7 +542,7 @@ export const assignRole = mutation({
     // Check if role already exists
     const existing = await ctx.db
       .query("userRoles")
-      .withIndex("by_user_and_business", (q) =>
+      .withIndex("by_user_and_business", (q: any) =>
         q.eq("userId", args.userId).eq("businessId", args.businessId)
       )
       .first();
@@ -616,7 +616,7 @@ export const updatePermissions = mutation({
 
     const userRole = await ctx.db
       .query("userRoles")
-      .withIndex("by_user_and_business", (q) =>
+      .withIndex("by_user_and_business", (q: any) =>
         q.eq("userId", args.userId).eq("businessId", args.businessId)
       )
       .first();

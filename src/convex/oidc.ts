@@ -15,7 +15,7 @@ export const createOIDCConfig = mutation({
     attributeMapping: v.optional(v.any()),
     jitProvisioning: v.optional(v.boolean()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Unauthenticated");
 
@@ -64,7 +64,7 @@ export const updateOIDCConfig = mutation({
     attributeMapping: v.optional(v.any()),
     jitProvisioning: v.optional(v.boolean()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Unauthenticated");
 
@@ -96,7 +96,7 @@ export const updateOIDCConfig = mutation({
 
 export const deleteOIDCConfig = mutation({
   args: { configId: v.id("oidcConfigs") },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Unauthenticated");
 
@@ -120,17 +120,17 @@ export const deleteOIDCConfig = mutation({
 
 export const listOIDCConfigs = query({
   args: { businessId: v.id("businesses") },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     return await ctx.db
       .query("oidcConfigs")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId))
       .collect();
   },
 });
 
 export const getOIDCConfig = query({
   args: { configId: v.id("oidcConfigs") },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     return await ctx.db.get(args.configId);
   },
 });
@@ -140,7 +140,7 @@ export const toggleOIDCConfig = mutation({
     configId: v.id("oidcConfigs"),
     active: v.boolean(),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Unauthenticated");
 
@@ -174,7 +174,7 @@ export const logSSOEvent = mutation({
     success: v.boolean(),
     details: v.optional(v.any()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     await ctx.db.insert("ssoAnalytics", {
       businessId: args.businessId,
       configId: args.configId,
@@ -190,22 +190,22 @@ export const logSSOEvent = mutation({
 
 export const getSSOAnalytics = query({
   args: { businessId: v.id("businesses") },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const analytics = await ctx.db
       .query("ssoAnalytics")
-      .withIndex("by_business_and_timestamp", (q) => q.eq("businessId", args.businessId))
+      .withIndex("by_business_and_timestamp", (q: any) => q.eq("businessId", args.businessId))
       .collect();
 
     const totalLogins = analytics.length;
-    const successfulLogins = analytics.filter((a) => a.success).length;
+    const successfulLogins = analytics.filter((a: any) => a.success).length;
     const failedLogins = totalLogins - successfulLogins;
     const successRate = totalLogins > 0 ? (successfulLogins / totalLogins) * 100 : 0;
 
     // Count JIT provisions
-    const jitProvisions = analytics.filter((a) => a.eventType === "jit_provision").length;
+    const jitProvisions = analytics.filter((a: any) => a.eventType === "jit_provision").length;
 
     // Group by config
-    const byConfig = analytics.reduce((acc: any[], event) => {
+    const byConfig = analytics.reduce((acc: any[], event: any) => {
       const existing = acc.find((item) => item.configId === event.configId);
       if (existing) {
         if (event.success) {
@@ -226,9 +226,9 @@ export const getSSOAnalytics = query({
 
     // Get recent events (last 10)
     const recentEvents = analytics
-      .sort((a, b) => b.timestamp - a.timestamp)
+      .sort((a: any, b: any) => b.timestamp - a.timestamp)
       .slice(0, 10)
-      .map((event) => ({
+      .map((event: any) => ({
         configId: event.configId,
         configType: event.configType,
         eventType: event.eventType,
@@ -250,7 +250,7 @@ export const getSSOAnalytics = query({
 
 export const getOIDCConfigInternal = internalQuery({
   args: { configId: v.id("oidcConfigs") },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     return await ctx.db.get(args.configId);
   },
 });

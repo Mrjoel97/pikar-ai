@@ -11,14 +11,14 @@ export const calculateTimeSavedROI = query({
     userId: v.id("users"),
     days: v.optional(v.number()), // Default to 30 days
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const days = args.days ?? 30;
     const startTime = Date.now() - days * 24 * 60 * 60 * 1000;
 
     // Get user's hourly rate from agent profile
     const agentProfile = await ctx.db
       .query("agentProfiles")
-      .withIndex("by_user_and_business", (q) =>
+      .withIndex("by_user_and_business", (q: any) =>
         q.eq("userId", args.userId).eq("businessId", args.businessId)
       )
       .first();
@@ -28,7 +28,7 @@ export const calculateTimeSavedROI = query({
     // Get time saved from audit logs (wins)
     const auditLogs = await ctx.db
       .query("audit_logs")
-      .filter((q) =>
+      .filter((q: any) =>
         q.and(
           q.eq(q.field("businessId"), args.businessId),
           q.gte(q.field("createdAt"), startTime)
@@ -36,7 +36,7 @@ export const calculateTimeSavedROI = query({
       )
       .collect();
 
-    const timeSavedMinutes = auditLogs.reduce((total, log) => {
+    const timeSavedMinutes = auditLogs.reduce((total: number, log: any) => {
       return total + (log.details?.timeSavedMinutes ?? 0);
     }, 0);
 
@@ -46,15 +46,15 @@ export const calculateTimeSavedROI = query({
     // Get actual revenue events
     const revenueEvents = await ctx.db
       .query("revenueEvents")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId))
       .collect();
     
     // Filter by timestamp in memory since we can't use filter after withIndex
     const filteredRevenueEvents = revenueEvents.filter(
-      (event) => event.timestamp >= startTime
+      (event: any) => event.timestamp >= startTime
     );
 
-    const actualRevenue = filteredRevenueEvents.reduce((total, event) => {
+    const actualRevenue = filteredRevenueEvents.reduce((total: number, event: any) => {
       return total + event.amount;
     }, 0);
 
@@ -73,17 +73,17 @@ export const calculateTimeSavedROI = query({
       const dayEnd = dayStart + 24 * 60 * 60 * 1000;
 
       const dayLogs = auditLogs.filter(
-        (log) => log.createdAt && log.createdAt >= dayStart && log.createdAt < dayEnd
+        (log: any) => log.createdAt && log.createdAt >= dayStart && log.createdAt < dayEnd
       );
       const dayRevenue = filteredRevenueEvents.filter(
-        (event) => event.timestamp >= dayStart && event.timestamp < dayEnd
+        (event: any) => event.timestamp >= dayStart && event.timestamp < dayEnd
       );
 
-      const dayTimeSaved = dayLogs.reduce((total, log) => {
+      const dayTimeSaved = dayLogs.reduce((total: number, log: any) => {
         return total + (log.details?.timeSavedMinutes ?? 0);
       }, 0);
 
-      const dayRevenueAmount = dayRevenue.reduce((total, event) => {
+      const dayRevenueAmount = dayRevenue.reduce((total: number, event: any) => {
         return total + event.amount;
       }, 0);
 
@@ -119,7 +119,7 @@ export const logRevenueEvent = mutation({
     description: v.optional(v.string()),
     metadata: v.optional(v.any()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) {
       throw new Error("Unauthorized");
@@ -161,7 +161,7 @@ export const updateHourlyRate = mutation({
     userId: v.id("users"),
     hourlyRate: v.number(),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) {
       throw new Error("Unauthorized");
@@ -169,7 +169,7 @@ export const updateHourlyRate = mutation({
 
     const agentProfile = await ctx.db
       .query("agentProfiles")
-      .withIndex("by_user_and_business", (q) =>
+      .withIndex("by_user_and_business", (q: any) =>
         q.eq("userId", args.userId).eq("businessId", args.businessId)
       )
       .first();
