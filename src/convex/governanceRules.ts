@@ -25,7 +25,7 @@ export const defineRule = mutation({
     enabled: v.boolean(),
     autoRemediate: v.boolean(),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const ruleId = await ctx.db.insert("governanceRules", {
       businessId: args.businessId,
       name: args.name,
@@ -68,7 +68,7 @@ export const updateRule = mutation({
     enabled: v.optional(v.boolean()),
     autoRemediate: v.optional(v.boolean()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const rule = await ctx.db.get(args.ruleId);
     if (!rule) throw new Error("Rule not found");
 
@@ -95,7 +95,7 @@ export const updateRule = mutation({
  */
 export const deleteRule = mutation({
   args: { ruleId: v.id("governanceRules") },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const rule = await ctx.db.get(args.ruleId);
     if (!rule) throw new Error("Rule not found");
 
@@ -122,19 +122,19 @@ export const getRules = query({
     businessId: v.optional(v.id("businesses")),
     enabled: v.optional(v.boolean()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     if (!args.businessId) return [];
 
     let rules = await ctx.db
       .query("governanceRules")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId!))
+      .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId!))
       .collect();
 
     if (args.enabled !== undefined) {
-      rules = rules.filter((r) => r.enabled === args.enabled);
+      rules = rules.filter((r: any) => r.enabled === args.enabled);
     }
 
-    return rules.sort((a, b) => b.createdAt - a.createdAt);
+    return rules.sort((a: any, b: any) => b.createdAt - a.createdAt);
   },
 });
 
@@ -146,7 +146,7 @@ export const evaluateRule = action({
     ruleId: v.id("governanceRules"),
     workflowId: v.id("workflows"),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const rule = await ctx.runQuery(api.governanceRules.getRule, { ruleId: args.ruleId });
     if (!rule || !rule.enabled) {
       return { violated: false, reason: "Rule not found or disabled" };
@@ -230,7 +230,7 @@ export const updateRuleEvaluation = mutation({
     ruleId: v.id("governanceRules"),
     violated: v.boolean(),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const rule = await ctx.db.get(args.ruleId);
     if (!rule) return;
 
@@ -246,7 +246,7 @@ export const updateRuleEvaluation = mutation({
  */
 export const getRule = query({
   args: { ruleId: v.id("governanceRules") },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     return await ctx.db.get(args.ruleId);
   },
 });
@@ -259,7 +259,7 @@ export const enforceRule = action({
     ruleId: v.id("governanceRules"),
     workflowId: v.id("workflows"),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const rule = await ctx.runQuery(api.governanceRules.getRule, { ruleId: args.ruleId });
     if (!rule || !rule.autoRemediate) {
       return { enforced: false, reason: "Rule not found or auto-remediation disabled" };
@@ -331,7 +331,7 @@ export const recordViolation = mutation({
     remediated: v.boolean(),
     remediationAction: v.optional(v.string()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const rule = await ctx.db.get(args.ruleId);
     if (!rule) return;
 
@@ -376,23 +376,23 @@ export const getRuleViolations = query({
     status: v.optional(v.union(v.literal("open"), v.literal("remediated"), v.literal("dismissed"))),
     limit: v.optional(v.number()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     if (!args.businessId) return [];
 
     let violations = await ctx.db
       .query("governanceViolations")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId!))
+      .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId!))
       .collect();
 
     if (args.ruleId) {
-      violations = violations.filter((v) => v.ruleId === args.ruleId);
+      violations = violations.filter((v: any) => v.ruleId === args.ruleId);
     }
 
     if (args.status) {
-      violations = violations.filter((v) => v.status === args.status);
+      violations = violations.filter((v: any) => v.status === args.status);
     }
 
-    violations.sort((a, b) => b.detectedAt - a.detectedAt);
+    violations.sort((a: any, b: any) => b.detectedAt - a.detectedAt);
 
     if (args.limit) {
       violations = violations.slice(0, args.limit);
@@ -405,13 +405,13 @@ export const getRuleViolations = query({
 /**
  * Generate compliance report
  */
-export const generateComplianceReport = action({
+export const generateComplianceReport: any = action({
   args: {
     businessId: v.id("businesses"),
     startDate: v.number(),
     endDate: v.number(),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const rules = await ctx.runQuery(api.governanceRules.getRules, {
       businessId: args.businessId,
     });
@@ -421,30 +421,30 @@ export const generateComplianceReport = action({
     });
 
     const filteredViolations = violations.filter(
-      (v) => v.detectedAt >= args.startDate && v.detectedAt <= args.endDate
+      (v: any) => v.detectedAt >= args.startDate && v.detectedAt <= args.endDate
     );
 
     // Calculate compliance score
     const totalRules = rules.length;
-    const activeRules = rules.filter((r) => r.enabled).length;
-    const openViolations = filteredViolations.filter((v) => v.status === "open").length;
-    const remediatedViolations = filteredViolations.filter((v) => v.status === "remediated").length;
+    const activeRules = rules.filter((r: any) => r.enabled).length;
+    const openViolations = filteredViolations.filter((v: any) => v.status === "open").length;
+    const remediatedViolations = filteredViolations.filter((v: any) => v.status === "remediated").length;
 
-    const complianceScore = activeRules > 0
+    const complianceScore: number = activeRules > 0
       ? Math.round(((activeRules - openViolations) / activeRules) * 100)
       : 100;
 
     // Breakdown by severity
     const bySeverity = {
-      critical: filteredViolations.filter((v) => v.severity === "critical").length,
-      high: filteredViolations.filter((v) => v.severity === "high").length,
-      medium: filteredViolations.filter((v) => v.severity === "medium").length,
-      low: filteredViolations.filter((v) => v.severity === "low").length,
+      critical: filteredViolations.filter((v: any) => v.severity === "critical").length,
+      high: filteredViolations.filter((v: any) => v.severity === "high").length,
+      medium: filteredViolations.filter((v: any) => v.severity === "medium").length,
+      low: filteredViolations.filter((v: any) => v.severity === "low").length,
     };
 
     // Breakdown by rule type
     const byRuleType: Record<string, number> = {};
-    filteredViolations.forEach((v) => {
+    filteredViolations.forEach((v: any) => {
       byRuleType[v.ruleType] = (byRuleType[v.ruleType] || 0) + 1;
     });
 
@@ -456,7 +456,7 @@ export const generateComplianceReport = action({
 
     // Top violating workflows
     const workflowViolations: Record<string, number> = {};
-    filteredViolations.forEach((v) => {
+    filteredViolations.forEach((v: any) => {
       const key = v.workflowId;
       workflowViolations[key] = (workflowViolations[key] || 0) + 1;
     });
@@ -493,7 +493,7 @@ export const dismissViolation = mutation({
     violationId: v.id("governanceViolations"),
     reason: v.string(),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const violation = await ctx.db.get(args.violationId);
     if (!violation) throw new Error("Violation not found");
 

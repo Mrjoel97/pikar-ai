@@ -14,5 +14,5 @@ export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
     Anonymous,
   ],
   // CRITICAL: Required for auth callbacks to work correctly
-  domain: process.env.CONVEX_SITE_URL,
+  // domain: process.env.CONVEX_SITE_URL,
 });

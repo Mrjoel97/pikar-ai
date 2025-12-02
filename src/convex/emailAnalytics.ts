@@ -8,7 +8,7 @@ export const getBusinessCampaignMetrics = query({
     businessId: v.id("businesses"),
     limit: v.optional(v.number()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const limit = args.limit ?? 10;
     
     const campaigns = await ctx.db
@@ -99,7 +99,7 @@ export const getRealTimeMetrics = query({
   args: {
     campaignId: v.id("emailCampaigns"),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const now = Date.now();
     const last24Hours = now - 24 * 60 * 60 * 1000;
 
@@ -146,7 +146,7 @@ export const getConversionFunnel = query({
   args: {
     campaignId: v.id("emailCampaigns"),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const events = await ctx.db
       .query("emailEvents")
       .withIndex("by_campaign", (q) => q.eq("campaignId", args.campaignId))
@@ -180,7 +180,7 @@ export const getRevenueAttribution = query({
     startDate: v.optional(v.number()),
     endDate: v.optional(v.number()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const startDate = args.startDate ?? Date.now() - 30 * 24 * 60 * 60 * 1000;
     const endDate = args.endDate ?? Date.now();
 
@@ -235,9 +235,9 @@ export const compareCampaigns = query({
   args: {
     campaignIds: v.array(v.id("emailCampaigns")),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const comparisons = await Promise.all(
-      args.campaignIds.map(async (campaignId) => {
+      args.campaignIds.map(async (campaignId: any) => {
         const campaign = await ctx.db.get(campaignId);
         if (!campaign) return null;
 
@@ -274,7 +274,7 @@ export const getPredictiveInsights = action({
   args: {
     businessId: v.id("businesses"),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     // Get historical campaign data
     const metrics = await ctx.runQuery(api.emailAnalytics.getBusinessCampaignMetrics, {
       businessId: args.businessId,

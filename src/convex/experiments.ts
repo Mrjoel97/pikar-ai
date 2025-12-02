@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { internalMutation, mutation, query, action } from "./_generated/server";
-import { internal } from "./_generated/api";
+import { internal, api } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 
 // Create a new experiment with variants
@@ -25,7 +25,7 @@ export const createExperiment = mutation({
       autoDeclareWinner: v.boolean(),
     }),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Not authenticated");
 
@@ -97,7 +97,7 @@ export const updateExperimentStatus = mutation({
       v.literal("completed")
     ),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Not authenticated");
 
@@ -138,17 +138,17 @@ export const listExperiments = query({
       v.literal("completed")
     )),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     let query = ctx.db
       .query("experiments")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId))
       .order("desc");
 
     const experiments = await query.collect();
 
     // Filter by status if provided
     const filtered = args.status
-      ? experiments.filter((e) => e.status === args.status)
+      ? experiments.filter((e: any) => e.status === args.status)
       : experiments;
 
     return filtered;
@@ -158,13 +158,13 @@ export const listExperiments = query({
 // Get experiment with variants
 export const getExperimentById = query({
   args: { experimentId: v.id("experiments") },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const experiment = await ctx.db.get(args.experimentId);
     if (!experiment) return null;
 
     const variants = await ctx.db
       .query("experimentVariants")
-      .withIndex("by_experiment", (q) => q.eq("experimentId", args.experimentId))
+      .withIndex("by_experiment", (q: any) => q.eq("experimentId", args.experimentId))
       .collect();
 
     return { ...experiment, variants };
@@ -185,7 +185,7 @@ export const recordResult = mutation({
     ),
     metadata: v.optional(v.any()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     // Insert result record
     await ctx.db.insert("experimentResults", {
       experimentId: args.experimentId,
@@ -215,13 +215,13 @@ export const recordResult = mutation({
 // Calculate real-time results
 export const calculateResults = query({
   args: { experimentId: v.id("experiments") },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const variants = await ctx.db
       .query("experimentVariants")
-      .withIndex("by_experiment", (q) => q.eq("experimentId", args.experimentId))
+      .withIndex("by_experiment", (q: any) => q.eq("experimentId", args.experimentId))
       .collect();
 
-    return variants.map((v) => ({
+    return variants.map((v: any) => ({
       variantId: v._id,
       variantKey: v.variantKey,
       name: v.name,
@@ -239,7 +239,7 @@ export const declareWinner = mutation({
     experimentId: v.id("experiments"),
     winnerVariantId: v.id("experimentVariants"),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Not authenticated");
 
@@ -268,7 +268,7 @@ export const declareWinner = mutation({
 // Internal query for getting experiment by ID
 export const getExperimentByIdInternal = internalMutation({
   args: { experimentId: v.id("experiments") },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     return await ctx.db.get(args.experimentId);
   },
 });
@@ -276,19 +276,19 @@ export const getExperimentByIdInternal = internalMutation({
 // Statistical significance calculation using Z-test
 export const calculateStatisticalSignificance = query({
   args: { experimentId: v.id("experiments") },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const experiment = await ctx.db.get(args.experimentId);
     if (!experiment) return null;
 
     const variants = await ctx.db
       .query("experimentVariants")
-      .withIndex("by_experiment", (q) => q.eq("experimentId", args.experimentId))
+      .withIndex("by_experiment", (q: any) => q.eq("experimentId", args.experimentId))
       .collect();
 
     if (variants.length < 2) return null;
 
     // Calculate conversion rates and sample sizes
-    const stats = variants.map((v) => ({
+    const stats = variants.map((v: any) => ({
       variantId: v._id,
       variantKey: v.variantKey,
       name: v.name,
@@ -299,7 +299,7 @@ export const calculateStatisticalSignificance = query({
 
     // Find control (first variant) and compare others
     const control = stats[0];
-    const comparisons = stats.slice(1).map((variant) => {
+    const comparisons = stats.slice(1).map((variant: any) => {
       const p1 = control.conversionRate;
       const p2 = variant.conversionRate;
       const n1 = control.sampleSize;
@@ -354,7 +354,7 @@ export const calculateStatisticalSignificance = query({
         conversionRate: control.conversionRate,
       },
       comparisons,
-      overallSignificance: comparisons.some((c) => c.isSignificant),
+      overallSignificance: comparisons.some((c: any) => c.isSignificant),
     };
   },
 });
@@ -375,7 +375,7 @@ export const calculateSampleSize = query({
     confidenceLevel: v.number(),
     statisticalPower: v.number(),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const alpha = 1 - args.confidenceLevel / 100;
     const beta = 1 - args.statisticalPower / 100;
     
@@ -418,9 +418,9 @@ function getZScore(p: number): number {
 }
 
 // Automated winner determination with statistical validation
-export const determineWinner = action({
+export const determineWinner: any = action({
   args: { experimentId: v.id("experiments") },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const experiment = await ctx.runQuery(api.experiments.getExperimentById, {
       experimentId: args.experimentId,
     });
@@ -429,7 +429,7 @@ export const determineWinner = action({
       throw new Error("Experiment not found");
     }
 
-    const significance = await ctx.runQuery(api.experiments.calculateStatisticalSignificance, {
+    const significance: any = await ctx.runQuery(api.experiments.calculateStatisticalSignificance, {
       experimentId: args.experimentId,
     });
 
@@ -451,7 +451,7 @@ export const determineWinner = action({
         isSignificant: false,
         message: "Minimum sample size not reached",
         progress: Math.min(
-          ...significance.comparisons.map((c) => (c.sampleSize / config.minimumSampleSize) * 100)
+          ...significance.comparisons.map((c: any) => (c.sampleSize / config.minimumSampleSize) * 100)
         ),
       };
     }
@@ -464,7 +464,7 @@ export const determineWinner = action({
 
     // Check if winner is statistically significant
     const winnerComparison = significance.comparisons.find(
-      (c) => c.variantId === bestVariant.variantId
+      (c: any) => c.variantId === bestVariant.variantId
     );
 
     const isSignificant = winnerComparison ? winnerComparison.isSignificant : false;
@@ -497,7 +497,7 @@ export const linkExperimentToCampaign = mutation({
     experimentId: v.id("experiments"),
     campaignId: v.id("emails"),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Not authenticated");
 
@@ -519,7 +519,7 @@ export const linkExperimentToCampaign = mutation({
 // Add new query to get experiments for a campaign
 export const getExperimentForCampaign = query({
   args: { campaignId: v.id("emails") },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const campaign = await ctx.db.get(args.campaignId);
     if (!campaign || !campaign.experimentId) return null;
 
@@ -528,7 +528,7 @@ export const getExperimentForCampaign = query({
 
     const variants = await ctx.db
       .query("experimentVariants")
-      .withIndex("by_experiment", (q) => q.eq("experimentId", experiment._id))
+      .withIndex("by_experiment", (q: any) => q.eq("experimentId", experiment._id))
       .collect();
 
     return { ...experiment, variants };

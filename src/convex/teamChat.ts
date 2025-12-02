@@ -5,7 +5,7 @@ import { Id } from "./_generated/dataModel";
 // Get all channels for a business
 export const getChannels = query({
   args: { businessId: v.id("businesses") },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const channels = await ctx.db
       .query("teamChannels")
       .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
@@ -20,7 +20,7 @@ export const getMessages = query({
     channelId: v.id("teamChannels"),
     limit: v.optional(v.number()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const limit = args.limit || 50;
     
     // Get only top-level messages (no parent)
@@ -59,7 +59,7 @@ export const getMessages = query({
 // Get thread replies for a message
 export const getThreadReplies = query({
   args: { parentMessageId: v.id("teamMessages") },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const replies = await ctx.db
       .query("teamMessages")
       .withIndex("by_parent", (q) => q.eq("parentMessageId", args.parentMessageId))
@@ -87,7 +87,7 @@ export const searchMessages = query({
     searchTerm: v.string(),
     channelId: v.optional(v.id("teamChannels")),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     let messages = await ctx.db
       .query("teamMessages")
       .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
@@ -122,7 +122,7 @@ export const searchMessages = query({
 // Get users for @mention autocomplete
 export const getUsersForMention = query({
   args: { businessId: v.id("businesses") },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const business = await ctx.db.get(args.businessId);
     if (!business) return [];
 
@@ -154,7 +154,7 @@ export const sendMessage = mutation({
       size: v.optional(v.number()),
     }))),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Not authenticated");
 
@@ -229,7 +229,7 @@ export const sendReply = mutation({
       size: v.optional(v.number()),
     }))),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Not authenticated");
 
@@ -312,7 +312,7 @@ export const addReaction = mutation({
     messageId: v.id("teamMessages"),
     emoji: v.string(),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Not authenticated");
 
@@ -355,7 +355,7 @@ export const createChannel = mutation({
     description: v.optional(v.string()),
     isPrivate: v.boolean(),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Not authenticated");
 
@@ -382,7 +382,7 @@ export const createChannel = mutation({
 // Delete a message
 export const deleteMessage = mutation({
   args: { messageId: v.id("teamMessages") },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Not authenticated");
 
@@ -408,7 +408,7 @@ export const editMessage = mutation({
     messageId: v.id("teamMessages"),
     content: v.string(),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Not authenticated");
 

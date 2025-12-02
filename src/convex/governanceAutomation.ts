@@ -10,7 +10,7 @@ export const autoRemediateViolation = mutation({
     workflowId: v.id("workflows"),
     violationType: v.string(),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const workflow = await ctx.db.get(args.workflowId);
     if (!workflow) {
       throw new Error("Workflow not found");
@@ -151,7 +151,7 @@ export const rollbackRemediation = mutation({
     remediationId: v.id("governanceRemediations"),
     reason: v.optional(v.string()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const remediation = await ctx.db.get(args.remediationId);
     if (!remediation) {
       throw new Error("Remediation not found");
@@ -206,7 +206,7 @@ export const getRemediationHistory = query({
     status: v.optional(v.union(v.literal("applied"), v.literal("rolled_back"))),
     limit: v.optional(v.number()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     let remediations;
 
     // Filter by business or workflow
@@ -264,7 +264,7 @@ export const escalateViolation = mutation({
     escalatedTo: v.string(),
     notes: v.optional(v.string()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const escalationId = await ctx.db.insert("governanceEscalations", {
       businessId: args.businessId,
       workflowId: args.workflowId,
@@ -315,7 +315,7 @@ export const checkAndAutoEscalate = internalMutation({
   args: {
     businessId: v.optional(v.id("businesses")),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     let totalEscalated = 0;
 
     const processBusiness = async (bizId: Id<"businesses">) => {
@@ -409,7 +409,7 @@ export const getEscalations = query({
     businessId: v.optional(v.id("businesses")),
     status: v.optional(v.union(v.literal("pending"), v.literal("resolved"))),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     // Guest/public: no business context → return empty array
     if (!args.businessId) {
       return [];
@@ -464,7 +464,7 @@ export const resolveEscalation = mutation({
     escalationId: v.id("governanceEscalations"),
     resolution: v.string(),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const escalation = await ctx.db.get(args.escalationId);
     if (!escalation) {
       throw new Error("Escalation not found");
@@ -498,7 +498,7 @@ export const getGovernanceScoreTrend = query({
     businessId: v.optional(v.id("businesses")),
     days: v.optional(v.number()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     // Guest-safe: return defaults if no business context
     if (!args.businessId) {
       return {
@@ -595,7 +595,7 @@ export const getGovernanceScoreTrend = query({
  */
 export const getAutomationSettings = query({
   args: { businessId: v.optional(v.id("businesses")) },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     // Guest-safe: return defaults when no businessId
     if (!args.businessId) {
       return {
@@ -653,7 +653,7 @@ export const updateAutomationSettings = mutation({
       escalateTo: v.string(),
     }),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const existing = await ctx.db
       .query("governanceAutomationSettings")
       .withIndex("by_business", (q) => q.eq("businessId", args.businessId))

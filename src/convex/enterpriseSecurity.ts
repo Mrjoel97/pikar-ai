@@ -19,17 +19,17 @@ export const listIncidents = query({
     ),
     limit: v.optional(v.number()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     if (!args.businessId) return [];
 
     let incidents = await ctx.db
       .query("securityIncidents")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId!))
+      .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId!))
       .order("desc")
       .take(args.limit || 50);
 
     if (args.status) {
-      incidents = incidents.filter((i) => i.status === args.status);
+      incidents = incidents.filter((i: any) => i.status === args.status);
     }
 
     return incidents;
@@ -45,17 +45,17 @@ export const getThreatAlerts = query({
     acknowledged: v.optional(v.boolean()),
     limit: v.optional(v.number()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     if (!args.businessId) return [];
 
     let alerts = await ctx.db
       .query("threatDetectionAlerts")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId!))
+      .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId!))
       .order("desc")
       .take(args.limit || 100);
 
     if (typeof args.acknowledged === "boolean") {
-      alerts = alerts.filter((a) => a.isAcknowledged === args.acknowledged);
+      alerts = alerts.filter((a: any) => a.isAcknowledged === args.acknowledged);
     }
 
     return alerts;
@@ -67,12 +67,12 @@ export const getThreatAlerts = query({
  */
 export const getCertifications = query({
   args: { businessId: v.optional(v.id("businesses")) },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     if (!args.businessId) return [];
 
     return await ctx.db
       .query("complianceCertifications")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId!))
+      .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId!))
       .collect();
   },
 });
@@ -85,12 +85,12 @@ export const getSecurityAudits = query({
     businessId: v.optional(v.id("businesses")),
     limit: v.optional(v.number()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     if (!args.businessId) return [];
 
     return await ctx.db
       .query("securityAudits")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId!))
+      .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId!))
       .order("desc")
       .take(args.limit || 20);
   },
@@ -101,7 +101,7 @@ export const getSecurityAudits = query({
  */
 export const getSecurityMetrics = query({
   args: { businessId: v.optional(v.id("businesses")) },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     if (!args.businessId) {
       return {
         activeIncidents: 0,
@@ -113,34 +113,34 @@ export const getSecurityMetrics = query({
 
     const incidents = await ctx.db
       .query("securityIncidents")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId!))
+      .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId!))
       .collect();
 
     const alerts = await ctx.db
       .query("threatDetectionAlerts")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId!))
+      .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId!))
       .collect();
 
     const certs = await ctx.db
       .query("complianceCertifications")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId!))
+      .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId!))
       .collect();
 
     const audits = await ctx.db
       .query("securityAudits")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId!))
+      .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId!))
       .order("desc")
       .take(1);
 
     const activeIncidents = incidents.filter(
-      (i) => i.status === "open" || i.status === "investigating"
+      (i: any) => i.status === "open" || i.status === "investigating"
     ).length;
 
     const criticalAlerts = alerts.filter(
-      (a) => !a.isAcknowledged && a.severity === "critical"
+      (a: any) => !a.isAcknowledged && a.severity === "critical"
     ).length;
 
-    const activeCerts = certs.filter((c) => c.status === "active").length;
+    const activeCerts = certs.filter((c: any) => c.status === "active").length;
     const complianceScore = certs.length > 0 ? (activeCerts / certs.length) * 100 : 0;
 
     return {
@@ -157,7 +157,7 @@ export const getSecurityMetrics = query({
  */
 export const getThreatIntelligence = query({
   args: { businessId: v.optional(v.id("businesses")) },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     if (!args.businessId) {
       return {
         threatLevel: "low",
@@ -169,12 +169,12 @@ export const getThreatIntelligence = query({
 
     const alerts = await ctx.db
       .query("threatDetectionAlerts")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId!))
+      .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId!))
       .order("desc")
       .take(100);
 
-    const criticalAlerts = alerts.filter((a) => a.severity === "critical" && !a.isAcknowledged);
-    const highAlerts = alerts.filter((a) => a.severity === "high" && !a.isAcknowledged);
+    const criticalAlerts = alerts.filter((a: any) => a.severity === "critical" && !a.isAcknowledged);
+    const highAlerts = alerts.filter((a: any) => a.severity === "high" && !a.isAcknowledged);
 
     const threatLevel = 
       criticalAlerts.length > 5 ? "critical" :
@@ -182,7 +182,7 @@ export const getThreatIntelligence = query({
       highAlerts.length > 0 ? "medium" : "low";
 
     // Aggregate threat patterns
-    const threatTypes = alerts.reduce((acc, alert) => {
+    const threatTypes = alerts.reduce((acc: any, alert: any) => {
       acc[alert.alertType] = (acc[alert.alertType] || 0) + 1;
       return acc;
     }, {} as Record<string, number>);
@@ -190,18 +190,18 @@ export const getThreatIntelligence = query({
     const activeThreatCampaigns = Object.entries(threatTypes)
       .map(([type, count]) => ({
         campaignType: type,
-        detectionCount: count,
-        severity: count > 10 ? "high" : count > 5 ? "medium" : "low",
-        firstSeen: alerts.find((a) => a.alertType === type)?.createdAt || Date.now(),
+        detectionCount: count as number,
+        severity: (count as number) > 10 ? "high" : (count as number) > 5 ? "medium" : "low",
+        firstSeen: alerts.find((a: any) => a.alertType === type)?.createdAt || Date.now(),
       }))
-      .sort((a, b) => b.detectionCount - a.detectionCount)
+      .sort((a: any, b: any) => b.detectionCount - a.detectionCount)
       .slice(0, 5);
 
     return {
       threatLevel,
       activeThreatCampaigns,
       vulnerabilities: [],
-      indicators: alerts.slice(0, 10).map((a) => ({
+      indicators: alerts.slice(0, 10).map((a: any) => ({
         type: a.alertType,
         severity: a.severity,
         timestamp: a.createdAt,
@@ -215,7 +215,7 @@ export const getThreatIntelligence = query({
  */
 export const getAnomalyDetection = query({
   args: { businessId: v.optional(v.id("businesses")) },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     if (!args.businessId) {
       return {
         anomalies: [],
@@ -226,22 +226,22 @@ export const getAnomalyDetection = query({
 
     const alerts = await ctx.db
       .query("threatDetectionAlerts")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId!))
+      .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId!))
       .order("desc")
       .take(50);
 
     // Simple anomaly detection based on alert frequency
     const now = Date.now();
-    const last24h = alerts.filter((a) => now - a.createdAt < 24 * 60 * 60 * 1000);
-    const last7d = alerts.filter((a) => now - a.createdAt < 7 * 24 * 60 * 60 * 1000);
+    const last24h = alerts.filter((a: any) => now - a.createdAt < 24 * 60 * 60 * 1000);
+    const last7d = alerts.filter((a: any) => now - a.createdAt < 7 * 24 * 60 * 60 * 1000);
 
     const avgDaily = last7d.length / 7;
     const todayCount = last24h.length;
     const anomalyScore = avgDaily > 0 ? (todayCount / avgDaily) * 100 : 0;
 
     const anomalies = last24h
-      .filter((a) => a.severity === "critical" || a.severity === "high")
-      .map((a) => ({
+      .filter((a: any) => a.severity === "critical" || a.severity === "high")
+      .map((a: any) => ({
         _id: a._id,
         type: a.alertType,
         severity: a.severity,
@@ -267,7 +267,7 @@ export const getAnomalyDetection = query({
  */
 export const getSecurityScore = query({
   args: { businessId: v.optional(v.id("businesses")) },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     if (!args.businessId) {
       return {
         overallScore: 0,
@@ -279,23 +279,23 @@ export const getSecurityScore = query({
 
     const incidents = await ctx.db
       .query("securityIncidents")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId!))
+      .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId!))
       .collect();
 
     const alerts = await ctx.db
       .query("threatDetectionAlerts")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId!))
+      .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId!))
       .collect();
 
     const certs = await ctx.db
       .query("complianceCertifications")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId!))
+      .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId!))
       .collect();
 
     // Calculate scores (0-100)
-    const incidentScore = Math.max(0, 100 - incidents.filter((i) => i.status === "open").length * 10);
-    const alertScore = Math.max(0, 100 - alerts.filter((a) => !a.isAcknowledged).length * 5);
-    const complianceScore = certs.length > 0 ? (certs.filter((c) => c.status === "active").length / certs.length) * 100 : 50;
+    const incidentScore = Math.max(0, 100 - incidents.filter((i: any) => i.status === "open").length * 10);
+    const alertScore = Math.max(0, 100 - alerts.filter((a: any) => !a.isAcknowledged).length * 5);
+    const complianceScore = certs.length > 0 ? (certs.filter((c: any) => c.status === "active").length / certs.length) * 100 : 50;
 
     const overallScore = Math.round((incidentScore + alertScore + complianceScore) / 3);
 
@@ -321,7 +321,7 @@ export const getSecurityScore = query({
  */
 export const getIncidentResponseWorkflow = query({
   args: { businessId: v.optional(v.id("businesses")) },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     if (!args.businessId) {
       return {
         activeWorkflows: [],
@@ -332,13 +332,13 @@ export const getIncidentResponseWorkflow = query({
 
     const incidents = await ctx.db
       .query("securityIncidents")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId!))
+      .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId!))
       .order("desc")
       .take(50);
 
     const activeWorkflows = incidents
-      .filter((i) => i.status === "open" || i.status === "investigating")
-      .map((i) => ({
+      .filter((i: any) => i.status === "open" || i.status === "investigating")
+      .map((i: any) => ({
         _id: i._id,
         title: i.title,
         status: i.status,
@@ -354,20 +354,20 @@ export const getIncidentResponseWorkflow = query({
       }));
 
     const completedWorkflows = incidents
-      .filter((i) => i.status === "resolved" || i.status === "closed")
+      .filter((i: any) => i.status === "resolved" || i.status === "closed")
       .slice(0, 10);
 
     const responseTimes = completedWorkflows
-      .filter((i) => i.resolvedAt)
-      .map((i) => i.resolvedAt! - i.detectedAt);
+      .filter((i: any) => i.resolvedAt)
+      .map((i: any) => i.resolvedAt! - i.detectedAt);
 
     const avgResponseTime = responseTimes.length > 0
-      ? responseTimes.reduce((sum, t) => sum + t, 0) / responseTimes.length
+      ? responseTimes.reduce((sum: any, t: any) => sum + t, 0) / responseTimes.length
       : 0;
 
     return {
       activeWorkflows,
-      completedWorkflows: completedWorkflows.map((i) => ({
+      completedWorkflows: completedWorkflows.map((i: any) => ({
         _id: i._id,
         title: i.title,
         severity: i.severity,
@@ -383,7 +383,7 @@ export const getIncidentResponseWorkflow = query({
  */
 export const getComplianceMonitoring = query({
   args: { businessId: v.optional(v.id("businesses")) },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     if (!args.businessId) {
       return {
         overallCompliance: 0,
@@ -395,19 +395,19 @@ export const getComplianceMonitoring = query({
 
     const certs = await ctx.db
       .query("complianceCertifications")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId!))
+      .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId!))
       .collect();
 
     const audits = await ctx.db
       .query("securityAudits")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId!))
+      .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId!))
       .order("desc")
       .take(10);
 
-    const activeCerts = certs.filter((c) => c.status === "active");
+    const activeCerts = certs.filter((c: any) => c.status === "active");
     const overallCompliance = certs.length > 0 ? (activeCerts.length / certs.length) * 100 : 0;
 
-    const frameworks = certs.map((cert) => {
+    const frameworks = certs.map((cert: any) => {
       const daysUntilExpiry = Math.floor((cert.expiryDate - Date.now()) / (1000 * 60 * 60 * 24));
       return {
         _id: cert._id,
@@ -420,8 +420,8 @@ export const getComplianceMonitoring = query({
     });
 
     const upcomingAudits = audits
-      .filter((a) => a.scheduledDate && a.scheduledDate > Date.now())
-      .map((a) => ({
+      .filter((a: any) => a.scheduledDate && a.scheduledDate > Date.now())
+      .map((a: any) => ({
         _id: a._id,
         auditType: a.auditType,
         scheduledDate: a.scheduledDate,
@@ -462,13 +462,13 @@ export const createIncident = mutation({
     description: v.string(),
     affectedSystems: v.array(v.string()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Unauthorized");
 
     const user = await ctx.db
       .query("users")
-      .withIndex("email", (q) => q.eq("email", identity.email!))
+      .withIndex("email", (q: any) => q.eq("email", identity.email!))
       .unique();
     if (!user) throw new Error("User not found");
 
@@ -519,7 +519,7 @@ export const updateIncident = mutation({
     mitigation: v.optional(v.string()),
     assignedTo: v.optional(v.id("users")),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Unauthorized");
 
@@ -543,13 +543,13 @@ export const updateIncident = mutation({
  */
 export const acknowledgeAlert = mutation({
   args: { alertId: v.id("threatDetectionAlerts") },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Unauthorized");
 
     const user = await ctx.db
       .query("users")
-      .withIndex("email", (q) => q.eq("email", identity.email!))
+      .withIndex("email", (q: any) => q.eq("email", identity.email!))
       .unique();
     if (!user) throw new Error("User not found");
 
@@ -583,7 +583,7 @@ export const addCertification = mutation({
     documents: v.array(v.id("_storage")),
     notes: v.optional(v.string()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Unauthorized");
 
@@ -604,7 +604,7 @@ export const addCertification = mutation({
  */
 export const detectThreats = internalAction({
   args: {},
-  handler: async (ctx) => {
+  handler: async (ctx: any) => {
     // Simulate threat detection (in production, this would analyze logs, patterns, etc.)
     const businesses = await ctx.runQuery("businesses:listAllBusinesses" as any, {});
 
@@ -645,7 +645,7 @@ export const createThreatAlert = internalMutation({
     source: v.string(),
     details: v.any(),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     await ctx.db.insert("threatDetectionAlerts", {
       ...args,
       isAcknowledged: false,
@@ -659,7 +659,7 @@ export const createThreatAlert = internalMutation({
  */
 export const checkCertificationExpiry = internalAction({
   args: {},
-  handler: async (ctx) => {
+  handler: async (ctx: any) => {
     const now = Date.now();
     const thirtyDays = 30 * 24 * 60 * 60 * 1000;
 
@@ -681,7 +681,7 @@ export const checkCertificationExpiry = internalAction({
  */
 export const getAllCertifications = internalMutation({
   args: {},
-  handler: async (ctx) => {
+  handler: async (ctx: any) => {
     return await ctx.db.query("complianceCertifications").collect();
   },
 });
@@ -699,7 +699,7 @@ export const updateCertificationStatus = internalMutation({
       v.literal("in_renewal")
     ),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     await ctx.db.patch(args.certId, {
       status: args.status,
       updatedAt: Date.now(),

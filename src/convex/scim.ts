@@ -52,7 +52,7 @@ export const getAttributeMappings = query({
   args: {
     businessId: v.id("businesses"),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const mappings = await ctx.db
       .query("scimAttributeMappings")
       .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
@@ -106,7 +106,7 @@ export const updateAttributeMappings = mutation({
       type: v.string(),
     })),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Unauthorized");
 
@@ -153,7 +153,7 @@ export const syncUserFromIdP = internalMutation({
     department: v.optional(v.string()),
     title: v.optional(v.string()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     // Check if user exists by email
     const existingUser = await ctx.db
       .query("users")
@@ -234,7 +234,7 @@ export const syncGroupFromIdP = internalMutation({
     memberIds: v.array(v.string()),
     externalId: v.optional(v.string()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     // Check if group exists
     const existingGroup = await ctx.db
       .query("scimGroupMappings")
@@ -287,7 +287,7 @@ export const getSyncLogs = query({
     status: v.optional(v.union(v.literal("success"), v.literal("error"))),
     limit: v.optional(v.number()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const limit = args.limit ?? 50;
     let query = ctx.db.query("scimSyncLog");
 
@@ -316,7 +316,7 @@ export const getSyncStats = query({
   args: {
     businessId: v.optional(v.id("businesses")),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     let query = ctx.db.query("scimSyncLog");
     
     if (args.businessId) {
@@ -347,7 +347,7 @@ export const getProvisionedUsers = query({
     businessId: v.id("businesses"),
     limit: v.optional(v.number()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const limit = args.limit ?? 50;
     const mappings = await ctx.db
       .query("scimUserMappings")
@@ -377,7 +377,7 @@ export const getProvisionedGroups = query({
     businessId: v.id("businesses"),
     limit: v.optional(v.number()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const limit = args.limit ?? 50;
     const groups = await ctx.db
       .query("scimGroupMappings")
@@ -396,7 +396,7 @@ export const generateScimToken = mutation({
   args: {
     businessId: v.id("businesses"),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Unauthorized");
 
@@ -423,7 +423,7 @@ export const forceSync = mutation({
   args: {
     businessId: v.id("businesses"),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Unauthorized");
 
@@ -449,7 +449,7 @@ export const deprovisionUser = mutation({
   args: {
     scimId: v.string(),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Unauthorized");
 
@@ -488,7 +488,7 @@ export const getScimConfig = query({
   args: {
     businessId: v.id("businesses"),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const tokens = await ctx.db
       .query("api_keys")
       .filter((q) => 

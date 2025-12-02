@@ -46,7 +46,7 @@ export const createOnboardingSession = mutation({
     startDate: v.number(),
     hrSystemId: v.optional(v.string()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     // TODO: Add teamOnboarding table to schema
     const sessionId = args.userId; // Temporary workaround
     /*
@@ -96,7 +96,7 @@ export const createRoleBasedTasks = internalMutation({
     userId: v.id("users"),
     role: v.string(),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const templates = ROLE_TASK_TEMPLATES[args.role.toLowerCase()] || ROLE_TASK_TEMPLATES.developer;
     const now = Date.now();
 
@@ -131,7 +131,7 @@ export const updateOnboardingProgress = mutation({
     stepCompleted: v.number(),
     notes: v.optional(v.string()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const session = await ctx.db.get(args.sessionId);
     if (!session) throw new Error("Onboarding session not found");
 
@@ -178,7 +178,7 @@ export const handleOnboardingCompletion = internalMutation({
     businessId: v.id("businesses"),
     userId: v.id("users"),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     await ctx.db.patch(args.sessionId, {
       completedAt: Date.now(),
       status: "completed",
@@ -217,7 +217,7 @@ export const getOnboardingAnalytics = query({
     businessId: v.id("businesses"),
     timeRange: v.optional(v.union(v.literal("7d"), v.literal("30d"), v.literal("90d"))),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     // TODO: Add teamOnboarding table to schema
     const sessions: any[] = [];
     /*
@@ -269,7 +269,7 @@ export const getUserOnboardingSession = query({
   args: {
     userId: v.id("users"),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const session = await ctx.db
       .query("teamOnboarding")
       .withIndex("by_user", (q) => q.eq("userId", args.userId))
@@ -301,7 +301,7 @@ export const syncWithHRSystem = mutation({
     sessionId: v.id("teamOnboarding"),
     hrData: v.any(),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const session = await ctx.db.get(args.sessionId);
     if (!session) throw new Error("Session not found");
 
@@ -320,7 +320,7 @@ export const getTeamOnboardingDashboard = query({
   args: {
     businessId: v.id("businesses"),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const sessions = await ctx.db
       .query("teamOnboarding")
       .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
@@ -349,7 +349,7 @@ export const getUserOnboarding = query({
     userId: v.id("users"),
     businessId: v.id("businesses"),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) return null;
 
@@ -368,7 +368,7 @@ export const getUserPermissions = query({
     userId: v.id("users"),
     businessId: v.id("businesses"),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) return null;
 
@@ -386,7 +386,7 @@ export const getOnboardingTemplate = query({
   args: {
     role: v.string(),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     return await ctx.db
       .query("onboardingTemplates")
       .withIndex("by_role", (q) => q.eq("role", args.role))
@@ -399,7 +399,7 @@ export const listTeamOnboarding = query({
   args: {
     businessId: v.optional(v.id("businesses")),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) return [];
 
@@ -426,7 +426,7 @@ export const completeOnboardingStep = mutation({
     businessId: v.id("businesses"),
     stepId: v.string(),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Not authenticated");
 
@@ -480,7 +480,7 @@ export const resetOnboarding = mutation({
     userId: v.id("users"),
     businessId: v.id("businesses"),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Not authenticated");
 
@@ -528,7 +528,7 @@ export const assignRole = mutation({
       canManageSettings: v.boolean(),
     }),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Not authenticated");
 
@@ -610,7 +610,7 @@ export const updatePermissions = mutation({
       canManageSettings: v.boolean(),
     }),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Not authenticated");
 

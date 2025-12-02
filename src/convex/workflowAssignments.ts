@@ -10,7 +10,7 @@ export const getAssignedSteps = query({
     businessId: v.optional(v.id("businesses")),
     status: v.optional(v.union(v.literal("pending"), v.literal("in_progress"), v.literal("completed"), v.literal("blocked"))),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) {
       throw new Error("Not authenticated");
@@ -51,7 +51,7 @@ export const getStepsDueSoon = query({
     userId: v.id("users"),
     hoursAhead: v.optional(v.number()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) {
       throw new Error("Not authenticated");
@@ -93,7 +93,7 @@ export const sendDueReminder = internalMutation({
     stepId: v.id("workflowSteps"),
     when: v.union(v.literal("before"), v.literal("due"), v.literal("overdue")),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const step = await ctx.db.get(args.stepId);
     if (!step) {
       return null;
@@ -173,7 +173,7 @@ export const assignStep = mutation({
     assigneeId: v.id("users"),
     dueDate: v.optional(v.number()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) {
       throw new Error("Not authenticated");
@@ -274,7 +274,7 @@ export const updateStepStatus = mutation({
     status: v.union(v.literal("pending"), v.literal("in_progress"), v.literal("completed"), v.literal("blocked")),
     notes: v.optional(v.string()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) {
       throw new Error("Not authenticated");
@@ -342,7 +342,7 @@ export const updateStepStatus = mutation({
 // Query to get workflow step details with assignment info
 export const getStepDetails = query({
   args: { stepId: v.id("workflowSteps") },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) {
       throw new Error("Not authenticated");
@@ -384,7 +384,7 @@ export const getStepDetails = query({
 // Query to get assignment analytics for a business
 export const getAssignmentAnalytics = query({
   args: { businessId: v.id("businesses") },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) {
       throw new Error("Not authenticated");

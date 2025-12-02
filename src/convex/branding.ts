@@ -4,7 +4,7 @@ import { Id } from "./_generated/dataModel";
 
 export const getBrandConfig = query({
   args: { businessId: v.id("businesses") },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const config = await ctx.db
       .query("brandingConfigs")
       .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
@@ -22,7 +22,7 @@ export const updateBrandConfig = mutation({
     accentColor: v.optional(v.string()),
     logoUrl: v.optional(v.string()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const existing = await ctx.db
       .query("brandingConfigs")
       .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
@@ -53,7 +53,7 @@ export const updateBrandConfig = mutation({
 
 export const getBrandingConfig = query({
   args: { businessId: v.optional(v.id("businesses")) },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     if (!args.businessId) return null;
 
     const config = await ctx.db
@@ -73,7 +73,7 @@ export const verifyCustomDomain = mutation({
     businessId: v.id("businesses"),
     customDomain: v.string(),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Not authenticated");
 
@@ -123,7 +123,7 @@ export const createThemeVersion = mutation({
       customCss: v.optional(v.string()),
     }),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Not authenticated");
 
@@ -176,7 +176,7 @@ export const getThemeVersions = query({
     businessId: v.id("businesses"),
     brandId: v.optional(v.id("brands")),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     let query = ctx.db
       .query("themeVersions")
       .withIndex("by_business", (q) => q.eq("businessId", args.businessId));
@@ -197,7 +197,7 @@ export const activateThemeVersion = mutation({
   args: {
     versionId: v.id("themeVersions"),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Not authenticated");
 
@@ -275,7 +275,7 @@ export const uploadBrandAsset = mutation({
     mimeType: v.optional(v.string()),
     tags: v.optional(v.array(v.string())),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Not authenticated");
 
@@ -319,7 +319,7 @@ export const getBrandAssets = query({
       )
     ),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     let query = ctx.db
       .query("brandAssets")
       .withIndex("by_business", (q) => q.eq("businessId", args.businessId));
@@ -347,7 +347,7 @@ export const deleteBrandAsset = mutation({
   args: {
     assetId: v.id("brandAssets"),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Not authenticated");
 
@@ -370,7 +370,7 @@ export const configureCustomDomain = mutation({
     domain: v.string(),
     sslEnabled: v.optional(v.boolean()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Not authenticated");
 
@@ -406,7 +406,7 @@ export const verifyDomain = mutation({
   args: {
     domainId: v.id("customDomains"),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Not authenticated");
 
@@ -432,7 +432,7 @@ export const getCustomDomains = query({
     businessId: v.id("businesses"),
     brandId: v.optional(v.id("brands")),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     let query = ctx.db
       .query("customDomains")
       .withIndex("by_business", (q) => q.eq("businessId", args.businessId));
@@ -450,8 +450,6 @@ export const getCustomDomains = query({
 /**
  * Track branding analytics
  */
-import { internalMutation } from "./_generated/server";
-
 export const trackBrandingEvent = internalMutation({
   args: {
     businessId: v.id("businesses"),
@@ -459,7 +457,7 @@ export const trackBrandingEvent = internalMutation({
     eventType: v.string(),
     metadata: v.optional(v.any()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     await ctx.db.insert("brandingAnalytics", {
       businessId: args.businessId,
       brandId: args.brandId,
@@ -480,7 +478,7 @@ export const getBrandingAnalytics = query({
     startDate: v.optional(v.number()),
     endDate: v.optional(v.number()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     let query = ctx.db
       .query("brandingAnalytics")
       .withIndex("by_business", (q) => q.eq("businessId", args.businessId));
@@ -530,7 +528,7 @@ export const getActiveTheme = query({
     businessId: v.id("businesses"),
     brandId: v.optional(v.id("brands")),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const versions = await ctx.db
       .query("themeVersions")
       .withIndex("by_business", (q) => q.eq("businessId", args.businessId))

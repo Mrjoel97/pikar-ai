@@ -10,7 +10,7 @@ import { Id } from "./_generated/dataModel";
 // Get portfolio overview with all initiatives
 export const getPortfolioOverview = query({
   args: { businessId: v.optional(v.id("businesses")) },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     if (!args.businessId) {
       return {
         totalInitiatives: 0,
@@ -58,7 +58,7 @@ export const getPortfolioOverview = query({
 // Get initiative dependencies
 export const getInitiativeDependencies = query({
   args: { businessId: v.optional(v.id("businesses")) },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     if (!args.businessId) return [];
 
     const dependencies = await ctx.db
@@ -96,7 +96,7 @@ export const createDependency = mutation({
     ),
     description: v.optional(v.string()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Unauthorized");
 
@@ -117,7 +117,7 @@ export const createDependency = mutation({
 // Get resource allocation across portfolio
 export const getResourceAllocation = query({
   args: { businessId: v.optional(v.id("businesses")) },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     if (!args.businessId) {
       return {
         totalResources: 0,
@@ -164,7 +164,7 @@ export const getResourceAllocation = query({
 // Optimize resource allocation (AI-powered suggestion)
 export const optimizeResourceAllocation = mutation({
   args: { businessId: v.id("businesses") },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Unauthorized");
 
@@ -205,7 +205,7 @@ export const optimizeResourceAllocation = mutation({
 // Get portfolio risk assessment
 export const getPortfolioRiskAssessment = query({
   args: { businessId: v.optional(v.id("businesses")) },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     if (!args.businessId) {
       return {
         overallRiskScore: 0,
@@ -262,7 +262,7 @@ export const createPortfolioRisk = mutation({
     probability: v.number(),
     mitigationStrategy: v.optional(v.string()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Unauthorized");
 
@@ -285,7 +285,7 @@ export const createPortfolioRisk = mutation({
 // Update portfolio metrics (internal, called by cron)
 export const updatePortfolioMetrics = internalMutation({
   args: { businessId: v.id("businesses") },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const initiatives = await ctx.db
       .query("initiatives")
       .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
@@ -339,7 +339,7 @@ export const updatePortfolioMetrics = internalMutation({
  */
 export const getCrossBusinessAnalytics = query({
   args: { businessId: v.optional(v.id("businesses")) },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     if (!args.businessId) {
       return {
         businesses: [],
@@ -408,7 +408,7 @@ export const getCrossBusinessAnalytics = query({
  */
 export const getPerformanceBenchmarks = query({
   args: { businessId: v.optional(v.id("businesses")) },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     if (!args.businessId) {
       return {
         industryAverage: 0,
@@ -457,7 +457,7 @@ export const getPerformanceBenchmarks = query({
  */
 export const getPredictiveInsights = query({
   args: { businessId: v.optional(v.id("businesses")) },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     if (!args.businessId) {
       return {
         predictions: [],
@@ -534,7 +534,7 @@ export const getPredictiveInsights = query({
  */
 export const generateOptimizationRecommendations = mutation({
   args: { businessId: v.id("businesses") },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Unauthorized");
 

@@ -11,7 +11,7 @@ export const getBudgetAllocations = query({
     businessId: v.optional(v.id("businesses")),
     fiscalYear: v.optional(v.number()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     if (!args.businessId) {
       // Guest-safe: return demo data
       return {
@@ -62,7 +62,7 @@ export const getBudgetAllocations = query({
     // Fetch budget allocations
     const allocations = await ctx.db
       .query("departmentBudgets")
-      .withIndex("by_business_and_year", (q) =>
+      .withIndex("by_business_and_year", (q: any) =>
         q.eq("businessId", args.businessId as Id<"businesses">).eq("fiscalYear", fiscalYear)
       )
       .collect();
@@ -70,7 +70,7 @@ export const getBudgetAllocations = query({
     // Fetch actual spending
     const actuals = await ctx.db
       .query("departmentBudgetActuals")
-      .withIndex("by_business_and_year", (q) =>
+      .withIndex("by_business_and_year", (q: any) =>
         q.eq("businessId", args.businessId as Id<"businesses">).eq("fiscalYear", fiscalYear)
       )
       .collect();
@@ -78,11 +78,11 @@ export const getBudgetAllocations = query({
     // Aggregate by department
     const departments = ["Marketing", "Sales", "Operations", "Finance"];
     const result = departments.map((dept) => {
-      const allocation = allocations.find((a) => a.department === dept);
-      const deptActuals = actuals.filter((a) => a.department === dept);
+      const allocation = allocations.find((a: any) => a.department === dept);
+      const deptActuals = actuals.filter((a: any) => a.department === dept);
       
       const allocated = allocation?.amount || 0;
-      const spent = deptActuals.reduce((sum, a) => sum + a.amount, 0);
+      const spent = deptActuals.reduce((sum: any, a: any) => sum + a.amount, 0);
       const remaining = allocated - spent;
       const variance = allocated > 0 ? ((spent - allocated) / allocated) * 100 : 0;
       
@@ -127,7 +127,7 @@ export const getBudgetTrend = query({
     department: v.optional(v.string()),
     months: v.optional(v.number()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     if (!args.businessId) {
       // Demo data
       return [
@@ -144,13 +144,13 @@ export const getBudgetTrend = query({
 
     const actuals = await ctx.db
       .query("departmentBudgetActuals")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId as Id<"businesses">))
-      .filter((q) => q.gte(q.field("date"), cutoff))
+      .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId as Id<"businesses">))
+      .filter((q: any) => q.gte(q.field("date"), cutoff))
       .collect();
 
     // Group by month
     const monthlyData: Record<string, { spent: number; count: number }> = {};
-    actuals.forEach((actual) => {
+    actuals.forEach((actual: any) => {
       if (args.department && actual.department !== args.department) return;
       
       const date = new Date(actual.date);
@@ -193,17 +193,17 @@ export const setBudgetAllocation = mutation({
     amount: v.number(),
     notes: v.optional(v.string()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Unauthorized");
 
     // Check if allocation exists
     const existing = await ctx.db
       .query("departmentBudgets")
-      .withIndex("by_business_and_year", (q) =>
+      .withIndex("by_business_and_year", (q: any) =>
         q.eq("businessId", args.businessId).eq("fiscalYear", args.fiscalYear)
       )
-      .filter((q) => q.eq(q.field("department"), args.department))
+      .filter((q: any) => q.eq(q.field("department"), args.department))
       .first();
 
     if (existing) {
@@ -240,7 +240,7 @@ export const recordActualSpend = mutation({
     category: v.string(),
     description: v.optional(v.string()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Unauthorized");
 
@@ -283,7 +283,7 @@ export const adjustForecast = mutation({
     newForecast: v.number(),
     reason: v.string(),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Unauthorized");
 
@@ -325,14 +325,14 @@ export const checkBudgetAlerts = internalMutation({
     department: v.string(),
     fiscalYear: v.number(),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     // Get allocation
     const allocation = await ctx.db
       .query("departmentBudgets")
-      .withIndex("by_business_and_year", (q) =>
+      .withIndex("by_business_and_year", (q: any) =>
         q.eq("businessId", args.businessId).eq("fiscalYear", args.fiscalYear)
       )
-      .filter((q) => q.eq(q.field("department"), args.department))
+      .filter((q: any) => q.eq(q.field("department"), args.department))
       .first();
 
     if (!allocation) return;
@@ -340,13 +340,13 @@ export const checkBudgetAlerts = internalMutation({
     // Get actuals
     const actuals = await ctx.db
       .query("departmentBudgetActuals")
-      .withIndex("by_business_and_year", (q) =>
+      .withIndex("by_business_and_year", (q: any) =>
         q.eq("businessId", args.businessId).eq("fiscalYear", args.fiscalYear)
       )
-      .filter((q) => q.eq(q.field("department"), args.department))
+      .filter((q: any) => q.eq(q.field("department"), args.department))
       .collect();
 
-    const spent = actuals.reduce((sum, a) => sum + a.amount, 0);
+    const spent = actuals.reduce((sum: any, a: any) => sum + a.amount, 0);
     const variance = ((spent - allocation.amount) / allocation.amount) * 100;
 
     // Determine recipient user for system alert (business owner)
@@ -359,8 +359,8 @@ export const checkBudgetAlerts = internalMutation({
     // Check existence using take(1) to avoid non-existent .first()
     const [existingAlert] = await ctx.db
       .query("notifications")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
-      .filter((q) =>
+      .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId))
+      .filter((q: any) =>
         q.and(
           q.eq(q.field("type"), "system_alert"),
           q.eq(q.field("title"), `Budget Alert: ${args.department} ${args.fiscalYear}`)

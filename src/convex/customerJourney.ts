@@ -13,14 +13,14 @@ export const getCurrentStage = query({
     businessId: v.id("businesses"),
     contactId: v.id("contacts"),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const stages = await ctx.db
       .query("customerJourneyStages")
-      .withIndex("by_contact", (q) => q.eq("contactId", args.contactId))
-      .filter((q) => q.eq(q.field("businessId"), args.businessId))
+      .withIndex("by_contact", (q: any) => q.eq("contactId", args.contactId))
+      .filter((q: any) => q.eq(q.field("businessId"), args.businessId))
       .collect();
 
-    const currentStage = stages.find((s) => !s.exitedAt);
+    const currentStage = stages.find((s: any) => !s.exitedAt);
     return currentStage || null;
   },
 });
@@ -42,7 +42,7 @@ export const trackStage = mutation({
     triggeredBy: v.optional(v.string()),
     metadata: v.optional(v.any()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Not authenticated");
 
@@ -51,11 +51,11 @@ export const trackStage = mutation({
     // Get current stage
     const currentStages = await ctx.db
       .query("customerJourneyStages")
-      .withIndex("by_contact", (q) => q.eq("contactId", args.contactId))
-      .filter((q) => q.eq(q.field("businessId"), args.businessId))
+      .withIndex("by_contact", (q: any) => q.eq("contactId", args.contactId))
+      .filter((q: any) => q.eq(q.field("businessId"), args.businessId))
       .collect();
 
-    const currentStage = currentStages.find((s) => !s.exitedAt);
+    const currentStage = currentStages.find((s: any) => !s.exitedAt);
 
     // If already in this stage, do nothing
     if (currentStage && currentStage.stage === args.stage) {
@@ -103,20 +103,20 @@ export const trackStage = mutation({
  */
 export const getJourneyAnalytics = query({
   args: { businessId: v.id("businesses"), days: v.number() },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const cutoff = Date.now() - args.days * 24 * 60 * 60 * 1000;
 
     // Get all current stages
     const stages = await ctx.db
       .query("customerJourneyStages")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
-      .filter((q) => q.eq(q.field("exitedAt"), undefined))
+      .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId))
+      .filter((q: any) => q.eq(q.field("exitedAt"), undefined))
       .collect();
 
     // Get recent transitions
     const transitions = await ctx.db
       .query("customerJourneyTransitions")
-      .withIndex("by_business_and_date", (q) =>
+      .withIndex("by_business_and_date", (q: any) =>
         q.eq("businessId", args.businessId).gte("transitionedAt", cutoff)
       )
       .collect();
@@ -175,14 +175,14 @@ export const getContactJourneyHistory = query({
     businessId: v.id("businesses"),
     contactId: v.id("contacts"),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const transitions = await ctx.db
       .query("customerJourneyTransitions")
-      .withIndex("by_contact", (q) => q.eq("contactId", args.contactId))
-      .filter((q) => q.eq(q.field("businessId"), args.businessId))
+      .withIndex("by_contact", (q: any) => q.eq("contactId", args.contactId))
+      .filter((q: any) => q.eq(q.field("businessId"), args.businessId))
       .collect();
 
-    return transitions.sort((a, b) => a.transitionedAt - b.transitionedAt);
+    return transitions.sort((a: any, b: any) => a.transitionedAt - b.transitionedAt);
   },
 });
 
@@ -191,10 +191,10 @@ export const getContactJourneyHistory = query({
  */
 export const autoAdvanceJourneys = internalMutation({
   args: { businessId: v.id("businesses") },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const contacts = await ctx.db
       .query("contacts")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId))
       .collect();
 
     const now = Date.now();
@@ -207,11 +207,11 @@ export const autoAdvanceJourneys = internalMutation({
       // Get current stage
       const stages = await ctx.db
         .query("customerJourneyStages")
-        .withIndex("by_contact", (q) => q.eq("contactId", contact._id))
-        .filter((q) => q.eq(q.field("businessId"), args.businessId))
+        .withIndex("by_contact", (q: any) => q.eq("contactId", contact._id))
+        .filter((q: any) => q.eq(q.field("businessId"), args.businessId))
         .collect();
 
-      const currentStage = stages.find((s) => !s.exitedAt);
+      const currentStage = stages.find((s: any) => !s.exitedAt);
 
       // Auto-advance logic based on engagement
       const lastEngaged = contact.lastEngagedAt || contact.createdAt;
@@ -295,17 +295,17 @@ export const getContactsByStage = query({
       v.literal("advocacy")
     ),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const stages = await ctx.db
       .query("customerJourneyStages")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
-      .filter((q) => q.eq(q.field("stage"), args.stage))
+      .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId))
+      .filter((q: any) => q.eq(q.field("stage"), args.stage))
       .collect();
 
-    const currentStages = stages.filter((s) => !s.exitedAt);
+    const currentStages = stages.filter((s: any) => !s.exitedAt);
     
     const contacts = await Promise.all(
-      currentStages.map(async (s) => {
+      currentStages.map(async (s: any) => {
         if (!s.contactId) return null;
         const contact = await ctx.db.get(s.contactId);
         return contact ? { ...contact, stageEnteredAt: s.enteredAt } : null;
@@ -319,14 +319,14 @@ export const getContactsByStage = query({
 // New: Get detailed touchpoint analytics
 export const getTouchpointAnalytics = query({
   args: { businessId: v.id("businesses"), days: v.optional(v.number()) },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const days = args.days || 30;
     const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
 
     const touchpoints = await ctx.db
       .query("revenueTouchpoints")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
-      .filter((q) => q.gte(q.field("timestamp"), cutoff))
+      .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId))
+      .filter((q: any) => q.gte(q.field("timestamp"), cutoff))
       .collect();
 
     // Channel distribution
@@ -341,8 +341,8 @@ export const getTouchpointAnalytics = query({
       if (contact) {
         const currentStage = await ctx.db
           .query("customerJourneyStages")
-          .withIndex("by_contact", (q) => q.eq("contactId", touchpoint.contactId))
-          .filter((q) => q.eq(q.field("exitedAt"), undefined))
+          .withIndex("by_contact", (q: any) => q.eq("contactId", touchpoint.contactId))
+          .filter((q: any) => q.eq(q.field("exitedAt"), undefined))
           .first();
 
         if (currentStage) {
@@ -361,7 +361,7 @@ export const getTouchpointAnalytics = query({
       channelByStage,
       averageTouchpointsPerContact: touchpoints.length / (await ctx.db
         .query("contacts")
-        .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+        .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId))
         .collect()).length || 0,
     };
   },
@@ -370,7 +370,7 @@ export const getTouchpointAnalytics = query({
 // New: Get conversion funnel analysis
 export const getConversionFunnel = query({
   args: { businessId: v.id("businesses"), days: v.optional(v.number()) },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const days = args.days || 30;
     const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
 
@@ -390,8 +390,8 @@ export const getConversionFunnel = query({
       // Count contacts who reached this stage
       const stageRecords = await ctx.db
         .query("customerJourneyStages")
-        .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
-        .filter((q) => 
+        .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId))
+        .filter((q: any) => 
           q.and(
             q.eq(q.field("stage"), stage),
             q.gte(q.field("enteredAt"), cutoff)
@@ -425,13 +425,13 @@ export const getConversionFunnel = query({
 // New: Detect drop-off points and bottlenecks
 export const getDropoffAnalysis = query({
   args: { businessId: v.id("businesses"), days: v.optional(v.number()) },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const days = args.days || 30;
     const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
 
     const transitions = await ctx.db
       .query("customerJourneyTransitions")
-      .withIndex("by_business_and_date", (q) =>
+      .withIndex("by_business_and_date", (q: any) =>
         q.eq("businessId", args.businessId).gte("transitionedAt", cutoff)
       )
       .collect();
@@ -475,7 +475,7 @@ export const getDropoffAnalysis = query({
 // New: Get optimization suggestions based on data
 export const getOptimizationSuggestions = query({
   args: { businessId: v.id("businesses") },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const suggestions: Array<{
       type: "warning" | "info" | "success";
       title: string;
@@ -486,7 +486,7 @@ export const getOptimizationSuggestions = query({
     // Analyze funnel data
     const funnelData = await ctx.db
       .query("customerJourneyStages")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId))
       .collect();
 
     const stageCounts: Record<string, number> = {};
@@ -544,11 +544,11 @@ export const getOptimizationSuggestions = query({
     // Check touchpoint diversity
     const recentTouchpoints = await ctx.db
       .query("revenueTouchpoints")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
-      .filter((q) => q.gte(q.field("timestamp"), Date.now() - 30 * 24 * 60 * 60 * 1000))
+      .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId))
+      .filter((q: any) => q.gte(q.field("timestamp"), Date.now() - 30 * 24 * 60 * 60 * 1000))
       .collect();
 
-    const uniqueChannels = new Set(recentTouchpoints.map((t) => t.channel || "unknown"));
+    const uniqueChannels = new Set(recentTouchpoints.map((t: any) => t.channel || "unknown"));
     if (uniqueChannels.size < 3) {
       suggestions.push({
         type: "info",
@@ -578,7 +578,7 @@ export const trackTouchpoint = mutation({
     campaignId: v.optional(v.string()),
     metadata: v.optional(v.any()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     return await ctx.db.insert("revenueTouchpoints", {
       businessId: args.businessId,
       contactId: args.contactId,
@@ -604,12 +604,12 @@ export const moveContactToStage = mutation({
     triggeredBy: v.optional(v.string()),
     metadata: v.optional(v.any()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     // Get current stage
     const currentStage = await ctx.db
       .query("customerJourneyStages")
-      .withIndex("by_contact", (q) => q.eq("contactId", args.contactId))
-      .filter((q) => q.eq(q.field("exitedAt"), undefined))
+      .withIndex("by_contact", (q: any) => q.eq("contactId", args.contactId))
+      .filter((q: any) => q.eq(q.field("exitedAt"), undefined))
       .first();
 
     const fromStage = currentStage?.stage || "none";

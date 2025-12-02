@@ -1,12 +1,12 @@
 import { v } from "convex/values";
 import { mutation, query, action, internalMutation } from "./_generated/server";
-import { api, internal } from "./_generated/api";
+import { api, internal as internalApi } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
 
 // Query: List all report templates
 export const listTemplates = query({
   args: {},
-  handler: async (ctx) => {
+  handler: async (ctx: any) => {
     return await ctx.db.query("reportTemplates").collect();
   },
 });
@@ -17,16 +17,16 @@ export const listGeneratedReports = query({
     businessId: v.id("businesses"),
     framework: v.optional(v.string()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     let query = ctx.db
       .query("generatedReports")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId))
       .order("desc");
 
     const reports = await query.collect();
 
     if (args.framework) {
-      return reports.filter((r) => r.framework === args.framework);
+      return reports.filter((r: any) => r.framework === args.framework);
     }
 
     return reports;
@@ -36,7 +36,7 @@ export const listGeneratedReports = query({
 // Enhanced: Get report template with full details
 export const getTemplate = query({
   args: { templateId: v.id("reportTemplates") },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     return await ctx.db.get(args.templateId);
   },
 });
@@ -52,7 +52,7 @@ export const createTemplate = mutation({
       description: v.string(),
     })),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     return await ctx.db.insert("reportTemplates", {
       name: args.name,
       framework: args.framework,
@@ -71,7 +71,7 @@ export const scheduleReport = mutation({
     recipients: v.array(v.string()),
     isActive: v.boolean(),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const nextRun = calculateNextRun(args.frequency);
     
     return await ctx.db.insert("scheduledReports", {
@@ -89,14 +89,14 @@ export const scheduleReport = mutation({
 // Enhanced: Get scheduled reports
 export const getScheduledReports = query({
   args: { businessId: v.id("businesses") },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const schedules = await ctx.db
       .query("scheduledReports")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId))
       .collect();
 
     return await Promise.all(
-      schedules.map(async (schedule) => {
+      schedules.map(async (schedule: any) => {
         const template = await ctx.db.get(schedule.templateId);
         return {
           ...schedule,
@@ -116,7 +116,7 @@ export const updateScheduledReport = mutation({
     recipients: v.optional(v.array(v.string())),
     frequency: v.optional(v.union(v.literal("daily"), v.literal("weekly"), v.literal("monthly"))),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const { scheduleId, ...updates } = args;
     
     if (updates.frequency) {
@@ -131,7 +131,7 @@ export const updateScheduledReport = mutation({
 // Enhanced: Delete scheduled report
 export const deleteScheduledReport = mutation({
   args: { scheduleId: v.id("scheduledReports") },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     await ctx.db.delete(args.scheduleId);
   },
 });
@@ -143,20 +143,20 @@ export const getReportHistory = query({
     framework: v.optional(v.string()),
     limit: v.optional(v.number()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     let query = ctx.db
       .query("generatedReports")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId))
       .order("desc");
 
     const reports = await query.take(args.limit || 50);
 
     if (args.framework) {
-      return reports.filter((r) => r.framework === args.framework);
+      return reports.filter((r: any) => r.framework === args.framework);
     }
 
     return await Promise.all(
-      reports.map(async (report) => {
+      reports.map(async (report: any) => {
         const template = await ctx.db.get(report.templateId);
         return {
           ...report,
@@ -180,7 +180,7 @@ export const generateComplianceReport: any = action({
     evidenceIds: v.optional(v.array(v.id("_storage"))),
     changeNotes: v.optional(v.string()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     // Get template
     const template = await ctx.runQuery(api.complianceReports.getTemplate, {
       templateId: args.templateId,
@@ -209,7 +209,7 @@ export const generateComplianceReport: any = action({
     });
 
     // Store report
-    const reportId = await ctx.runMutation(internal.complianceReports.storeReport, {
+    const reportId = await ctx.runMutation(internalApi.complianceReports.storeReport, {
       businessId: args.businessId,
       templateId: args.templateId,
       framework: template.framework,
@@ -237,12 +237,12 @@ export const storeReport = internalMutation({
     evidenceIds: v.optional(v.array(v.id("_storage"))),
     changeNotes: v.optional(v.string()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     // Check for previous version
     const previousReports = await ctx.db
       .query("generatedReports")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
-      .filter((q) => q.eq(q.field("framework"), args.framework))
+      .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId))
+      .filter((q: any) => q.eq(q.field("framework"), args.framework))
       .order("desc")
       .take(1);
 
@@ -269,8 +269,8 @@ export const distributeReport = action({
     reportId: v.id("generatedReports"),
     recipients: v.array(v.string()),
   },
-  handler: async (ctx, args) => {
-    const report = await ctx.runQuery(internal.complianceReports.getReportById, {
+  handler: async (ctx: any, args) => {
+    const report = await ctx.runQuery(internalApi.complianceReports.getReportById, {
       reportId: args.reportId,
     });
 
@@ -279,7 +279,7 @@ export const distributeReport = action({
     }
 
     // Update report with distribution info
-    await ctx.runMutation(internal.complianceReports.markReportDistributed, {
+    await ctx.runMutation(internalApi.complianceReports.markReportDistributed, {
       reportId: args.reportId,
       recipients: args.recipients,
     });
@@ -293,7 +293,7 @@ export const distributeReport = action({
 // Internal: Get report by ID
 export const getReportById = query({
   args: { reportId: v.id("generatedReports") },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     return await ctx.db.get(args.reportId);
   },
 });
@@ -304,7 +304,7 @@ export const markReportDistributed = internalMutation({
     reportId: v.id("generatedReports"),
     recipients: v.array(v.string()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     await ctx.db.patch(args.reportId, {
       emailedTo: args.recipients,
       emailedAt: Date.now(),

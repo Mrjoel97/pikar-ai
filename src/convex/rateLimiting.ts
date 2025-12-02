@@ -10,7 +10,7 @@ export const getRateLimitUsage = query({
     businessId: v.id("businesses"),
     timeRange: v.optional(v.union(v.literal("hour"), v.literal("day"), v.literal("month"))),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const range = args.timeRange || "hour";
     const now = Date.now();
     
@@ -74,7 +74,7 @@ export const logApiUsage = mutation({
     userId: v.optional(v.id("users")),
     apiKey: v.optional(v.string()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     await ctx.db.insert("apiUsageLogs", {
       businessId: args.businessId,
       endpoint: args.endpoint,

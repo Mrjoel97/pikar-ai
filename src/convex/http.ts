@@ -14,7 +14,7 @@ auth.addHttpRoutes(http);
 http.route({
   path: "/api/trigger",
   method: "POST",
-  handler: httpAction(async (ctx, req) => {
+  handler: httpAction(async (ctx: any, req) => {
     // Rate limiting: 100 requests per minute per key
     const rateLimitKey = getRateLimitKey(req);
     if (checkRateLimit(rateLimitKey, 100, 60000)) {
@@ -68,7 +68,7 @@ http.route({
 http.route({
   path: "/api/workflows/webhook/:eventKey",
   method: "POST",
-  handler: httpAction(async (ctx, req) => {
+  handler: httpAction(async (ctx: any, req) => {
     // Rate limiting: 200 requests per minute
     const rateLimitKey = getRateLimitKey(req);
     if (checkRateLimit(rateLimitKey, 200, 60000)) {
@@ -108,7 +108,7 @@ http.route({
 http.route({
   path: "/api/incidents/report",
   method: "POST",
-  handler: httpAction(async (ctx, req) => {
+  handler: httpAction(async (ctx: any, req) => {
     try {
       const body = await req.json();
       const { businessId, reportedBy, type, description, severity, linkedRiskId } = body || {};
@@ -116,6 +116,7 @@ http.route({
         return new Response(JSON.stringify({ error: "Missing required fields" }), { status: 400 });
       }
 
+      const { api } = await import("./_generated/api");
       const reportRef = (api as any).workflows?.reportIncident;
       if (!reportRef) {
         return new Response(JSON.stringify({ error: "reportIncident not available" }), { status: 501 });
@@ -139,7 +140,7 @@ http.route({
 http.route({
   path: "/api/compliance/scan",
   method: "POST",
-  handler: httpAction(async (ctx, req) => {
+  handler: httpAction(async (ctx: any, req) => {
     try {
       const body = await req.json();
       const { businessId, subjectType, subjectId, content, checkedBy } = body || {};
@@ -147,6 +148,7 @@ http.route({
         return new Response(JSON.stringify({ error: "Missing required fields" }), { status: 400 });
       }
 
+      const { api } = await import("./_generated/api");
       const checkRef = (api as any).workflows?.checkMarketingCompliance;
       if (!checkRef) {
         return new Response(JSON.stringify({ error: "checkMarketingCompliance not available" }), { status: 501 });
@@ -170,7 +172,7 @@ http.route({
 http.route({
   path: "/api/audit/export",
   method: "GET",
-  handler: httpAction(async (ctx, req) => {
+  handler: httpAction(async (ctx: any, req) => {
     const url = new URL(req.url);
     const businessId = url.searchParams.get("businessId");
     const startDate = url.searchParams.get("startDate");
@@ -243,7 +245,7 @@ http.route({
 http.route({
   path: "/api/unsubscribe",
   method: "GET",
-  handler: httpAction(async (ctx, req) => {
+  handler: httpAction(async (ctx: any, req) => {
     try {
       const url = new URL(req.url);
       const token = url.searchParams.get("token");
@@ -273,7 +275,7 @@ http.route({
 http.route({
   path: "/api/cron/sweep-scheduled-campaigns",
   method: "POST",
-  handler: httpAction(async (ctx, req) => {
+  handler: httpAction(async (ctx: any, req) => {
     try {
       // Parse optional limit from body or query string
       let limit = 25;
@@ -350,7 +352,7 @@ function priceIdToTier(priceId?: string | null) {
 http.route({
   path: "/api/stripe/webhook",
   method: "POST",
-  handler: httpAction(async (ctx, req) => {
+  handler: httpAction(async (ctx: any, req) => {
     const secretKey = process.env.STRIPE_SECRET_KEY;
     if (!secretKey) {
       return new Response("Missing STRIPE_SECRET_KEY", { status: 500 });
@@ -465,7 +467,7 @@ http.route({
 http.route({
   path: "/auth/callback/twitter",
   method: "GET",
-  handler: httpAction(async (ctx, req) => {
+  handler: httpAction(async (ctx: any, req) => {
     const url = new URL(req.url);
     const code = url.searchParams.get("code");
     const state = url.searchParams.get("state"); // businessId
@@ -523,7 +525,7 @@ http.route({
 http.route({
   path: "/auth/callback/linkedin",
   method: "GET",
-  handler: httpAction(async (ctx, req) => {
+  handler: httpAction(async (ctx: any, req) => {
     const url = new URL(req.url);
     const code = url.searchParams.get("code");
     const state = url.searchParams.get("state");
@@ -580,7 +582,7 @@ http.route({
 http.route({
   path: "/auth/callback/facebook",
   method: "GET",
-  handler: httpAction(async (ctx, req) => {
+  handler: httpAction(async (ctx: any, req) => {
     const url = new URL(req.url);
     const code = url.searchParams.get("code");
     const state = url.searchParams.get("state");
@@ -640,7 +642,7 @@ http.route({
 http.route({
   path: "/scim/v2/Users",
   method: "GET",
-  handler: httpAction(async (ctx, req) => {
+  handler: httpAction(async (ctx: any, req) => {
     // Authenticate via Bearer token
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
@@ -671,7 +673,7 @@ http.route({
 http.route({
   path: "/scim/v2/Users",
   method: "POST",
-  handler: httpAction(async (ctx, req) => {
+  handler: httpAction(async (ctx: any, req) => {
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
@@ -708,7 +710,7 @@ http.route({
 http.route({
   path: "/scim/v2/Groups",
   method: "GET",
-  handler: httpAction(async (ctx, req) => {
+  handler: httpAction(async (ctx: any, req) => {
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
@@ -734,7 +736,7 @@ http.route({
 http.route({
   path: "/scim/v2/Groups",
   method: "POST",
-  handler: httpAction(async (ctx, req) => {
+  handler: httpAction(async (ctx: any, req) => {
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
@@ -770,7 +772,7 @@ http.route({
 http.route({
   path: "/api/email/track/open",
   method: "GET",
-  handler: httpAction(async (ctx, req) => {
+  handler: httpAction(async (ctx: any, req) => {
     try {
       const url = new URL(req.url);
       const c = url.searchParams.get("c"); // campaign id (emailCampaigns)
@@ -817,7 +819,7 @@ http.route({
 http.route({
   path: "/api/email/track/click",
   method: "GET",
-  handler: httpAction(async (ctx, req) => {
+  handler: httpAction(async (ctx: any, req) => {
     try {
       const url = new URL(req.url);
       const c = url.searchParams.get("c"); // campaign id (emailCampaigns)
@@ -851,7 +853,7 @@ http.route({
 http.route({
   path: "/api/resend/webhook",
   method: "POST",
-  handler: httpAction(async (ctx, req) => {
+  handler: httpAction(async (ctx: any, req) => {
     try {
       const body = await req.json();
       const event = body?.type;
@@ -912,7 +914,7 @@ http.route({
 http.route({
   path: "/auth/saml/acs",
   method: "POST",
-  handler: httpAction(async (ctx, req) => {
+  handler: httpAction(async (ctx: any, req) => {
     try {
       const formData = await req.formData();
       const samlResponse = formData.get("SAMLResponse") as string;
@@ -925,6 +927,7 @@ http.route({
       // Extract businessId from relay state
       const businessId = relayState as any;
 
+      const { api } = await import("./_generated/api");
       // Validate SAML assertion
       const result = await ctx.runAction(api.saml.validateSAMLAssertion, {
         samlResponse,
@@ -952,7 +955,7 @@ http.route({
 http.route({
   path: "/auth/oidc/callback",
   method: "GET",
-  handler: httpAction(async (ctx, req) => {
+  handler: httpAction(async (ctx: any, req) => {
     try {
       const url = new URL(req.url);
       const code = url.searchParams.get("code");
@@ -965,6 +968,7 @@ http.route({
       // Extract businessId from state
       const businessId = state as any;
 
+      const { api } = await import("./_generated/api");
       // Exchange code for tokens
       const result = await ctx.runAction(api.oidc.exchangeOIDCCode, {
         code,

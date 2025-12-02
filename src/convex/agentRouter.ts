@@ -10,9 +10,9 @@ export const routeRequest: any = action({
     request: v.string(),
     context: v.optional(v.any()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     // Simple routing logic - can be enhanced with AI
-    const agents = await ctx.runQuery(api.aiAgents.listByBusiness, {
+    const agents = await ctx.runQuery(api.aiAgents.getByBusiness, {
       businessId: args.businessId,
     });
 
@@ -21,7 +21,7 @@ export const routeRequest: any = action({
     }
 
     // Route to first active agent for now
-    const activeAgent = agents.find(a => a.isActive);
+    const activeAgent = agents.find((a: any) => a.isActive);
     if (!activeAgent) {
       throw new Error("No active agents available");
     }
@@ -48,7 +48,7 @@ export const execRouter: any = action({
     input: v.optional(v.string()),
     context: v.optional(v.any()),
   },
-  handler: async (ctx, args): Promise<any> => {
+  handler: async (ctx: any, args): Promise<any> => {
     const { mode, businessId, userId, input } = args;
 
     // Load agent profile (guest-safe)

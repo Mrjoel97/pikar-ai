@@ -15,7 +15,7 @@ export const connectSocialAccount = mutation({
     refreshToken: v.optional(v.string()),
     tokenExpiresAt: v.optional(v.number()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) {
       throw new Error("[ERR_NOT_AUTHENTICATED] You must be signed in.");
@@ -128,7 +128,7 @@ export const disconnectSocialAccount = mutation({
   args: {
     accountId: v.id("socialAccounts"),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) {
       throw new Error("[ERR_NOT_AUTHENTICATED] You must be signed in.");
@@ -179,7 +179,7 @@ export const listConnectedAccounts = query({
   args: {
     businessId: v.optional(v.id("businesses")),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     // Guest-safe: return empty array if no businessId
     if (!args.businessId) {
       return [];
@@ -212,7 +212,7 @@ export const getAccountByPlatform = internalMutation({
     businessId: v.id("businesses"),
     platform: v.union(v.literal("twitter"), v.literal("linkedin"), v.literal("facebook")),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const account = await ctx.db
       .query("socialAccounts")
       .withIndex("by_business_and_platform", (q) =>
@@ -232,7 +232,7 @@ export const checkPlatformHealth = query({
   args: {
     accountId: v.id("socialAccounts"),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const account = await ctx.db.get(args.accountId);
     if (!account) {
       return {
@@ -283,7 +283,7 @@ export const refreshAccessToken = mutation({
     newRefreshToken: v.optional(v.string()),
     newTokenExpiresAt: v.optional(v.number()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) {
       throw new Error("[ERR_NOT_AUTHENTICATED] You must be signed in.");

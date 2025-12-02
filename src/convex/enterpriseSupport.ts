@@ -29,7 +29,7 @@ export const listTickets = query({
     )),
     limit: v.optional(v.number()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity?.email) {
       throw new Error("[ERR_NOT_AUTHENTICATED] You must be signed in.");
@@ -37,7 +37,7 @@ export const listTickets = query({
 
     const user = await ctx.db
       .query("users")
-      .withIndex("email", (q) => q.eq("email", identity.email))
+      .withIndex("email", (q: any) => q.eq("email", identity.email))
       .first();
     if (!user) {
       throw new Error("[ERR_USER_NOT_FOUND] User not found.");
@@ -54,22 +54,22 @@ export const listTickets = query({
 
     let query = ctx.db
       .query("supportTickets")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId));
+      .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId));
 
     const tickets = await query.order("desc").take(args.limit ?? 50);
 
     // Filter by status and priority in memory
     let filtered = tickets;
     if (args.status) {
-      filtered = filtered.filter((t) => t.status === args.status);
+      filtered = filtered.filter((t: any) => t.status === args.status);
     }
     if (args.priority) {
-      filtered = filtered.filter((t) => t.priority === args.priority);
+      filtered = filtered.filter((t: any) => t.priority === args.priority);
     }
 
     // Enrich with user data
     const enriched = await Promise.all(
-      filtered.map(async (ticket) => {
+      filtered.map(async (ticket: any) => {
         const creator = ticket.createdBy ? await ctx.db.get(ticket.createdBy) : null;
         const assignee = ticket.assignedTo ? await ctx.db.get(ticket.assignedTo) : null;
         return {
@@ -86,7 +86,7 @@ export const listTickets = query({
 
 export const getTicket = query({
   args: { ticketId: v.id("supportTickets") },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity?.email) {
       throw new Error("[ERR_NOT_AUTHENTICATED] You must be signed in.");
@@ -99,7 +99,7 @@ export const getTicket = query({
 
     const user = await ctx.db
       .query("users")
-      .withIndex("email", (q) => q.eq("email", identity.email))
+      .withIndex("email", (q: any) => q.eq("email", identity.email))
       .first();
     if (!user) {
       throw new Error("[ERR_USER_NOT_FOUND] User not found.");
@@ -138,7 +138,7 @@ export const createTicket = mutation({
     ),
     category: v.string(),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity?.email) {
       throw new Error("[ERR_NOT_AUTHENTICATED] You must be signed in.");
@@ -146,7 +146,7 @@ export const createTicket = mutation({
 
     const user = await ctx.db
       .query("users")
-      .withIndex("email", (q) => q.eq("email", identity.email))
+      .withIndex("email", (q: any) => q.eq("email", identity.email))
       .first();
     if (!user) {
       throw new Error("[ERR_USER_NOT_FOUND] User not found.");
@@ -204,7 +204,7 @@ export const updateTicket = mutation({
     )),
     assignedTo: v.optional(v.id("users")),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity?.email) {
       throw new Error("[ERR_NOT_AUTHENTICATED] You must be signed in.");
@@ -217,7 +217,7 @@ export const updateTicket = mutation({
 
     const user = await ctx.db
       .query("users")
-      .withIndex("email", (q) => q.eq("email", identity.email))
+      .withIndex("email", (q: any) => q.eq("email", identity.email))
       .first();
     if (!user) {
       throw new Error("[ERR_USER_NOT_FOUND] User not found.");
@@ -257,7 +257,7 @@ export const addTicketComment = mutation({
     ticketId: v.id("supportTickets"),
     comment: v.string(),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity?.email) {
       throw new Error("[ERR_NOT_AUTHENTICATED] You must be signed in.");
@@ -270,7 +270,7 @@ export const addTicketComment = mutation({
 
     const user = await ctx.db
       .query("users")
-      .withIndex("email", (q) => q.eq("email", identity.email))
+      .withIndex("email", (q: any) => q.eq("email", identity.email))
       .first();
     if (!user) {
       throw new Error("[ERR_USER_NOT_FOUND] User not found.");
@@ -300,7 +300,7 @@ export const addTicketComment = mutation({
 
 export const getTicketComments = query({
   args: { ticketId: v.id("supportTickets") },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity?.email) {
       throw new Error("[ERR_NOT_AUTHENTICATED] You must be signed in.");
@@ -313,7 +313,7 @@ export const getTicketComments = query({
 
     const user = await ctx.db
       .query("users")
-      .withIndex("email", (q) => q.eq("email", identity.email))
+      .withIndex("email", (q: any) => q.eq("email", identity.email))
       .first();
     if (!user) {
       throw new Error("[ERR_USER_NOT_FOUND] User not found.");
@@ -330,12 +330,12 @@ export const getTicketComments = query({
 
     const comments = await ctx.db
       .query("ticketComments")
-      .withIndex("by_ticket", (q) => q.eq("ticketId", args.ticketId))
+      .withIndex("by_ticket", (q: any) => q.eq("ticketId", args.ticketId))
       .order("asc")
       .collect();
 
     const enriched = await Promise.all(
-      comments.map(async (comment) => {
+      comments.map(async (comment: any) => {
         const author = await ctx.db.get(comment.userId);
         return {
           ...comment,
@@ -364,7 +364,7 @@ export const listTrainingSessions = query({
     )),
     limit: v.optional(v.number()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity?.email) {
       throw new Error("[ERR_NOT_AUTHENTICATED] You must be signed in.");
@@ -372,7 +372,7 @@ export const listTrainingSessions = query({
 
     const user = await ctx.db
       .query("users")
-      .withIndex("email", (q) => q.eq("email", identity.email))
+      .withIndex("email", (q: any) => q.eq("email", identity.email))
       .first();
     if (!user) {
       throw new Error("[ERR_USER_NOT_FOUND] User not found.");
@@ -389,17 +389,17 @@ export const listTrainingSessions = query({
 
     let query = ctx.db
       .query("trainingSessions")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId));
+      .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId));
 
     const sessions = await query.order("desc").take(args.limit ?? 50);
 
     let filtered = sessions;
     if (args.status) {
-      filtered = filtered.filter((s) => s.status === args.status);
+      filtered = filtered.filter((s: any) => s.status === args.status);
     }
 
     const enriched = await Promise.all(
-      filtered.map(async (session) => {
+      filtered.map(async (session: any) => {
         const trainer = session.trainerId ? await ctx.db.get(session.trainerId) : null;
         return {
           ...session,
@@ -415,7 +415,7 @@ export const listTrainingSessions = query({
 
 export const getTrainingSession = query({
   args: { sessionId: v.id("trainingSessions") },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity?.email) {
       throw new Error("[ERR_NOT_AUTHENTICATED] You must be signed in.");
@@ -428,7 +428,7 @@ export const getTrainingSession = query({
 
     const user = await ctx.db
       .query("users")
-      .withIndex("email", (q) => q.eq("email", identity.email))
+      .withIndex("email", (q: any) => q.eq("email", identity.email))
       .first();
     if (!user) {
       throw new Error("[ERR_USER_NOT_FOUND] User not found.");
@@ -463,7 +463,7 @@ export const scheduleTraining = mutation({
     topic: v.string(),
     maxAttendees: v.optional(v.number()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity?.email) {
       throw new Error("[ERR_NOT_AUTHENTICATED] You must be signed in.");
@@ -471,7 +471,7 @@ export const scheduleTraining = mutation({
 
     const user = await ctx.db
       .query("users")
-      .withIndex("email", (q) => q.eq("email", identity.email))
+      .withIndex("email", (q: any) => q.eq("email", identity.email))
       .first();
     if (!user) {
       throw new Error("[ERR_USER_NOT_FOUND] User not found.");
@@ -515,7 +515,7 @@ export const scheduleTraining = mutation({
 
 export const registerForTraining = mutation({
   args: { sessionId: v.id("trainingSessions") },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity?.email) {
       throw new Error("[ERR_NOT_AUTHENTICATED] You must be signed in.");
@@ -528,7 +528,7 @@ export const registerForTraining = mutation({
 
     const user = await ctx.db
       .query("users")
-      .withIndex("email", (q) => q.eq("email", identity.email))
+      .withIndex("email", (q: any) => q.eq("email", identity.email))
       .first();
     if (!user) {
       throw new Error("[ERR_USER_NOT_FOUND] User not found.");
@@ -562,7 +562,7 @@ export const registerForTraining = mutation({
 
 export const cancelTraining = mutation({
   args: { sessionId: v.id("trainingSessions") },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity?.email) {
       throw new Error("[ERR_NOT_AUTHENTICATED] You must be signed in.");
@@ -575,7 +575,7 @@ export const cancelTraining = mutation({
 
     const user = await ctx.db
       .query("users")
-      .withIndex("email", (q) => q.eq("email", identity.email))
+      .withIndex("email", (q: any) => q.eq("email", identity.email))
       .first();
     if (!user) {
       throw new Error("[ERR_USER_NOT_FOUND] User not found.");
@@ -611,7 +611,7 @@ export const cancelTraining = mutation({
 
 export const getSupportStats = query({
   args: { businessId: v.id("businesses") },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity?.email) {
       throw new Error("[ERR_NOT_AUTHENTICATED] You must be signed in.");
@@ -619,7 +619,7 @@ export const getSupportStats = query({
 
     const user = await ctx.db
       .query("users")
-      .withIndex("email", (q) => q.eq("email", identity.email))
+      .withIndex("email", (q: any) => q.eq("email", identity.email))
       .first();
     if (!user) {
       throw new Error("[ERR_USER_NOT_FOUND] User not found.");
@@ -636,21 +636,21 @@ export const getSupportStats = query({
 
     const tickets = await ctx.db
       .query("supportTickets")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId))
       .collect();
 
     const sessions = await ctx.db
       .query("trainingSessions")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId))
       .collect();
 
-    const openTickets = tickets.filter((t) => t.status === "open").length;
-    const inProgressTickets = tickets.filter((t) => t.status === "in_progress").length;
-    const resolvedTickets = tickets.filter((t) => t.status === "resolved").length;
-    const criticalTickets = tickets.filter((t) => t.priority === "critical").length;
+    const openTickets = tickets.filter((t: any) => t.status === "open").length;
+    const inProgressTickets = tickets.filter((t: any) => t.status === "in_progress").length;
+    const resolvedTickets = tickets.filter((t: any) => t.status === "resolved").length;
+    const criticalTickets = tickets.filter((t: any) => t.priority === "critical").length;
 
-    const scheduledSessions = sessions.filter((s) => s.status === "scheduled").length;
-    const completedSessions = sessions.filter((s) => s.status === "completed").length;
+    const scheduledSessions = sessions.filter((s: any) => s.status === "scheduled").length;
+    const completedSessions = sessions.filter((s: any) => s.status === "completed").length;
 
     return {
       tickets: {
