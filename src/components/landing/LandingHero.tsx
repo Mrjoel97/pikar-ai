@@ -21,19 +21,19 @@ export default function LandingHero({ handleGetStarted, setDemoOpen }: LandingHe
       id="main"
       className="relative pt-5 pb-12 sm:pt-10 sm:pb-20 lg:pt-10 lg:pb-24 px-4 sm:px-6 lg:px-8"
     >
-      {/* 3D Cube Animation Background - Commented out to prevent rendering issues */}
-      {/* <HeroBackgroundAnimation /> */}
+      {/* 3D Cube Animation Background */}
+      <HeroBackgroundAnimation />
 
       {/* Static gradient overlay */}
       <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top,rgba(255,255,255,0.95),rgba(255,255,255,0.9)_45%,transparent_70%)]" />
       <div className="max-w-7xl mx-auto text-center relative z-10">
         <motion.div
-          initial={{ y: 0, opacity: 1 }}
+          initial={{ y: 50, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ duration: 0.8, delay: 0.2 }}
         >
           <motion.div
-            initial={{ scale: 1, opacity: 1 }}
+            initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ duration: 0.6, delay: 0.3 }}
             className="inline-flex items-center space-x-2 bg-primary/10 rounded-full px-3 py-1.5 sm:px-4 sm:py-2 mb-6 sm:mb-8 neu-inset"
@@ -48,13 +48,13 @@ export default function LandingHero({ handleGetStarted, setDemoOpen }: LandingHe
           </motion.div>
           
           <motion.h1
-            initial={{ y: 0, opacity: 1 }}
+            initial={{ y: 30, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ duration: 0.8, delay: 0.5 }}
             className="text-4xl sm:text-6xl md:text-7xl font-bold tracking-tight mb-4 sm:mb-6 leading-[1.15] sm:leading-[1.1]"
           >
             <motion.span
-              initial={{ opacity: 1, x: 0 }}
+              initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.6, delay: 0.7 }}
               className="text-foreground"
@@ -63,7 +63,7 @@ export default function LandingHero({ handleGetStarted, setDemoOpen }: LandingHe
             </motion.span>
             <br />
             <motion.span
-              initial={{ opacity: 1, scale: 1 }}
+              initial={{ opacity: 0, scale: 0.8 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.6, delay: 0.9 }}
               className="text-primary"
@@ -71,7 +71,7 @@ export default function LandingHero({ handleGetStarted, setDemoOpen }: LandingHe
               and Ideas
             </motion.span>{" "}
             <motion.span
-              initial={{ opacity: 1, x: 0 }}
+              initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.6, delay: 1.1 }}
               className="text-foreground"
@@ -81,7 +81,7 @@ export default function LandingHero({ handleGetStarted, setDemoOpen }: LandingHe
           </motion.h1>
           
           <motion.p
-            initial={{ y: 0, opacity: 1 }}
+            initial={{ y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ duration: 0.8, delay: 1.3 }}
             className="text-base sm:text-xl text-muted-foreground max-w-3xl mx-auto mb-8 sm:mb-10 leading-relaxed px-1"
@@ -91,13 +91,13 @@ export default function LandingHero({ handleGetStarted, setDemoOpen }: LandingHe
           </motion.p>
           
           <motion.div
-            initial={{ y: 0, opacity: 1 }}
+            initial={{ y: 30, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ duration: 0.8, delay: 1.5 }}
             className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-center"
           >
             <motion.div
-              initial={{ x: 0, opacity: 1 }}
+              initial={{ x: -20, opacity: 0 }}
               animate={{ x: 0, opacity: 1 }}
               transition={{ duration: 0.6, delay: 1.7 }}
               whileHover={{ scale: 1.05, y: -2 }}
@@ -115,7 +115,7 @@ export default function LandingHero({ handleGetStarted, setDemoOpen }: LandingHe
               </Button>
             </motion.div>
             <motion.div
-              initial={{ x: 0, opacity: 1 }}
+              initial={{ x: 20, opacity: 0 }}
               animate={{ x: 0, opacity: 1 }}
               transition={{ duration: 0.6, delay: 1.9 }}
               whileHover={{ scale: 1.05, y: -2 }}
@@ -138,7 +138,7 @@ export default function LandingHero({ handleGetStarted, setDemoOpen }: LandingHe
 
       <motion.div 
         className="mt-8 sm:mt-10 relative z-10"
-        initial={{ y: 0, opacity: 1 }}
+        initial={{ y: 50, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.8, delay: 0.6 }}
       >
@@ -147,7 +147,7 @@ export default function LandingHero({ handleGetStarted, setDemoOpen }: LandingHe
             <motion.div
               key={stat.label}
               className="neu-inset rounded-xl px-4 py-3 sm:px-5 sm:py-4 bg-card/70 text-center"
-              initial={{ scale: 1, opacity: 1 }}
+              initial={{ scale: 0.8, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={{ duration: 0.5, delay: 0.7 + index * 0.1 }}
               whileHover={{ scale: 1.05, y: -5 }}
