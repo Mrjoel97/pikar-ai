@@ -142,60 +142,47 @@ function AnimatedRoutes() {
   console.log("Main.tsx: Rendering AnimatedRoutes", location.pathname);
   
   return (
-    <AnimatePresence mode="wait">
-      <motion.div
-        key={location.pathname}
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: -10 }}
-        transition={{ 
-          duration: 0.15, 
-          ease: [0.22, 1, 0.36, 1]
-        }}
-      >
-        <Routes location={location} key={location.pathname}>
-          <Route path="/" element={<Landing />} />
-          <Route path="/auth" element={<AuthPage redirectAfterAuth="/dashboard" />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/onboarding" element={<Onboarding />} />
-          <Route path="/initiatives" element={<InitiativesPage />} />
-          <Route path="/agents" element={<AgentsPage />} />
-          <Route path="/ai-agents" element={<AgentsPage />} />
-          <Route path="/analytics" element={<AnalyticsPage />} />
-          <Route path="/approval-analytics" element={<ApprovalAnalyticsPage />} />
-          <Route path="/workflows" element={<WorkflowsPage />} />
-          <Route path="/workflows/templates" element={<WorkflowTemplatesPage />} />
-          <Route path="/business" element={<BusinessPage />} />
-          <Route path="/settings" element={<SettingsPage />} />
-          <Route path="/admin" element={<AdminPage />} />
-          <Route path="/admin-auth" element={<AdminAuthPage />} />
-          <Route path="/learning-hub" element={<LearningHubPage />} />
-          <Route path="/admin/system-agents" element={<SystemAgentsPage />} />
-          <Route path="/branding" element={<BrandingPortal />} />
-          <Route path="/api-docs" element={<ApiDocsPage />} />
-          <Route path="/webhooks" element={<WebhookManagementPage />} />
-          <Route path="/scim" element={<ScimProvisioningPage />} />
-          <Route path="/scim-provisioning" element={<ScimProvisioningPage />} />
-          <Route path="/sso-configuration" element={<SsoConfigurationPage />} />
-          <Route path="/kms-configuration" element={<KmsConfigurationPage />} />
-          <Route path="/api/builder" element={<ApiBuilderPage />} />
-          <Route path="/support" element={<SupportPage />} />
-          <Route path="/admin/test-runner" element={<TestRunnerPage />} />
-          <Route path="/enterprise/data-warehouse" element={<DataWarehouseManager />} />
-          <Route path="/enterprise/security" element={<SecurityDashboard />} />
-          <Route path="/enterprise/portfolio" element={<PortfolioDashboard />} />
-          <Route path="/docs" element={<DocsPage />} />
-          <Route path="/crm-integration-hub" element={<CrmIntegrationHubPage />} />
-          <Route path="/customer-journey" element={<CustomerJourneyPage />} />
-          <Route path="/vendor-management" element={<VendorManagementPage />} />
-          <Route path="/content-calendar" element={<ContentCalendarPage />} />
-          <Route path="/portfolio-dashboard" element={<PortfolioDashboardPage />} />
-          <Route path="/data-warehouse" element={<DataWarehousePage />} />
-          <Route path="/reset-password" element={<ResetPassword />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </motion.div>
-    </AnimatePresence>
+    <Routes location={location} key={location.pathname}>
+      <Route path="/" element={<Landing />} />
+      <Route path="/auth" element={<AuthPage redirectAfterAuth="/dashboard" />} />
+      <Route path="/dashboard" element={<Dashboard />} />
+      <Route path="/onboarding" element={<Onboarding />} />
+      <Route path="/initiatives" element={<InitiativesPage />} />
+      <Route path="/agents" element={<AgentsPage />} />
+      <Route path="/ai-agents" element={<AgentsPage />} />
+      <Route path="/analytics" element={<AnalyticsPage />} />
+      <Route path="/approval-analytics" element={<ApprovalAnalyticsPage />} />
+      <Route path="/workflows" element={<WorkflowsPage />} />
+      <Route path="/workflows/templates" element={<WorkflowTemplatesPage />} />
+      <Route path="/business" element={<BusinessPage />} />
+      <Route path="/settings" element={<SettingsPage />} />
+      <Route path="/admin" element={<AdminPage />} />
+      <Route path="/admin-auth" element={<AdminAuthPage />} />
+      <Route path="/learning-hub" element={<LearningHubPage />} />
+      <Route path="/admin/system-agents" element={<SystemAgentsPage />} />
+      <Route path="/branding" element={<BrandingPortal />} />
+      <Route path="/api-docs" element={<ApiDocsPage />} />
+      <Route path="/webhooks" element={<WebhookManagementPage />} />
+      <Route path="/scim" element={<ScimProvisioningPage />} />
+      <Route path="/scim-provisioning" element={<ScimProvisioningPage />} />
+      <Route path="/sso-configuration" element={<SsoConfigurationPage />} />
+      <Route path="/kms-configuration" element={<KmsConfigurationPage />} />
+      <Route path="/api/builder" element={<ApiBuilderPage />} />
+      <Route path="/support" element={<SupportPage />} />
+      <Route path="/admin/test-runner" element={<TestRunnerPage />} />
+      <Route path="/enterprise/data-warehouse" element={<DataWarehouseManager />} />
+      <Route path="/enterprise/security" element={<SecurityDashboard />} />
+      <Route path="/enterprise/portfolio" element={<PortfolioDashboard />} />
+      <Route path="/docs" element={<DocsPage />} />
+      <Route path="/crm-integration-hub" element={<CrmIntegrationHubPage />} />
+      <Route path="/customer-journey" element={<CustomerJourneyPage />} />
+      <Route path="/vendor-management" element={<VendorManagementPage />} />
+      <Route path="/content-calendar" element={<ContentCalendarPage />} />
+      <Route path="/portfolio-dashboard" element={<PortfolioDashboardPage />} />
+      <Route path="/data-warehouse" element={<DataWarehousePage />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
+      <Route path="*" element={<NotFound />} />
+    </Routes>
   );
 }
 

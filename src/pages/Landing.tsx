@@ -169,10 +169,7 @@ export default function Landing() {
   }, []);
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.8 }}
+    <div
       className="min-h-screen bg-gradient-to-br from-accent/10 via-background to-primary/5 overflow-x-hidden"
     >
       {/* Add a skip link for accessibility at the top of the page */}
@@ -185,34 +182,21 @@ export default function Landing() {
       <LandingHero handleGetStarted={handleGetStarted} setDemoOpen={setDemoOpen} />
 
       {/* High-Traction Industries (randomized) */}
-      <motion.section 
+      <section 
         className="px-4 sm:px-6 lg:px-8 pb-10"
-        initial={{ opacity: 0 }}
-        whileInView={{ opacity: 1 }}
-        transition={{ duration: 0.8 }}
-        viewport={{ once: true }}
       >
         <div className="max-w-6xl mx-auto">
-          <motion.div 
+          <div 
             className="text-center mb-4"
-            initial={{ y: 20, opacity: 0 }}
-            whileInView={{ y: 0, opacity: 1 }}
-            transition={{ duration: 0.6 }}
-            viewport={{ once: true }}
           >
             <p className="text-xs sm:text-sm text-muted-foreground tracking-wide">
               High‑Traction Industries We Support
             </p>
-          </motion.div>
+          </div>
           <div className="flex flex-wrap justify-center gap-2 sm:gap-3">
             {randomIndustries.map((ind, index) => (
-              <motion.div
+              <div
                 key={ind}
-                initial={{ scale: 0, opacity: 0 }}
-                whileInView={{ scale: 1, opacity: 1 }}
-                transition={{ duration: 0.3, delay: index * 0.03 }}
-                viewport={{ once: true }}
-                whileHover={{ scale: 1.1 }}
               >
                 <Badge
                   variant="secondary"
@@ -220,39 +204,24 @@ export default function Landing() {
                 >
                   {ind}
                 </Badge>
-              </motion.div>
+              </div>
             ))}
           </div>
         </div>
-      </motion.section>
+      </section>
 
       {/* Trusted Logos - Animated Marquee */}
-      <motion.div
-        initial={{ y: 50, opacity: 0 }}
-        whileInView={{ y: 0, opacity: 1 }}
-        transition={{ duration: 0.8 }}
-        viewport={{ once: true }}
-      >
+      <div>
         <TrustedLogosMarquee logos={trustedLogos} />
-      </motion.div>
+      </div>
 
-      <motion.div
-        initial={{ y: 50, opacity: 0 }}
-        whileInView={{ y: 0, opacity: 1 }}
-        transition={{ duration: 0.8, delay: 0.2 }}
-        viewport={{ once: true }}
-      >
+      <div>
         <FeaturesSection features={features} />
-      </motion.div>
+      </div>
 
-      <motion.div
-        initial={{ y: 50, opacity: 0 }}
-        whileInView={{ y: 0, opacity: 1 }}
-        transition={{ duration: 0.8, delay: 0.2 }}
-        viewport={{ once: true }}
-      >
+      <div>
         <KpiTrendsCard data={trendData} />
-      </motion.div>
+      </div>
 
       {/* Demo Video Carousel */}
       <DemoVideoCarousel
@@ -326,6 +295,6 @@ export default function Landing() {
       <LandingFooter />
 
       <LandingChat />
-    </motion.div>
+    </div>
   );
 }
