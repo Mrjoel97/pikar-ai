@@ -114,7 +114,7 @@ export function AgentTrainingInterface({ agentId }: { agentId: Id<"aiAgents"> })
             <div>
               <h4 className="font-medium mb-2">Recent Learning Events</h4>
               <div className="space-y-2">
-                {learningInsights.events.slice(0, 5).map((event, idx) => (
+                {learningInsights.events.slice(0, 5).map((event: any, idx: number) => (
                   <div key={idx} className="flex items-start gap-2 p-2 border rounded">
                     {event.eventType === "success" ? (
                       <TrendingUp className="h-4 w-4 text-green-500 mt-1" />

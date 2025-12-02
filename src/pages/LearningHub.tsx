@@ -52,7 +52,7 @@ export default function LearningHub() {
 
   const categories = ["all", "automation", "ai-agents", "marketing", "analytics", "compliance"];
 
-  const filteredCourses = courses?.filter(course => 
+  const filteredCourses = courses?.filter((course: any) => 
     selectedCategory === "all" || course.category === selectedCategory
   );
 
@@ -89,7 +89,7 @@ export default function LearningHub() {
   };
 
   const getCourseProgress = (courseId: Id<"learningCourses">) => {
-    return userProgress?.find(p => p.courseId === courseId);
+    return userProgress?.find((p: any) => p.courseId === courseId);
   };
 
   return (
@@ -125,7 +125,7 @@ export default function LearningHub() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {userProgress?.filter(p => p.isCompleted).length || 0}
+              {userProgress?.filter((p: any) => p.isCompleted).length || 0}
             </div>
           </CardContent>
         </Card>
@@ -136,7 +136,7 @@ export default function LearningHub() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {userProgress?.filter(p => p.isCompleted).length || 0}
+              {userProgress?.filter((p: any) => p.isCompleted).length || 0}
             </div>
           </CardContent>
         </Card>
@@ -149,7 +149,7 @@ export default function LearningHub() {
             <div className="text-2xl font-bold">
               {userProgress && userProgress.length > 0
                 ? Math.round(
-                    userProgress.reduce((acc, p) => acc + p.progressPercentage, 0) /
+                    userProgress.reduce((acc: any, p: any) => acc + p.progressPercentage, 0) /
                       userProgress.length
                   )
                 : 0}%
@@ -185,7 +185,7 @@ export default function LearningHub() {
 
         <TabsContent value="catalog" className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredCourses?.map(course => {
+            {filteredCourses?.map((course: any) => {
               const progress = getCourseProgress(course._id);
               return (
                 <Card key={course._id} className="hover:shadow-lg transition-shadow">
@@ -240,8 +240,8 @@ export default function LearningHub() {
 
         <TabsContent value="my-courses" className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {userProgress?.map(progress => {
-              const course = courses?.find(c => c._id === progress.courseId);
+            {userProgress?.map((progress: any) => {
+              const course = courses?.find((c: any) => c._id === progress.courseId);
               if (!course) return null;
               return (
                 <Card key={progress._id}>
@@ -289,8 +289,8 @@ export default function LearningHub() {
 
         <TabsContent value="certificates" className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {userProgress?.filter(p => p.isCompleted).map(progress => {
-              const course = courses?.find(c => c._id === progress.courseId);
+            {userProgress?.filter((p: any) => p.isCompleted).map((progress: any) => {
+              const course = courses?.find((c: any) => c._id === progress.courseId);
               if (!course) return null;
               return (
                 <Card key={progress._id} className="border-2 border-emerald-500">
@@ -335,7 +335,7 @@ export default function LearningHub() {
           </DialogHeader>
           <ScrollArea className="h-[60vh]">
             <div className="space-y-4 p-4">
-              {lessons?.map((lesson, index) => {
+              {lessons?.map((lesson: any, index: number) => {
                 const progress = user?._id ? getCourseProgress(selectedCourse!) : null;
                 const isCompleted = progress?.completedLessons.includes(lesson._id);
                 return (

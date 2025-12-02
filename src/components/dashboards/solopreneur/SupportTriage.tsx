@@ -44,7 +44,7 @@ export function SupportTriage({ businessId }: SupportTriageProps) {
       <CardContent>
         {tickets && tickets.length > 0 ? (
           <div className="space-y-3">
-            {tickets.map((ticket) => (
+            {tickets.map((ticket: any) => (
               <div key={ticket._id} className="flex items-start gap-3 p-3 border rounded-lg">
                 {getStatusIcon(ticket.status)}
                 <div className="flex-1">

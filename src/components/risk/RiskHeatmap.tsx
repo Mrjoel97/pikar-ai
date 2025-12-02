@@ -199,7 +199,7 @@ export function RiskHeatmap({ matrix, totalRisks, highRisks, businessId }: RiskH
                   <div>
                     <h4 className="text-sm font-medium mb-3">30-Day Forecast</h4>
                     <div className="space-y-2 max-h-64 overflow-y-auto">
-                      {predictiveModel.predictions.slice(0, 10).map((pred, idx) => (
+                      {predictiveModel.predictions.slice(0, 10).map((pred: any, idx: number) => (
                         <div key={idx} className="flex items-center justify-between p-2 border rounded">
                           <span className="text-sm">{new Date(pred.date).toLocaleDateString()}</span>
                           <div className="flex items-center gap-3">
@@ -240,7 +240,7 @@ export function RiskHeatmap({ matrix, totalRisks, highRisks, businessId }: RiskH
 
                   <div className="space-y-2">
                     <h4 className="text-sm font-medium">Risk Category Correlations</h4>
-                    {correlations.correlations.map((corr, idx) => (
+                    {correlations.correlations.map((corr: any, idx: number) => (
                       <div key={idx} className="flex items-center justify-between p-3 border rounded">
                         <div className="flex-1">
                           <div className="text-sm font-medium">
@@ -279,7 +279,7 @@ export function RiskHeatmap({ matrix, totalRisks, highRisks, businessId }: RiskH
                         Priority Actions
                       </h4>
                       <div className="space-y-2">
-                        {mitigations.priorityActions.map((action, idx) => (
+                        {mitigations.priorityActions.map((action: any, idx: number) => (
                           <Card key={idx} className={
                             action.priority === "critical" ? "border-red-500" : "border-orange-500"
                           }>
@@ -307,7 +307,7 @@ export function RiskHeatmap({ matrix, totalRisks, highRisks, businessId }: RiskH
                     <div>
                       <h4 className="text-sm font-medium mb-3">Category Recommendations</h4>
                       <div className="space-y-2">
-                        {mitigations.recommendations.map((rec, idx) => (
+                        {mitigations.recommendations.map((rec: any, idx: number) => (
                           <div key={idx} className="p-3 border rounded">
                             <div className="flex items-start justify-between gap-3">
                               <div className="flex-1">

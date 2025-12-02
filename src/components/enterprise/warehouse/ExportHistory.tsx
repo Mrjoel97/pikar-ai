@@ -11,8 +11,8 @@ interface ExportHistoryProps {
 }
 
 export function ExportHistory({ businessId }: ExportHistoryProps) {
-  const exportHistory = useQuery(api.dataWarehouse.getExportHistory, { businessId, limit: 20 });
-  const exportSchedules = useQuery(api.dataWarehouse.listExportSchedules, { businessId });
+  const exportHistory = useQuery(api.dataWarehouse.getExportHistory, { businessId, limit: 20 }) as any;
+  const exportSchedules = useQuery(api.dataWarehouse.listExportSchedules, { businessId }) as any;
 
   return (
     <div className="space-y-4">
@@ -31,7 +31,7 @@ export function ExportHistory({ businessId }: ExportHistoryProps) {
         <CardContent>
           {exportSchedules && exportSchedules.length > 0 ? (
             <div className="space-y-2">
-              {exportSchedules.map((schedule) => (
+              {exportSchedules.map((schedule: any) => (
                 <div
                   key={schedule._id}
                   className="flex items-center justify-between p-3 border rounded-lg"
@@ -64,7 +64,7 @@ export function ExportHistory({ businessId }: ExportHistoryProps) {
         <CardContent>
           {exportHistory && exportHistory.length > 0 ? (
             <div className="space-y-2">
-              {exportHistory.map((export_) => (
+              {exportHistory.map((export_: any) => (
                 <div
                   key={export_._id}
                   className="flex items-center justify-between p-3 border rounded-lg"

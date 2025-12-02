@@ -226,7 +226,7 @@ export function EncryptionPolicyBuilder({ businessId }: EncryptionPolicyBuilderP
             </p>
           ) : (
             <div className="space-y-3">
-              {policies.map((policy) => (
+              {policies.map((policy: any) => (
                 <div
                   key={policy._id}
                   className="flex items-start justify-between p-4 border rounded-lg"

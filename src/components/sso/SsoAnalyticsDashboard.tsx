@@ -41,8 +41,8 @@ export function SsoAnalyticsDashboard({ businessId }: SsoAnalyticsDashboardProps
   };
 
   const allConfigs = [
-    ...(samlConfigs?.map((c) => ({ ...c, type: "saml" as const })) || []),
-    ...(oidcConfigs?.map((c) => ({ ...c, type: "oidc" as const })) || []),
+    ...(samlConfigs?.map((c: any) => ({ ...c, type: "saml" as const })) || []),
+    ...(oidcConfigs?.map((c: any) => ({ ...c, type: "oidc" as const })) || []),
   ];
 
   const configMap = new Map(allConfigs.map((c) => [c._id, c]));

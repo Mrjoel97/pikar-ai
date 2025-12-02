@@ -79,7 +79,7 @@ export default function ApiBuilderPage() {
     );
   }
 
-  const selectedApiData = apis?.find(a => a._id === selectedApi);
+  const selectedApiData = apis?.find((a: any) => a._id === selectedApi);
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
@@ -118,7 +118,7 @@ export default function ApiBuilderPage() {
               <CardDescription>{apis?.length || 0} endpoints</CardDescription>
             </CardHeader>
             <CardContent className="space-y-2">
-              {apis?.map((api) => (
+              {apis?.map((api: any) => (
                 <button
                   key={api._id}
                   onClick={() => setSelectedApi(api._id)}

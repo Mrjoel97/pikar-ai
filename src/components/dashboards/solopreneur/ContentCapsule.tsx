@@ -274,7 +274,7 @@ export function ContentCapsule({ businessId, open, onOpenChange }: ContentCapsul
                   <TabsContent value="social" className="space-y-4">
                     <CapsuleSocialPreview
                       capsule={capsule}
-                      setCapsule={setCapsule}
+                      setCapsule={setCapsule as any}
                       platforms={platforms}
                       onCopy={handleCopy}
                     />

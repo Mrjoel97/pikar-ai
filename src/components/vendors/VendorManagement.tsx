@@ -159,7 +159,7 @@ export function VendorManagement({ businessId, isGuest }: VendorManagementProps)
                       labelFormatter={(ts) => new Date(ts).toLocaleDateString()}
                     />
                     <Legend />
-                    {performanceTrends.slice(0, 5).map((trend, idx) => (
+                    {performanceTrends.slice(0, 5).map((trend: any, idx: number) => (
                       <Line
                         key={trend.vendorId}
                         type="monotone"

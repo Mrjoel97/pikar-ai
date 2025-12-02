@@ -129,7 +129,7 @@ export default function ScimProvisioningPage() {
             <CardContent>
               <div className="space-y-2">
                 {provisionedUsers && provisionedUsers.length > 0 ? (
-                  provisionedUsers.map((item) => (
+                  provisionedUsers.map((item: any) => (
                     <div
                       key={item._id}
                       className="flex items-center justify-between p-3 border rounded-lg"
@@ -165,7 +165,7 @@ export default function ScimProvisioningPage() {
             <CardContent>
               <div className="space-y-2">
                 {provisionedGroups && provisionedGroups.length > 0 ? (
-                  provisionedGroups.map((group) => (
+                  provisionedGroups.map((group: any) => (
                     <div
                       key={group._id}
                       className="flex items-center justify-between p-3 border rounded-lg"

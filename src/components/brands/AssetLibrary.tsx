@@ -65,7 +65,7 @@ export function AssetLibrary({ businessId, brandId }: AssetLibraryProps) {
   };
 
   const filteredAssets = assets?.filter(
-    (asset) => filterType === "all" || asset.type === filterType
+    (asset: any) => filterType === "all" || asset.type === filterType
   );
 
   const getAssetIcon = (type: string) => {
@@ -172,7 +172,7 @@ export function AssetLibrary({ businessId, brandId }: AssetLibraryProps) {
 
       <ScrollArea className="h-[500px]">
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {filteredAssets?.map((asset) => (
+          {filteredAssets?.map((asset: any) => (
             <Card key={asset._id}>
               <CardHeader>
                 <div className="flex items-start justify-between">
@@ -202,7 +202,7 @@ export function AssetLibrary({ businessId, brandId }: AssetLibraryProps) {
                   </div>
                 )}
                 <div className="flex flex-wrap gap-1">
-                  {asset.tags.map((tag) => (
+                  {asset.tags.map((tag: any) => (
                     <Badge key={tag} variant="secondary" className="text-xs">
                       {tag}
                     </Badge>

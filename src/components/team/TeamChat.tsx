@@ -222,7 +222,7 @@ export function TeamChat({ businessId }: TeamChatProps) {
     }
   };
 
-  const filteredUsers = usersForMention?.filter((user) =>
+  const filteredUsers = usersForMention?.filter((user: any) =>
     user.name.toLowerCase().includes(mentionSearch.toLowerCase())
   );
 
@@ -282,7 +282,7 @@ export function TeamChat({ businessId }: TeamChatProps) {
         </CardHeader>
         <ScrollArea className="flex-1">
           <div className="space-y-1 p-2">
-            {channels?.map((channel) => (
+            {channels?.map((channel: any) => (
               <Button
                 key={channel._id}
                 variant={selectedChannel === channel._id ? "secondary" : "ghost"}
@@ -306,7 +306,7 @@ export function TeamChat({ businessId }: TeamChatProps) {
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2">
               <Hash className="h-5 w-5" />
-              {channels?.find((c) => c._id === selectedChannel)?.name || "Select a channel"}
+              {channels?.find((c: any) => c._id === selectedChannel)?.name || "Select a channel"}
             </CardTitle>
             <Button
               size="sm"
@@ -330,7 +330,7 @@ export function TeamChat({ businessId }: TeamChatProps) {
           <div className="space-y-4 pb-4">
             {showSearch && searchResults ? (
               // Search Results
-              searchResults.map((msg) => (
+              searchResults.map((msg: any) => (
                 <motion.div
                   key={msg._id}
                   initial={{ opacity: 0, y: 10 }}
@@ -357,7 +357,7 @@ export function TeamChat({ businessId }: TeamChatProps) {
               ))
             ) : (
               // Regular Messages
-              messages?.map((msg) => (
+              messages?.map((msg: any) => (
                 <motion.div
                   key={msg._id}
                   initial={{ opacity: 0, y: 10 }}
@@ -388,7 +388,7 @@ export function TeamChat({ businessId }: TeamChatProps) {
                     {/* Attachments */}
                     {msg.attachments && msg.attachments.length > 0 && (
                       <div className="mt-2 space-y-2">
-                        {msg.attachments.map((att, idx) => (
+                        {msg.attachments.map((att: any, idx: number) => (
                           <div
                             key={idx}
                             className="flex items-center gap-2 p-2 rounded bg-muted/50 text-sm"
@@ -413,7 +413,7 @@ export function TeamChat({ businessId }: TeamChatProps) {
                       {msg.reactions.length > 0 && (
                         <div className="flex gap-1">
                           {Object.entries(
-                            msg.reactions.reduce((acc, r) => {
+                            msg.reactions.reduce((acc: any, r: any) => {
                               acc[r.emoji] = (acc[r.emoji] || 0) + 1;
                               return acc;
                             }, {} as Record<string, number>)
@@ -425,7 +425,7 @@ export function TeamChat({ businessId }: TeamChatProps) {
                               className="h-6 px-2 text-xs"
                               onClick={() => handleReaction(msg._id, emoji)}
                             >
-                              {emoji} {count}
+                              {emoji} {count as number}
                             </Button>
                           ))}
                         </div>
@@ -544,7 +544,7 @@ export function TeamChat({ businessId }: TeamChatProps) {
                     exit={{ opacity: 0, y: -10 }}
                     className="absolute bottom-full left-0 mb-2 w-64 bg-popover border rounded-lg shadow-lg p-2 z-50"
                   >
-                    {filteredUsers.map((user) => (
+                    {filteredUsers.map((user: any) => (
                       <Button
                         key={user._id}
                         variant="ghost"
@@ -593,7 +593,7 @@ export function TeamChat({ businessId }: TeamChatProps) {
 
               <ScrollArea className="flex-1 px-4">
                 <div className="space-y-4 pb-4">
-                  {threadReplies?.map((reply) => (
+                  {threadReplies?.map((reply: any) => (
                     <motion.div
                       key={reply._id}
                       initial={{ opacity: 0, y: 10 }}
@@ -618,7 +618,7 @@ export function TeamChat({ businessId }: TeamChatProps) {
 
                         {reply.attachments && reply.attachments.length > 0 && (
                           <div className="mt-2 space-y-1">
-                            {reply.attachments.map((att, idx) => (
+                            {reply.attachments.map((att: any, idx: number) => (
                               <div
                                 key={idx}
                                 className="flex items-center gap-2 p-2 rounded bg-muted/50 text-xs"

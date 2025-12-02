@@ -75,7 +75,7 @@ export function IdpManagement({ businessId }: IdpManagementProps) {
               </CardContent>
             </Card>
           ) : (
-            samlConfigs?.map((config) => (
+            samlConfigs?.map((config: any) => (
               <IdpCard
                 key={config._id}
                 config={config}
@@ -97,7 +97,7 @@ export function IdpManagement({ businessId }: IdpManagementProps) {
               </CardContent>
             </Card>
           ) : (
-            oidcConfigs?.map((config) => (
+            oidcConfigs?.map((config: any) => (
               <IdpCard
                 key={config._id}
                 config={config}

@@ -61,27 +61,30 @@ export function TeamOnboardingWizard() {
   const updateProgress = useMutation(api.teamOnboarding.updateOnboardingProgress);
   const userSession = useQuery(
     api.teamOnboarding.getUserOnboardingSession,
-    user?._id ? { userId: user._id } : "skip"
+    (user as any)?._id ? { userId: (user as any)._id } : "skip"
   );
   const analytics = useQuery(
     api.teamOnboarding.getOnboardingAnalytics,
-    business?._id ? { businessId: business._id, timeRange: "30d" } : "skip"
+    (business as any)?._id ? { businessId: (business as any)._id, timeRange: "30d" } : "skip"
   );
   const dashboard = useQuery(
     api.teamOnboarding.getTeamOnboardingDashboard,
-    business?._id ? { businessId: business._id } : "skip"
+    (business as any)?._id ? { businessId: (business as any)._id } : "skip"
   );
 
   const handleStartOnboarding = async () => {
-    if (!user?._id || !business?._id || !selectedRole) {
+    const userId = user && (user as any)._id;
+    const businessId = business && (business as any)._id;
+
+    if (!userId || !businessId || !selectedRole) {
       toast.error("Please select a role to continue");
       return;
     }
 
     try {
       await createSession({
-        businessId: business._id,
-        userId: user._id,
+        businessId: businessId,
+        userId: userId,
         role: selectedRole,
         department: department || undefined,
         startDate: Date.now(),
@@ -99,7 +102,7 @@ export function TeamOnboardingWizard() {
 
     try {
       const result = await updateProgress({
-        sessionId: userSession._id,
+        sessionId: userSession._id as any,
         stepCompleted: currentStep,
         notes: notes || undefined,
       });
@@ -126,7 +129,7 @@ export function TeamOnboardingWizard() {
 
   const progressData = useMemo(() => {
     if (!dashboard?.sessions) return [];
-    return dashboard.sessions.slice(0, 10).map(s => ({
+    return dashboard.sessions.slice(0, 10).map((s: any) => ({
       name: s.role.substring(0, 3).toUpperCase(),
       progress: s.progress,
     }));
@@ -248,7 +251,7 @@ export function TeamOnboardingWizard() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {dashboard.sessions.filter(s => s.status === "in_progress").slice(0, 5).map((session) => (
+              {dashboard.sessions.filter((s: any) => s.status === "in_progress").slice(0, 5).map((session: any) => (
                 <div key={session._id} className="flex items-center justify-between p-4 border rounded-lg">
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
@@ -309,7 +312,7 @@ export function TeamOnboardingWizard() {
             <Progress value={userSession.progress} className="mb-4" />
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Bell className="h-4 w-4" />
-              <span>{userSession.tasks?.filter(t => t.status === "todo").length || 0} tasks pending</span>
+              <span>{userSession.tasks?.filter((t: any) => t.status === "todo").length || 0} tasks pending</span>
             </div>
           </CardContent>
         </Card>
@@ -425,9 +428,9 @@ export function TeamOnboardingWizard() {
                     <Label>Related Tasks</Label>
                     <div className="space-y-2">
                       {userSession.tasks
-                        .filter(t => t.status !== "done")
+                        .filter((t: any) => t.status !== "done")
                         .slice(0, 3)
-                        .map((task) => (
+                        .map((task: any) => (
                           <div key={task._id} className="flex items-start gap-2 p-3 border rounded-lg">
                             <Briefcase className="h-4 w-4 mt-1 text-muted-foreground" />
                             <div className="flex-1">

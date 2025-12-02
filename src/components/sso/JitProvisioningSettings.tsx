@@ -14,8 +14,8 @@ export function JitProvisioningSettings({ businessId }: JitProvisioningSettingsP
   const oidcConfigs = useQuery(api.oidc.listOIDCConfigs, { businessId });
 
   const allConfigs = [
-    ...(samlConfigs?.map((c) => ({ ...c, type: "saml" as const })) || []),
-    ...(oidcConfigs?.map((c) => ({ ...c, type: "oidc" as const })) || []),
+    ...(samlConfigs?.map((c: any) => ({ ...c, type: "saml" as const })) || []),
+    ...(oidcConfigs?.map((c: any) => ({ ...c, type: "oidc" as const })) || []),
   ];
 
   return (

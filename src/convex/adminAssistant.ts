@@ -85,7 +85,7 @@ Provide clear, actionable responses. If suggesting changes, explain the impact.`
 
       if (toolsAllowed.includes("health")) {
         try {
-          const healthStatus = await ctx.runQuery(api.health.envStatus as any);
+          const healthStatus = await (ctx as any).runQuery("health:envStatus", {});
           steps.push({
             tool: "health",
             title: "System Health Check",
@@ -102,7 +102,7 @@ Provide clear, actionable responses. If suggesting changes, explain the impact.`
 
       if (toolsAllowed.includes("flags")) {
         try {
-          const flags = await ctx.runQuery(api.featureFlags.getFeatureFlags as any, {});
+          const flags = await (ctx as any).runQuery("featureFlags:getFeatureFlags", {});
           steps.push({
             tool: "flags",
             title: "Feature Flags",
@@ -125,7 +125,7 @@ Provide clear, actionable responses. If suggesting changes, explain the impact.`
       const fullPrompt = `${systemPrompt}\n\nUser query: ${message}\n\nCurrent system context:\n${contextStr || "No context available"}\n\nProvide a helpful response based on the query and context.`;
 
       // Generate AI response
-      const response: any = await (ctx as any).runAction("openai:generate" as any, {
+      const response: any = await (ctx as any).runAction("openai:generate", {
         prompt: fullPrompt,
         model: "gpt-4o-mini",
         temperature: 0.7,
@@ -208,7 +208,7 @@ Provide clear, actionable responses. If suggesting changes, explain the impact.`
 
       if (toolsAllowed.includes("health")) {
         try {
-          const healthStatus = await ctx.runQuery(api.health.envStatus as any);
+          const healthStatus = await (ctx as any).runQuery("health:envStatus", {});
           steps.push({
             tool: "health",
             title: "System Health Check",
@@ -225,7 +225,7 @@ Provide clear, actionable responses. If suggesting changes, explain the impact.`
 
       if (toolsAllowed.includes("flags")) {
         try {
-          const flags = await ctx.runQuery(api.featureFlags.getFeatureFlags as any, {});
+          const flags = await (ctx as any).runQuery("featureFlags:getFeatureFlags", {});
           steps.push({
             tool: "flags",
             title: "Feature Flags",
@@ -248,7 +248,7 @@ Provide clear, actionable responses. If suggesting changes, explain the impact.`
       const fullPrompt = `${systemPrompt}\n\nUser query: ${message}\n\nCurrent system context:\n${contextStr || "No context available"}\n\nProvide a helpful response based on the query and context.`;
 
       // Generate AI response
-      const response: any = await (ctx as any).runAction("openai:generate" as any, {
+      const response: any = await (ctx as any).runAction("openai:generate", {
         prompt: fullPrompt,
         model: "gpt-4o-mini",
         temperature: 0.7,
@@ -260,7 +260,7 @@ Provide clear, actionable responses. If suggesting changes, explain the impact.`
       const responseTime = Date.now() - startTime;
       
       // Record successful execution
-      await ctx.runMutation(internal.agentPerformance.recordExecution as any, {
+      await ctx.runMutation("agentPerformance:recordExecution", {
         agentKey: "admin_assistant",
         status: "success" as const,
         responseTime,
@@ -276,7 +276,7 @@ Provide clear, actionable responses. If suggesting changes, explain the impact.`
       const responseTime = Date.now() - startTime;
       
       // Record failed execution
-      await ctx.runMutation(internal.agentPerformance.recordExecution as any, {
+      await ctx.runMutation("agentPerformance:recordExecution", {
         agentKey: "admin_assistant",
         status: "failure" as const,
         responseTime,

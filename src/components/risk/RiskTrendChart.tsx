@@ -314,7 +314,7 @@ export function RiskTrendChart({
                   <div>
                     <h4 className="text-sm font-medium mb-3">Recommendations</h4>
                     <div className="space-y-2">
-                      {scenarioResult.recommendations.map((rec, idx) => (
+                      {scenarioResult.recommendations.map((rec: any, idx: number) => (
                         <div key={idx} className="p-3 bg-amber-50 border border-amber-200 rounded-md">
                           <p className="text-sm text-amber-900">{rec}</p>
                         </div>

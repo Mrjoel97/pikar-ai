@@ -103,7 +103,7 @@ export default function WebhookManagementPage() {
     }
   };
 
-  const selectedWebhookData = webhooks?.find(w => w._id === selectedWebhook);
+  const selectedWebhookData = webhooks?.find((w: any) => w._id === selectedWebhook);
 
   return (
     <div className="container mx-auto p-6 space-y-6">
@@ -175,7 +175,7 @@ export default function WebhookManagementPage() {
             <CardDescription>{webhooks?.length || 0} configured</CardDescription>
           </CardHeader>
           <CardContent className="space-y-2">
-            {webhooks?.map((webhook) => (
+            {webhooks?.map((webhook: any) => (
               <button
                 key={webhook._id}
                 onClick={() => setSelectedWebhook(webhook._id)}
@@ -233,7 +233,7 @@ export default function WebhookManagementPage() {
                   <div>
                     <Label>Subscribed Events</Label>
                     <div className="flex flex-wrap gap-2 mt-2">
-                      {selectedWebhookData.events.map((event) => (
+                      {selectedWebhookData.events.map((event: any) => (
                         <Badge key={event} variant="outline">
                           {event}
                         </Badge>
@@ -301,8 +301,8 @@ export default function WebhookManagementPage() {
                           <ResponsiveContainer width="100%" height={300}>
                             <LineChart data={Object.entries(webhookAnalytics.deliveriesByDay).map(([date, data]) => ({ 
                               date, 
-                              success: data.success, 
-                              failed: data.failed 
+                              success: (data as any).success, 
+                              failed: (data as any).failed 
                             }))}>
                               <CartesianGrid strokeDasharray="3 3" />
                               <XAxis dataKey="date" />
@@ -321,7 +321,7 @@ export default function WebhookManagementPage() {
 
                 <TabsContent value="deliveries" className="space-y-4">
                   <div className="space-y-2">
-                    {webhookDeliveries?.map((delivery) => (
+                    {webhookDeliveries?.map((delivery: any) => (
                       <Card key={delivery._id}>
                         <CardContent className="p-4">
                           <div className="flex items-center justify-between">
@@ -410,7 +410,7 @@ export default function WebhookManagementPage() {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {webhookTemplates?.map((template) => (
+            {webhookTemplates?.map((template: any) => (
               <Card key={template.id}>
                 <CardHeader>
                   <CardTitle className="text-base">{template.name}</CardTitle>
@@ -419,7 +419,7 @@ export default function WebhookManagementPage() {
                 <CardContent>
                   <div className="space-y-2">
                     <div className="flex flex-wrap gap-1">
-                      {template.events.map((event) => (
+                      {template.events.map((event: any) => (
                         <Badge key={event} variant="outline" className="text-xs">
                           {event}
                         </Badge>

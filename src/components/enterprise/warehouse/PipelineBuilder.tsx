@@ -117,7 +117,7 @@ export function PipelineBuilder({ businessId }: PipelineBuilderProps) {
                     <SelectValue placeholder="Select a data source" />
                   </SelectTrigger>
                   <SelectContent>
-                    {sources?.map((source) => (
+                    {sources?.map((source: any) => (
                       <SelectItem key={source._id} value={source._id}>
                         {source.name}
                       </SelectItem>
@@ -164,7 +164,7 @@ export function PipelineBuilder({ businessId }: PipelineBuilderProps) {
       </div>
 
       <div className="grid gap-4">
-        {pipelines?.map((pipeline) => (
+        {pipelines?.map((pipeline: any) => (
           <Card key={pipeline._id}>
             <CardHeader>
               <div className="flex items-start justify-between">

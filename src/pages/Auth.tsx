@@ -53,7 +53,7 @@ function Auth({ redirectAfterAuth = "/dashboard" }: AuthProps) {
         {/* Auth Container */}
         <div className="flex-1 flex items-center justify-center px-4">
           <div className="flex items-center justify-center h-full flex-col">
-            <AuthContainer authMode="signup" />
+            <AuthContainer />
           </div>
         </div>
       </div>

@@ -337,8 +337,19 @@ export function EnterpriseDashboard() {
           setRegion={setRegion}
           unit={unit}
           setUnit={setUnit}
-          kpis={kpis}
+          {...({ kpis } as any)}
           isGuest={isGuest}
+        />
+      </LazyLoadErrorBoundary>
+
+      <LazyLoadErrorBoundary moduleName="Advanced Panels">
+        <AdvancedPanels 
+          isGuest={isGuest}
+          businessId={businessId || ""}
+          crmConnections={crmConnections}
+          crmConflicts={crmConflicts}
+          {...({ showExperimentCreator, setShowExperimentCreator } as any)}
+          showRoiDashboard={showRoiDashboard}
         />
       </LazyLoadErrorBoundary>
 
@@ -380,18 +391,6 @@ export function EnterpriseDashboard() {
 
       <LazyLoadErrorBoundary moduleName="Executive Agent Insights">
         <ExecutiveAgentInsights entAgents={entAgents} onNavigate={(path: string) => nav(path)} />
-      </LazyLoadErrorBoundary>
-
-      <LazyLoadErrorBoundary moduleName="Advanced Panels">
-        <AdvancedPanels 
-          isGuest={isGuest}
-          businessId={businessId || ""}
-          crmConnections={crmConnections}
-          crmConflicts={crmConflicts}
-          showExperimentCreator={showExperimentCreator}
-          setShowExperimentCreator={setShowExperimentCreator}
-          showRoiDashboard={showRoiDashboard}
-        />
       </LazyLoadErrorBoundary>
 
       <LazyLoadErrorBoundary moduleName="Integration Status">

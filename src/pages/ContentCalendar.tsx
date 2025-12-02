@@ -35,7 +35,7 @@ export default function ContentCalendar() {
     api.calendar.getContentCalendar,
     user && business
       ? {
-          businessId: business._id,
+          businessId: (business as any)._id,
           userId: user._id,
           startDate: start.getTime(),
           endDate: end.getTime(),
@@ -74,7 +74,7 @@ export default function ContentCalendar() {
     if (!user) return;
     
     try {
-      const event = events?.find((e) => e.id === eventId);
+      const event = events?.find((e: any) => e.id === eventId);
       if (!event) return;
 
       const newScheduledAt = new Date(newDate);
@@ -190,7 +190,7 @@ export default function ContentCalendar() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {events?.filter((e) => e.type === "social").length || 0}
+              {events?.filter((e: any) => e.type === "social").length || 0}
             </div>
             <p className="text-xs text-muted-foreground">Ready to publish</p>
           </CardContent>
@@ -201,7 +201,7 @@ export default function ContentCalendar() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {events?.filter((e) => e.type === "email").length || 0}
+              {events?.filter((e: any) => e.type === "email").length || 0}
             </div>
             <p className="text-xs text-muted-foreground">Scheduled to send</p>
           </CardContent>

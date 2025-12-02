@@ -49,7 +49,7 @@ export function KeyRotationScheduler({ businessId }: KeyRotationSchedulerProps) 
     }
   };
 
-  const activeConfigs = configs?.filter((c) => c.active) || [];
+  const activeConfigs = configs?.filter((c: any) => c.active) || [];
   const now = Date.now();
 
   return (
@@ -73,7 +73,7 @@ export function KeyRotationScheduler({ businessId }: KeyRotationSchedulerProps) 
               onChange={(e) => setSelectedConfig(e.target.value as Id<"kmsConfigs">)}
             >
               <option value="">Choose a configuration...</option>
-              {activeConfigs.map((config) => (
+              {activeConfigs.map((config: any) => (
                 <option key={config._id} value={config._id}>
                   {config.provider.toUpperCase()} - {config.keyId}
                 </option>
@@ -125,8 +125,8 @@ export function KeyRotationScheduler({ businessId }: KeyRotationSchedulerProps) 
             </p>
           ) : (
             <div className="space-y-3">
-              {rotations.map((rotation) => {
-                const config = configs?.find((c) => c._id === rotation.configId);
+              {rotations.map((rotation: any) => {
+                const config = configs?.find((c: any) => c._id === rotation.configId);
                 const isOverdue = rotation.nextRotationDate < now;
                 const daysUntil = Math.ceil(
                   (rotation.nextRotationDate - now) / (24 * 60 * 60 * 1000)

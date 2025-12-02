@@ -131,7 +131,7 @@ export default function BrandingPortal() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-2">
-                  {themeVersions?.map((version) => (
+                  {themeVersions?.map((version: any) => (
                     <div
                       key={version._id}
                       className="flex items-center justify-between p-4 border rounded-lg"

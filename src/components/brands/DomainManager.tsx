@@ -106,7 +106,7 @@ export function DomainManager({ businessId, brandId }: DomainManagerProps) {
       </div>
 
       <div className="grid gap-4">
-        {domains?.map((domain) => (
+        {domains?.map((domain: any) => (
           <Card key={domain._id}>
             <CardHeader>
               <div className="flex items-center justify-between">

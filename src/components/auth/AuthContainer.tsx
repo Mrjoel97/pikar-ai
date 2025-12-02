@@ -1,6 +1,7 @@
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Brain } from "lucide-react";
 import { useNavigate } from "react-router";
+import { useState } from "react";
 import { PasswordAuthForm } from "@/components/auth/PasswordAuthForm";
 import { GuestTierDialog } from "@/components/auth/GuestTierDialog";
 import { useAuthForm } from "@/hooks/use-auth-form";
@@ -13,6 +14,7 @@ interface AuthContainerProps {
 export function AuthContainer() {
   const authForm = useAuthForm();
   const navigate = useNavigate();
+  const [showPassword, setShowPassword] = useState(false);
 
   if (authForm.showForgotPassword) {
     return (
@@ -46,6 +48,11 @@ export function AuthContainer() {
           isLoading={authForm.isSubmitting}
           onSubmit={authForm.handlePasswordSubmit}
           onForgotPassword={authForm.handleForgotPassword}
+          showPassword={showPassword}
+          setShowPassword={setShowPassword}
+          onEmailChange={(e: any) => authForm.setEmail(e.target.value)}
+          onPasswordChange={(e: any) => authForm.setPassword(e.target.value)}
+          onTogglePassword={() => setShowPassword(!showPassword)}
         />
 
         {/* Footer */}

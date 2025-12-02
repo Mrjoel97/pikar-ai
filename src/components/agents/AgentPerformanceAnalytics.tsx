@@ -85,7 +85,7 @@ export function AgentPerformanceAnalytics({ agentId }: { agentId: Id<"aiAgents">
         </CardHeader>
         <CardContent>
           <div className="space-y-2">
-            {metrics.recentExecutions.map((execution, idx) => (
+            {metrics.recentExecutions.map((execution: any, idx: number) => (
               <div key={idx} className="flex items-center justify-between p-2 border rounded">
                 <div className="flex items-center gap-2">
                   <Badge variant={execution.status === "success" ? "default" : "destructive"}>

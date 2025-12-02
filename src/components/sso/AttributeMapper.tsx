@@ -22,8 +22,8 @@ export function AttributeMapper({ businessId }: AttributeMapperProps) {
   const [selectedType, setSelectedType] = useState<"saml" | "oidc">("saml");
 
   const allConfigs = [
-    ...(samlConfigs?.map((c) => ({ ...c, type: "saml" as const })) || []),
-    ...(oidcConfigs?.map((c) => ({ ...c, type: "oidc" as const })) || []),
+    ...(samlConfigs?.map((c: any) => ({ ...c, type: "saml" as const })) || []),
+    ...(oidcConfigs?.map((c: any) => ({ ...c, type: "oidc" as const })) || []),
   ];
 
   const selectedConfig = allConfigs.find((c) => c._id === selectedConfigId);

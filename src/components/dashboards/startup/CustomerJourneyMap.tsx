@@ -41,20 +41,20 @@ export function CustomerJourneyMap({ businessId }: CustomerJourneyMapProps) {
   const analytics = useQuery(api.customerJourney.getJourneyAnalytics, { 
     businessId, 
     days: selectedDays 
-  });
+  }) as any;
   const touchpointAnalytics = useQuery(api.customerJourney.getTouchpointAnalytics, { 
     businessId, 
     days: selectedDays 
-  });
+  }) as any;
   const funnelData = useQuery(api.customerJourney.getConversionFunnel, { 
     businessId, 
     days: selectedDays 
-  });
+  }) as any;
   const dropoffAnalysis = useQuery(api.customerJourney.getDropoffAnalysis, { 
     businessId, 
     days: selectedDays 
-  });
-  const suggestions = useQuery(api.customerJourney.getOptimizationSuggestions, { businessId });
+  }) as any;
+  const suggestions = useQuery(api.customerJourney.getOptimizationSuggestions, { businessId }) as any;
 
   if (!analytics || !touchpointAnalytics || !funnelData || !dropoffAnalysis || !suggestions) {
     return (
@@ -98,7 +98,7 @@ export function CustomerJourneyMap({ businessId }: CustomerJourneyMapProps) {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            {suggestions.map((suggestion, idx) => {
+            {suggestions.map((suggestion: any, idx: number) => {
               const Icon = suggestion.type === "warning" ? AlertTriangle : 
                           suggestion.type === "success" ? CheckCircle : Info;
               const colorClass = suggestion.type === "warning" ? "text-orange-500" : 
@@ -176,7 +176,7 @@ export function CustomerJourneyMap({ businessId }: CustomerJourneyMapProps) {
             </CardHeader>
             <CardContent>
               <div className="flex items-center justify-between gap-2">
-                {Object.entries(STAGE_CONFIG).map(([stage, config], idx) => {
+                {Object.entries(STAGE_CONFIG).map(([stage, config], idx: number) => {
                   const count = stageDistribution[stage] || 0;
                   const percentage = totalContacts > 0 ? Math.round((count / totalContacts) * 100) : 0;
                   const Icon = config.icon;
@@ -258,7 +258,7 @@ export function CustomerJourneyMap({ businessId }: CustomerJourneyMapProps) {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              {funnelData.funnel.map((stage, idx) => {
+              {funnelData.funnel.map((stage: any, idx: number) => {
                 const config = STAGE_CONFIG[stage.stage as keyof typeof STAGE_CONFIG];
                 const Icon = config.icon;
                 
@@ -272,7 +272,7 @@ export function CustomerJourneyMap({ businessId }: CustomerJourneyMapProps) {
                         <div>
                           <div className="font-semibold">{config.label}</div>
                           <div className="text-sm text-muted-foreground">
-                            {stage.count} contacts
+                            {stage.count as number} contacts
                           </div>
                         </div>
                       </div>
@@ -305,12 +305,13 @@ export function CustomerJourneyMap({ businessId }: CustomerJourneyMapProps) {
               </CardHeader>
               <CardContent className="space-y-3">
                 {Object.entries(touchpointAnalytics.channelDistribution).map(([channel, count]) => {
-                  const percentage = (count / touchpointAnalytics.totalTouchpoints) * 100;
+                  const numCount = count as number;
+                  const percentage = (numCount / touchpointAnalytics.totalTouchpoints) * 100;
                   return (
                     <div key={channel} className="space-y-1">
                       <div className="flex items-center justify-between text-sm">
                         <span className="font-medium capitalize">{channel}</span>
-                        <span className="text-muted-foreground">{count} ({percentage.toFixed(1)}%)</span>
+                        <span className="text-muted-foreground">{numCount} ({percentage.toFixed(1)}%)</span>
                       </div>
                       <Progress value={percentage} className="h-2" />
                     </div>
@@ -334,7 +335,7 @@ export function CustomerJourneyMap({ businessId }: CustomerJourneyMapProps) {
                         {Object.entries(channels as Record<string, number>).map(([channel, count]) => (
                           <div key={channel} className="flex items-center justify-between text-xs">
                             <span className="capitalize">{channel}</span>
-                            <Badge variant="secondary">{count}</Badge>
+                            <Badge variant="secondary">{count as number}</Badge>
                           </div>
                         ))}
                       </div>
@@ -361,7 +362,7 @@ export function CustomerJourneyMap({ businessId }: CustomerJourneyMapProps) {
             <CardContent>
               {dropoffAnalysis.bottlenecks.length > 0 ? (
                 <div className="space-y-3">
-                  {dropoffAnalysis.bottlenecks.map((bottleneck, idx) => (
+                  {dropoffAnalysis.bottlenecks.map((bottleneck: any, idx: number) => (
                     <div key={idx} className="p-4 border rounded-lg space-y-2">
                       <div className="flex items-center justify-between">
                         <div className="font-semibold">

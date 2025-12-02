@@ -106,7 +106,7 @@ export function QualityDashboard({ businessId }: QualityDashboardProps) {
                     <SelectValue placeholder="Select a data source" />
                   </SelectTrigger>
                   <SelectContent>
-                    {sources?.map((source) => (
+                    {sources?.map((source: any) => (
                       <SelectItem key={source._id} value={source._id}>
                         {source.name}
                       </SelectItem>
@@ -158,7 +158,7 @@ export function QualityDashboard({ businessId }: QualityDashboardProps) {
       </div>
 
       <div className="grid gap-4">
-        {qualityChecks?.map((check) => (
+        {qualityChecks?.map((check: any) => (
           <Card key={check._id}>
             <CardHeader>
               <div className="flex items-start justify-between">
