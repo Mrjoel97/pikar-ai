@@ -51,6 +51,8 @@ import { SecurityDashboard } from "./components/enterprise/SecurityDashboard";
 import { PortfolioDashboard } from "./components/enterprise/PortfolioDashboard";
 import ResetPassword from "./pages/ResetPassword";
 
+console.log("Main.tsx: Module loaded");
+
 class ErrorBoundary extends Component<
   { children: React.ReactNode },
   { hasError: boolean; error?: any }
@@ -68,6 +70,7 @@ class ErrorBoundary extends Component<
   }
   render() {
     if (this.state.hasError) {
+      console.log("Main.tsx: ErrorBoundary caught error", this.state.error);
       return (
         <div className="min-h-screen flex items-center justify-center p-6">
           <div className="max-w-lg text-center">
@@ -75,6 +78,9 @@ class ErrorBoundary extends Component<
             <p className="text-sm text-muted-foreground">
               Please refresh the page. If the issue persists, contact support.
             </p>
+            <pre className="mt-4 p-4 bg-muted rounded text-left text-xs overflow-auto max-h-40">
+              {String(this.state.error)}
+            </pre>
           </div>
         </div>
       );
@@ -84,8 +90,10 @@ class ErrorBoundary extends Component<
 }
 
 function AppProviders({ children }: { children: React.ReactNode }) {
+  console.log("Main.tsx: Rendering AppProviders");
   const convexUrl = import.meta.env.VITE_CONVEX_URL as string | undefined;
   if (!convexUrl || convexUrl === "undefined") {
+    console.error("Main.tsx: Missing VITE_CONVEX_URL");
     return (
       <div className="min-h-screen flex items-center justify-center p-6">
         <div className="max-w-lg text-center">
@@ -131,6 +139,7 @@ function RouteSyncer() {
 
 function AnimatedRoutes() {
   const location = useLocation();
+  console.log("Main.tsx: Rendering AnimatedRoutes", location.pathname);
   
   return (
     <AnimatePresence mode="wait">
