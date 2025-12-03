@@ -2,54 +2,55 @@ import { Toaster } from "sonner";
 import { FullInstrumentationProvider } from "@/instrumentation.tsx";
 import { ConvexAuthProvider } from "@convex-dev/auth/react";
 import { ConvexReactClient } from "convex/react";
-import React, { StrictMode, useEffect, Component } from "react";
+import React, { StrictMode, useEffect, Component, Suspense, lazy } from "react";
 import { createRoot } from "react-dom/client";
 import { MemoryRouter, Route, Routes, useLocation, Navigate, useNavigate } from "react-router";
 import { motion, AnimatePresence } from "framer-motion";
 import "./index.css";
 import "./i18n/config";
-import Landing from "./pages/Landing.tsx";
-import NotFound from "./pages/NotFound.tsx";
 import "./types/global.d.ts";
 
-// Lazy-loaded pages for code splitting
-// Import pages directly without lazy loading for instant transitions
+// Import critical pages directly for instant loading
+import Landing from "./pages/Landing.tsx";
 import AuthPage from "@/pages/Auth.tsx";
-import Dashboard from "./pages/Dashboard.tsx";
-import Onboarding from "./pages/Onboarding.tsx";
-import InitiativesPage from "@/pages/Initiatives.tsx";
-import AgentsPage from "@/pages/Agents.tsx";
-import WorkflowsPage from "@/pages/Workflows.tsx";
-import WorkflowTemplatesPage from "@/pages/WorkflowTemplates.tsx";
-import BusinessPage from "@/pages/Business.tsx";
-import AnalyticsPage from "@/pages/Analytics.tsx";
-import ApprovalAnalyticsPage from "@/pages/ApprovalAnalytics";
-import PricingPage from "./pages/Pricing.tsx";
-import SettingsPage from "@/pages/Settings.tsx";
-import AdminPage from "@/pages/Admin.tsx";
-import AdminAuthPage from "./pages/AdminAuth.tsx";
-import LearningHubPage from "@/pages/LearningHub.tsx";
-import SystemAgentsPage from "@/pages/SystemAgents";
-import BrandingPortal from "./pages/BrandingPortal.tsx";
-import ApiDocsPage from "./pages/ApiDocs";
-import WebhookManagementPage from "./pages/WebhookManagement";
-import ScimProvisioningPage from "./pages/ScimProvisioning";
-import SsoConfigurationPage from "./pages/SsoConfiguration";
-import KmsConfigurationPage from "./pages/KmsConfiguration";
-import ApiBuilderPage from "./pages/ApiBuilder";
-import SupportPage from "./pages/Support";
-import TestRunnerPage from "./pages/TestRunner";
-import DocsPage from "./pages/Docs";
-import CrmIntegrationHubPage from "./pages/CrmIntegrationHub";
-import CustomerJourneyPage from "./pages/CustomerJourney";
-import VendorManagementPage from "./pages/VendorManagement";
-import ContentCalendarPage from "./pages/ContentCalendar";
-import PortfolioDashboardPage from "./pages/PortfolioDashboard";
-import DataWarehousePage from "./pages/DataWarehouse";
-import { DataWarehouseManager } from "./components/enterprise/DataWarehouseManager";
-import { SecurityDashboard } from "./components/enterprise/SecurityDashboard";
-import { PortfolioDashboard } from "./components/enterprise/PortfolioDashboard";
-import ResetPassword from "./pages/ResetPassword";
+import NotFound from "./pages/NotFound.tsx";
+
+// Lazy load all other pages for better initial load performance
+const Dashboard = lazy(() => import("./pages/Dashboard.tsx"));
+const Onboarding = lazy(() => import("./pages/Onboarding.tsx"));
+const InitiativesPage = lazy(() => import("@/pages/Initiatives.tsx"));
+const AgentsPage = lazy(() => import("@/pages/Agents.tsx"));
+const WorkflowsPage = lazy(() => import("@/pages/Workflows.tsx"));
+const WorkflowTemplatesPage = lazy(() => import("@/pages/WorkflowTemplates.tsx"));
+const BusinessPage = lazy(() => import("@/pages/Business.tsx"));
+const AnalyticsPage = lazy(() => import("@/pages/Analytics.tsx"));
+const ApprovalAnalyticsPage = lazy(() => import("@/pages/ApprovalAnalytics"));
+const PricingPage = lazy(() => import("./pages/Pricing.tsx"));
+const SettingsPage = lazy(() => import("@/pages/Settings.tsx"));
+const AdminPage = lazy(() => import("@/pages/Admin.tsx"));
+const AdminAuthPage = lazy(() => import("./pages/AdminAuth.tsx"));
+const LearningHubPage = lazy(() => import("@/pages/LearningHub.tsx"));
+const SystemAgentsPage = lazy(() => import("@/pages/SystemAgents"));
+const BrandingPortal = lazy(() => import("./pages/BrandingPortal.tsx"));
+const ApiDocsPage = lazy(() => import("./pages/ApiDocs"));
+const WebhookManagementPage = lazy(() => import("./pages/WebhookManagement"));
+const ScimProvisioningPage = lazy(() => import("./pages/ScimProvisioning"));
+const SsoConfigurationPage = lazy(() => import("./pages/SsoConfiguration"));
+const KmsConfigurationPage = lazy(() => import("./pages/KmsConfiguration"));
+const ApiBuilderPage = lazy(() => import("./pages/ApiBuilder"));
+const SupportPage = lazy(() => import("./pages/Support"));
+const TestRunnerPage = lazy(() => import("./pages/TestRunner"));
+const DocsPage = lazy(() => import("./pages/Docs"));
+const CrmIntegrationHubPage = lazy(() => import("./pages/CrmIntegrationHub"));
+const CustomerJourneyPage = lazy(() => import("./pages/CustomerJourney"));
+const VendorManagementPage = lazy(() => import("./pages/VendorManagement"));
+const ContentCalendarPage = lazy(() => import("./pages/ContentCalendar"));
+const PortfolioDashboardPage = lazy(() => import("./pages/PortfolioDashboard"));
+const DataWarehousePage = lazy(() => import("./pages/DataWarehouse"));
+const DataWarehouseManager = lazy(() => import("./components/enterprise/DataWarehouseManager").then(m => ({ default: m.DataWarehouseManager })));
+const SecurityDashboard = lazy(() => import("./components/enterprise/SecurityDashboard").then(m => ({ default: m.SecurityDashboard })));
+const PortfolioDashboard = lazy(() => import("./components/enterprise/PortfolioDashboard").then(m => ({ default: m.PortfolioDashboard })));
+const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 
 console.log("Main.tsx: Module loaded");
 
@@ -87,6 +88,18 @@ class ErrorBoundary extends Component<
     }
     return this.props.children;
   }
+}
+
+// Loading fallback component
+function PageLoader() {
+  return (
+    <div className="min-h-screen flex items-center justify-center">
+      <div className="flex flex-col items-center gap-3">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+        <p className="text-sm text-muted-foreground">Loading...</p>
+      </div>
+    </div>
+  );
 }
 
 function AppProviders({ children }: { children: React.ReactNode }) {
@@ -153,47 +166,49 @@ function AnimatedRoutes() {
           ease: [0.22, 1, 0.36, 1]
         }}
       >
-        <Routes location={location} key={location.pathname}>
-          <Route path="/" element={<Landing />} />
-          <Route path="/auth" element={<AuthPage redirectAfterAuth="/dashboard" />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/onboarding" element={<Onboarding />} />
-          <Route path="/initiatives" element={<InitiativesPage />} />
-          <Route path="/agents" element={<AgentsPage />} />
-          <Route path="/ai-agents" element={<AgentsPage />} />
-          <Route path="/analytics" element={<AnalyticsPage />} />
-          <Route path="/approval-analytics" element={<ApprovalAnalyticsPage />} />
-          <Route path="/workflows" element={<WorkflowsPage />} />
-          <Route path="/workflows/templates" element={<WorkflowTemplatesPage />} />
-          <Route path="/business" element={<BusinessPage />} />
-          <Route path="/settings" element={<SettingsPage />} />
-          <Route path="/admin" element={<AdminPage />} />
-          <Route path="/admin-auth" element={<AdminAuthPage />} />
-          <Route path="/learning-hub" element={<LearningHubPage />} />
-          <Route path="/admin/system-agents" element={<SystemAgentsPage />} />
-          <Route path="/branding" element={<BrandingPortal />} />
-          <Route path="/api-docs" element={<ApiDocsPage />} />
-          <Route path="/webhooks" element={<WebhookManagementPage />} />
-          <Route path="/scim" element={<ScimProvisioningPage />} />
-          <Route path="/scim-provisioning" element={<ScimProvisioningPage />} />
-          <Route path="/sso-configuration" element={<SsoConfigurationPage />} />
-          <Route path="/kms-configuration" element={<KmsConfigurationPage />} />
-          <Route path="/api/builder" element={<ApiBuilderPage />} />
-          <Route path="/support" element={<SupportPage />} />
-          <Route path="/admin/test-runner" element={<TestRunnerPage />} />
-          <Route path="/enterprise/data-warehouse" element={<DataWarehouseManager />} />
-          <Route path="/enterprise/security" element={<SecurityDashboard />} />
-          <Route path="/enterprise/portfolio" element={<PortfolioDashboard />} />
-          <Route path="/docs" element={<DocsPage />} />
-          <Route path="/crm-integration-hub" element={<CrmIntegrationHubPage />} />
-          <Route path="/customer-journey" element={<CustomerJourneyPage />} />
-          <Route path="/vendor-management" element={<VendorManagementPage />} />
-          <Route path="/content-calendar" element={<ContentCalendarPage />} />
-          <Route path="/portfolio-dashboard" element={<PortfolioDashboardPage />} />
-          <Route path="/data-warehouse" element={<DataWarehousePage />} />
-          <Route path="/reset-password" element={<ResetPassword />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+        <Suspense fallback={<PageLoader />}>
+          <Routes location={location} key={location.pathname}>
+            <Route path="/" element={<Landing />} />
+            <Route path="/auth" element={<AuthPage redirectAfterAuth="/dashboard" />} />
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/onboarding" element={<Onboarding />} />
+            <Route path="/initiatives" element={<InitiativesPage />} />
+            <Route path="/agents" element={<AgentsPage />} />
+            <Route path="/ai-agents" element={<AgentsPage />} />
+            <Route path="/analytics" element={<AnalyticsPage />} />
+            <Route path="/approval-analytics" element={<ApprovalAnalyticsPage />} />
+            <Route path="/workflows" element={<WorkflowsPage />} />
+            <Route path="/workflows/templates" element={<WorkflowTemplatesPage />} />
+            <Route path="/business" element={<BusinessPage />} />
+            <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/admin" element={<AdminPage />} />
+            <Route path="/admin-auth" element={<AdminAuthPage />} />
+            <Route path="/learning-hub" element={<LearningHubPage />} />
+            <Route path="/admin/system-agents" element={<SystemAgentsPage />} />
+            <Route path="/branding" element={<BrandingPortal />} />
+            <Route path="/api-docs" element={<ApiDocsPage />} />
+            <Route path="/webhooks" element={<WebhookManagementPage />} />
+            <Route path="/scim" element={<ScimProvisioningPage />} />
+            <Route path="/scim-provisioning" element={<ScimProvisioningPage />} />
+            <Route path="/sso-configuration" element={<SsoConfigurationPage />} />
+            <Route path="/kms-configuration" element={<KmsConfigurationPage />} />
+            <Route path="/api/builder" element={<ApiBuilderPage />} />
+            <Route path="/support" element={<SupportPage />} />
+            <Route path="/admin/test-runner" element={<TestRunnerPage />} />
+            <Route path="/enterprise/data-warehouse" element={<DataWarehouseManager />} />
+            <Route path="/enterprise/security" element={<SecurityDashboard />} />
+            <Route path="/enterprise/portfolio" element={<PortfolioDashboard />} />
+            <Route path="/docs" element={<DocsPage />} />
+            <Route path="/crm-integration-hub" element={<CrmIntegrationHubPage />} />
+            <Route path="/customer-journey" element={<CustomerJourneyPage />} />
+            <Route path="/vendor-management" element={<VendorManagementPage />} />
+            <Route path="/content-calendar" element={<ContentCalendarPage />} />
+            <Route path="/portfolio-dashboard" element={<PortfolioDashboardPage />} />
+            <Route path="/data-warehouse" element={<DataWarehousePage />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </Suspense>
       </motion.div>
     </AnimatePresence>
   );

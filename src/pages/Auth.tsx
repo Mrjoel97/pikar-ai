@@ -13,10 +13,10 @@ function Auth({ redirectAfterAuth = "/dashboard" }: AuthProps) {
   const { isAuthenticated, isLoading: authLoading } = useAuth();
   const navigate = useNavigate();
 
-  // Fetch onboarding status for authenticated users
+  // Only fetch onboarding status when authenticated
   const onboardingStatus = useQuery(
     api.onboarding.getOnboardingStatus,
-    isAuthenticated ? {} : undefined
+    isAuthenticated && !authLoading ? {} : "skip"
   );
 
   // Handle post-authentication redirection
@@ -38,24 +38,20 @@ function Auth({ redirectAfterAuth = "/dashboard" }: AuthProps) {
   }, [isAuthenticated, authLoading, onboardingStatus, navigate, redirectAfterAuth]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-10">
+    <div className="min-h-screen flex items-center justify-center px-4 py-10 bg-gradient-to-br from-background via-background to-muted/20">
       <div className="w-full max-w-md space-y-4 md:space-y-6">
         {/* Header */}
-        <div className="text-center">
-          <h2 className="text-2xl font-semibold tracking-tight">
+        <div className="text-center space-y-2">
+          <h2 className="text-2xl md:text-3xl font-semibold tracking-tight">
             Welcome to Pikar AI
           </h2>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <p className="text-sm text-muted-foreground">
             Sign in with Google or continue as a guest to explore.
           </p>
         </div>
 
         {/* Auth Container */}
-        <div className="flex-1 flex items-center justify-center px-4">
-          <div className="flex items-center justify-center h-full flex-col">
-            <AuthContainer />
-          </div>
-        </div>
+        <AuthContainer />
       </div>
     </div>
   );
