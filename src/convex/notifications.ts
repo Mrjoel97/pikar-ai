@@ -1,6 +1,9 @@
 import { v } from "convex/values";
 import { mutation, query, internalMutation } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
+import { paginationOptsValidator } from "convex/server";
+import { paginationOptsValidator } from "convex/server";
+import { paginationOptsValidator } from "convex/server";
 // removed unused internal import
 
 // Add: central validator for notification types to match schema union
@@ -523,13 +526,18 @@ export const snoozeMyNotification = mutation({
 // Query to get notifications for the authenticated user
 export const getMyNotifications = query({
   args: {
-    limit: v.optional(v.number()),
+    paginationOpts: paginationOptsValidator,
     unreadOnly: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) {
-      return [];
+      // Return empty page if not authenticated
+      return {
+        page: [],
+        isDone: true,
+        continueCursor: "",
+      };
     }
     const user = await ctx.db
       .query("users")
@@ -538,6 +546,8 @@ export const getMyNotifications = query({
     if (!user) {
       throw new Error("User not found");
     }
+
+    const now = Date.now();
 
     // Rename local variable to avoid shadowing within callbacks
     let dbQuery = ctx.db
@@ -549,13 +559,23 @@ export const getMyNotifications = query({
       dbQuery = dbQuery.filter((q) => q.eq(q.field("isRead"), false));
     }
 
-    const rows = args.limit ? await dbQuery.take(args.limit) : await dbQuery.collect();
-    const now = Date.now();
-    return rows.filter(
-      (n) =>
-        (!n.expiresAt || n.expiresAt > now) &&
-        (!(n as any).snoozeUntil || (n as any).snoozeUntil <= now)
+    // Apply filters in the query for pagination
+    dbQuery = dbQuery.filter((q) =>
+      q.and(
+        // Not expired: expiresAt is undefined OR expiresAt > now
+        q.or(
+          q.eq(q.field("expiresAt"), undefined),
+          q.gt(q.field("expiresAt"), now)
+        ),
+        // Not snoozed: snoozeUntil is undefined OR snoozeUntil <= now
+        q.or(
+          q.eq(q.field("snoozeUntil"), undefined),
+          q.lte(q.field("snoozeUntil"), now)
+        )
+      )
     );
+
+    return await dbQuery.paginate(args.paginationOpts);
   },
 });
 
