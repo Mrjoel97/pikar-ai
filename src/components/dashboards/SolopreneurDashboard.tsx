@@ -218,8 +218,8 @@ function SolopreneurDashboard({ business: businessProp }: { business?: any }) {
       api.initiatives.getByBusiness as any,
       businessId ? { businessId } : "skip",
     );
-    const initiativeId =
-      initiatives && initiatives.length > 0 && initiatives[0] ? initiatives[0]._id : null;
+    const initiative = initiatives?.[0];
+    const initiativeId = initiative?._id;
 
     const dumps = useQuery(
       api.initiatives.listBrainDumpsByInitiative as any,
