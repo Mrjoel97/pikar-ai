@@ -19,7 +19,6 @@ export function useAuthForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [touched, setTouched] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [showForgotPassword, setShowForgotPassword] = useState(false);
 
   // Guest mode state
   const [guestDialogOpen, setGuestDialogOpen] = useState(false);
@@ -106,14 +105,6 @@ export function useAuthForm() {
     }
   };
 
-  const handleForgotPassword = () => {
-    setShowForgotPassword(true);
-  };
-
-  const handleBackFromForgotPassword = () => {
-    setShowForgotPassword(false);
-  };
-
   return {
     email,
     setEmail,
@@ -132,12 +123,9 @@ export function useAuthForm() {
     setGuestDialogOpen,
     guestTier,
     setGuestTier,
-    showForgotPassword,
     handlePasswordSubmit,
     handleGoogleLogin,
     handleGuestLogin,
     handleConfirmGuest,
-    handleForgotPassword,
-    handleBackFromForgotPassword,
   };
 }

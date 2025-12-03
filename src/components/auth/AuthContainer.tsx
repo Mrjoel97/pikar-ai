@@ -1,11 +1,8 @@
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Brain } from "lucide-react";
 import { useNavigate } from "react-router";
-import { useState } from "react";
-import { PasswordAuthForm } from "@/components/auth/PasswordAuthForm";
 import { GuestTierDialog } from "@/components/auth/GuestTierDialog";
 import { useAuthForm } from "@/hooks/use-auth-form";
-import ForgotPasswordForm from "./ForgotPasswordForm";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 
@@ -16,15 +13,6 @@ interface AuthContainerProps {
 export function AuthContainer() {
   const authForm = useAuthForm();
   const navigate = useNavigate();
-  const [showPassword, setShowPassword] = useState(false);
-
-  if (authForm.showForgotPassword) {
-    return (
-      <div className="flex min-h-screen items-center justify-center p-4">
-        <ForgotPasswordForm onBack={authForm.handleBackFromForgotPassword} />
-      </div>
-    );
-  }
 
   return (
     <>
@@ -97,19 +85,6 @@ export function AuthContainer() {
             Continue as Guest
           </Button>
         </div>
-
-        {/* Forgot Password Link - only show in login mode */}
-        {authForm.authMode === "login" && (
-          <div className="px-6 pb-4 text-center">
-            <button
-              onClick={authForm.handleForgotPassword}
-              className="text-sm text-emerald-200 hover:text-emerald-50 underline transition-colors"
-              disabled={authForm.isSubmitting}
-            >
-              Forgot your password?
-            </button>
-          </div>
-        )}
 
         {/* Toggle between Sign In and Sign Up */}
         <div className="py-3 px-6 text-sm text-center border-t border-emerald-700/50 text-emerald-200">
