@@ -45,8 +45,8 @@ export function VoiceNotes({ businessId, initiativeId }: VoiceNotesProps) {
   const [audioBlob, setAudioBlob] = React.useState<Blob | null>(null);
 
   const searchArgsMemo = React.useMemo(() => {
-    if (!initiativeId || !searchQuery.trim()) return undefined;
-    return { initiativeId, query: searchQuery.trim() };
+    if (!initiativeId || !searchQuery.trim()) return "skip";
+    return { initiativeId, q: searchQuery.trim() };
   }, [initiativeId, searchQuery]);
 
   const searchResults = useQuery(api.initiatives.searchBrainDumps, searchArgsMemo);
