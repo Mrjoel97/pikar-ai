@@ -166,7 +166,7 @@ function AnimatedRoutes() {
           ease: [0.22, 1, 0.36, 1]
         }}
       >
-        <Suspense fallback={<PageLoader />}>
+        <Suspense fallback={null}>
           <Routes location={location} key={location.pathname}>
             <Route path="/" element={<Landing />} />
             <Route path="/auth" element={<AuthPage redirectAfterAuth="/dashboard" />} />
