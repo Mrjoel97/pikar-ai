@@ -1,8 +1,4 @@
-import { v } from "convex/values";
-import { mutation, query, internalMutation } from "./_generated/server";
-import { Id } from "./_generated/dataModel";
-import { paginationOptsValidator } from "convex/server";
-// removed unused internal import
-
-// Add: central validator for notification types to match schema union
-await ctx.db.patch(args.notificationId, { snoozeUntil: until });
+// ...
+const wins = useQuery(api.wins.get) || [];
+// ...
+<WinsHistory wins={wins} />

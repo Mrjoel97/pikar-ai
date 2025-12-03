@@ -2381,6 +2381,13 @@ function SolopreneurDashboard({ business: businessProp }: { business?: any }) {
   // Add: state for showing the setup wizard
   const [showSetupWizard, setShowSetupWizard] = useState(false);
 
+  // Mock data for wins - restored to fix ReferenceError
+  const wins = [
+    { id: 1, title: "Launched new landing page", date: "2023-10-15", type: "milestone" },
+    { id: 2, title: "Reached 100 customers", date: "2023-10-20", type: "growth" },
+    { id: 3, title: "First $1k MRR", date: "2023-11-01", type: "revenue" },
+  ];
+
   return (
     <div className="space-y-6 p-6">
       {/* Quick actions: Send Newsletter */}
