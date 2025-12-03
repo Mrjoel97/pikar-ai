@@ -1,5 +1,5 @@
 // @ts-nocheck
-import React, { useState, useEffect, useMemo, useCallback, Suspense } from "react";
+import React, { useState, useRef, useEffect, Suspense } from "react";
 import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useAuth } from "@/hooks/use-auth";
@@ -182,11 +182,6 @@ import { TemplateGallery } from "./solopreneur/TemplateGallery";
 import { RecentActivity } from "./solopreneur/RecentActivity";
 import { HelpCoach } from "./solopreneur/HelpCoach";
 import { WinsHistory } from "./solopreneur/WinsHistory";
-import { AgentProfileSection } from "./solopreneur/AgentProfileSection";
-import { BrainDumpSection } from "./solopreneur/BrainDumpSection";
-import { KpiSnapshot } from "./solopreneur/KpiSnapshot";
-import { SupportTriage } from "./solopreneur/SupportTriage";
-import { VoiceNotes } from "./solopreneur/VoiceNotes";
 
 import { 
   demoData as importedDemoData 
@@ -577,33 +572,6 @@ function SolopreneurDashboard({ business: businessProp }: { business?: any }) {
         setUploading(false);
       }
     };
-
-    const handleVoiceSave = useCallback(
-      async (text: string) => {
-        if (!initiativeId) return;
-        try {
-          await addVoiceDump({
-            initiativeId: initiativeId,
-            content: text,
-            audioUrl: "", // No audio URL for now
-            transcript: text,
-          });
-          toast.success("Voice note saved to Brain Dump");
-        } catch (e) {
-          console.error(e);
-          toast.error("Failed to save voice note");
-        }
-      },
-      [initiativeId],
-    );
-
-    const filteredDumps = useMemo(() => {
-      if (!dumps) return [];
-      if (!searchQuery) return dumps;
-      return dumps.filter((d: any) =>
-        d.content.toLowerCase().includes(searchQuery.toLowerCase()),
-      );
-    }, [dumps, searchQuery]);
 
     return (
       <Card className="p-4 mt-6">
@@ -2410,16 +2378,6 @@ function SolopreneurDashboard({ business: businessProp }: { business?: any }) {
   // Add: state for showing the setup wizard
   const [showSetupWizard, setShowSetupWizard] = useState(false);
 
-  // Wins & Streak State
-  const [wins, setWins] = useState<{ id: string; title: string; date: string; impact: string }[]>([]);
-  const [streak, setStreak] = useState(12);
-  const [timeSavedTotal, setTimeSavedTotal] = useState(120);
-
-  const handleClearWins = () => {
-    setWins([]);
-    toast.success("Wins history cleared");
-  };
-
   return (
     <div className="space-y-6 p-6">
       {/* Quick actions: Send Newsletter */}
@@ -3307,7 +3265,7 @@ function SolopreneurDashboard({ business: businessProp }: { business?: any }) {
         wins={wins}
         streak={utils.streak}
         timeSavedTotal={utils.timeSavedTotal}
-        onClearWins={handleClearWins}
+        onClearWins={utils.clearLocalWins}
       />
 
       {/* Add: Customer Segmentation widget */}

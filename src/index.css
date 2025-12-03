@@ -91,9 +91,6 @@
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  
-  /* Critical rendering path optimization */
-  content-visibility: auto;
 }
 
 .dark {
@@ -334,16 +331,4 @@ svg {
 /* Prevent layout shift for lazy-loaded content */
 [loading="lazy"] {
   content-visibility: auto;
-}
-
-/* Loading spinner optimization */
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-.animate-spin {
-  animation: spin 1s linear infinite;
-  will-change: transform;
 }
