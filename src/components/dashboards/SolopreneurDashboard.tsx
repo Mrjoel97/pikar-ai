@@ -270,21 +270,20 @@ function SolopreneurDashboard({ business: businessProp }: { business?: any }) {
     // Add local loading state for restore
     /* Duplicate removed — reuse the already-declared `lastDeletedItem` and `setLastDeletedItem` */
 
-    /* searchQuery state must be declared before use */
-    const [searchQuery, setSearchQuery] = React.useState("");
-
-    /* Prepare args; pass undefined to skip the query cleanly */
-    const searchArgsMemoSearch = React.useMemo(() => {
-      if (!initiativeId) return undefined;
-      const q = (searchQuery ?? "").trim();
-      return q ? { initiativeId, q, limit: 20 } : undefined;
-    }, [initiativeId, searchQuery]);
-
-    // Correctly skip when args are undefined
-    const searchResults = useQuery(
-      api.initiatives.searchBrainDumps,
-      searchArgsMemoSearch,
+    // Search brain dumps
+    const [searchQuery, setSearchQuery] = useState("");
+    const searchArgs = useMemo(
+      () =>
+        initiative?._id
+          ? {
+              initiativeId: initiative._id,
+              q: searchQuery,
+              limit: 5,
+            }
+          : "skip",
+      [initiative?._id, searchQuery],
     );
+    const searchResults = useQuery(api.initiatives.searchBrainDumps, searchArgs);
 
     // Audio recording + upload + transcription
     const mediaRecorderRef = React.useRef<MediaRecorder | null>(null);
