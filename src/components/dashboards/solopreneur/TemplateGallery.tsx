@@ -1,131 +1,124 @@
 import React from "react";
-import { useQuery, useMutation } from "convex/react";
-import { api } from "@/convex/_generated/api";
-import { Id } from "@/convex/_generated/dataModel";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { toast } from "sonner";
-import { Search, Pin, TrendingUp, Clock } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 
-interface TemplateGalleryProps {
-  businessId: Id<"businesses">;
-  userId: Id<"users">;
-  tier: string;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onUseTemplate: (templateId: string) => void;
+interface Template {
+  key: string;
+  name: string;
+  tag: string;
+  description: string;
+  prompt?: string;
 }
 
-export function TemplateGallery({ businessId, userId, tier, open, onOpenChange, onUseTemplate }: TemplateGalleryProps) {
-  const [searchQuery, setSearchQuery] = React.useState("");
-  const [categoryFilter, setCategoryFilter] = React.useState<string | undefined>(undefined);
+interface TemplateGalleryProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  templates: Template[];
+  pinnedSet: Set<string>;
+  searchQuery: string;
+  onSearchChange: (query: string) => void;
+  onPinTemplate: (key: string, pinned: boolean) => void;
+  onUseTemplate: (template: Template) => void;
+}
 
-  const templates = useQuery(
-    api.workflowTemplates.listTemplatesWithSmartOrdering,
-    { businessId, userId, tier, category: categoryFilter, search: searchQuery, limit: 20 }
-  );
-
-  const categories = ["content", "sales", "operations", "finance", "marketing"];
+export function TemplateGallery({
+  open,
+  onOpenChange,
+  templates,
+  pinnedSet,
+  searchQuery,
+  onSearchChange,
+  onPinTemplate,
+  onUseTemplate,
+}: TemplateGalleryProps) {
+  const filteredTemplates = React.useMemo(() => {
+    const q = searchQuery.toLowerCase();
+    if (!q) return templates;
+    return templates.filter(
+      (t) =>
+        t.name.toLowerCase().includes(q) ||
+        t.tag.toLowerCase().includes(q) ||
+        t.description.toLowerCase().includes(q)
+    );
+  }, [templates, searchQuery]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+      <DialogContent>
         <DialogHeader>
           <DialogTitle>Template Gallery</DialogTitle>
-          <DialogDescription>
-            Browse and use workflow templates tailored to your needs
-          </DialogDescription>
         </DialogHeader>
-
-        <div className="space-y-4">
-          <div className="flex gap-2">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search templates..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9"
-              />
-            </div>
-          </div>
-
-          <div className="flex gap-2 flex-wrap">
-            <Button
-              size="sm"
-              variant={categoryFilter === undefined ? "default" : "outline"}
-              onClick={() => setCategoryFilter(undefined)}
-            >
-              All
-            </Button>
-            {categories.map((cat) => (
-              <Button
-                key={cat}
-                size="sm"
-                variant={categoryFilter === cat ? "default" : "outline"}
-                onClick={() => setCategoryFilter(cat)}
-              >
-                {cat.charAt(0).toUpperCase() + cat.slice(1)}
-              </Button>
-            ))}
-          </div>
-
-          <div className="grid gap-3">
-            {templates?.map((template: any) => (
-              <Card key={template._id} className="hover:border-primary transition-colors">
-                <CardHeader className="pb-3">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <CardTitle className="text-base flex items-center gap-2">
-                        {template.name}
-                        {template._isPinned && <Pin className="h-3 w-3 fill-current" />}
-                        {template._isNew && <Badge variant="secondary" className="text-xs">New</Badge>}
-                        {template._usageCount > 0 && (
-                          <Badge variant="outline" className="text-xs">
-                            <TrendingUp className="h-3 w-3 mr-1" />
-                            {template._usageCount}
-                          </Badge>
-                        )}
-                      </CardTitle>
-                      <CardDescription className="text-sm mt-1">
-                        {template.description}
-                      </CardDescription>
+        <div className="space-y-3">
+          <Input
+            placeholder="Search templates by name, tag, or description..."
+            value={searchQuery}
+            onChange={(e) => onSearchChange(e.target.value)}
+          />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-80 overflow-auto pr-1">
+            {filteredTemplates.map((t) => (
+              <Card key={`gallery_${t.key}`}>
+                <CardContent className="p-4 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-medium">{t.name}</h3>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline" className="capitalize">
+                        {t.tag}
+                      </Badge>
+                      <Button
+                        size="icon"
+                        variant={pinnedSet.has(t.key) ? "default" : "outline"}
+                        className={
+                          pinnedSet.has(t.key)
+                            ? "bg-emerald-600 text-white hover:bg-emerald-700 h-8 w-8"
+                            : "h-8 w-8"
+                        }
+                        onClick={() => onPinTemplate(t.key, !pinnedSet.has(t.key))}
+                        aria-label={
+                          pinnedSet.has(t.key) ? "Unpin template" : "Pin template"
+                        }
+                        title={pinnedSet.has(t.key) ? "Unpin" : "Pin"}
+                      >
+                        {pinnedSet.has(t.key) ? "★" : "☆"}
+                      </Button>
                     </div>
                   </div>
-                </CardHeader>
-                <CardContent className="pt-0">
-                  <div className="flex items-center justify-between">
-                    <div className="flex gap-2 flex-wrap">
-                      {template.tags?.slice(0, 3).map((tag: string) => (
-                        <Badge key={tag} variant="secondary" className="text-xs">
-                          {tag}
-                        </Badge>
-                      ))}
-                    </div>
+                  <p className="text-sm text-muted-foreground">{t.description}</p>
+                  <div className="pt-1">
                     <Button
                       size="sm"
+                      className="bg-emerald-600 text-white hover:bg-emerald-700"
                       onClick={() => {
-                        onUseTemplate(template._id);
+                        onUseTemplate(t);
                         onOpenChange(false);
                       }}
                     >
-                      Use Template
+                      Use
                     </Button>
                   </div>
                 </CardContent>
               </Card>
             ))}
-
-            {templates?.length === 0 && (
-              <div className="text-center py-8 text-muted-foreground">
-                No templates found. Try adjusting your search or filters.
+            {filteredTemplates.length === 0 && (
+              <div className="text-sm text-muted-foreground p-2">
+                No templates match your search.
               </div>
             )}
           </div>
         </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Close
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

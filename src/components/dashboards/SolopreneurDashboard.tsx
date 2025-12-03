@@ -176,6 +176,12 @@ import CustomerSegmentation from "./solopreneur/CustomerSegmentation";
 import SocialPerformance from "./solopreneur/SocialPerformance";
 import { InvoiceWidget } from "./solopreneur/InvoiceWidget";
 import { ContentCalendarWidget } from "./solopreneur/ContentCalendarWidget";
+import { ScheduleAssistant } from "./solopreneur/ScheduleAssistant";
+import { QuickActions } from "./solopreneur/QuickActions";
+import { TemplateGallery } from "./solopreneur/TemplateGallery";
+import { RecentActivity } from "./solopreneur/RecentActivity";
+import { HelpCoach } from "./solopreneur/HelpCoach";
+import { WinsHistory } from "./solopreneur/WinsHistory";
 
 import { 
   demoData as importedDemoData 
@@ -2373,7 +2379,7 @@ function SolopreneurDashboard({ business: businessProp }: { business?: any }) {
   const [showSetupWizard, setShowSetupWizard] = useState(false);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-6">
       {/* Quick actions: Send Newsletter */}
       <div className="flex flex-wrap items-center gap-2">
         <Button
@@ -2943,83 +2949,19 @@ function SolopreneurDashboard({ business: businessProp }: { business?: any }) {
         </div>
 
         {/* Template Gallery Modal */}
-        <Dialog open={galleryOpen} onOpenChange={setGalleryOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Template Gallery</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-3">
-              <Input
-                placeholder="Search templates by name, tag, or description..."
-                value={galleryQuery}
-                onChange={(e) => setGalleryQuery(e.target.value)}
-              />
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-80 overflow-auto pr-1">
-                {filteredTemplates.map((t) => (
-                  <Card key={`gallery_${t.key}`}>
-                    <CardContent className="p-4 space-y-2">
-                      <div className="flex items-center justify-between">
-                        <h3 className="font-medium">{t.name}</h3>
-                        <div className="flex items-center gap-2">
-                          <Badge variant="outline" className="capitalize">
-                            {t.tag}
-                          </Badge>
-                          <Button
-                            size="icon"
-                            variant={
-                              pinnedSet.has(t.key) ? "default" : "outline"
-                            }
-                            className={
-                              pinnedSet.has(t.key)
-                                ? "bg-emerald-600 text-white hover:bg-emerald-700 h-8 w-8"
-                                : "h-8 w-8"
-                            }
-                            onClick={() =>
-                              handlePinTemplate(t.key, !pinnedSet.has(t.key))
-                            }
-                            aria-label={
-                              pinnedSet.has(t.key)
-                                ? "Unpin template"
-                                : "Pin template"
-                            }
-                            title={pinnedSet.has(t.key) ? "Unpin" : "Pin"}
-                          >
-                            {pinnedSet.has(t.key) ? "★" : "☆"}
-                          </Button>
-                        </div>
-                      </div>
-                      <p className="text-sm text-muted-foreground">
-                        {t.description}
-                      </p>
-                      <div className="pt-1">
-                        <Button
-                          size="sm"
-                          className="bg-emerald-600 text-white hover:bg-emerald-700"
-                          onClick={() => {
-                            handleUseTemplateEnhanced(t);
-                            setGalleryOpen(false);
-                          }}
-                        >
-                          Use
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-                {filteredTemplates.length === 0 && (
-                  <div className="text-sm text-muted-foreground p-2">
-                    No templates match your search.
-                  </div>
-                )}
-              </div>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setGalleryOpen(false)}>
-                Close
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+        <TemplateGallery
+          open={galleryOpen}
+          onOpenChange={setGalleryOpen}
+          templates={filteredTemplates}
+          pinnedSet={pinnedSet}
+          searchQuery={galleryQuery}
+          onSearchChange={setGalleryQuery}
+          onPinTemplate={handlePinTemplate}
+          onUseTemplate={(t) => {
+            handleUseTemplateEnhanced(t);
+            setGalleryOpen(false);
+          }}
+        />
       </section>
 
       {/* Today's Focus (max 3) */}
@@ -3105,160 +3047,58 @@ function SolopreneurDashboard({ business: businessProp }: { business?: any }) {
         )}
       </section>
 
-      {/* Quick Actions */}
-      <section>
-        <h2 className="text-xl font-semibold mb-4">Quick Actions</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card>
-            <CardContent className="p-4">
-              <h3 className="font-medium mb-2">Create Post</h3>
-              <p className="text-sm text-muted-foreground mb-3">
-                Draft and publish content to engage your audience.
-              </p>
-              <div className="flex gap-2">
-                <Button
-                  size="sm"
-                  onClick={() => handleQuickAction("Create Post")}
-                >
-                  Start
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => {
-                    if (nextPostSlot && (nextPostSlot as any).scheduledAt) {
-                      toast(
-                        `Post scheduled placeholder for ${new Date((nextPostSlot as any).scheduledAt).toLocaleString()}`,
-                      );
-                    } else {
-                      toast(
-                        "No upcoming Post slot; add one in Schedule Assistant",
-                      );
-                    }
-                  }}
-                  disabled={!businessId}
-                >
-                  Use Next Slot
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={handleQuickPost}
-                  disabled={!businessId}
-                >
-                  Schedule in 15m
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4">
-              <h3 className="font-medium mb-2">Send Newsletter</h3>
-              <p className="text-sm text-muted-foreground mb-3">
-                Reach subscribers with your latest update in minutes.
-              </p>
-              <Button
-                size="sm"
-                onClick={() => handleQuickAction("Send Newsletter")}
-              >
-                Compose
-              </Button>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4">
-              <h3 className="font-medium mb-2">View Analytics</h3>
-              <p className="text-sm text-muted-foreground mb-3">
-                Check what&apos;s working and what to optimize next.
-              </p>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => handleQuickAction("View Analytics")}
-              >
-                Open
-              </Button>
-            </CardContent>
-          </Card>
+      {/* Quick Actions - now extracted */}
+      <QuickActions
+        businessId={businessId}
+        isGuest={isGuest}
+        onUpgrade={onUpgrade}
+        nextPostSlot={nextPostSlot}
+        nextSocialPost={nextSocialPost}
+        socialAnalytics={socialAnalytics}
+        onQuickPost={handleQuickPost}
+        onOpenSchedule={() => setScheduleOpen(true)}
+        onGenerateSocial={() => setShowSocialModal(true)}
+        generatingSocial={generatingSocial}
+        onRepurposeBlog={handleRepurposeBlogToSocial}
+      />
 
-          {/* Social Media Card */}
-          <Card>
-            <CardContent className="p-4">
-              <h3 className="font-medium mb-2">Social Media</h3>
-              <p className="text-sm text-muted-foreground mb-3">
-                Create and schedule social posts with AI assistance.
-              </p>
-              {nextSocialPost && nextSocialPost.length > 0 && (
-                <div className="mb-3 p-2 bg-emerald-50 rounded text-xs">
-                  <div className="font-medium">Next Post:</div>
-                  <div className="text-muted-foreground truncate">
-                    {nextSocialPost[0].content.substring(0, 50)}...
-                  </div>
-                  <div className="text-xs text-emerald-600 mt-1">
-                    {nextSocialPost[0].scheduledAt && 
-                      new Date(nextSocialPost[0].scheduledAt).toLocaleString()}
-                  </div>
+      {/* Simple Social Analytics Widget (Last 7 Days) */}
+      {socialAnalytics && socialAnalytics.length > 0 && (
+        <Card className="mt-4">
+          <CardHeader>
+            <CardTitle className="text-sm">Social Performance (Last 7 Days)</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-3 gap-4 text-center">
+              <div>
+                <div className="text-2xl font-bold text-emerald-600">
+                  {socialAnalytics.filter((p: any) => {
+                    const postDate = new Date(p.scheduledAt || 0);
+                    const sevenDaysAgo = new Date();
+                    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+                    return postDate >= sevenDaysAgo;
+                  }).length}
                 </div>
-              )}
-              <div className="flex gap-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => handleQuickAction("Social Media")}
-                >
-                  Create Post
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={handleRepurposeBlogToSocial}
-                  disabled={generatingSocial}
-                >
-                  Repurpose Blog
-                </Button>
+                <div className="text-xs text-muted-foreground">Posts</div>
               </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Simple Social Analytics Widget (Last 7 Days) */}
-        {socialAnalytics && socialAnalytics.length > 0 && (
-          <Card className="mt-4">
-            <CardHeader>
-              <CardTitle className="text-sm">Social Performance (Last 7 Days)</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-3 gap-4 text-center">
-                <div>
-                  <div className="text-2xl font-bold text-emerald-600">
-                    {socialAnalytics.filter((p: any) => {
-                      const postDate = new Date(p.scheduledAt || 0);
-                      const sevenDaysAgo = new Date();
-                      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-                      return postDate >= sevenDaysAgo;
-                    }).length}
-                  </div>
-                  <div className="text-xs text-muted-foreground">Posts</div>
+              <div>
+                <div className="text-2xl font-bold text-blue-600">
+                  {socialAnalytics.reduce((acc: number, p: any) => 
+                    acc + (p.platforms?.length || 0), 0
+                  )}
                 </div>
-                <div>
-                  <div className="text-2xl font-bold text-blue-600">
-                    {socialAnalytics.reduce((acc: number, p: any) => 
-                      acc + (p.platforms?.length || 0), 0
-                    )}
-                  </div>
-                  <div className="text-xs text-muted-foreground">Platforms</div>
-                </div>
-                <div>
-                  <div className="text-2xl font-bold text-purple-600">
-                    {Math.round(socialAnalytics.length / 7 * 10) / 10}
-                  </div>
-                  <div className="text-xs text-muted-foreground">Avg/Day</div>
-                </div>
+                <div className="text-xs text-muted-foreground">Platforms</div>
               </div>
-            </CardContent>
-          </Card>
-        )}
-      </section>
+              <div>
+                <div className="text-2xl font-bold text-purple-600">
+                  {Math.round(socialAnalytics.length / 7 * 10) / 10}
+                </div>
+                <div className="text-xs text-muted-foreground">Avg/Day</div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Support Triage (beta) */}
       <section>
@@ -3409,212 +3249,24 @@ function SolopreneurDashboard({ business: businessProp }: { business?: any }) {
       </div>
 
       {/* Recent Activity */}
-      <section>
-        <h2 className="text-xl font-semibold mb-4">Recent Activity</h2>
-        {Array.isArray(notifications) && notifications.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {notifications.slice(0, 6).map((n: any) => {
-              const type = String(n.type ?? "info");
-              const variant =
-                type === "success"
-                  ? "border-emerald-200"
-                  : type === "warning" || type === "urgent"
-                    ? "border-amber-200"
-                    : "border-gray-200";
-              return (
-                <Card key={String(n.id ?? n.message)} className={variant}>
-                  <CardContent className="p-4">
-                    <p className="text-sm">{String(n.message ?? "Update")}</p>
-                    <div className="mt-3 flex items-center gap-2">
-                      <Badge variant="outline" className="text-xs capitalize">
-                        {type}
-                      </Badge>
-                      {!isGuest && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => alert("Opening details...")}
-                        >
-                          View
-                        </Button>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
-        ) : (
-          <Card className="border-dashed">
-            <CardContent className="p-6 text-sm text-muted-foreground">
-              No recent activity yet. As you take actions, updates will appear
-              here.
-            </CardContent>
-          </Card>
-        )}
-      </section>
+      <RecentActivity notifications={notifications} isGuest={isGuest} />
 
       {/* Brain Dump */}
       <BrainDumpSection businessId={business?._id} />
 
       {/* Help Coach */}
-      <section>
-        <h2 className="text-xl font-semibold mb-2">Help Coach</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          {visibleTips.map((t) => (
-            <Card key={t.id} className="border-emerald-200">
-              <CardContent className="p-3 flex items-start justify-between gap-2">
-                <span className="text-sm">{t.text}</span>
-                <Button
-                  size="icon"
-                  variant="outline"
-                  className="h-6 w-6 text-xs"
-                  onClick={() =>
-                    setDismissedTips((d) => ({ ...d, [t.id]: true }))
-                  }
-                  aria-label="Dismiss tip"
-                >
-                  ×
-                </Button>
-              </CardContent>
-            </Card>
-          ))}
-          {visibleTips.length === 0 && (
-            <Card className="border-dashed">
-              <CardContent className="p-3 text-sm text-muted-foreground">
-                All tips dismissed. They'll refresh later.
-              </CardContent>
-            </Card>
-          )}
-        </div>
-      </section>
+      <HelpCoach 
+        visibleTips={visibleTips} 
+        onDismissTip={(tipId) => setDismissedTips((d) => ({ ...d, [tipId]: true }))}
+      />
 
       {/* Wins History */}
-      <section>
-        <div className="flex items-center justify-between mb-2">
-          <h2 className="text-xl font-semibold">Wins History</h2>
-          <div className="flex items-center gap-2">
-            <Badge variant="secondary">Streak: {utils.streak}d</Badge>
-            <Badge variant="outline">Time saved: {utils.timeSavedTotal}m</Badge>
-            <Button size="sm" variant="outline" onClick={utils.clearLocalWins}>
-              Clear
-            </Button>
-          </div>
-        </div>
-        <Card>
-          <CardContent className="p-3">
-            {utils.history.length > 0 ? (
-              <div className="space-y-2 max-h-56 overflow-auto pr-1">
-                {utils.history.slice(0, 20).map((w, idx) => (
-                  <div
-                    key={`${w.at}-${idx}`}
-                    className="flex items-center justify-between text-sm border rounded-md p-2"
-                  >
-                    <div className="flex items-center gap-2">
-                      <Badge variant="outline" className="capitalize">
-                        {w.type.replace(/_/g, " ")}
-                      </Badge>
-                      <span className="text-muted-foreground">
-                        {new Date(w.at).toLocaleString()}
-                      </span>
-                    </div>
-                    <div className="font-medium">{w.minutes}m</div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-sm text-muted-foreground">
-                No wins recorded yet. Using a template or creating from an idea
-                will log one.
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </section>
-
-      {/* Wins Summary card */}
-      <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Card className="p-4">
-          <div className="flex items-center justify-between">
-            <h3 className="font-semibold">Wins (30 days)</h3>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => navigate("/analytics")}
-            >
-              View Analytics
-            </Button>
-          </div>
-          <div className="mt-3">
-            {businessId && winsSummary ? (
-              <div className="flex gap-6">
-                <div>
-                  <div className="text-3xl font-bold">{winsSummary.wins}</div>
-                  <div className="text-sm text-muted-foreground">
-                    Total wins
-                  </div>
-                </div>
-                <div>
-                  <div className="text-3xl font-bold">
-                    {winsSummary.totalTimeSavedMinutes}
-                  </div>
-                  <div className="text-sm text-muted-foreground">
-                    Minutes saved
-                  </div>
-                </div>
-              </div>
-            ) : (
-              (() => {
-                const local = getLocalWinsFallback();
-                return (
-                  <div className="flex gap-6">
-                    <div>
-                      <div className="text-3xl font-bold">{local.wins}</div>
-                      <div className="text-sm text-muted-foreground">
-                        Total wins (local)
-                      </div>
-                    </div>
-                    <div>
-                      <div className="text-3xl font-bold">
-                        {local.totalTimeSavedMinutes}
-                      </div>
-                      <div className="text-sm text-muted-foreground">
-                        Minutes saved (local)
-                      </div>
-                    </div>
-                  </div>
-                );
-              })()
-            )}
-          </div>
-        </Card>
-
-        {/* Audit & Analytics CTA card */}
-        <Card className="p-4">
-          <div className="flex items-center justify-between">
-            <h3 className="font-semibold">Audit & Analytics</h3>
-            <Button size="sm" onClick={() => navigate("/analytics")}>
-              Open
-            </Button>
-          </div>
-          <div className="mt-3 space-y-2">
-            {businessId && recentAudit ? (
-              recentAudit.map((log: any) => (
-                <div key={log._id?.toString() || `log-${Math.random()}`} className="text-sm">
-                  <div className="font-medium">{log.action}</div>
-                  <div className="text-muted-foreground">
-                    {new Date(log.createdAt).toLocaleString()}
-                  </div>
-                </div>
-              ))
-            ) : (
-              <div className="text-sm text-muted-foreground">
-                Sign in to view recent audit events.
-              </div>
-            )}
-          </div>
-        </Card>
-      </div>
+      <WinsHistory 
+        wins={wins}
+        streak={utils.streak}
+        timeSavedTotal={utils.timeSavedTotal}
+        onClearWins={utils.clearLocalWins}
+      />
 
       {/* Add: Customer Segmentation widget */}
       <CustomerSegmentation businessId={businessId} />
@@ -3724,111 +3376,15 @@ function SolopreneurDashboard({ business: businessProp }: { business?: any }) {
         </Card>
       )}
 
-      {/* Schedule Assistant Dialog */}
-      <Dialog open={scheduleOpen} onOpenChange={setScheduleOpen}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Schedule Assistant</DialogTitle>
-            <DialogDescription>
-              {loadingSuggestions 
-                ? "AI is analyzing optimal posting times for your audience..."
-                : aiSuggestions 
-                ? "AI-powered suggestions based on engagement patterns and best practices"
-                : "Suggested posting times based on your cadence settings"}
-            </DialogDescription>
-          </DialogHeader>
-          
-          {loadingSuggestions ? (
-            <div className="flex items-center justify-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600"></div>
-              <span className="ml-3 text-sm text-muted-foreground">Generating optimal schedule...</span>
-            </div>
-          ) : (
-            <>
-              <div className="flex items-center gap-2 mb-4">
-                <Label>Filter by channel:</Label>
-                <div className="flex gap-2">
-                  {(["All", "Post", "Email"] as const).map((ch) => (
-                    <Button
-                      key={ch}
-                      size="sm"
-                      variant={channelFilter === ch ? "default" : "outline"}
-                      onClick={() => setChannelFilter(ch)}
-                    >
-                      {ch}
-                    </Button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="space-y-3">
-                {filteredSuggested.map((slot, idx) => (
-                  <Card key={idx} className="p-4">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
-                          <Badge variant={slot.channel === "Email" ? "default" : "secondary"}>
-                            {slot.channel}
-                          </Badge>
-                          <span className="font-medium">{slot.label}</span>
-                        </div>
-                        <div className="text-sm text-muted-foreground mb-2">
-                          📅 {slot.when}
-                        </div>
-                        {slot.reasoning && (
-                          <div className="text-xs text-muted-foreground bg-muted/50 p-2 rounded">
-                            💡 <strong>Why this time:</strong> {slot.reasoning}
-                          </div>
-                        )}
-                      </div>
-                      <Button
-                        size="sm"
-                        onClick={() => handleAddSlot(slot)}
-                        disabled={isGuest}
-                      >
-                        Add
-                      </Button>
-                    </div>
-                  </Card>
-                ))}
-              </div>
-
-              <div className="flex items-center justify-between mt-4 pt-4 border-t">
-                <Button
-                  variant="outline"
-                  onClick={handleAddAllShown}
-                  disabled={isGuest || addingAll || filteredSuggested.length === 0}
-                >
-                  {addingAll ? "Adding..." : `Add All Shown (${filteredSuggested.length})`}
-                </Button>
-                {aiSuggestions && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      setAiSuggestions(null);
-                      setLoadingSuggestions(true);
-                      suggestOptimalSlots({
-                        businessId: business?._id,
-                        cadence: agentProfile?.cadence,
-                        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-                      })
-                        .then((result) => {
-                          setAiSuggestions(result.slots);
-                          toast.success("Refreshed AI suggestions");
-                        })
-                        .catch(() => toast.error("Failed to refresh"))
-                        .finally(() => setLoadingSuggestions(false));
-                    }}
-                  >
-                    🔄 Refresh Suggestions
-                  </Button>
-                )}
-              </div>
-            </>
-          )}
-        </DialogContent>
-      </Dialog>
+      {/* Schedule Assistant Dialog - now extracted */}
+      <ScheduleAssistant
+        open={scheduleOpen}
+        onOpenChange={setScheduleOpen}
+        businessId={business?._id}
+        agentCadence={agentProfile?.cadence}
+        isGuest={isGuest}
+        onAddSlot={handleAddSlot}
+      />
 
       {/* Setup Wizard Dialog */}
       {user?._id && businessId && (
