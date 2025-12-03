@@ -8,7 +8,7 @@ interface CampaignListProps {
   onCreateCampaign: () => void;
 }
 
-export function CampaignList({ campaigns, onCreateCampaign }: CampaignListProps) {
+export default function CampaignList({ campaigns, onCreateCampaign }: CampaignListProps) {
   const campaignList = campaigns !== "skip" && Array.isArray(campaigns) ? campaigns : [];
 
   return (

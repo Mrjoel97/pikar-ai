@@ -18,7 +18,7 @@ interface GoalsDashboardWidgetProps {
   businessId: Id<"businesses">;
 }
 
-export function GoalsDashboardWidget({ businessId }: GoalsDashboardWidgetProps) {
+export default function GoalsDashboardWidget({ businessId }: GoalsDashboardWidgetProps) {
   const summary = useQuery(api.teamGoals.getDashboardSummary, { businessId });
   const contributions = useQuery(api.teamGoals.getTeamContributions, { 
     businessId, 

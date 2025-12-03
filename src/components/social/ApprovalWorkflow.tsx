@@ -30,7 +30,7 @@ interface ApprovalWorkflowProps {
   userRole?: "admin" | "editor" | "viewer" | "custom";
 }
 
-export function ApprovalWorkflow({ businessId, userId, userRole }: ApprovalWorkflowProps) {
+export default function ApprovalWorkflow({ businessId, userId, userRole }: ApprovalWorkflowProps) {
   const [selectedApproval, setSelectedApproval] = useState<string | null>(null);
   const [comment, setComment] = useState("");
   const [activeTab, setActiveTab] = useState<"pending" | "history">("pending");

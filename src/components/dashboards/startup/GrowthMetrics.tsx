@@ -7,7 +7,7 @@ interface GrowthMetricsProps {
   kpis: any;
 }
 
-export function GrowthMetrics({ metrics, kpis }: GrowthMetricsProps) {
+export default function GrowthMetrics({ metrics, kpis }: GrowthMetricsProps) {
   if (!metrics) {
     return (
       <Card>
