@@ -167,6 +167,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { RoiDashboard } from "@/components/dashboards/RoiDashboard";
+import { LazyLoadErrorBoundary } from "@/components/common/LazyLoadErrorBoundary";
 
 // Static imports instead of lazy loading
 import EmailCampaignAnalytics from "./solopreneur/EmailCampaignAnalytics";
