@@ -98,6 +98,19 @@ export function AuthContainer() {
           </Button>
         </div>
 
+        {/* Forgot Password Link - only show in login mode */}
+        {authForm.authMode === "login" && (
+          <div className="px-6 pb-4 text-center">
+            <button
+              onClick={authForm.handleForgotPassword}
+              className="text-sm text-emerald-200 hover:text-emerald-50 underline transition-colors"
+              disabled={authForm.isSubmitting}
+            >
+              Forgot your password?
+            </button>
+          </div>
+        )}
+
         {/* Toggle between Sign In and Sign Up */}
         <div className="py-3 px-6 text-sm text-center border-t border-emerald-700/50 text-emerald-200">
           {authForm.authMode === "signup" ? (
