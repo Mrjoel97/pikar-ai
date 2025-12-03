@@ -15,7 +15,11 @@ import { CapsuleSocialPreview } from "./capsule/CapsuleSocialPreview";
 import { CapsuleEmailPreview } from "./capsule/CapsuleEmailPreview";
 import { Id } from "@/convex/_generated/dataModel";
 
-export default function ContentCapsule() {
+interface ContentCapsuleProps {
+  businessId?: Id<"businesses">;
+}
+
+export default function ContentCapsule({ businessId }: ContentCapsuleProps) {
   const [wizardOpen, setWizardOpen] = useState(false);
   const [topic, setTopic] = useState("");
   const [tone, setTone] = useState("professional");
@@ -32,7 +36,10 @@ export default function ContentCapsule() {
   const [emailSubject, setEmailSubject] = useState("");
   const [emailBody, setEmailBody] = useState("");
 
-  const capsules = useQuery(api.contentCapsulesData.list);
+  const capsules = useQuery(
+    api.contentCapsulesData.listContentCapsules,
+    businessId ? { businessId } : "skip"
+  );
   const deleteCapsule = useMutation(api.contentCapsulesData.remove);
   const generateCapsule = useMutation(api.contentCapsulesData.generate);
 

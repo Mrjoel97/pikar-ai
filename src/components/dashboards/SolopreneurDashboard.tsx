@@ -3225,7 +3225,7 @@ function SolopreneurDashboard({ business: businessProp }: { business?: any }) {
 
       <LazyLoadErrorBoundary moduleName="Content Capsule">
         <Suspense fallback={<div className="text-muted-foreground">Loading content capsule...</div>}>
-          <ContentCapsule />
+              <ContentCapsule businessId={business?._id} />
         </Suspense>
       </LazyLoadErrorBoundary>
 
