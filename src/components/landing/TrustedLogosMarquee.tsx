@@ -35,16 +35,18 @@ export default function TrustedLogosMarquee({ logos }: { logos: Array<Logo> }) {
             {[...logos, ...logos].map((logo, i) => (
               <div
                 key={`${logo.name}-${i}`}
-                className="neu-inset rounded-xl px-6 py-4 sm:px-8 sm:py-5 bg-card hover:bg-card/80 transition-all hover:scale-105 shadow-sm"
+                className="neu-inset rounded-xl px-6 py-4 sm:px-8 sm:py-5 bg-card hover:bg-card/80 transition-all hover:scale-105 shadow-sm flex items-center justify-center min-w-[120px]"
               >
                 <img
                   src={logo.src}
                   alt={`${logo.name} logo`}
-                  className="h-8 sm:h-10 w-auto mx-auto object-contain opacity-80 hover:opacity-100 transition-opacity"
+                  className="h-8 sm:h-10 w-auto mx-auto object-contain transition-opacity"
                   loading="eager"
-                  style={{ filter: 'none' }}
+                  style={{ 
+                    filter: 'brightness(0.8) contrast(1.2)',
+                    opacity: 1
+                  }}
                   onError={(e) => {
-                    // Fallback to text if image fails to load
                     const target = e.target as HTMLImageElement;
                     target.style.display = 'none';
                     const parent = target.parentElement;
