@@ -31,7 +31,10 @@ export default function CustomerSegmentation({ businessId }: { businessId: Id<"b
     | undefined
     | null;
 
-  const customSegments = useQuery(api.customerSegmentationData.listSegments as any, { businessId }) as any[] | undefined;
+  const customSegments = useQuery(
+    api.customerSegmentationData.listSegments as any,
+    businessId ? { businessId } : "skip"
+  ) as any[] | undefined;
   const analyzeAction = useAction(api.customerSegmentation.analyzeCustomers);
   const recommendAction = useAction(api.customerSegmentation.recommendActions);
   const createSegmentMutation = useMutation(api.customerSegmentationData.createSegment);
