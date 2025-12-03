@@ -59,13 +59,13 @@ export default function CustomerSegmentation({ businessId }: { businessId: Id<"b
 
   const contacts = useQuery(
     api.contacts.getContactsBySegment as any,
-    selected
+    selected && businessId
       ? {
           businessId,
           segmentType: selected.type,
           segmentValue: selected.value,
         }
-      : undefined
+      : "skip"
   ) as any[] | undefined | null;
 
   const handleAnalyze = async () => {
