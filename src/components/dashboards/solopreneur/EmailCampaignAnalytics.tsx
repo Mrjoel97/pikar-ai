@@ -16,7 +16,7 @@ interface EmailCampaignAnalyticsProps {
   businessId: Id<"businesses">;
 }
 
-export function EmailCampaignAnalytics({ businessId }: EmailCampaignAnalyticsProps) {
+export default function EmailCampaignAnalytics({ businessId }: EmailCampaignAnalyticsProps) {
   const [selectedCampaignId, setSelectedCampaignId] = React.useState<Id<"emailCampaigns"> | null>(null);
   
   const metrics = useQuery(api.emailAnalytics.getBusinessCampaignMetrics, { businessId, limit: 10 });
