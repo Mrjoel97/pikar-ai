@@ -578,6 +578,33 @@ function SolopreneurDashboard({ business: businessProp }: { business?: any }) {
       }
     };
 
+    const handleVoiceSave = useCallback(
+      async (text: string) => {
+        if (!initiativeId) return;
+        try {
+          await addVoiceDump({
+            initiativeId: initiativeId,
+            content: text,
+            audioUrl: "", // No audio URL for now
+            transcript: text,
+          });
+          toast.success("Voice note saved to Brain Dump");
+        } catch (e) {
+          console.error(e);
+          toast.error("Failed to save voice note");
+        }
+      },
+      [initiativeId],
+    );
+
+    const filteredDumps = useMemo(() => {
+      if (!dumps) return [];
+      if (!searchQuery) return dumps;
+      return dumps.filter((d: any) =>
+        d.content.toLowerCase().includes(searchQuery.toLowerCase()),
+      );
+    }, [dumps, searchQuery]);
+
     return (
       <Card className="p-4 mt-6">
         {/* Header + quick controls */}
