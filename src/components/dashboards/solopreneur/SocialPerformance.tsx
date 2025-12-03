@@ -12,7 +12,7 @@ interface SocialPerformanceProps {
   businessId: Id<"businesses">;
 }
 
-export function SocialPerformance({ businessId }: SocialPerformanceProps) {
+export default function SocialPerformance({ businessId }: SocialPerformanceProps) {
   const [showRecommendations, setShowRecommendations] = React.useState(false);
   const [selectedPlatform, setSelectedPlatform] = React.useState<"twitter" | "linkedin" | "facebook">("twitter");
   

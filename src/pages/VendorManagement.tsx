@@ -1,7 +1,7 @@
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { VendorManagement as VendorManagementComponent } from "@/components/vendors/VendorManagement";
+import VendorManagementComponent from "@/components/vendors/VendorManagement";
 import { Card, CardContent } from "@/components/ui/card";
 import { Building2 } from "lucide-react";
 

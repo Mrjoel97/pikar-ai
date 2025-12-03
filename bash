@@ -1,1 +1,1 @@
-grep -nE "defineTable\(\"(audit_logs|approvalQueue)\"" src/convex/schema.ts && tail -n 50 src/convex/schema.ts
+sed -i 's/import { VendorManagement } from/import VendorManagement from/g' src/pages/VendorManagement.tsx
