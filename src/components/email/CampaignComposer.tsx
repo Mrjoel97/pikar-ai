@@ -97,7 +97,10 @@ function CampaignComposer({ businessId, onClose, onCreated, defaultScheduledAt, 
   const navigate = useNavigate();
 
   // Fetch segments and (conditionally) segment emails (new)
-  const segments = useQuery(api.contacts.getContactSegments as any, { businessId });
+  const segments = useQuery(
+    api.contacts.getContactSegments as any,
+    businessId ? { businessId } : "skip"
+  );
   const segmentEmails = useQuery(
     api.contacts.getContactsBySegmentForCampaign as any,
     useSegmentation && segmentValue ? { businessId, segmentType, segmentValue } : "skip"

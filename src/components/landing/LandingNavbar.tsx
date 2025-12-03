@@ -77,7 +77,7 @@ export default function LandingNavbar({ handleGetStarted, scrollTo }: LandingNav
             <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
               <Button
                 className="neu-raised rounded-xl bg-primary hover:bg-primary/90"
-                onClick={handleGetStarted}
+                onClick={() => navigate("/auth")}
                 aria-label="Get started"
               >
                 Get Started
@@ -178,7 +178,7 @@ export default function LandingNavbar({ handleGetStarted, scrollTo }: LandingNav
                       className="w-full neu-raised rounded-xl bg-[#1B5235] hover:bg-[#17452D] text-white"
                       onClick={() => {
                         setMobileOpen(false);
-                        handleGetStarted();
+                        navigate("/auth");
                       }}
                       aria-label="Get started"
                     >
