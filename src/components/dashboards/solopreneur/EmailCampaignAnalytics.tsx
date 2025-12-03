@@ -31,7 +31,10 @@ export default function EmailCampaignAnalytics({ businessId }: EmailCampaignAnal
     api.emailAnalytics.getConversionFunnel,
     selectedCampaignId ? { campaignId: selectedCampaignId } : "skip"
   );
-  const attribution = useQuery(api.emailAnalytics.getRevenueAttribution, { businessId });
+  const attribution = useQuery(
+    api.emailAnalytics.getRevenueAttribution,
+    businessId ? { businessId } : "skip"
+  );
   
   const getPredictiveInsights = useAction(api.emailAnalytics.getPredictiveInsights);
   const [insights, setInsights] = React.useState<any>(null);
