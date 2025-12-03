@@ -529,7 +529,7 @@ export const getMyNotifications = query({
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) {
-      throw new Error("Not authenticated");
+      return [];
     }
     const user = await ctx.db
       .query("users")
@@ -565,7 +565,7 @@ export const getMyNotificationCount = query({
   handler: async (ctx) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) {
-      throw new Error("Not authenticated");
+      return 0;
     }
     const user = await ctx.db
       .query("users")

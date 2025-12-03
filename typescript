@@ -1,1 +1,11 @@
-export default function ContentCapsule() {
+export const getMyNotificationCount = query({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      // currently throws Error("Not authenticated")
+      // change to return 0;
+    }
+    // ...
+  },
+});
