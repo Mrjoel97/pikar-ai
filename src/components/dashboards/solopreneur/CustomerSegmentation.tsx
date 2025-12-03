@@ -23,7 +23,10 @@ type Segments = {
 };
 
 export default function CustomerSegmentation({ businessId }: { businessId: Id<"businesses"> }) {
-  const segments = useQuery(api.contacts.getContactSegments as any, { businessId }) as
+  const segments = useQuery(
+    api.contacts.getContactSegments as any,
+    businessId ? { businessId } : "skip"
+  ) as
     | Segments
     | undefined
     | null;
