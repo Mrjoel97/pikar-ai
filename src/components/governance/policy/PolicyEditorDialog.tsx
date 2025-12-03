@@ -30,7 +30,7 @@ interface PolicyEditorDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
-export function PolicyEditorDialog({ businessId, policyId, open, onOpenChange }: PolicyEditorDialogProps) {
+export default function PolicyEditorDialog({ businessId, policyId, open, onOpenChange }: PolicyEditorDialogProps) {
   const createPolicy = useMutation(api.policyManagement.createPolicy);
   const updatePolicy = useMutation(api.policyManagement.updatePolicy);
   const policy = useQuery(

@@ -29,7 +29,7 @@ interface PoliciesTabProps {
   onEdit: (policyId: Id<"policies">) => void;
 }
 
-export function PoliciesTab({ businessId, policies, onEdit }: PoliciesTabProps) {
+export default function PoliciesTab({ businessId, policies, onEdit }: PoliciesTabProps) {
   const deletePolicy = useMutation(api.policyManagement.deletePolicy);
   const [statusFilter, setStatusFilter] = useState<string>("all");
 

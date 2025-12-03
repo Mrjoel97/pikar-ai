@@ -60,10 +60,10 @@ import { demoData as importedDemoData } from "@/lib/demoData";
 
 // Static imports to prevent lazy loading errors
 import { TeamPerformance } from "./startup/TeamPerformance";
-import { GrowthMetrics } from "./startup/GrowthMetrics";
-import { CampaignList } from "./startup/CampaignList";
-import { GoalsDashboardWidget } from "./startup/GoalsDashboardWidget";
-import { ApprovalWorkflow } from "@/components/social/ApprovalWorkflow";
+import GrowthMetrics from "./startup/GrowthMetrics";
+import CampaignList from "./startup/CampaignList";
+import GoalsDashboardWidget from "./startup/GoalsDashboardWidget";
+import ApprovalWorkflow from "@/components/social/ApprovalWorkflow";
 import { CollaborationFeed } from "./startup/CollaborationFeed";
 import { WorkflowAssignments } from "./startup/WorkflowAssignments";
 import { CustomerJourneyMap } from "./startup/CustomerJourneyMap";

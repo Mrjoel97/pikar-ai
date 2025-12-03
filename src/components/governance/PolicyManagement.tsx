@@ -6,12 +6,12 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus } from "lucide-react";
-import { PoliciesTab } from "./policy/PoliciesTab";
+import PoliciesTab from "./policy/PoliciesTab";
 import { ApprovalsTab } from "./policy/ApprovalsTab";
-import { DistributionTab } from "./policy/DistributionTab";
+import DistributionTab from "./policy/DistributionTab";
 import { AcknowledgmentsTab } from "./policy/AcknowledgmentsTab";
-import { AnalyticsTab } from "./policy/AnalyticsTab";
-import { PolicyEditorDialog } from "./policy/PolicyEditorDialog";
+import AnalyticsTab from "./policy/AnalyticsTab";
+import PolicyEditorDialog from "./policy/PolicyEditorDialog";
 
 interface PolicyManagementProps {
   businessId: Id<"businesses">;
@@ -62,7 +62,7 @@ export function PolicyManagement({ businessId }: PolicyManagementProps) {
           <PoliciesTab
             businessId={businessId}
             policies={policies || []}
-            onEdit={(policyId) => {
+            onEdit={(policyId: Id<"policies">) => {
               setSelectedPolicy(policyId);
               setIsEditorOpen(true);
             }}
@@ -94,7 +94,7 @@ export function PolicyManagement({ businessId }: PolicyManagementProps) {
         businessId={businessId}
         policyId={selectedPolicy}
         open={isEditorOpen}
-        onOpenChange={(open) => {
+        onOpenChange={(open: boolean) => {
           setIsEditorOpen(open);
           if (!open) setSelectedPolicy(null);
         }}

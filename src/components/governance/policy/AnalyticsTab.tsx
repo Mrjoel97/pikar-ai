@@ -17,7 +17,7 @@ interface AnalyticsTabProps {
   trends: any[];
 }
 
-export function AnalyticsTab({ businessId, effectiveness, trends }: AnalyticsTabProps) {
+export default function AnalyticsTab({ businessId, effectiveness, trends }: AnalyticsTabProps) {
   return (
     <div className="space-y-4">
       <div className="grid gap-4 md:grid-cols-3">

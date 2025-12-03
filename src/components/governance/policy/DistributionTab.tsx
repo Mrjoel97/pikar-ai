@@ -21,7 +21,7 @@ interface DistributionTabProps {
   policies: any[];
 }
 
-export function DistributionTab({ businessId, policies }: DistributionTabProps) {
+export default function DistributionTab({ businessId, policies }: DistributionTabProps) {
   const distributePolicy = useMutation(api.policyManagement.distributePolicy);
   const [selectedPolicyId, setSelectedPolicyId] = useState<Id<"policies"> | null>(null);
   const [selectedUsers, setSelectedUsers] = useState<Id<"users">[]>([]);
