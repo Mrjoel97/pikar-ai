@@ -1,1 +1,2 @@
-sed -i 's/import { VendorManagement } from/import VendorManagement from/g' src/pages/VendorManagement.tsx
+grep -n "const \[streak" src/components/dashboards/SolopreneurDashboard.tsx
+grep -n "const \[timeSavedTotal" src/components/dashboards/SolopreneurDashboard.tsx

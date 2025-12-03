@@ -2383,6 +2383,16 @@ function SolopreneurDashboard({ business: businessProp }: { business?: any }) {
   // Add: state for showing the setup wizard
   const [showSetupWizard, setShowSetupWizard] = useState(false);
 
+  // Wins & Streak State
+  const [wins, setWins] = useState<{ id: string; title: string; date: string; impact: string }[]>([]);
+  const [streak, setStreak] = useState(12);
+  const [timeSavedTotal, setTimeSavedTotal] = useState(120);
+
+  const handleClearWins = () => {
+    setWins([]);
+    toast.success("Wins history cleared");
+  };
+
   return (
     <div className="space-y-6 p-6">
       {/* Quick actions: Send Newsletter */}
@@ -3270,7 +3280,7 @@ function SolopreneurDashboard({ business: businessProp }: { business?: any }) {
         wins={wins}
         streak={utils.streak}
         timeSavedTotal={utils.timeSavedTotal}
-        onClearWins={utils.clearLocalWins}
+        onClearWins={handleClearWins}
       />
 
       {/* Add: Customer Segmentation widget */}
