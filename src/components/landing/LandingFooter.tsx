@@ -32,7 +32,7 @@ export default function LandingFooter() {
 
   return (
     <motion.footer 
-      className="pt-12 sm:pt-16 border-t border-border/50"
+      className="pt-10 sm:pt-12 md:pt-16 border-t border-border/50"
       initial={{ opacity: 0 }}
       whileInView={{ opacity: 1 }}
       transition={{ duration: 0.8 }}
@@ -46,16 +46,16 @@ export default function LandingFooter() {
         transition={{ duration: 0.6 }}
         viewport={{ once: true }}
       >
-        <div className="max-w-5xl mx-auto neu-raised rounded-2xl bg-card/70 p-5 sm:p-8">
-          <div className="flex flex-col md:flex-row items-start md:items-center gap-4 md:gap-6">
+        <div className="max-w-5xl mx-auto neu-raised rounded-xl sm:rounded-2xl bg-card/70 p-4 sm:p-6 md:p-8">
+          <div className="flex flex-col md:flex-row items-start md:items-center gap-3 sm:gap-4 md:gap-6">
             <div className="flex-1">
-              <h3 className="text-xl font-semibold">Stay in the loop</h3>
-              <p className="text-sm text-muted-foreground">
+              <h3 className="text-lg sm:text-xl font-semibold mb-1">Stay in the loop</h3>
+              <p className="text-xs sm:text-sm text-muted-foreground">
                 Get product updates, tutorials, and tips. No spam—unsubscribe anytime.
               </p>
             </div>
-            <form onSubmit={handleSubscribe} className="w-full md:w-auto flex-1">
-              <div className="flex flex-col sm:flex-row gap-2">
+            <form onSubmit={handleSubscribe} className="w-full md:w-auto md:flex-1">
+              <div className="flex flex-col sm:flex-row gap-2 sm:gap-2.5">
                 <div className="relative flex-1">
                   <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
@@ -97,23 +97,23 @@ export default function LandingFooter() {
         transition={{ duration: 0.6, delay: 0.2 }}
         viewport={{ once: true }}
       >
-        <div className="max-w-7xl mx-auto py-10 sm:py-12">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-            <div>
-              <div className="flex items-center gap-2 mb-3">
+        <div className="max-w-7xl mx-auto py-8 sm:py-10 md:py-12">
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
+            <div className="col-span-2 sm:col-span-1">
+              <div className="flex items-center gap-2 mb-2 sm:mb-3">
                 <div className="neu-raised rounded-xl p-2">
                   <Brain className="h-6 w-6 text-primary" />
                 </div>
                 <span className="text-lg font-semibold">Pikar AI</span>
               </div>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-xs sm:text-sm text-muted-foreground">
                 Empowering businesses with intelligent automation.
               </p>
             </div>
 
             <div>
-              <p className="text-sm font-semibold mb-3">Product</p>
-              <ul className="space-y-2 text-sm text-muted-foreground">
+              <p className="text-xs sm:text-sm font-semibold mb-2 sm:mb-3">Product</p>
+              <ul className="space-y-1.5 sm:space-y-2 text-xs sm:text-sm text-muted-foreground">
                 <li><button className="hover:text-foreground transition-colors">Features</button></li>
                 <li><button className="hover:text-foreground transition-colors">Pricing</button></li>
                 <li><button className="hover:text-foreground transition-colors">Docs</button></li>
@@ -121,8 +121,8 @@ export default function LandingFooter() {
             </div>
 
             <div>
-              <p className="text-sm font-semibold mb-3">Company</p>
-              <ul className="space-y-2 text-sm text-muted-foreground">
+              <p className="text-xs sm:text-sm font-semibold mb-2 sm:mb-3">Company</p>
+              <ul className="space-y-1.5 sm:space-y-2 text-xs sm:text-sm text-muted-foreground">
                 <li><button className="hover:text-foreground transition-colors">About</button></li>
                 <li><button className="hover:text-foreground transition-colors">Blog</button></li>
                 <li><button className="hover:text-foreground transition-colors">Contact</button></li>
@@ -130,8 +130,8 @@ export default function LandingFooter() {
             </div>
 
             <div>
-              <p className="text-sm font-semibold mb-3">Resources</p>
-              <ul className="space-y-2 text-sm text-muted-foreground">
+              <p className="text-xs sm:text-sm font-semibold mb-2 sm:mb-3">Resources</p>
+              <ul className="space-y-1.5 sm:space-y-2 text-xs sm:text-sm text-muted-foreground">
                 <li><button className="hover:text-foreground transition-colors">Help Center</button></li>
                 <li><button className="hover:text-foreground transition-colors">Guides</button></li>
                 <li><button className="hover:text-foreground transition-colors">Status</button></li>
@@ -139,7 +139,7 @@ export default function LandingFooter() {
             </div>
           </div>
 
-          <div className="mt-8 flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-border/50 pt-6">
+          <div className="mt-6 sm:mt-8 flex flex-col sm:flex-row items-center justify-between gap-2 sm:gap-3 border-t border-border/50 pt-4 sm:pt-6">
             <p className="text-xs text-muted-foreground">
               © {new Date().getFullYear()} Pikar AI. All rights reserved.
             </p>

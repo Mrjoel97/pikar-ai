@@ -51,7 +51,7 @@ export default function LandingHero({ handleGetStarted, setDemoOpen }: LandingHe
             initial={{ y: 30, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ duration: 0.8, delay: 0.5 }}
-            className="text-4xl sm:text-6xl md:text-7xl font-bold tracking-tight mb-4 sm:mb-6 leading-[1.15] sm:leading-[1.1]"
+            className="text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight mb-4 sm:mb-6 leading-[1.2] sm:leading-[1.15] md:leading-[1.1] px-2"
           >
             <motion.span
               initial={{ opacity: 0, x: -20 }}
@@ -84,7 +84,7 @@ export default function LandingHero({ handleGetStarted, setDemoOpen }: LandingHe
             initial={{ y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ duration: 0.8, delay: 1.3 }}
-            className="text-base sm:text-xl text-muted-foreground max-w-3xl mx-auto mb-8 sm:mb-10 leading-relaxed px-1"
+            className="text-sm sm:text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto mb-6 sm:mb-8 md:mb-10 leading-relaxed px-4"
           >
             Pikar AI helps entrepreneurs and businesses evaluate ideas, diagnose problems,
             and integrate with ERP systems using cutting-edge artificial intelligence.
@@ -137,23 +137,23 @@ export default function LandingHero({ handleGetStarted, setDemoOpen }: LandingHe
       </div>
 
       <motion.div 
-        className="mt-8 sm:mt-10 relative z-10"
+        className="mt-6 sm:mt-8 md:mt-10 relative z-10 px-2"
         initial={{ y: 50, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.8, delay: 0.6 }}
       >
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6 max-w-4xl mx-auto">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 md:gap-6 max-w-4xl mx-auto">
           {heroStats.map((stat, index) => (
             <motion.div
               key={stat.label}
-              className="neu-inset rounded-xl px-4 py-3 sm:px-5 sm:py-4 bg-card/70 text-center"
+              className="neu-inset rounded-lg sm:rounded-xl px-3 py-2.5 sm:px-4 sm:py-3 md:px-5 md:py-4 bg-card/70 text-center"
               initial={{ scale: 0.8, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={{ duration: 0.5, delay: 0.7 + index * 0.1 }}
               whileHover={{ scale: 1.05, y: -5 }}
             >
-              <div className="text-lg sm:text-2xl font-bold text-black">{stat.value}</div>
-              <div className="text-xs sm:text-sm text-muted-foreground">{stat.label}</div>
+              <div className="text-base sm:text-xl md:text-2xl font-bold text-black">{stat.value}</div>
+              <div className="text-[10px] sm:text-xs md:text-sm text-muted-foreground leading-tight">{stat.label}</div>
             </motion.div>
           ))}
         </div>

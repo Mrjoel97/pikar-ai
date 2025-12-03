@@ -186,7 +186,7 @@ export default function Landing() {
 
       {/* High-Traction Industries (randomized) */}
       <motion.section 
-        className="px-4 sm:px-6 lg:px-8 pb-10"
+        className="px-4 sm:px-6 lg:px-8 pb-8 sm:pb-10"
         initial={{ opacity: 0 }}
         whileInView={{ opacity: 1 }}
         transition={{ duration: 0.8 }}
@@ -194,7 +194,7 @@ export default function Landing() {
       >
         <div className="max-w-6xl mx-auto">
           <motion.div 
-            className="text-center mb-4"
+            className="text-center mb-3 sm:mb-4"
             initial={{ y: 20, opacity: 0 }}
             whileInView={{ y: 0, opacity: 1 }}
             transition={{ duration: 0.6 }}
@@ -204,7 +204,7 @@ export default function Landing() {
               High‑Traction Industries We Support
             </p>
           </motion.div>
-          <div className="flex flex-wrap justify-center gap-2 sm:gap-3">
+          <div className="flex flex-wrap justify-center gap-1.5 sm:gap-2 md:gap-3">
             {randomIndustries.map((ind, index) => (
               <motion.div
                 key={ind}
@@ -216,7 +216,7 @@ export default function Landing() {
               >
                 <Badge
                   variant="secondary"
-                  className="neu-inset rounded-full px-3 py-1.5 bg-card/70"
+                  className="neu-inset rounded-full px-2.5 py-1 sm:px-3 sm:py-1.5 bg-card/70 text-xs sm:text-sm"
                 >
                   {ind}
                 </Badge>

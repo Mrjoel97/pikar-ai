@@ -98,8 +98,8 @@ export default function LandingNavbar({ handleGetStarted, scrollTo }: LandingNav
                   <Menu className="h-5 w-5" />
                 </Button>
               </SheetTrigger>
-              <SheetContent side="right" className="w-[92vw] sm:w-96 max-w-sm">
-                <div className="mt-6 space-y-6">
+              <SheetContent side="right" className="w-[85vw] sm:w-96 max-w-sm">
+                <div className="mt-4 space-y-5">
                   <div className="flex items-center space-x-3">
                     <div className="neu-raised rounded-xl p-2 bg-primary/10">
                       <Brain className="h-7 w-7 text-primary" />
@@ -107,7 +107,7 @@ export default function LandingNavbar({ handleGetStarted, scrollTo }: LandingNav
                     <span className="text-lg font-semibold">Pikar AI</span>
                   </div>
 
-                  <div className="grid grid-cols-1 gap-3">
+                  <div className="grid grid-cols-1 gap-2">
                     <Button
                       variant="ghost"
                       className="justify-start"
