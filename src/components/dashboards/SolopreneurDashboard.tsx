@@ -1,5 +1,5 @@
 // @ts-nocheck
-import React, { useState, useRef, useEffect, Suspense } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useAuth } from "@/hooks/use-auth";
