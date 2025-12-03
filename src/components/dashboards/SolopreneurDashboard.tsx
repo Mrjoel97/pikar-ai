@@ -182,6 +182,11 @@ import { TemplateGallery } from "./solopreneur/TemplateGallery";
 import { RecentActivity } from "./solopreneur/RecentActivity";
 import { HelpCoach } from "./solopreneur/HelpCoach";
 import { WinsHistory } from "./solopreneur/WinsHistory";
+import { AgentProfileSection } from "./solopreneur/AgentProfileSection";
+import { BrainDumpSection } from "./solopreneur/BrainDumpSection";
+import { KpiSnapshot } from "./solopreneur/KpiSnapshot";
+import { SupportTriage } from "./solopreneur/SupportTriage";
+import { VoiceNotes } from "./solopreneur/VoiceNotes";
 
 import { 
   demoData as importedDemoData 
