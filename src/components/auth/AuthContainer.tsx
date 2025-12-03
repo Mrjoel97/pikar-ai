@@ -36,9 +36,13 @@ export function AuthContainer() {
               onClick={() => navigate("/")}
             />
           </div>
-          <CardTitle className="text-xl text-emerald-50">Get Started</CardTitle>
+          <CardTitle className="text-xl text-emerald-50">
+            {authForm.authMode === "signup" ? "Create Account" : "Welcome Back"}
+          </CardTitle>
           <CardDescription className="text-emerald-200">
-            {authForm.authMode === "signup" ? "Create your account" : "Sign in"} to continue.
+            {authForm.authMode === "signup" 
+              ? "Sign up to get started with Pikar AI" 
+              : "Sign in to continue to your dashboard"}
           </CardDescription>
         </CardHeader>
 
@@ -92,6 +96,31 @@ export function AuthContainer() {
           >
             Continue as Guest
           </Button>
+        </div>
+
+        {/* Toggle between Sign In and Sign Up */}
+        <div className="py-3 px-6 text-sm text-center border-t border-emerald-700/50 text-emerald-200">
+          {authForm.authMode === "signup" ? (
+            <>
+              Already have an account?{" "}
+              <button
+                onClick={() => authForm.setAuthMode("login")}
+                className="text-emerald-50 font-semibold underline hover:text-white transition-colors"
+              >
+                Sign In
+              </button>
+            </>
+          ) : (
+            <>
+              Don't have an account?{" "}
+              <button
+                onClick={() => authForm.setAuthMode("signup")}
+                className="text-emerald-50 font-semibold underline hover:text-white transition-colors"
+              >
+                Sign Up
+              </button>
+            </>
+          )}
         </div>
 
         {/* Footer */}
