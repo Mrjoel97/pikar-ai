@@ -2,9 +2,6 @@ import { v } from "convex/values";
 import { mutation, query, internalMutation } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
 import { paginationOptsValidator } from "convex/server";
-import { paginationOptsValidator } from "convex/server";
-import { paginationOptsValidator } from "convex/server";
-// removed unused internal import
 
 // Add: central validator for notification types to match schema union
 const notificationTypeValidator = v.union(
