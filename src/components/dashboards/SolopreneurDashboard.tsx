@@ -175,6 +175,10 @@ import SocialPerformance from "./solopreneur/SocialPerformance";
 import { InvoiceWidget } from "./solopreneur/InvoiceWidget";
 import { ContentCalendarWidget } from "./solopreneur/ContentCalendarWidget";
 
+import { 
+  demoData as importedDemoData 
+} from "@/lib/demoData";
+
 function SolopreneurDashboard({ business: businessProp }: { business?: any }) {
   // Use auth status early to guard queries when not authenticated
   const { isAuthenticated: isAuthed } = useAuth();
