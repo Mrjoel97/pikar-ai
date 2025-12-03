@@ -2,7 +2,7 @@ import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Card, CardContent } from "@/components/ui/card";
 import { RiskHeatmap } from "@/components/risk/RiskHeatmap";
-import { RiskTrendChart } from "@/components/risk/RiskTrendChart";
+import RiskTrendChart from "@/components/risk/RiskTrendChart";
 import { Id } from "@/convex/_generated/dataModel";
 import { getLoadingMessage, getEmptyStateMessage } from "@/lib/dashboardErrorHandling";
 

@@ -14,11 +14,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Input } from "@/components/ui/input";
 import { isGuestMode, getSelectedTier } from "@/lib/guestUtils";
 import { getAllBuiltInTemplates } from "@/lib/templatesClient";
-import { WorkflowBuilder } from "@/components/workflows/WorkflowBuilder";
-import { WorkflowExecutionViewer } from "@/components/workflows/WorkflowExecutionViewer";
-import { WorkflowAnalytics } from "@/components/workflows/WorkflowAnalytics";
-import { WorkflowListView } from "@/components/workflows/WorkflowListView";
-import { WorkflowCreateDialog } from "@/components/workflows/WorkflowCreateDialog";
+import WorkflowBuilder from "@/components/workflows/WorkflowBuilder";
+import WorkflowExecutionViewer from "@/components/workflows/WorkflowExecutionViewer";
+import WorkflowAnalytics from "@/components/workflows/WorkflowAnalytics";
+import WorkflowListView from "@/components/workflows/WorkflowListView";
+import WorkflowCreateDialog from "@/components/workflows/WorkflowCreateDialog";
 import { StartupHealthCheck, GovernanceHealthCheck } from "@/components/workflows/WorkflowHealthIndicators";
 import { Play, Clock, Webhook } from "lucide-react";
 

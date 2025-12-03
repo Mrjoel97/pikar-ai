@@ -13,7 +13,7 @@ import { useEffect, useState } from "react";
 import { useQuery } from "convex/react";
 import { useAuth } from "@/hooks/use-auth";
 import { isGuestModeActive } from "@/lib/guestUtils";
-import { useIntersectionObserver } from "@/hooks/use-intersection-observer";
+import useIntersectionObserver from "@/hooks/use-intersection-observer";
 
 type Props = {
   disabled?: boolean; // hide/disable for guest

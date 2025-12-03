@@ -5,7 +5,7 @@ import { useState } from "react";
 import { PasswordAuthForm } from "@/components/auth/PasswordAuthForm";
 import { GuestTierDialog } from "@/components/auth/GuestTierDialog";
 import { useAuthForm } from "@/hooks/use-auth-form";
-import { ForgotPasswordForm } from "./ForgotPasswordForm";
+import ForgotPasswordForm from "./ForgotPasswordForm";
 
 interface AuthContainerProps {
   authMode: "signup" | "login";

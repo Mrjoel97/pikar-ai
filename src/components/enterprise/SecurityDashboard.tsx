@@ -6,10 +6,10 @@ import { api } from "@/convex/_generated/api";
 import { Shield, AlertTriangle, CheckCircle, FileText } from "lucide-react";
 import { toast } from "sonner";
 import type { Id } from "@/convex/_generated/dataModel";
-import { ThreatIntelligenceTab } from "./security/ThreatIntelligenceTab";
-import { AnomalyDetectionTab } from "./security/AnomalyDetectionTab";
+import ThreatIntelligenceTab from "./security/ThreatIntelligenceTab";
+import AnomalyDetectionTab from "./security/AnomalyDetectionTab";
 import { IncidentResponseTab } from "./security/IncidentResponseTab";
-import { ComplianceMonitoringTab } from "./security/ComplianceMonitoringTab";
+import ComplianceMonitoringTab from "./security/ComplianceMonitoringTab";
 import { SecurityScoreCard } from "./security/SecurityScoreCard";
 
 export function SecurityDashboard({ businessId }: { businessId?: Id<"businesses"> | null }) {

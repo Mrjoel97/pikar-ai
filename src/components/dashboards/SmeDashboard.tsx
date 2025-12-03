@@ -8,7 +8,7 @@ import { toast } from "sonner";
 import * as React from "react";
 import { useNavigate } from "react-router";
 import { RoiDashboard } from "./RoiDashboard";
-import { ExperimentDashboard } from "@/components/experiments/ExperimentDashboard";
+import ExperimentDashboard from "@/components/experiments/ExperimentDashboard";
 import { ExperimentCreator } from "@/components/experiments/ExperimentCreator";
 import { Id } from "@/convex/_generated/dataModel";
 import { MarketingDashboard } from "@/components/departments/MarketingDashboard";
@@ -22,7 +22,7 @@ import { Shield, AlertTriangle } from "lucide-react";
 import { ComplianceReportGenerator } from "@/components/compliance/ComplianceReportGenerator";
 import { ReportLibrary } from "@/components/compliance/ReportLibrary";
 import { RiskHeatmap } from "@/components/risk/RiskHeatmap";
-import { RiskTrendChart } from "@/components/risk/RiskTrendChart";
+import RiskTrendChart from "@/components/risk/RiskTrendChart";
 import { HandoffQueue } from "@/components/workflows/HandoffQueue";
 import { CrossDepartmentMetrics } from "@/components/workflows/CrossDepartmentMetrics";
 import { SystemHealthStrip } from "@/components/dashboard/SystemHealthStrip";
@@ -34,11 +34,11 @@ import { isGuestMode } from "@/lib/guestUtils";
 import { demoData as importedDemoData } from "@/lib/demoData";
 
 // Static imports to prevent lazy loading errors
-import { DepartmentTabs } from "./sme/DepartmentTabs";
-import { GovernancePanel } from "./sme/GovernancePanel";
+import DepartmentTabs from "./sme/DepartmentTabs";
+import GovernancePanel from "./sme/GovernancePanel";
 import { ComplianceRisk } from "./sme/ComplianceRisk";
-import { VendorPerformanceWidget } from "./sme/VendorPerformanceWidget";
-import { IntegrationHub } from "@/components/integrations/IntegrationHub";
+import VendorPerformanceWidget from "./sme/VendorPerformanceWidget";
+import IntegrationHub from "@/components/integrations/IntegrationHub";
 
 export function SmeDashboard() {
   const { user } = useAuth();

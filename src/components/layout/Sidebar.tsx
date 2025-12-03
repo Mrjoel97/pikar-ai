@@ -2,7 +2,7 @@ import { Input } from "@/components/ui/input";
 import { LogOut } from "lucide-react";
 import React from "react";
 import { useTranslation } from "react-i18next";
-import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import LanguageSwitcher from "@/components/LanguageSwitcher";
 
 type NavItem = { label: string; icon: React.ComponentType<any>; to: string };
 

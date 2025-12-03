@@ -15,9 +15,9 @@ import {
 import { toast } from "sonner";
 import type { Id } from "@/convex/_generated/dataModel";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
-import { BusinessComparisonTab } from "./portfolio/BusinessComparisonTab";
-import { PredictiveInsightsTab } from "./portfolio/PredictiveInsightsTab";
-import { RiskAssessmentTab } from "./portfolio/RiskAssessmentTab";
+import BusinessComparisonTab from "./portfolio/BusinessComparisonTab";
+import PredictiveInsightsTab from "./portfolio/PredictiveInsightsTab";
+import RiskAssessmentTab from "./portfolio/RiskAssessmentTab";
 
 export function PortfolioDashboard({ businessId }: { businessId?: Id<"businesses"> | null }) {
   const overview = useQuery(

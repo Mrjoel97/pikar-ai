@@ -9,7 +9,7 @@ import { SalesDashboard } from "@/components/departments/SalesDashboard";
 import { OpsDashboard } from "@/components/departments/OpsDashboard";
 import { FinanceDashboard } from "@/components/departments/FinanceDashboard";
 import { BudgetDashboard } from "@/components/departments/BudgetDashboard";
-import { VendorManagement } from "@/components/vendors/VendorManagement";
+import VendorManagement from "@/components/vendors/VendorManagement";
 import { ComplianceReportGenerator } from "@/components/compliance/ComplianceReportGenerator";
 import { ReportLibrary } from "@/components/compliance/ReportLibrary";
 import { Id } from "@/convex/_generated/dataModel";

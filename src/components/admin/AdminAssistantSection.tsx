@@ -3,11 +3,11 @@ import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { AssistantChat } from "./assistant/AssistantChat";
-import { DocumentationManager } from "./assistant/DocumentationManager";
-import { EvaluationsPanel } from "./assistant/EvaluationsPanel";
-import { SandboxPanel } from "./assistant/SandboxPanel";
-import { AgentToolHealth } from "./assistant/AgentToolHealth";
+import AssistantChat from "./assistant/AssistantChat";
+import DocumentationManager from "./assistant/DocumentationManager";
+import EvaluationsPanel from "./assistant/EvaluationsPanel";
+import SandboxPanel from "./assistant/SandboxPanel";
+import AgentToolHealth from "./assistant/AgentToolHealth";
 
 type Props = {
   adminSessionValid: boolean;

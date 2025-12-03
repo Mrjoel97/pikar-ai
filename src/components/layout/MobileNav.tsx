@@ -2,9 +2,9 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Menu, X } from "lucide-react";
 import { useState } from "react";
-import { LogoDropdown } from "@/components/LogoDropdown";
+import LogoDropdown from "@/components/LogoDropdown";
 import { useTranslation } from "react-i18next";
-import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import LanguageSwitcher from "@/components/LanguageSwitcher";
 
 type NavItem = { label: string; icon: React.ComponentType<any>; to: string };
 

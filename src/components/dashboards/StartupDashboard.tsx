@@ -12,7 +12,7 @@ import CampaignComposer from "@/components/email/CampaignComposer";
 import { Suspense } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useNavigate } from "react-router";
-import { ExperimentDashboard } from "@/components/experiments/ExperimentDashboard";
+import ExperimentDashboard from "@/components/experiments/ExperimentDashboard";
 import { ExperimentCreator } from "@/components/experiments/ExperimentCreator";
 import { ContentCalendar } from "@/components/calendar/ContentCalendar";
 import { RoiDashboard } from "@/components/dashboards/RoiDashboard";
@@ -59,17 +59,17 @@ import { isGuestMode } from "@/lib/guestUtils";
 import { demoData as importedDemoData } from "@/lib/demoData";
 
 // Static imports to prevent lazy loading errors
-import { TeamPerformance } from "./startup/TeamPerformance";
+import TeamPerformance from "./startup/TeamPerformance";
 import GrowthMetrics from "./startup/GrowthMetrics";
 import CampaignList from "./startup/CampaignList";
 import GoalsDashboardWidget from "./startup/GoalsDashboardWidget";
 import ApprovalWorkflow from "@/components/social/ApprovalWorkflow";
-import { CollaborationFeed } from "./startup/CollaborationFeed";
+import CollaborationFeed from "./startup/CollaborationFeed";
 import { WorkflowAssignments } from "./startup/WorkflowAssignments";
 import { CustomerJourneyMap } from "./startup/CustomerJourneyMap";
-import { RevenueAttribution } from "./startup/RevenueAttribution";
-import { TeamOnboardingWidget } from "./startup/TeamOnboardingWidget";
-import { ABTestingWidget } from "./startup/ABTestingWidget";
+import RevenueAttribution from "./startup/RevenueAttribution";
+import TeamOnboardingWidget from "./startup/TeamOnboardingWidget";
+import ABTestingWidget from "./startup/ABTestingWidget";
 
 export function StartupDashboard() {
   const { user } = useAuth();

@@ -18,8 +18,8 @@ import { GlobalSocialSection } from "./enterprise/GlobalSocialSection";
 import { EnterpriseShortcuts } from "./enterprise/EnterpriseShortcuts";
 import { LockedRibbon } from "./enterprise/LockedRibbon";
 import type { EnterpriseDashboardProps } from "@/types/dashboard";
-import { EnterpriseControls } from "./enterprise/EnterpriseControls";
-import { IntegrationStatus } from "./enterprise/IntegrationStatus";
+import EnterpriseControls from "./enterprise/EnterpriseControls";
+import IntegrationStatus from "./enterprise/IntegrationStatus";
 import { withMutationErrorHandling } from "@/lib/dashboardErrorHandling";
 import { LazyLoadErrorBoundary } from "@/components/common/LazyLoadErrorBoundary";
 import { useAuth } from "@/hooks/use-auth";
@@ -28,19 +28,19 @@ import { demoData as importedDemoData } from "@/lib/demoData";
 
 // Static imports to prevent lazy loading errors
 import { RoiDashboard } from "./RoiDashboard";
-import { ExperimentDashboard } from "@/components/experiments/ExperimentDashboard";
+import ExperimentDashboard from "@/components/experiments/ExperimentDashboard";
 import { ExperimentCreator } from "@/components/experiments/ExperimentCreator";
-import { GlobalOverview } from "./enterprise/GlobalOverview";
+import GlobalOverview from "./enterprise/GlobalOverview";
 import { WidgetGrid } from "./enterprise/WidgetGrid";
-import { ApprovalsAudit } from "./enterprise/ApprovalsAudit";
+import ApprovalsAudit from "./enterprise/ApprovalsAudit";
 import { StrategicInitiatives } from "./enterprise/StrategicInitiatives";
-import { SystemTelemetry } from "./enterprise/SystemTelemetry";
+import SystemTelemetry from "./enterprise/SystemTelemetry";
 import { ExecutiveAgentInsights } from "./enterprise/ExecutiveAgentInsights";
-import { AdvancedPanels } from "./enterprise/AdvancedPanels";
+import AdvancedPanels from "./enterprise/AdvancedPanels";
 import { BrainDumpSection } from "./enterprise/BrainDumpSection";
-import { SocialCommandCenter } from "./enterprise/SocialCommandCenter";
+import SocialCommandCenter from "./enterprise/SocialCommandCenter";
 import { StrategicCommandCenter } from "./enterprise/StrategicCommandCenter";
-import { IntegrationHub } from "@/components/integrations/IntegrationHub";
+import IntegrationHub from "@/components/integrations/IntegrationHub";
 
 /**
  * EnterpriseDashboard Component

@@ -1,5 +1,5 @@
 import { useSearchParams } from "react-router";
-import { ResetPasswordForm } from "@/components/auth/ResetPasswordForm";
+import ResetPasswordForm from "@/components/auth/ResetPasswordForm";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router";
