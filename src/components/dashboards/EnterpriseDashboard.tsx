@@ -85,18 +85,18 @@ export function EnterpriseDashboard() {
 
   const kpiDoc = useQuery(
     api.kpis.getSnapshot,
-    !isGuest && business?._id ? { businessId: business._id } : undefined
+    !isGuest && business?._id ? { businessId: business._id } : "skip"
   );
 
   const businessId = !isGuest && business?._id ? business._id : null;
 
   const approvals = useQuery(
     api.approvals.getApprovalQueue,
-    isGuest || !businessId ? undefined : { businessId, status: "pending" as const }
+    isGuest || !businessId ? "skip" : { businessId, status: "pending" as const }
   );
   const auditLatest = useQuery(
     api.audit.listForBusiness,
-    isGuest || !businessId ? undefined : { businessId, limit: 5 }
+    isGuest || !businessId ? "skip" : { businessId, limit: 5 }
   );
 
   const agents = isGuest ? (demoData?.enterprise?.agents || []) : [];
@@ -109,7 +109,7 @@ export function EnterpriseDashboard() {
 
   const featureFlags = useQuery(
     api.featureFlags.getFeatureFlags,
-    isGuest || !businessId ? undefined : { businessId }
+    isGuest || !businessId ? "skip" : { businessId }
   );
   const toggleFlag = useMutation(api.featureFlags.toggleFeatureFlag);
 
@@ -175,13 +175,13 @@ export function EnterpriseDashboard() {
 
   const upgradeNudges = useQuery(
     api.telemetry.getUpgradeNudges,
-    isGuest || !business?._id ? undefined : { businessId: business._id }
+    isGuest || !business?._id ? "skip" : { businessId: business._id }
   );
 
   const enforceGovernanceForBiz = useMutation(api.governance.enforceGovernanceForBusiness);
   const slaSummary = useQuery(
     api.approvals.getSlaSummary,
-    isGuest || !businessId ? undefined : { businessId }
+    isGuest || !businessId ? "skip" : { businessId }
   );
 
   const defaultWidgets: Array<{ key: string; title: string; content: React.ReactNode }> = [
@@ -233,11 +233,11 @@ export function EnterpriseDashboard() {
 
   const crmConnections = useQuery(
     api.crmIntegrations.listConnections,
-    isGuest || !businessId ? undefined : { businessId }
+    isGuest || !businessId ? "skip" : { businessId }
   );
   const crmConflicts = useQuery(
     api.crmIntegrations.listConflicts,
-    isGuest || !businessId ? undefined : { businessId, limit: 10 }
+    isGuest || !businessId ? "skip" : { businessId, limit: 10 }
   );
 
   const [showExperimentCreator, setShowExperimentCreator] = useState(false);

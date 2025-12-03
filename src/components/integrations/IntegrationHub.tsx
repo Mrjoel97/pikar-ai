@@ -28,18 +28,18 @@ export default function IntegrationHub({ businessId, tier, isGuest = false }: In
   // Fetch integration data
   const crmConnections = useQuery(
     api.crmIntegrations.listConnections,
-    isGuest ? undefined : { businessId }
+    isGuest ? "skip" : { businessId }
   );
   
   const customApis = useQuery(
     api.customApis.listCustomApis,
-    isGuest ? undefined : { businessId }
+    isGuest ? "skip" : { businessId }
   );
 
   // Fetch social API configurations for current business
   const configsForBusiness = useQuery(
     api.socialApiConfigs.listConfigsForBusiness,
-    isGuest ? undefined : { businessId }
+    isGuest ? "skip" : { businessId }
   );
 
   // Determine social platform configuration status

@@ -63,7 +63,7 @@ export function SmeDashboard() {
   // Fetch latest KPI snapshot when authenticated
   const kpiDoc = useQuery(
     api.kpis.getSnapshot,
-    !isGuest && businessId ? { businessId } : undefined
+    !isGuest && businessId ? { businessId } : "skip"
   );
 
   const agents = isGuest ? (demoData?.sme?.agents || []) : [];
@@ -74,14 +74,14 @@ export function SmeDashboard() {
   const pendingApprovals = useQuery(
     api.approvals.getApprovalQueue,
     isGuest || !businessId
-      ? undefined
+      ? "skip"
       : { businessId, status: "pending" as const }
   );
 
   const auditHighlights = useQuery(
     api.audit.listForBusiness,
     isGuest || !businessId
-      ? undefined
+      ? "skip"
       : { businessId, limit: 5 }
   );
 
@@ -90,7 +90,7 @@ export function SmeDashboard() {
 
   const featureFlags = useQuery(
     api.featureFlags.getFeatureFlags,
-    isGuest || !businessId ? undefined : { businessId }
+    isGuest || !businessId ? "skip" : { businessId }
   );
   const toggleFlag = useMutation(api.featureFlags.toggleFeatureFlag);
 
@@ -101,13 +101,13 @@ export function SmeDashboard() {
 
   const pendingEscalations = useQuery(
     api.governanceAutomation.getEscalations,
-    !isGuest && businessId ? { businessId, status: "pending" as const } : undefined
+    !isGuest && businessId ? { businessId, status: "pending" as const } : "skip"
   );
 
   // Add: Feature flag checks for tier-specific features
   const smeFlags = useQuery(
     api.featureFlags.getFeatureFlags,
-    !isGuest && businessId ? { businessId } : undefined
+    !isGuest && businessId ? { businessId } : "skip"
   );
   
   const crmEnabled = !!smeFlags?.find((f: any) => f.flagName === "crm_integration")?.isEnabled;
@@ -170,7 +170,7 @@ export function SmeDashboard() {
   // Add: telemetry-driven nudges banner
   const upgradeNudges = useQuery(
     api.telemetry.getUpgradeNudges,
-    isGuest || !businessId ? undefined : { businessId }
+    isGuest || !businessId ? "skip" : { businessId }
   );
 
   const smeTier = "sme";
@@ -181,11 +181,11 @@ export function SmeDashboard() {
   // CRM Integration Status - gated by feature flag
   const crmConnections = useQuery(
     api.crmIntegrations.listConnections,
-    isGuest || !businessId || !crmEnabled ? undefined : { businessId: businessId as Id<"businesses"> }
+    isGuest || !businessId || !crmEnabled ? "skip" : { businessId: businessId as Id<"businesses"> }
   );
   const crmConflicts = useQuery(
     api.crmIntegrations.listConflicts,
-    isGuest || !businessId || !crmEnabled ? undefined : { businessId: businessId as Id<"businesses">, limit: 10 }
+    isGuest || !businessId || !crmEnabled ? "skip" : { businessId: businessId as Id<"businesses">, limit: 10 }
   );
 
   // A/B Testing State - gated by feature flag
@@ -197,17 +197,17 @@ export function SmeDashboard() {
   // Add: Risk Analytics queries - gated by feature flag
   const riskMatrix = useQuery(
     api.riskAnalytics.getRiskMatrix,
-    isGuest || !businessId || !riskAnalyticsEnabled ? undefined : { businessId }
+    isGuest || !businessId || !riskAnalyticsEnabled ? "skip" : { businessId }
   );
 
   const riskTrend30d = useQuery(
     api.riskAnalytics.getRiskTrend,
-    isGuest || !businessId || !riskAnalyticsEnabled ? undefined : { businessId, days: 30 }
+    isGuest || !businessId || !riskAnalyticsEnabled ? "skip" : { businessId, days: 30 }
   );
 
   const riskTrend90d = useQuery(
     api.riskAnalytics.getRiskTrend,
-    isGuest || !businessId || !riskAnalyticsEnabled ? undefined : { businessId, days: 90 }
+    isGuest || !businessId || !riskAnalyticsEnabled ? "skip" : { businessId, days: 90 }
   );
 
   function BrainDumpSection({ businessId }: { businessId: string }) {
