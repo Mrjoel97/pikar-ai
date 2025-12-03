@@ -32,9 +32,9 @@ export default function ContentCapsule() {
   const [emailSubject, setEmailSubject] = useState("");
   const [emailBody, setEmailBody] = useState("");
 
-  const capsules = useQuery(api.contentCapsules.list);
-  const deleteCapsule = useMutation(api.contentCapsules.remove);
-  const generateCapsule = useMutation(api.contentCapsules.generate);
+  const capsules = useQuery(api.contentCapsulesData.list);
+  const deleteCapsule = useMutation(api.contentCapsulesData.remove);
+  const generateCapsule = useMutation(api.contentCapsulesData.generate);
 
   const togglePlatform = (platform: "twitter" | "linkedin" | "facebook") => {
     setPlatforms((prev) =>

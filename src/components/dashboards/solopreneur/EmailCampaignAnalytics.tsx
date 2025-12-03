@@ -19,7 +19,10 @@ interface EmailCampaignAnalyticsProps {
 export default function EmailCampaignAnalytics({ businessId }: EmailCampaignAnalyticsProps) {
   const [selectedCampaignId, setSelectedCampaignId] = React.useState<Id<"emailCampaigns"> | null>(null);
   
-  const metrics = useQuery(api.emailAnalytics.getBusinessCampaignMetrics, { businessId, limit: 10 });
+  const metrics = useQuery(
+    api.emailAnalytics.getBusinessCampaignMetrics,
+    businessId ? { businessId, limit: 10 } : "skip"
+  );
   const realTimeMetrics = useQuery(
     api.emailAnalytics.getRealTimeMetrics,
     selectedCampaignId ? { campaignId: selectedCampaignId } : "skip"

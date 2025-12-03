@@ -16,10 +16,10 @@ export default function SocialPerformance({ businessId }: SocialPerformanceProps
   const [showRecommendations, setShowRecommendations] = React.useState(false);
   const [selectedPlatform, setSelectedPlatform] = React.useState<"twitter" | "linkedin" | "facebook">("twitter");
   
-  const metrics = useQuery(api.socialAnalytics.getSolopreneurSocialMetrics, {
-    businessId,
-    days: 30,
-  });
+  const metrics = useQuery(
+    api.socialAnalytics.getSolopreneurSocialMetrics,
+    businessId ? { businessId, days: 30 } : "skip"
+  );
 
   const getRecommendations = useAction(api.socialContentAgent.optimization.recommendPostingTimes);
   const [recommendations, setRecommendations] = React.useState<any>(null);
