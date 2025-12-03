@@ -23,7 +23,7 @@ interface CalendarGridProps {
   onEventDrop: (eventId: string, newDate: Date) => void;
 }
 
-export function CalendarGrid({ events, startDate, endDate, onEventClick, onEventDrop }: CalendarGridProps) {
+export default function CalendarGrid({ events, startDate, endDate, onEventClick, onEventDrop }: CalendarGridProps) {
   const [draggedEvent, setDraggedEvent] = React.useState<CalendarEvent | null>(null);
 
   const getDaysInRange = () => {

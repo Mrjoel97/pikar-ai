@@ -12,7 +12,7 @@ interface ContactSyncStatusProps {
   businessId: Id<"businesses">;
 }
 
-export function ContactSyncStatus({ businessId }: ContactSyncStatusProps) {
+export default function ContactSyncStatus({ businessId }: ContactSyncStatusProps) {
   const conflicts = useQuery(api.crmIntegrations.listConflicts, { businessId });
   const resolveConflict = useMutation(api.crmIntegrations.resolveConflict);
 

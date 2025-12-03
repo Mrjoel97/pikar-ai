@@ -18,7 +18,7 @@ interface WorkflowStep {
   branches?: any;
 }
 
-export function WorkflowBuilder({ businessId, onSave }: { businessId: string; onSave?: () => void }) {
+export default function WorkflowBuilder({ businessId, onSave }: { businessId: string; onSave?: () => void }) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [steps, setSteps] = useState<WorkflowStep[]>([]);

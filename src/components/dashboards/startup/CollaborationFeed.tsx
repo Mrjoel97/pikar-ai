@@ -20,7 +20,7 @@ interface CollaborationFeedProps {
   businessId: Id<"businesses">;
 }
 
-export function CollaborationFeed({ businessId }: CollaborationFeedProps) {
+export default function CollaborationFeed({ businessId }: CollaborationFeedProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedUserId, setSelectedUserId] = useState<string | undefined>();
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);

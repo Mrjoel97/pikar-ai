@@ -11,7 +11,7 @@ interface ABTestingWidgetProps {
   businessId: Id<"businesses"> | null;
 }
 
-export function ABTestingWidget({ businessId }: ABTestingWidgetProps) {
+export default function ABTestingWidget({ businessId }: ABTestingWidgetProps) {
   const navigate = useNavigate();
   
   const experiments = useQuery(

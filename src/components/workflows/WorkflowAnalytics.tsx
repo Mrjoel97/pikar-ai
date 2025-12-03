@@ -5,7 +5,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { TrendingUp, Activity, CheckCircle, XCircle } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
-export function WorkflowAnalytics({ businessId }: { businessId: string }) {
+export default function WorkflowAnalytics({ businessId }: { businessId: string }) {
   const analytics = useQuery(api.workflows.getWorkflowAnalytics, { businessId: businessId as any });
 
   if (!analytics) {

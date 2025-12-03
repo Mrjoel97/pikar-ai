@@ -8,7 +8,7 @@ interface EnterpriseControlsProps {
   onUpgrade: () => void;
 }
 
-export function EnterpriseControls({ hasTier, onUpgrade }: EnterpriseControlsProps) {
+export default function EnterpriseControls({ hasTier, onUpgrade }: EnterpriseControlsProps) {
   const nav = useNavigate();
 
   return (

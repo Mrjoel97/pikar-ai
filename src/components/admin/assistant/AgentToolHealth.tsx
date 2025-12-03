@@ -4,7 +4,7 @@ import { api } from "@/convex/_generated/api";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 
-export function AgentToolHealth() {
+export default function AgentToolHealth() {
   const [agentKey, setAgentKey] = useState("");
 
   const toolHealth = useQuery(

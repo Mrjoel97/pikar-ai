@@ -6,7 +6,7 @@ interface RiskAssessmentTabProps {
   getRiskColor: (level: string) => string;
 }
 
-export function RiskAssessmentTab({ riskAssessment, getRiskColor }: RiskAssessmentTabProps) {
+export default function RiskAssessmentTab({ riskAssessment, getRiskColor }: RiskAssessmentTabProps) {
   return (
     <Card>
       <CardHeader>

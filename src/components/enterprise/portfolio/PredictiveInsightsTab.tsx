@@ -6,7 +6,7 @@ interface PredictiveInsightsTabProps {
   predictiveInsights: any;
 }
 
-export function PredictiveInsightsTab({ predictiveInsights }: PredictiveInsightsTabProps) {
+export default function PredictiveInsightsTab({ predictiveInsights }: PredictiveInsightsTabProps) {
   return (
     <Card>
       <CardHeader>

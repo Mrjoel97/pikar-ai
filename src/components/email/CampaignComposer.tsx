@@ -45,7 +45,7 @@ interface CsvContact {
   tags?: string[];
 }
 
-export function CampaignComposer({ businessId, onClose, onCreated, defaultScheduledAt, agentTone, agentPersona, agentCadence }: CampaignComposerProps) {
+export default function CampaignComposer({ businessId, onClose, onCreated, defaultScheduledAt, agentTone, agentPersona, agentCadence }: CampaignComposerProps) {
   const [formData, setFormData] = useState({
     fromName: "",
     fromEmail: "",

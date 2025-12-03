@@ -21,7 +21,7 @@ interface DepartmentTabsProps {
   kpiDoc: any;
 }
 
-export function DepartmentTabs({ businessId, isGuest, kpiDoc }: DepartmentTabsProps) {
+export default function DepartmentTabs({ businessId, isGuest, kpiDoc }: DepartmentTabsProps) {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = React.useState("overview");
 

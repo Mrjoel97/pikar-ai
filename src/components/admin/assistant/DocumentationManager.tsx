@@ -9,7 +9,7 @@ type Props = {
   evalSummary: any;
 };
 
-export function DocumentationManager({ evalSummary }: Props) {
+export default function DocumentationManager({ evalSummary }: Props) {
   const [importUrl, setImportUrl] = useState("");
 
   const proposals = useQuery(api.docs.listProposals as any);

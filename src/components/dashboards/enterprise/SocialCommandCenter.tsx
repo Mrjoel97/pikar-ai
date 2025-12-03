@@ -13,7 +13,7 @@ interface SocialCommandCenterProps {
   businessId: Id<"businesses"> | null;
 }
 
-export function SocialCommandCenter({ businessId }: SocialCommandCenterProps) {
+export default function SocialCommandCenter({ businessId }: SocialCommandCenterProps) {
   const [timeRange, setTimeRange] = useState<"7d" | "30d" | "90d">("30d");
   const [refreshKey, setRefreshKey] = useState(0);
 

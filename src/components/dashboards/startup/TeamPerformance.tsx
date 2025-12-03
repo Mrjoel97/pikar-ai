@@ -7,7 +7,7 @@ interface TeamPerformanceProps {
   isGuest: boolean;
 }
 
-export function TeamPerformance({ teamPerformance, isGuest }: TeamPerformanceProps) {
+export default function TeamPerformance({ teamPerformance, isGuest }: TeamPerformanceProps) {
   if (isGuest || !teamPerformance) {
     return (
       <Card>

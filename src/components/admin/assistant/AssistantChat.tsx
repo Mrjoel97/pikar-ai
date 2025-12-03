@@ -19,7 +19,7 @@ type Props = {
   adminToken: string | null;
 };
 
-export function AssistantChat({ adminSessionValid, adminToken }: Props) {
+export default function AssistantChat({ adminSessionValid, adminToken }: Props) {
   const [mode, setMode] = useState<"explain" | "confirm" | "auto">("explain");
   const [tools, setTools] = useState({
     health: true,

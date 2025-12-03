@@ -13,7 +13,7 @@ interface TeamOnboardingWidgetProps {
   businessId: Id<"businesses"> | null;
 }
 
-export function TeamOnboardingWidget({ businessId }: TeamOnboardingWidgetProps) {
+export default function TeamOnboardingWidget({ businessId }: TeamOnboardingWidgetProps) {
   const navigate = useNavigate();
   
   const onboardingData = useQuery(

@@ -9,7 +9,7 @@ interface ApprovalsAuditProps {
   onReject: (id: string) => void;
 }
 
-export function ApprovalsAudit({
+export default function ApprovalsAudit({
   isGuest,
   approvals,
   auditLatest,

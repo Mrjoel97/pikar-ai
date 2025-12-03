@@ -29,7 +29,7 @@ interface WorkflowCreateDialogProps {
   onSubmit: (data: any) => Promise<void>;
 }
 
-export function WorkflowCreateDialog({
+export default function WorkflowCreateDialog({
   open,
   onOpenChange,
   businessId,

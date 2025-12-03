@@ -7,7 +7,7 @@ interface BusinessComparisonTabProps {
   crossBusinessAnalytics: any;
 }
 
-export function BusinessComparisonTab({ crossBusinessAnalytics }: BusinessComparisonTabProps) {
+export default function BusinessComparisonTab({ crossBusinessAnalytics }: BusinessComparisonTabProps) {
   return (
     <Card>
       <CardHeader>

@@ -45,7 +45,7 @@ interface GovernancePanelProps {
  * @param {GovernancePanelProps} props - Component props
  * @returns {JSX.Element} Rendered governance panel sections
  */
-export function GovernancePanel({ 
+export default function GovernancePanel({ 
   businessId, 
   isGuest, 
   governanceAutomationEnabled,

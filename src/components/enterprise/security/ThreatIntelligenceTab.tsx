@@ -7,7 +7,7 @@ interface ThreatIntelligenceTabProps {
   getThreatLevelColor: (level: string) => string;
 }
 
-export function ThreatIntelligenceTab({ threatIntel, getSeverityColor, getThreatLevelColor }: ThreatIntelligenceTabProps) {
+export default function ThreatIntelligenceTab({ threatIntel, getSeverityColor, getThreatLevelColor }: ThreatIntelligenceTabProps) {
   return (
     <Card>
       <CardHeader>

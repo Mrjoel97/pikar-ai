@@ -13,7 +13,7 @@ interface ExperimentDashboardProps {
   businessId: Id<"businesses">;
 }
 
-export function ExperimentDashboard({ businessId }: ExperimentDashboardProps) {
+export default function ExperimentDashboard({ businessId }: ExperimentDashboardProps) {
   const experiments = useQuery(api.experiments.listExperiments, { businessId });
   const updateStatus = useMutation(api.experiments.updateExperimentStatus);
   const declareWinner = useMutation(api.experiments.declareWinner);

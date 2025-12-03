@@ -12,7 +12,7 @@ interface VendorPerformanceWidgetProps {
   businessId: Id<"businesses"> | null;
 }
 
-export function VendorPerformanceWidget({ businessId }: VendorPerformanceWidgetProps) {
+export default function VendorPerformanceWidget({ businessId }: VendorPerformanceWidgetProps) {
   const navigate = useNavigate();
   
   const insights = useQuery(

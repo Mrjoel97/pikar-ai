@@ -5,7 +5,7 @@ interface ComplianceMonitoringTabProps {
   complianceMonitoring: any;
 }
 
-export function ComplianceMonitoringTab({ complianceMonitoring }: ComplianceMonitoringTabProps) {
+export default function ComplianceMonitoringTab({ complianceMonitoring }: ComplianceMonitoringTabProps) {
   return (
     <Card>
       <CardHeader>

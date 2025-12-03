@@ -10,7 +10,7 @@ type Props = {
   adminToken: string | null;
 };
 
-export function SandboxPanel({ adminSessionValid, adminToken }: Props) {
+export default function SandboxPanel({ adminSessionValid, adminToken }: Props) {
   const [sandboxMsg, setSandboxMsg] = useState("Check health and list flags");
   const [sandboxTools, setSandboxTools] = useState({
     health: true,

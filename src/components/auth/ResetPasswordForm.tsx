@@ -13,7 +13,7 @@ interface ResetPasswordFormProps {
   token: string;
 }
 
-export function ResetPasswordForm({ token }: ResetPasswordFormProps) {
+export default function ResetPasswordForm({ token }: ResetPasswordFormProps) {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);

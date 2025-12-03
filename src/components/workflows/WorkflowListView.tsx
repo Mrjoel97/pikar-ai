@@ -40,7 +40,7 @@ interface WorkflowListViewProps {
   onLoadMore: () => void;
 }
 
-export function WorkflowListView({
+export default function WorkflowListView({
   workflows,
   businesses,
   searchFilter,

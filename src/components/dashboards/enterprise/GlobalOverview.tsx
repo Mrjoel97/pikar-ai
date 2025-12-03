@@ -14,7 +14,7 @@ interface GlobalOverviewProps {
   slaSummaryText: string | null;
 }
 
-export function GlobalOverview({
+export default function GlobalOverview({
   businessId,
   region,
   setRegion,

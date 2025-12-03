@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { EvalRunsViewer } from "./EvalRunsViewer";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription, DrawerTrigger } from "@/components/ui/drawer";
 
-export function EvaluationsPanel() {
+export default function EvaluationsPanel() {
   const [evalName, setEvalName] = useState("");
   const [evalDesc, setEvalDesc] = useState("");
   const [testsJson, setTestsJson] = useState(

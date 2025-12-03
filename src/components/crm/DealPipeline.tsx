@@ -21,7 +21,7 @@ const STAGES = [
   { id: "closed_lost", name: "Closed Lost", color: "bg-red-500" },
 ];
 
-export function DealPipeline({ businessId }: DealPipelineProps) {
+export default function DealPipeline({ businessId }: DealPipelineProps) {
   const deals = useQuery(api.crmIntegrations.listDeals, { businessId });
   const updateStage = useMutation(api.crmIntegrations.updateDealStage);
   const [dragging, setDragging] = useState<string | null>(null);

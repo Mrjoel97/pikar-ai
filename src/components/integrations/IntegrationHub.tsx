@@ -20,7 +20,7 @@ interface IntegrationHubProps {
   isGuest?: boolean;
 }
 
-export function IntegrationHub({ businessId, tier, isGuest = false }: IntegrationHubProps) {
+export default function IntegrationHub({ businessId, tier, isGuest = false }: IntegrationHubProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");

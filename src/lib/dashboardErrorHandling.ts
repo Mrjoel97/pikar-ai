@@ -27,7 +27,7 @@ export const ERROR_PREFIXES = {
  * @param {unknown} error - Error object (can be Error, string, or any)
  * @returns {string} Extracted error message
  */
-export function extractErrorMessage(error: unknown): string {
+export default function extractErrorMessage(error: unknown): string {
   if (error instanceof Error) {
     return error.message;
   }
@@ -47,7 +47,7 @@ export function extractErrorMessage(error: unknown): string {
  * @param {string} operation - Operation name (e.g., "diagnostics", "approval")
  * @param {keyof typeof ERROR_PREFIXES} [prefix="EXECUTE"] - Error prefix type
  */
-export function handleMutationError(
+export default function handleMutationError(
   error: unknown,
   operation: string,
   prefix: keyof typeof ERROR_PREFIXES = "EXECUTE"
@@ -68,7 +68,7 @@ export function handleMutationError(
  * @param {string} queryName - Query name (e.g., "KPIs", "approvals")
  * @returns {null} Always returns null for consistent fallback
  */
-export function handleQueryError(error: unknown, queryName: string): null {
+export default function handleQueryError(error: unknown, queryName: string): null {
   const message = extractErrorMessage(error);
   const fullMessage = `${ERROR_PREFIXES.LOAD} ${queryName}: ${message}`;
   
@@ -111,7 +111,7 @@ export async function withMutationErrorHandling<T>(
  * @param {T | undefined} queryResult - Query result from useQuery
  * @returns {boolean} True if loading, false otherwise
  */
-export function isQueryLoading<T>(queryResult: T | undefined): queryResult is undefined {
+export default function isQueryLoading<T>(queryResult: T | undefined): queryResult is undefined {
   return queryResult === undefined;
 }
 
@@ -121,7 +121,7 @@ export function isQueryLoading<T>(queryResult: T | undefined): queryResult is un
  * @param {string} queryName - Name of the query (e.g., "approvals", "KPIs")
  * @returns {string} Formatted loading message
  */
-export function getLoadingMessage(queryName: string): string {
+export default function getLoadingMessage(queryName: string): string {
   return `Loading ${queryName}...`;
 }
 
@@ -131,6 +131,6 @@ export function getLoadingMessage(queryName: string): string {
  * @param {string} queryName - Name of the query (e.g., "approvals", "KPIs")
  * @returns {string} Formatted empty state message
  */
-export function getEmptyStateMessage(queryName: string): string {
+export default function getEmptyStateMessage(queryName: string): string {
   return `No ${queryName} found.`;
 }

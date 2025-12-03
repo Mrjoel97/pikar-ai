@@ -7,7 +7,7 @@ interface AnomalyDetectionTabProps {
   getSeverityColor: (severity: string) => string;
 }
 
-export function AnomalyDetectionTab({ anomalyDetection, getSeverityColor }: AnomalyDetectionTabProps) {
+export default function AnomalyDetectionTab({ anomalyDetection, getSeverityColor }: AnomalyDetectionTabProps) {
   return (
     <Card>
       <CardHeader>

@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle, AlertCircle, XCircle } from "lucide-react";
 
-export function IntegrationStatus() {
+export default function IntegrationStatus() {
   const integrations = [
     { name: "CRM Sync", status: "active", icon: CheckCircle, color: "text-green-600" },
     { name: "Email Service", status: "active", icon: CheckCircle, color: "text-green-600" },

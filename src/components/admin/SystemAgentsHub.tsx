@@ -465,7 +465,7 @@ const STRATEGIC_TIERS: Record<string, string[]> = {
   hr_recruitment: ["startup", "sme", "enterprise"],
 };
 
-export function SystemAgentsHub() {
+export default function SystemAgentsHub() {
   const [activeTab, setActiveTab] = useState("catalog");
   const [searchTerm, setSearchTerm] = useState("");
   const [tierFilter, setTierFilter] = useState<string>("all");

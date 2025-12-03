@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { CheckCircle2, XCircle, Clock, Play } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
-export function WorkflowExecutionViewer({ runId }: { runId: string }) {
+export default function WorkflowExecutionViewer({ runId }: { runId: string }) {
   const execution = useQuery(api.workflows.getWorkflowExecution, { runId: runId as any });
 
   if (!execution) {

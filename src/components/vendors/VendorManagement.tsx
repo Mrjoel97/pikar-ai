@@ -20,7 +20,7 @@ interface VendorManagementProps {
   isGuest?: boolean;
 }
 
-export function VendorManagement({ businessId, isGuest }: VendorManagementProps) {
+export default function VendorManagement({ businessId, isGuest }: VendorManagementProps) {
   const [performanceDialogOpen, setPerformanceDialogOpen] = useState(false);
   const [selectedVendor, setSelectedVendor] = useState<Id<"vendors"> | null>(null);
   const [activeTab, setActiveTab] = useState("overview");

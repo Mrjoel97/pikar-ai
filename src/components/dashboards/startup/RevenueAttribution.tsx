@@ -39,7 +39,7 @@ const MODEL_LABELS: Record<string, string> = {
   position_based: "Position-Based",
 };
 
-export function RevenueAttribution({ businessId }: RevenueAttributionProps) {
+export default function RevenueAttribution({ businessId }: RevenueAttributionProps) {
   const [selectedModel, setSelectedModel] = useState<
     "first_touch" | "last_touch" | "linear" | "time_decay" | "position_based"
   >("linear");

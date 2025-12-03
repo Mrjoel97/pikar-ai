@@ -21,7 +21,7 @@ interface RiskTrendChartProps {
   businessId?: Id<"businesses">;
 }
 
-export function RiskTrendChart({ 
+export default function RiskTrendChart({ 
   trendData, 
   byCategory, 
   newRisks, 

@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Globe } from "lucide-react";
 
-export function LanguageSwitcher() {
+export default function LanguageSwitcher() {
   const { i18n, t } = useTranslation();
 
   const languages = [

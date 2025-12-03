@@ -12,7 +12,7 @@ interface ForgotPasswordFormProps {
   onBack: () => void;
 }
 
-export function ForgotPasswordForm({ onBack }: ForgotPasswordFormProps) {
+export default function ForgotPasswordForm({ onBack }: ForgotPasswordFormProps) {
   const [email, setEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [emailSent, setEmailSent] = useState(false);

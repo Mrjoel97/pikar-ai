@@ -5,7 +5,7 @@ interface SystemTelemetryProps {
   demoData: any;
 }
 
-export function SystemTelemetry({ agents, demoData }: SystemTelemetryProps) {
+export default function SystemTelemetry({ agents, demoData }: SystemTelemetryProps) {
   return (
     <section>
       <h2 className="text-xl font-semibold mb-4">System Telemetry</h2>

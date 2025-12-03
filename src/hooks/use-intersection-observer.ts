@@ -11,7 +11,7 @@ interface UseIntersectionObserverOptions {
  * Hook to detect when an element enters the viewport
  * Useful for lazy loading images and infinite scroll
  */
-export function useIntersectionObserver(
+export default function useIntersectionObserver(
   options: UseIntersectionObserverOptions = {}
 ): [React.RefObject<HTMLDivElement | null>, boolean] {
   const { threshold = 0, root = null, rootMargin = "0px", freezeOnceVisible = false } = options;

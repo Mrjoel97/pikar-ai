@@ -12,7 +12,7 @@ interface AdvancedPanelsProps {
   onOpenCrm: () => void;
 }
 
-export function AdvancedPanels({
+export default function AdvancedPanels({
   isGuest,
   businessId,
   crmConnections,
