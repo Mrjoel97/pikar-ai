@@ -22,7 +22,7 @@ type Segments = {
   engagementSegments: Record<string, number>;
 };
 
-export function CustomerSegmentation({ businessId }: { businessId: Id<"businesses"> }) {
+export default function CustomerSegmentation({ businessId }: { businessId: Id<"businesses"> }) {
   const segments = useQuery(api.contacts.getContactSegments as any, { businessId }) as
     | Segments
     | undefined
