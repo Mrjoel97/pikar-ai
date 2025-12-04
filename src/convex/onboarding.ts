@@ -269,3 +269,84 @@ export const finalizeOnboarding = mutation({
     return { ok: true as const, businessId: biz._id };
   },
 });
+
+export const completeOnboarding = mutation({
+  args: {
+    businessId: v.id("businesses"),
+    userId: v.id("users"),
+    setupData: v.object({
+      businessProfile: v.optional(v.any()),
+      brandIdentity: v.optional(v.any()),
+      socialMedia: v.optional(v.any()),
+      emailSetup: v.optional(v.any()),
+      aiAgent: v.optional(v.any()),
+      templates: v.optional(v.any()),
+    }),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Unauthorized");
+    }
+
+    // Update business with onboarding data
+    await ctx.db.patch(args.businessId, {
+      onboardingCompleted: true,
+      onboardingData: args.setupData,
+    });
+
+    // Create default brand if brand identity was provided
+    if (args.setupData.brandIdentity) {
+      const existingBrand = await ctx.db
+        .query("brands")
+        .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+        .first();
+
+      if (!existingBrand) {
+        await ctx.db.insert("brands", {
+          businessId: args.businessId,
+          name: args.setupData.businessProfile?.name || "Default Brand",
+          tagline: args.setupData.brandIdentity.tagline || "",
+          mission: args.setupData.brandIdentity.mission || "",
+          colors: args.setupData.brandIdentity.brandColors?.split(",").map((c: string) => c.trim()) || [],
+          voice: args.setupData.brandIdentity.brandVoice || "professional",
+          isActive: true,
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        });
+      }
+    }
+
+    // Create default AI agent if configured
+    if (args.setupData.aiAgent) {
+      const existingAgent = await ctx.db
+        .query("aiAgents")
+        .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+        .first();
+
+      if (!existingAgent) {
+        await ctx.db.insert("aiAgents", {
+          businessId: args.businessId,
+          name: args.setupData.aiAgent.agentName || "My Assistant",
+          type: "custom",
+          description: "Your personal AI assistant",
+          personality: args.setupData.aiAgent.agentPersonality || "helpful and professional",
+          capabilities: Object.keys(args.setupData.aiAgent.capabilities || {}).filter(
+            (key) => args.setupData.aiAgent.capabilities[key]
+          ),
+          status: "active",
+          config: {
+            model: "gpt-4o-mini",
+            temperature: 0.7,
+            maxTokens: 2000,
+            systemPrompt: "You are a helpful AI assistant.",
+            tools: [],
+          },
+          isTemplate: false,
+        });
+      }
+    }
+
+    return { success: true };
+  },
+});

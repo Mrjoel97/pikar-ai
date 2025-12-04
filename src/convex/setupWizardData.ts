@@ -1,16 +1,34 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 
-// Initialize setup wizard for a business
+export const getSetupProgress = query({
+  args: { businessId: v.id("businesses") },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return null;
+
+    const setup = await ctx.db
+      .query("setupProgress")
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .first();
+
+    return setup;
+  },
+});
+
 export const initializeSetup = mutation({
   args: {
     businessId: v.id("businesses"),
     userId: v.id("users"),
   },
   handler: async (ctx, args) => {
-    // Check if setup already exists
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Unauthorized");
+    }
+
     const existing = await ctx.db
-      .query("setupWizard")
+      .query("setupProgress")
       .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
       .first();
 
@@ -18,12 +36,11 @@ export const initializeSetup = mutation({
       return existing._id;
     }
 
-    // Create new setup wizard record
-    const setupId = await ctx.db.insert("setupWizard", {
+    const setupId = await ctx.db.insert("setupProgress", {
       businessId: args.businessId,
       userId: args.userId,
       currentStep: 0,
-      completedSteps: [],
+      progress: 0,
       steps: [
         { id: "business-profile", title: "Business Profile", completed: false },
         { id: "brand-identity", title: "Brand Identity", completed: false },
@@ -34,161 +51,104 @@ export const initializeSetup = mutation({
         { id: "review", title: "Review & Launch", completed: false },
       ],
       data: {},
-      status: "in_progress",
-      startedAt: Date.now(),
+      completedAt: undefined,
     });
 
     return setupId;
   },
 });
 
-// Complete a setup step
 export const completeStep = mutation({
   args: {
-    setupId: v.id("setupWizard"),
+    setupId: v.id("setupProgress"),
     stepId: v.string(),
     stepData: v.any(),
   },
   handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Unauthorized");
+    }
+
     const setup = await ctx.db.get(args.setupId);
-    if (!setup) throw new Error("Setup wizard not found");
-
-    const steps = setup.steps as any[];
-    const stepIndex = steps.findIndex((s: any) => s.id === args.stepId);
-    
-    if (stepIndex === -1) {
-      throw new Error("Step not found");
+    if (!setup) {
+      throw new Error("Setup not found");
     }
 
-    // Mark step as completed
-    steps[stepIndex].completed = true;
-
-    // Update completed steps array
-    const completedSteps = [...(setup.completedSteps || [])];
-    if (!completedSteps.includes(args.stepId)) {
-      completedSteps.push(args.stepId);
-    }
-
-    // Merge step data
-    const data = { ...(setup.data || {}), [args.stepId]: args.stepData };
-
-    // Calculate next step
-    const nextIncompleteIndex = steps.findIndex((s: any, idx: number) => 
-      idx > stepIndex && !s.completed
+    const updatedSteps = setup.steps.map((step: any) =>
+      step.id === args.stepId ? { ...step, completed: true } : step
     );
-    const currentStep = nextIncompleteIndex !== -1 ? nextIncompleteIndex : stepIndex + 1;
 
-    // Check if all steps completed
-    const allCompleted = steps.every((s: any) => s.completed);
-    const status = allCompleted ? "completed" : "in_progress";
+    const completedCount = updatedSteps.filter((s: any) => s.completed).length;
+    const progress = (completedCount / updatedSteps.length) * 100;
+
+    const updatedData = {
+      ...setup.data,
+      [args.stepId]: args.stepData,
+    };
 
     await ctx.db.patch(args.setupId, {
-      steps,
-      completedSteps,
-      currentStep,
-      data,
-      status,
-      ...(allCompleted ? { completedAt: Date.now() } : {}),
+      steps: updatedSteps,
+      progress,
+      data: updatedData,
+      currentStep: setup.currentStep + 1,
     });
+
+    const allCompleted = updatedSteps.every((s: any) => s.completed);
+    if (allCompleted) {
+      await ctx.db.patch(args.setupId, {
+        completedAt: Date.now(),
+      });
+
+      // Trigger onboarding completion
+      await ctx.db.patch(setup.businessId, {
+        onboardingCompleted: true,
+      });
+    }
 
     return { success: true, allCompleted };
   },
 });
 
-// Get setup progress
-export const getSetupProgress = query({
-  args: {
-    businessId: v.id("businesses"),
-  },
-  handler: async (ctx, args) => {
-    const setup = await ctx.db
-      .query("setupWizard")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
-      .first();
-
-    if (!setup) {
-      return null;
-    }
-
-    const steps = setup.steps as any[];
-    const completedCount = steps.filter((s: any) => s.completed).length;
-    const progress = (completedCount / steps.length) * 100;
-
-    return {
-      ...setup,
-      progress,
-      completedCount,
-      totalSteps: steps.length,
-    };
-  },
-});
-
-// Connect integrations during setup
-export const connectIntegrations = mutation({
-  args: {
-    setupId: v.id("setupWizard"),
-    integrations: v.array(v.object({
-      platform: v.string(),
-      accountId: v.optional(v.string()),
-      accountName: v.optional(v.string()),
-      connected: v.boolean(),
-    })),
-  },
-  handler: async (ctx, args) => {
-    const setup = await ctx.db.get(args.setupId);
-    if (!setup) throw new Error("Setup wizard not found");
-
-    const data = setup.data || {};
-    const integrationsData = {
-      ...data,
-      integrations: args.integrations,
-    };
-
-    await ctx.db.patch(args.setupId, {
-      data: integrationsData,
-    });
-
-    return { success: true };
-  },
-});
-
-// Update setup wizard data
 export const updateSetupData = mutation({
   args: {
-    setupId: v.id("setupWizard"),
-    stepId: v.string(),
+    setupId: v.id("setupProgress"),
     data: v.any(),
   },
   handler: async (ctx, args) => {
-    const setup = await ctx.db.get(args.setupId);
-    if (!setup) throw new Error("Setup wizard not found");
-
-    const currentData = setup.data || {};
-    const updatedData = {
-      ...currentData,
-      [args.stepId]: {
-        ...(currentData[args.stepId] || {}),
-        ...args.data,
-      },
-    };
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Unauthorized");
+    }
 
     await ctx.db.patch(args.setupId, {
-      data: updatedData,
+      data: args.data,
     });
 
     return { success: true };
   },
 });
 
-// Skip setup wizard
 export const skipSetup = mutation({
-  args: {
-    setupId: v.id("setupWizard"),
-  },
+  args: { setupId: v.id("setupProgress") },
   handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Unauthorized");
+    }
+
+    const setup = await ctx.db.get(args.setupId);
+    if (!setup) {
+      throw new Error("Setup not found");
+    }
+
     await ctx.db.patch(args.setupId, {
-      status: "skipped",
       completedAt: Date.now(),
+      progress: 100,
+    });
+
+    await ctx.db.patch(setup.businessId, {
+      onboardingCompleted: true,
     });
 
     return { success: true };

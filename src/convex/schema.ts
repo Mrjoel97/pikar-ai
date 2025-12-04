@@ -50,6 +50,8 @@ const schema = defineSchema({
     businessModel: v.optional(v.string()),
     // Allow legacy/seeded fields
     tier: v.optional(v.string()),
+    onboardingCompleted: v.optional(v.boolean()),
+    onboardingData: v.optional(v.any()),
     settings: v.optional(
       v.object({
         aiAgentsEnabled: v.array(v.string()),
@@ -141,13 +143,15 @@ const schema = defineSchema({
     type: v.string(),
     businessId: v.id("businesses"),
     description: v.optional(v.string()),
+    personality: v.optional(v.string()),
+    isTemplate: v.optional(v.boolean()),
     config: v.optional(
       v.object({
         model: v.string(),
         temperature: v.number(),
         maxTokens: v.number(),
-        systemPrompt: v.string(),
-        tools: v.array(v.string()),
+        systemPrompt: v.optional(v.string()),
+        tools: v.optional(v.array(v.string())),
       })
     ),
     configuration: v.optional(
@@ -1779,6 +1783,24 @@ const schema = defineSchema({
     .index("by_user", ["userId"])
     .index("by_status", ["status"]),
 
+  setupProgress: defineTable({
+    businessId: v.id("businesses"),
+    userId: v.id("users"),
+    currentStep: v.number(),
+    progress: v.number(),
+    steps: v.array(
+      v.object({
+        id: v.string(),
+        title: v.string(),
+        completed: v.boolean(),
+      })
+    ),
+    data: v.any(),
+    completedAt: v.optional(v.number()),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_user", ["userId"]),
+
   learningCourses: defineTable({
     title: v.string(),
     description: v.string(),
@@ -2392,6 +2414,10 @@ const schema = defineSchema({
     logoUrl: v.optional(v.string()),
     primaryColor: v.optional(v.string()),
     secondaryColor: v.optional(v.string()),
+    tagline: v.optional(v.string()),
+    mission: v.optional(v.string()),
+    voice: v.optional(v.string()),
+    isActive: v.optional(v.boolean()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })

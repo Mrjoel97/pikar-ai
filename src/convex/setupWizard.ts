@@ -2,9 +2,8 @@
 
 import { v } from "convex/values";
 import { action } from "./_generated/server";
-import { api } from "./_generated/api";
+import { internal } from "./_generated/api";
 
-// Generate default content using AI (Node.js action)
 export const generateDefaultContent = action({
   args: {
     businessId: v.id("businesses"),
@@ -14,75 +13,43 @@ export const generateDefaultContent = action({
       v.literal("mission"),
       v.literal("social-post")
     ),
-    context: v.optional(v.object({
+    context: v.object({
       businessName: v.optional(v.string()),
       industry: v.optional(v.string()),
       targetAudience: v.optional(v.string()),
-    })),
+    }),
   },
-  handler: async (ctx, args) => {
-    // Get business details
-    const business = await ctx.runQuery(api.businesses.get, { 
-      id: args.businessId 
-    });
-
-    if (!business) {
-      throw new Error("Business not found");
-    }
-
-    const businessName = args.context?.businessName || business.name;
-    const industry = args.context?.industry || business.industry;
-    const targetAudience = args.context?.targetAudience || "professionals";
-
-    // Generate content based on type
-    let prompt = "";
-    let maxLength = 100;
-
-    switch (args.contentType) {
-      case "bio":
-        prompt = `Write a compelling 2-3 sentence business bio for ${businessName}, a ${industry} company targeting ${targetAudience}. Make it professional yet engaging.`;
-        maxLength = 200;
-        break;
-      case "tagline":
-        prompt = `Create a catchy, memorable tagline (5-8 words) for ${businessName}, a ${industry} company.`;
-        maxLength = 50;
-        break;
-      case "mission":
-        prompt = `Write a clear mission statement (1-2 sentences) for ${businessName} in the ${industry} industry.`;
-        maxLength = 150;
-        break;
-      case "social-post":
-        prompt = `Write an engaging social media post announcing the launch of ${businessName}, a ${industry} company. Include relevant hashtags.`;
-        maxLength = 280;
-        break;
-    }
-
-    // Simulate AI generation (replace with actual OpenAI call)
-    const generated = await simulateAIGeneration(prompt, maxLength);
-
-    return {
-      content: generated,
-      contentType: args.contentType,
+  handler: async (ctx, args): Promise<{ content: string; contentType: string }> => {
+    const prompts = {
+      bio: `Write a professional bio for ${args.context.businessName || "a business"} in the ${args.context.industry || "industry"} targeting ${args.context.targetAudience || "customers"}. Keep it under 150 words.`,
+      tagline: `Create a catchy tagline for ${args.context.businessName || "a business"} in the ${args.context.industry || "industry"}. Make it memorable and under 10 words.`,
+      mission: `Write a mission statement for ${args.context.businessName || "a business"} in the ${args.context.industry || "industry"} serving ${args.context.targetAudience || "customers"}. Keep it inspiring and under 100 words.`,
+      "social-post": `Write an engaging social media post introducing ${args.context.businessName || "a business"} in the ${args.context.industry || "industry"}. Make it friendly and include a call to action.`,
     };
+
+    try {
+      const result: any = await ctx.runAction(internal.openai.generateCompletion, {
+        messages: [
+          {
+            role: "system",
+            content: "You are a professional copywriter helping businesses create compelling content.",
+          },
+          {
+            role: "user",
+            content: prompts[args.contentType],
+          },
+        ],
+        model: "gpt-4o-mini",
+        temperature: 0.8,
+        maxTokens: 300,
+      });
+
+      return {
+        content: result.content,
+        contentType: args.contentType,
+      };
+    } catch (error: any) {
+      throw new Error(`Failed to generate content: ${error.message}`);
+    }
   },
 });
-
-// Helper function to simulate AI generation
-async function simulateAIGeneration(prompt: string, maxLength: number): Promise<string> {
-  // In production, replace with actual OpenAI API call
-  const responses: Record<string, string> = {
-    bio: "We empower businesses to achieve their goals through innovative solutions and exceptional service. Our team is dedicated to delivering results that matter.",
-    tagline: "Innovate. Transform. Succeed.",
-    mission: "To revolutionize the industry by providing cutting-edge solutions that drive growth and success for our clients.",
-    "social-post": "🚀 Exciting news! We're officially launching and ready to transform the way you work. Join us on this journey! #Innovation #Launch #NewBeginnings",
-  };
-
-  // Simple keyword matching for demo
-  for (const [key, value] of Object.entries(responses)) {
-    if (prompt.toLowerCase().includes(key)) {
-      return value;
-    }
-  }
-
-  return "Generated content based on your business profile.";
-}

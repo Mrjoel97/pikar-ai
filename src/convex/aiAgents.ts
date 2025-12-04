@@ -455,60 +455,58 @@ export const seedEnhancedForBusiness = mutation({
   },
 });
 
-export const listTemplates = query({
+export const testAgent: any = action({
   args: {
-    tier: v.optional(v.string()),
-    search: v.optional(v.string()),
-    limit: v.optional(v.number()),
+    businessId: v.id("businesses"),
+    agentConfig: v.object({
+      name: v.string(),
+      description: v.string(),
+      personality: v.string(),
+      capabilities: v.array(v.string()),
+    }),
+    testPrompt: v.string(),
   },
-  handler: async (ctx, args) => {
-    // Source templates from active agent catalog entries; guest-safe
-    const rows = await ctx.db
-      .query("agentCatalog")
-      .withIndex("by_active", (q) => q.eq("active", true))
-      .collect();
-
-    // Map to a flexible template shape to satisfy various UIs
-    let templates = rows.map((a: any) => ({
-      _id: a._id,
-      agent_key: a.agent_key,
-      key: a.agent_key,
-      title: a.display_name ?? a.agent_key,
-      name: a.display_name ?? a.agent_key,
-      short_desc: a.short_desc ?? "",
-      description: a.long_desc ?? a.short_desc ?? "",
-      long_desc: a.long_desc ?? "",
-      capabilities: Array.isArray(a.capabilities) ? a.capabilities : [],
-      tier_restrictions: Array.isArray(a.tier_restrictions) ? a.tier_restrictions : [],
-      tags: Array.isArray(a.capabilities) ? a.capabilities : [],
-      default_model: a.default_model ?? "gpt-4o-mini",
-      active: a.active === true,
-    }));
-
-    // Optional tier filter (if provided)
-    if (args.tier) {
-      const t = String(args.tier).toLowerCase();
-      templates = templates.filter((tpl) =>
-        (tpl.tier_restrictions ?? []).length === 0 ||
-        (tpl.tier_restrictions ?? []).some((x: string) => String(x).toLowerCase() === t)
-      );
+  handler: async (ctx, args): Promise<any> => {
+    // Authentication check
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Authentication required");
     }
 
-    // Optional search filter
-    if (args.search) {
-      const s = String(args.search).toLowerCase();
-      templates = templates.filter((tpl) =>
-        (tpl.title ?? "").toLowerCase().includes(s) ||
-        (tpl.name ?? "").toLowerCase().includes(s) ||
-        (tpl.short_desc ?? "").toLowerCase().includes(s) ||
-        (tpl.description ?? "").toLowerCase().includes(s) ||
-        (tpl.agent_key ?? "").toLowerCase().includes(s)
-      );
-    }
+    try {
+      const systemPrompt = `You are ${args.agentConfig.name}, an AI assistant with the following characteristics:
+Description: ${args.agentConfig.description}
+Personality: ${args.agentConfig.personality}
+Capabilities: ${args.agentConfig.capabilities.join(", ")}
 
-    // Optional limit
-    const limit = typeof args.limit === "number" && args.limit > 0 ? args.limit : undefined;
-    return limit ? templates.slice(0, limit) : templates;
+Respond to the user's message in a way that reflects your personality and capabilities.`;
+
+      // Use string reference to avoid type instantiation depth issues
+      const response = await (ctx as any).runAction("openai:generate", {
+        prompt: `${systemPrompt}\n\nUser: ${args.testPrompt}`,
+        model: "gpt-4o-mini",
+        temperature: 0.7,
+        maxTokens: 500,
+      });
+
+      return {
+        success: true,
+        response: response,
+        config: args.agentConfig,
+      };
+    } catch (error: any) {
+      throw new Error(`Agent test failed: ${error.message}`);
+    }
+  },
+});
+
+export const listTemplates = query({
+  args: {},
+  handler: async (ctx) => {
+    // Return system-level agent templates
+    const allAgents = await ctx.db.query("aiAgents").collect();
+    const templates = allAgents.filter((agent) => (agent as any).isTemplate === true);
+    return templates;
   },
 });
 
