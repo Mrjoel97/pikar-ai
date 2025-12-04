@@ -47,12 +47,13 @@ import IntegrationHub from "@/components/integrations/IntegrationHub";
  * 
  * Main dashboard view for Enterprise tier users. Provides comprehensive
  * business intelligence, global command centers, strategic initiatives,
- * system telemetry, and enterprise-specific controls.
+ * system telemetry, crisis management, and enterprise-specific controls.
  * 
  * Features:
  * - Global Command Center with multi-region data aggregation
  * - Strategic Command Center for initiative tracking
  * - Social Command Center for multi-brand social media management
+ * - Crisis Management Dashboard with real-time alerts
  * - Draggable widget grid with local storage persistence
  * - Integration hub with health monitoring
  * - Feature flag management with tier-based gating
@@ -97,6 +98,12 @@ export function EnterpriseDashboard() {
   const auditLatest = useQuery(
     api.audit.listForBusiness,
     isGuest || !businessId ? "skip" : { businessId, limit: 5 }
+  );
+
+  // Add: Crisis Management Dashboard
+  const crisisDashboard = useQuery(
+    api.crisisManagement.getCrisisDashboard,
+    isGuest || !businessId ? "skip" : { businessId }
   );
 
   const agents = isGuest ? (demoData?.enterprise?.agents || []) : [];
@@ -163,11 +170,11 @@ export function EnterpriseDashboard() {
 
   const revenueTrend = useMemo(
     () => mkTrend((unifiedRevenue ? Math.min(100, (unifiedRevenue / 5000) % 100) : 70)),
-    [unifiedRevenue]
+    [unifiedRevenue, mkTrend]
   );
   const efficiencyTrend = useMemo(
     () => mkTrend(unifiedGlobalEfficiency ?? 75),
-    [unifiedGlobalEfficiency]
+    [unifiedGlobalEfficiency, mkTrend]
   );
 
   const tierRank: Record<string, number> = { solopreneur: 1, startup: 2, sme: 3, enterprise: 4 };
@@ -204,6 +211,35 @@ export function EnterpriseDashboard() {
           <div className="flex items-center justify-between text-sm">
             <span className="text-muted-foreground">Crisis Alerts</span>
             <Badge variant="outline" className="border-green-300 text-green-700">0</Badge>
+          </div>
+        </div>
+      )
+    },
+    {
+      key: "crisis",
+      title: "Crisis Management",
+      content: (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-muted-foreground">Active Alerts</span>
+            <Badge 
+              variant="outline" 
+              className={
+                (crisisDashboard?.activeAlerts ?? 0) > 0
+                  ? "border-red-300 text-red-700"
+                  : "border-green-300 text-green-700"
+              }
+            >
+              {crisisDashboard?.activeAlerts ?? 0}
+            </Badge>
+          </div>
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-muted-foreground">Avg Response Time</span>
+            <span className="font-semibold">{crisisDashboard?.avgResponseTime ?? "N/A"}</span>
+          </div>
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-muted-foreground">Resolution Rate</span>
+            <span className="font-semibold">{crisisDashboard?.resolutionRate ?? 0}%</span>
           </div>
         </div>
       )
@@ -330,6 +366,34 @@ export function EnterpriseDashboard() {
 
   return (
     <div className="space-y-6">
+      {/* Add: Crisis Alert Banner */}
+      {crisisDashboard && crisisDashboard.activeAlerts > 0 && (
+        <Card className="border-red-300 bg-red-50">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <AlertTriangle className="h-5 w-5 text-red-600" />
+                <div>
+                  <div className="font-semibold text-red-900">
+                    {crisisDashboard.activeAlerts} Active Crisis Alert{crisisDashboard.activeAlerts !== 1 ? 's' : ''}
+                  </div>
+                  <div className="text-sm text-red-700">
+                    Immediate attention required
+                  </div>
+                </div>
+              </div>
+              <Button
+                size="sm"
+                variant="destructive"
+                onClick={() => navigate("/workflows")}
+              >
+                View Alerts
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <LazyLoadErrorBoundary moduleName="Global Overview">
         <GlobalOverview 
           businessId={businessId || ""}

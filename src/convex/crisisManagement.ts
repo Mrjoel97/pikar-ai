@@ -416,47 +416,50 @@ export const autoCreateCrisisAlertsForAll = internalAction({
 });
 
 /**
- * Query: Get crisis management dashboard data
+ * Query: Get crisis dashboard metrics for enterprise view
  */
 export const getCrisisDashboard = query({
   args: { businessId: v.id("businesses") },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Unauthorized");
-
-    // Get active alerts
-    const activeAlerts = await ctx.db
+    const alerts = await ctx.db
       .query("crisisAlerts")
       .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
-      .filter((q) => q.neq(q.field("status"), "resolved"))
       .collect();
 
-    // Get recent resolved alerts (last 7 days)
-    const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
-    const recentResolved = await ctx.db
-      .query("crisisAlerts")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
-      .filter((q) => 
-        q.and(
-          q.eq(q.field("status"), "resolved"),
-          q.gte(q.field("resolvedAt"), sevenDaysAgo)
-        )
-      )
-      .collect();
+    const activeAlerts = alerts.filter((a) => a.status === "active").length;
+    const resolvedAlerts = alerts.filter((a) => a.status === "resolved");
 
-    // Calculate metrics
-    const avgResolutionTime = recentResolved.length > 0
-      ? recentResolved.reduce((sum, alert) => 
-          sum + ((alert.resolvedAt || 0) - alert.detectedAt), 0
-        ) / recentResolved.length
-      : 0;
+    // Calculate average response time (in minutes)
+    const responseTimes = resolvedAlerts
+      .filter((a) => a.resolvedAt && a.detectedAt)
+      .map((a) => (a.resolvedAt! - a.detectedAt) / (1000 * 60));
+
+    const avgResponseTime =
+      responseTimes.length > 0
+        ? `${Math.round(responseTimes.reduce((sum, t) => sum + t, 0) / responseTimes.length)}m`
+        : "N/A";
+
+    const resolutionRate =
+      alerts.length > 0
+        ? Math.round((resolvedAlerts.length / alerts.length) * 100)
+        : 0;
 
     return {
-      activeAlerts: activeAlerts.length,
-      criticalAlerts: activeAlerts.filter(a => a.severity === "critical").length,
-      recentResolved: recentResolved.length,
-      avgResolutionTimeMs: avgResolutionTime,
-      alerts: activeAlerts.slice(0, 10), // Top 10 active alerts
+      activeAlerts,
+      totalAlerts: alerts.length,
+      resolvedAlerts: resolvedAlerts.length,
+      avgResponseTime,
+      resolutionRate,
+      recentAlerts: alerts
+        .sort((a, b) => b.detectedAt - a.detectedAt)
+        .slice(0, 5)
+        .map((a) => ({
+          id: a._id,
+          type: a.alertType,
+          severity: a.severity,
+          status: a.status,
+          detectedAt: a.detectedAt,
+        })),
     };
   },
 });
