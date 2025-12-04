@@ -3160,6 +3160,100 @@ const schema = defineSchema({
     .index("by_business", ["businessId"])
     .index("by_business_and_day", ["businessId", "dayOfWeek"]),
 
+  // Help Coach & Tutorials System
+  helpTips: defineTable({
+    title: v.string(),
+    description: v.string(),
+    content: v.optional(v.string()), // HTML content
+    page: v.string(), // Which page this tip appears on
+    tier: v.union(
+      v.literal("solopreneur"),
+      v.literal("startup"),
+      v.literal("sme"),
+      v.literal("enterprise")
+    ),
+    category: v.optional(v.string()),
+    priority: v.optional(v.number()), // Higher = shown first
+    actionUrl: v.optional(v.string()),
+    actionLabel: v.optional(v.string()),
+    relatedTutorialId: v.optional(v.id("tutorials")),
+    isActive: v.boolean(),
+  })
+    .index("by_page_and_tier", ["page", "tier"])
+    .index("by_tier", ["tier"])
+    .index("by_category", ["category"]),
+
+  dismissedTips: defineTable({
+    userId: v.id("users"),
+    tipId: v.id("helpTips"),
+    dismissedAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_user_and_tip", ["userId", "tipId"]),
+
+  tipInteractions: defineTable({
+    userId: v.id("users"),
+    tipId: v.id("helpTips"),
+    action: v.union(v.literal("viewed"), v.literal("clicked"), v.literal("dismissed")),
+    timestamp: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_tip", ["tipId"])
+    .index("by_timestamp", ["timestamp"]),
+
+  tutorials: defineTable({
+    title: v.string(),
+    description: v.string(),
+    category: v.string(),
+    availableTiers: v.array(v.union(
+      v.literal("solopreneur"),
+      v.literal("startup"),
+      v.literal("sme"),
+      v.literal("enterprise")
+    )),
+    totalSteps: v.number(),
+    estimatedMinutes: v.number(),
+    difficulty: v.union(v.literal("beginner"), v.literal("intermediate"), v.literal("advanced")),
+    order: v.optional(v.number()),
+    thumbnailUrl: v.optional(v.string()),
+    isActive: v.boolean(),
+  })
+    .index("by_category", ["category"])
+    .index("by_difficulty", ["difficulty"]),
+
+  tutorialSteps: defineTable({
+    tutorialId: v.id("tutorials"),
+    stepNumber: v.number(),
+    title: v.string(),
+    content: v.string(), // HTML content
+    imageUrl: v.optional(v.string()),
+    videoUrl: v.optional(v.string()),
+    actionRequired: v.optional(v.string()),
+  })
+    .index("by_tutorial", ["tutorialId"]),
+
+  tutorialProgress: defineTable({
+    userId: v.id("users"),
+    tutorialId: v.id("tutorials"),
+    currentStep: v.number(),
+    completedSteps: v.array(v.number()),
+    isCompleted: v.boolean(),
+    startedAt: v.number(),
+    lastAccessedAt: v.number(),
+    completedAt: v.optional(v.number()),
+  })
+    .index("by_user", ["userId"])
+    .index("by_user_and_tutorial", ["userId", "tutorialId"]),
+
+  helpProgress: defineTable({
+    userId: v.id("users"),
+    completedTutorials: v.array(v.id("tutorials")),
+    dismissedTips: v.array(v.id("helpTips")),
+    lastActiveAt: v.number(),
+    helpScore: v.number(), // Gamification score
+  })
+    .index("by_user", ["userId"]),
+
 });
 
 export default schema;

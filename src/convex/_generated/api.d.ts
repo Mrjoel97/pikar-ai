@@ -91,6 +91,8 @@ import type * as governance from "../governance.js";
 import type * as governanceAutomation from "../governanceAutomation.js";
 import type * as governanceRules from "../governanceRules.js";
 import type * as health from "../health.js";
+import type * as helpCoach_assistant from "../helpCoach/assistant.js";
+import type * as helpCoach_tutorials from "../helpCoach/tutorials.js";
 import type * as http from "../http.js";
 import type * as init from "../init.js";
 import type * as initiatives from "../initiatives.js";
@@ -273,6 +275,8 @@ declare const fullApi: ApiFromModules<{
   governanceAutomation: typeof governanceAutomation;
   governanceRules: typeof governanceRules;
   health: typeof health;
+  "helpCoach/assistant": typeof helpCoach_assistant;
+  "helpCoach/tutorials": typeof helpCoach_tutorials;
   http: typeof http;
   init: typeof init;
   initiatives: typeof initiatives;
