@@ -2312,681 +2312,81 @@ const schema = defineSchema({
   })
     .index("by_business", ["businessId"]),
 
-  // Experiments
-  experiments: defineTable({
+  // OKRs - Objectives and Key Results
+  objectives: defineTable({
     businessId: v.id("businesses"),
-    name: v.string(),
-    description: v.optional(v.string()),
-    hypothesis: v.string(),
-    status: v.union(v.literal("draft"), v.literal("running"), v.literal("completed"), v.literal("cancelled")),
-    startDate: v.optional(v.number()),
-    endDate: v.optional(v.number()),
-    createdAt: v.number(),
-  })
-    .index("by_business", ["businessId"]),
-
-  experimentVariants: defineTable({
-    experimentId: v.id("experiments"),
-    name: v.string(),
-    description: v.optional(v.string()),
-    config: v.any(),
-    trafficAllocation: v.number(),
-  })
-    .index("by_experiment", ["experimentId"]),
-
-  experimentResults: defineTable({
-    experimentId: v.id("experiments"),
-    variantId: v.id("experimentVariants"),
-    metric: v.string(),
-    value: v.number(),
-    timestamp: v.number(),
-  })
-    .index("by_experiment", ["experimentId"]),
-
-  // Invoices
-  invoices: defineTable({
-    businessId: v.id("businesses"),
-    invoiceNumber: v.string(),
-    clientName: v.string(),
-    clientEmail: v.string(),
-    amount: v.number(),
-    currency: v.string(),
-    status: v.union(v.literal("draft"), v.literal("sent"), v.literal("paid"), v.literal("overdue")),
-    dueDate: v.number(),
-    createdAt: v.number(),
-    paidAt: v.optional(v.number()),
-  })
-    .index("by_business", ["businessId"]),
-
-  // KMS Configuration
-  kmsConfigs: defineTable({
-    businessId: v.id("businesses"),
-    provider: v.union(v.literal("aws"), v.literal("azure"), v.literal("google")),
-    keyId: v.string(),
-    region: v.optional(v.string()),
-    keyVaultUrl: v.optional(v.string()),
-    projectId: v.optional(v.string()),
-    location: v.optional(v.string()),
-    keyRing: v.optional(v.string()),
-    credentials: v.optional(v.string()),
-    active: v.boolean(),
-    createdAt: v.number(),
-    updatedAt: v.optional(v.number()),
-  })
-    .index("by_business", ["businessId"]),
-
-  kmsEncryptionPolicies: defineTable({
-    businessId: v.id("businesses"),
-    name: v.string(),
-    description: v.string(),
-    targetTables: v.array(v.string()),
-    targetFields: v.array(v.string()),
-    encryptionLevel: v.union(v.literal("field"), v.literal("record"), v.literal("table")),
-    mandatory: v.boolean(),
-    active: v.boolean(),
-    createdAt: v.number(),
-    updatedAt: v.number(),
-  })
-    .index("by_business", ["businessId"]),
-
-  // Theme Versions
-  themeVersions: defineTable({
-    businessId: v.id("businesses"),
-    brandId: v.optional(v.id("brands")),
-    version: v.string(),
-    theme: v.any(),
-    isActive: v.boolean(),
-    createdAt: v.number(),
-  })
-    .index("by_business", ["businessId"])
-    .index("by_brand", ["brandId"]),
-
-  // Brands table
-  brands: defineTable({
-    businessId: v.id("businesses"),
-    name: v.string(),
-    description: v.optional(v.string()),
-    colors: v.optional(v.any()),
-    fonts: v.optional(v.any()),
-    logo: v.optional(v.string()),
-    // Add missing fields
-    isDefault: v.optional(v.boolean()),
-    logoUrl: v.optional(v.string()),
-    primaryColor: v.optional(v.string()),
-    secondaryColor: v.optional(v.string()),
-    tagline: v.optional(v.string()),
-    mission: v.optional(v.string()),
-    voice: v.optional(v.string()),
-    isActive: v.optional(v.boolean()),
-    createdAt: v.number(),
-    updatedAt: v.number(),
-  })
-    .index("by_business", ["businessId"])
-    .index("by_business_and_default", ["businessId", "isDefault"]),
-
-  // SAML Configs
-  samlConfigs: defineTable({
-    businessId: v.id("businesses"),
-    entityId: v.string(),
-    ssoUrl: v.string(),
-    certificate: v.string(),
-    isActive: v.boolean(),
-    createdAt: v.number(),
-    updatedAt: v.number(),
-  })
-    .index("by_business", ["businessId"]),
-
-  // OIDC Configs
-  oidcConfigs: defineTable({
-    businessId: v.id("businesses"),
-    issuer: v.string(),
-    clientId: v.string(),
-    clientSecret: v.string(),
-    isActive: v.boolean(),
-    createdAt: v.number(),
-    updatedAt: v.number(),
-  })
-    .index("by_business", ["businessId"]),
-
-  // SCIM User Mappings
-  scimUserMappings: defineTable({
-    businessId: v.id("businesses"),
-    externalId: v.string(),
-    userId: v.id("users"),
-    attributes: v.any(),
-    createdAt: v.number(),
-    updatedAt: v.number(),
-  })
-    .index("by_business", ["businessId"])
-    .index("by_external_id", ["externalId"]),
-
-  // SCIM Group Mappings
-  scimGroupMappings: defineTable({
-    businessId: v.id("businesses"),
-    externalId: v.string(),
-    groupName: v.string(),
-    members: v.array(v.id("users")),
-    createdAt: v.number(),
-    updatedAt: v.number(),
-  })
-    .index("by_business", ["businessId"]),
-
-  // SCIM Attribute Mappings
-  scimAttributeMappings: defineTable({
-    businessId: v.id("businesses"),
-    scimAttribute: v.string(),
-    internalAttribute: v.string(),
-    transformation: v.optional(v.string()),
-    createdAt: v.number(),
-  })
-    .index("by_business", ["businessId"]),
-
-  // SCIM Sync Log
-  scimSyncLog: defineTable({
-    businessId: v.id("businesses"),
-    operation: v.string(),
-    status: v.union(v.literal("success"), v.literal("failed")),
-    details: v.any(),
-    timestamp: v.number(),
-  })
-    .index("by_business", ["businessId"]),
-
-  // KMS Key Rotations
-  kmsKeyRotations: defineTable({
-    businessId: v.id("businesses"),
-    configId: v.id("kmsConfigs"),
-    rotationIntervalDays: v.number(),
-    autoRotate: v.boolean(),
-    nextRotationDate: v.number(),
-    lastRotationDate: v.number(),
-    status: v.union(v.literal("scheduled"), v.literal("completed"), v.literal("failed")),
-    createdAt: v.number(),
-  })
-    .index("by_business", ["businessId"]),
-
-  // KMS Usage Logs
-  kmsUsageLogs: defineTable({
-    businessId: v.id("businesses"),
-    keyId: v.string(),
-    operation: v.string(),
-    userId: v.optional(v.id("users")),
-    timestamp: v.number(),
-    configId: v.optional(v.id("kmsConfigs")),
-    success: v.optional(v.boolean()),
-    dataSize: v.optional(v.number()),
-    dataType: v.optional(v.string()),
-  })
-    .index("by_business", ["businessId"])
-    .index("by_business_and_timestamp", ["businessId", "timestamp"]),
-
-  // Social Media Management
-  socialAccounts: defineTable({
-    businessId: v.id("businesses"),
-    platform: v.union(v.literal("twitter"), v.literal("linkedin"), v.literal("facebook")),
-    accountId: v.string(),
-    accountName: v.string(),
-    accessToken: v.string(),
-    refreshToken: v.optional(v.string()),
-    expiresAt: v.optional(v.number()),
-    isActive: v.boolean(),
-    connectedAt: v.number(),
-    lastSyncAt: v.optional(v.number()),
-  })
-    .index("by_business", ["businessId"])
-    .index("by_platform", ["platform"]),
-
-  socialPosts: defineTable({
-    businessId: v.id("businesses"),
-    createdBy: v.id("users"),
-    platforms: v.array(v.union(v.literal("twitter"), v.literal("linkedin"), v.literal("facebook"))),
-    content: v.string(),
-    mediaUrls: v.optional(v.array(v.id("_storage"))),
-    characterCount: v.number(),
-    scheduledAt: v.optional(v.number()),
-    postedAt: v.optional(v.number()),
-    status: v.union(
-      v.literal("draft"),
-      v.literal("scheduled"),
-      v.literal("posting"),
-      v.literal("posted"),
-      v.literal("failed")
-    ),
-    approvalStatus: v.optional(v.union(
-      v.literal("pending"),
-      v.literal("approved"),
-      v.literal("rejected"),
-      v.literal("not_required")
-    )),
-    errorMessage: v.optional(v.string()),
-    postIds: v.optional(v.object({
-      twitter: v.optional(v.string()),
-      linkedin: v.optional(v.string()),
-      facebook: v.optional(v.string()),
-    })),
-    performanceMetrics: v.optional(v.object({
-      impressions: v.number(),
-      engagements: v.number(),
-      clicks: v.number(),
-      shares: v.number(),
-      comments: v.number(),
-      likes: v.number(),
-      lastUpdated: v.number(),
-    })),
-  })
-    .index("by_business", ["businessId"])
-    .index("by_business_and_status", ["businessId", "status"])
-    .index("by_status_and_scheduled", ["status"]),
-
-  // Team Chat
-  teamChannels: defineTable({
-    businessId: v.id("businesses"),
-    name: v.string(),
-    description: v.optional(v.string()),
-    isPrivate: v.boolean(),
-    createdBy: v.id("users"),
-    createdAt: v.number(),
-  })
-    .index("by_business", ["businessId"]),
-
-  teamMessages: defineTable({
-    businessId: v.id("businesses"),
-    senderId: v.id("users"),
-    channelId: v.id("teamChannels"),
-    parentMessageId: v.optional(v.id("teamMessages")),
-    content: v.string(),
-    attachments: v.optional(v.array(v.object({
-      name: v.string(),
-      url: v.string(),
-      type: v.string(),
-      size: v.optional(v.number()),
-    }))),
-    reactions: v.array(v.object({
-      userId: v.id("users"),
-      emoji: v.string(),
-    })),
-    editedAt: v.optional(v.number()),
-    createdAt: v.number(),
-  })
-    .index("by_business", ["businessId"])
-    .index("by_business_and_channel", ["businessId", "channelId"])
-    .index("by_parent", ["parentMessageId"]),
-
-  // Vendor Management
-  vendors: defineTable({
-    businessId: v.id("businesses"),
-    name: v.string(),
-    category: v.string(),
-    status: v.union(v.literal("active"), v.literal("inactive"), v.literal("pending")),
-    contactName: v.string(),
-    contactEmail: v.string(),
-    contactPhone: v.optional(v.string()),
-    contractStart: v.number(),
-    contractEnd: v.number(),
-    contractValue: v.number(),
-    performanceScore: v.number(),
-    riskLevel: v.union(v.literal("low"), v.literal("medium"), v.literal("high")),
-    lastReviewDate: v.number(),
-    notes: v.optional(v.string()),
-    createdAt: v.number(),
-    updatedAt: v.number(),
-  })
-    .index("by_business", ["businessId"]),
-
-  vendorPerformanceMetrics: defineTable({
-    businessId: v.id("businesses"),
-    vendorId: v.id("vendors"),
-    onTimeDelivery: v.number(),
-    qualityScore: v.number(),
-    responsiveness: v.number(),
-    costEfficiency: v.number(),
-    overallScore: v.number(),
-    notes: v.optional(v.string()),
-    recordedAt: v.number(),
-    recordedBy: v.string(),
-  })
-    .index("by_business", ["businessId"])
-    .index("by_vendor", ["vendorId"]),
-
-  // Workflow Handoffs
-  workflowHandoffs: defineTable({
-    businessId: v.id("businesses"),
-    workflowId: v.id("workflows"),
-    stepId: v.id("workflowSteps"),
-    fromDepartment: v.string(),
-    toDepartment: v.string(),
-    status: v.union(v.literal("pending"), v.literal("accepted"), v.literal("rejected")),
-    initiatedBy: v.id("users"),
-    initiatedAt: v.number(),
-    resolvedBy: v.optional(v.id("users")),
-    resolvedAt: v.optional(v.number()),
-    notes: v.optional(v.string()),
-  })
-    .index("by_business", ["businessId"])
-    .index("by_workflow", ["workflowId"])
-    .index("by_status", ["status"]),
-
-  // Revenue Attribution
-  revenueTouchpoints: defineTable({
-    businessId: v.id("businesses"),
-    contactId: v.id("contacts"),
-    channel: v.union(
-      v.literal("email"),
-      v.literal("social"),
-      v.literal("paid"),
-      v.literal("referral"),
-      v.literal("organic"),
-      v.literal("direct")
-    ),
-    campaignId: v.optional(v.string()),
-    timestamp: v.number(),
-    metadata: v.optional(v.any()),
-  })
-    .index("by_business", ["businessId"])
-    .index("by_contact", ["contactId"])
-    .index("by_channel", ["channel"])
-    .index("by_contact_and_business", ["contactId", "businessId"]),
-
-  revenueConversions: defineTable({
-    businessId: v.id("businesses"),
-    contactId: v.id("contacts"),
-    revenue: v.number(),
-    amount: v.optional(v.number()),
-    currency: v.optional(v.string()),
-    conversionType: v.string(),
-    touchpointCount: v.number(),
-    attributions: v.any(),
-    metadata: v.optional(v.any()),
-    convertedAt: v.optional(v.number()),
-    timestamp: v.number(),
-    attributionModel: v.optional(v.string()),
-    touchpointIds: v.optional(v.array(v.id("revenueTouchpoints"))),
-  })
-    .index("by_business", ["businessId"])
-    .index("by_contact", ["contactId"])
-    .index("by_business_and_timestamp", ["businessId", "timestamp"]),
-
-  // Training & Support
-  trainingSessions: defineTable({
-    businessId: v.optional(v.id("businesses")),
-    userId: v.optional(v.id("users")),
     title: v.string(),
     description: v.optional(v.string()),
-    sessionType: v.union(v.literal("onboarding"), v.literal("training"), v.literal("support")),
-    status: v.union(v.literal("scheduled"), v.literal("in_progress"), v.literal("completed"), v.literal("cancelled")),
-    scheduledAt: v.number(),
-    completedAt: v.optional(v.number()),
-    duration: v.optional(v.number()),
-    notes: v.optional(v.string()),
-  })
-    .index("by_business", ["businessId"])
-    .index("by_user", ["userId"])
-    .index("by_status", ["status"]),
-
-  // Webhook Management
-  webhooks: defineTable({
-    businessId: v.id("businesses"),
-    name: v.string(),
-    url: v.string(),
-    events: v.array(v.string()),
-    secret: v.string(),
-    isActive: v.boolean(),
-    retryPolicy: v.object({
-      maxRetries: v.number(),
-      retryDelay: v.number(),
+    ownerId: v.id("users"),
+    parentObjectiveId: v.optional(v.id("objectives")),
+    timeframe: v.object({
+      startDate: v.number(),
+      endDate: v.number(),
     }),
-    createdAt: v.number(),
-    updatedAt: v.number(),
-  })
-    .index("by_business", ["businessId"]),
-
-  webhookDeliveries: defineTable({
-    webhookId: v.id("webhooks"),
-    businessId: v.id("businesses"),
-    event: v.string(),
-    payload: v.any(),
-    status: v.union(v.literal("pending"), v.literal("success"), v.literal("failed")),
-    attempts: v.number(),
-    lastAttemptAt: v.number(),
-    responseCode: v.optional(v.number()),
-    errorMessage: v.optional(v.string()),
-    createdAt: v.number(),
-  })
-    .index("by_webhook", ["webhookId"])
-    .index("by_business", ["businessId"])
-    .index("by_status", ["status"]),
-
-  // Audit Report Schedules
-  auditReportSchedules: defineTable({
-    businessId: v.id("businesses"),
-    name: v.string(),
-    reportType: v.string(),
-    schedule: v.string(),
-    recipients: v.array(v.string()),
-    isActive: v.boolean(),
-    lastRunAt: v.optional(v.number()),
-    nextRunAt: v.number(),
-    createdAt: v.number(),
-    updatedAt: v.number(),
-  })
-    .index("by_business", ["businessId"]),
-
-  // Branding Configs
-  brandingConfigs: defineTable({
-    businessId: v.id("businesses"),
-    brandId: v.optional(v.id("brands")),
-    primaryColor: v.string(),
-    secondaryColor: v.string(),
-    accentColor: v.optional(v.string()),
-    logoUrl: v.optional(v.string()),
-    fontFamily: v.optional(v.string()),
-    customCss: v.optional(v.string()),
+    category: v.union(
+      v.literal("company"),
+      v.literal("department"),
+      v.literal("team"),
+      v.literal("individual")
+    ),
+    status: v.union(
+      v.literal("active"),
+      v.literal("at-risk"),
+      v.literal("completed"),
+      v.literal("cancelled")
+    ),
+    progress: v.number(),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
     .index("by_business", ["businessId"])
-    .index("by_brand", ["brandId"]),
+    .index("by_owner", ["ownerId"])
+    .index("by_parent", ["parentObjectiveId"]),
 
-  // Crisis Alerts
-  crisisAlerts: defineTable({
-    businessId: v.id("businesses"),
-    alertType: v.string(),
-    severity: v.union(v.literal("low"), v.literal("medium"), v.literal("high"), v.literal("critical")),
+  keyResults: defineTable({
+    objectiveId: v.id("objectives"),
     title: v.string(),
-    description: v.string(),
-    status: v.union(v.literal("active"), v.literal("monitoring"), v.literal("resolved")),
-    detectedAt: v.number(),
-    resolvedAt: v.optional(v.number()),
-    assignedTo: v.optional(v.id("users")),
-  })
-    .index("by_business", ["businessId"])
-    .index("by_status", ["status"]),
-
-  // Customer Journey Stages
-  customerJourneyStages: defineTable({
-    businessId: v.id("businesses"),
-    name: v.string(),
     description: v.optional(v.string()),
-    order: v.number(),
-    touchpoints: v.array(v.string()),
-    metrics: v.optional(v.any()),
+    targetValue: v.number(),
+    currentValue: v.number(),
+    unit: v.string(),
+    ownerId: v.id("users"),
+    measurementType: v.union(
+      v.literal("number"),
+      v.literal("percentage"),
+      v.literal("currency"),
+      v.literal("boolean")
+    ),
+    status: v.union(v.literal("active"), v.literal("completed"), v.literal("cancelled")),
+    progress: v.number(),
     createdAt: v.number(),
     updatedAt: v.number(),
-    // Add fields used by code as instance tracker
-    contactId: v.optional(v.id("contacts")),
-    enteredAt: v.optional(v.number()),
-    exitedAt: v.optional(v.number()),
-    stage: v.optional(v.string()),
   })
-    .index("by_business", ["businessId"])
-    .index("by_contact", ["contactId"]),
+    .index("by_objective", ["objectiveId"])
+    .index("by_owner", ["ownerId"]),
 
-  // Department Metrics
-  departmentMetrics: defineTable({
-    businessId: v.id("businesses"),
-    department: v.string(),
-    metricName: v.string(),
-    value: v.number(),
-    target: v.optional(v.number()),
-    unit: v.string(),
-    period: v.string(),
-    timestamp: v.number(),
-  })
-    .index("by_business", ["businessId"])
-    .index("by_business_and_department", ["businessId", "department"]),
-
-  // Email Analytics
-  emailAnalytics: defineTable({
-    businessId: v.id("businesses"),
-    emailId: v.optional(v.id("emails")),
-    campaignId: v.optional(v.id("emailCampaigns")),
-    sent: v.number(),
-    delivered: v.number(),
-    opened: v.number(),
-    clicked: v.number(),
-    bounced: v.number(),
-    unsubscribed: v.number(),
-    complained: v.number(),
-    timestamp: v.number(),
-  })
-    .index("by_business", ["businessId"])
-    .index("by_email", ["emailId"])
-    .index("by_campaign", ["campaignId"]),
-
-  // Goal Updates (for activity tracking)
-  goalUpdates: defineTable({
-    businessId: v.id("businesses"),
-    goalId: v.id("teamGoals"),
-    updatedBy: v.id("users"),
+  keyResultUpdates: defineTable({
+    keyResultId: v.id("keyResults"),
     previousValue: v.number(),
     newValue: v.number(),
-    timestamp: v.number(),
-    notes: v.optional(v.string()),
+    note: v.optional(v.string()),
+    updatedBy: v.id("users"),
+    createdAt: v.number(),
   })
-    .index("by_business", ["businessId"])
-    .index("by_goal", ["goalId"])
-    .index("by_updated_by", ["updatedBy"]),
+    .index("by_key_result", ["keyResultId"]),
 
-  // Goal Milestones
-  goalMilestones: defineTable({
-    businessId: v.id("businesses"),
-    goalId: v.id("teamGoals"),
+  milestones: defineTable({
+    keyResultId: v.id("keyResults"),
     title: v.string(),
     description: v.optional(v.string()),
     targetDate: v.number(),
-    status: v.union(v.literal("pending"), v.literal("in_progress"), v.literal("completed"), v.literal("missed")),
+    targetValue: v.number(),
+    completed: v.boolean(),
+    actualValue: v.optional(v.number()),
     completedAt: v.optional(v.number()),
     createdAt: v.number(),
   })
-    .index("by_business", ["businessId"])
-    .index("by_goal", ["goalId"]),
-
-  // Initiative Phases
-  initiativePhases: defineTable({
-    businessId: v.id("businesses"),
-    initiativeId: v.id("initiatives"),
-    name: v.string(),
-    description: v.optional(v.string()),
-    order: v.number(),
-    status: v.union(v.literal("pending"), v.literal("active"), v.literal("completed")),
-    startDate: v.optional(v.number()),
-    endDate: v.optional(v.number()),
-    createdAt: v.number(),
-  })
-    .index("by_business", ["businessId"])
-    .index("by_initiative", ["initiativeId"]),
-
-  // KPI Targets
-  kpiTargets: defineTable({
-    businessId: v.id("businesses"),
-    kpiName: v.string(),
-    targetValue: v.number(),
-    currentValue: v.number(),
-    unit: v.string(),
-    period: v.string(),
-    deadline: v.optional(v.number()),
-    createdAt: v.number(),
-    updatedAt: v.number(),
-  })
-    .index("by_business", ["businessId"]),
-
-  // Policy Acknowledgments
-  policyAcknowledgments: defineTable({
-    businessId: v.id("businesses"),
-    policyId: v.id("policies"),
-    userId: v.id("users"),
-    acknowledgedAt: v.number(),
-    ipAddress: v.optional(v.string()),
-  })
-    .index("by_business", ["businessId"])
-    .index("by_policy", ["policyId"])
-    .index("by_user", ["userId"]),
-
-  // Policy Distributions
-  policyDistributions: defineTable({
-    businessId: v.id("businesses"),
-    policyId: v.id("policies"),
-    distributedTo: v.array(v.id("users")),
-    distributedAt: v.number(),
-    distributedBy: v.id("users"),
-    dueDate: v.optional(v.number()),
-  })
-    .index("by_business", ["businessId"])
-    .index("by_policy", ["policyId"]),
-
-  // Social Media Docs
-  socialMediaDocs: defineTable({
-    businessId: v.id("businesses"),
-    platform: v.union(v.literal("twitter"), v.literal("linkedin"), v.literal("facebook"), v.literal("instagram")),
-    title: v.string(),
-    content: v.string(),
-    category: v.string(),
-    isPublished: v.boolean(),
-    createdAt: v.number(),
-    updatedAt: v.number(),
-  })
-    .index("by_business", ["businessId"])
-    .index("by_platform", ["platform"]),
-
-  // Strategic Goals
-  strategicGoals: defineTable({
-    businessId: v.id("businesses"),
-    title: v.string(),
-    description: v.optional(v.string()),
-    targetValue: v.number(),
-    currentValue: v.number(),
-    unit: v.string(),
-    deadline: v.number(),
-    status: v.union(v.literal("active"), v.literal("completed"), v.literal("cancelled")),
-    ownerId: v.id("users"),
-    createdAt: v.number(),
-    updatedAt: v.number(),
-  })
-    .index("by_business", ["businessId"])
-    .index("by_owner", ["ownerId"]),
-
-  // Team Roles
-  teamRoles: defineTable({
-    businessId: v.id("businesses"),
-    userId: v.id("users"),
-    role: v.string(),
-    permissions: v.array(v.string()),
-    assignedAt: v.number(),
-    assignedBy: v.id("users"),
-  })
-    .index("by_business", ["businessId"])
-    .index("by_user", ["userId"]),
-
-  // Workflow Metrics
-  workflowMetrics: defineTable({
-    businessId: v.id("businesses"),
-    workflowId: v.id("workflows"),
-    metricName: v.string(),
-    value: v.number(),
-    unit: v.string(),
-    timestamp: v.number(),
-  })
-    .index("by_business", ["businessId"])
-    .index("by_workflow", ["workflowId"]),
+    .index("by_key_result", ["keyResultId"]),
 
   // Add missing tables
   activityFeed: defineTable({
