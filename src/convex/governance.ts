@@ -1,4 +1,4 @@
-import { query, mutation } from "./_generated/server";
+import { query, mutation, internalMutation } from "./_generated/server";
 import { v } from "convex/values";
 import { Id } from "./_generated/dataModel";
 
@@ -116,5 +116,88 @@ export const validateWorkflow = query({
   args: { workflow: v.any() },
   handler: async (ctx, args) => {
     return computeGovernanceHealth(args.workflow);
+  },
+});
+
+export const enforceWorkflowCompliance = internalMutation({
+  args: {
+    businessId: v.id("businesses"),
+    workflowId: v.id("workflows"),
+    violations: v.array(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const workflow = await ctx.db.get(args.workflowId);
+    if (!workflow) return;
+
+    // Update workflow governance health
+    await ctx.db.patch(args.workflowId, {
+      governanceHealth: {
+        score: Math.max(0, 100 - args.violations.length * 20),
+        issues: args.violations,
+        updatedAt: Date.now(),
+      },
+    });
+
+    // Create escalation if critical violations exist
+    const criticalViolations = args.violations.filter(v => 
+      v.includes("critical") || v.includes("security") || v.includes("compliance")
+    );
+
+    if (criticalViolations.length > 0) {
+      await ctx.db.insert("governanceEscalations", {
+        businessId: args.businessId,
+        title: `Critical Compliance Violations in ${workflow.name}`,
+        description: `Workflow has ${criticalViolations.length} critical violations that require immediate attention.`,
+        priority: "urgent",
+        status: "pending",
+        createdAt: Date.now(),
+      });
+    }
+
+    // Log audit event
+    await ctx.db.insert("audit_logs", {
+      businessId: args.businessId,
+      action: "governance_enforcement",
+      entityType: "workflow",
+      entityId: args.workflowId,
+      details: {
+        violations: args.violations,
+        healthScore: 100 - args.violations.length * 20,
+      },
+      createdAt: Date.now(),
+    });
+  },
+});
+
+export const getComplianceScore = query({
+  args: { businessId: v.id("businesses") },
+  handler: async (ctx, args) => {
+    const workflows = await ctx.db
+      .query("workflows")
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .collect();
+
+    const violations = await ctx.db
+      .query("governanceViolations")
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .filter((q) => q.eq(q.field("status"), "open"))
+      .collect();
+
+    const totalWorkflows = workflows.length;
+    const workflowsWithIssues = workflows.filter(
+      (w) => w.governanceHealth && w.governanceHealth.score < 80
+    ).length;
+
+    const complianceRate = totalWorkflows > 0
+      ? ((totalWorkflows - workflowsWithIssues) / totalWorkflows) * 100
+      : 100;
+
+    return {
+      complianceRate: Math.round(complianceRate),
+      totalWorkflows,
+      workflowsWithIssues,
+      openViolations: violations.length,
+      criticalViolations: violations.filter((v) => v.severity === "critical").length,
+    };
   },
 });
