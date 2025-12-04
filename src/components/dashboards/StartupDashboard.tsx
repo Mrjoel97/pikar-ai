@@ -390,7 +390,11 @@ const pendingApprovals = useQuery(
 
       <LazyLoadErrorBoundary moduleName="Workflow Assignments">
         <Suspense fallback={<div className="text-muted-foreground">Loading workflows...</div>}>
-          <WorkflowAssignments businessId={businessId || ""} userId={businessId || ""} />
+          {businessId && typeof businessId === 'string' && businessId.length > 0 ? (
+            <WorkflowAssignments businessId={businessId as Id<"businesses">} userId={businessId as Id<"users">} />
+          ) : (
+            <div className="text-muted-foreground text-center py-8">Sign in to view workflow assignments</div>
+          )}
         </Suspense>
       </LazyLoadErrorBoundary>
       </div>
@@ -403,13 +407,21 @@ const pendingApprovals = useQuery(
 
       <LazyLoadErrorBoundary moduleName="Customer Journey Map">
         <Suspense fallback={<div className="text-muted-foreground">Loading customer journey...</div>}>
-          <CustomerJourneyMap businessId={businessId || ""} />
+          {businessId && typeof businessId === 'string' && businessId.length > 0 ? (
+            <CustomerJourneyMap businessId={businessId as Id<"businesses">} />
+          ) : (
+            <div className="text-muted-foreground text-center py-8">Sign in to view customer journey</div>
+          )}
         </Suspense>
       </LazyLoadErrorBoundary>
 
       <LazyLoadErrorBoundary moduleName="Revenue Attribution">
         <Suspense fallback={<div className="text-muted-foreground">Loading revenue data...</div>}>
-          <RevenueAttribution businessId={businessId || ""} />
+          {businessId && typeof businessId === 'string' && businessId.length > 0 ? (
+            <RevenueAttribution businessId={businessId as Id<"businesses">} />
+          ) : (
+            <div className="text-muted-foreground text-center py-8">Sign in to view revenue attribution</div>
+          )}
         </Suspense>
       </LazyLoadErrorBoundary>
 
@@ -427,13 +439,21 @@ const pendingApprovals = useQuery(
 
       <LazyLoadErrorBoundary moduleName="Collaboration Feed">
         <Suspense fallback={<div className="text-muted-foreground">Loading collaboration feed...</div>}>
-          <CollaborationFeed businessId={businessId || ""} />
+          {businessId && typeof businessId === 'string' && businessId.length > 0 ? (
+            <CollaborationFeed businessId={businessId as Id<"businesses">} />
+          ) : (
+            <div className="text-muted-foreground text-center py-8">Sign in to view collaboration feed</div>
+          )}
         </Suspense>
       </LazyLoadErrorBoundary>
 
       <LazyLoadErrorBoundary moduleName="Goals Dashboard">
         <Suspense fallback={<div className="text-muted-foreground">Loading goals...</div>}>
-          <GoalsDashboardWidget businessId={businessId || ""} />
+          {businessId && typeof businessId === 'string' && businessId.length > 0 ? (
+            <GoalsDashboardWidget businessId={businessId as Id<"businesses">} />
+          ) : (
+            <div className="text-muted-foreground text-center py-8">Sign in to view goals</div>
+          )}
         </Suspense>
       </LazyLoadErrorBoundary>
 
