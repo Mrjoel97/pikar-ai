@@ -301,6 +301,9 @@ export default function Workflows() {
             Design, execute, and monitor automated workflows
           </p>
         </div>
+        <Button variant="outline" onClick={() => navigate("/dashboard")}>
+          Back to Dashboard
+        </Button>
       </div>
 
       <WorkflowCreateDialog

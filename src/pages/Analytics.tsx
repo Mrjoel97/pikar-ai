@@ -133,6 +133,7 @@ export default function AnalyticsPage() {
         </div>
         {/* Header actions */}
         <div className="flex items-center gap-2 flex-wrap">
+          <Button variant="outline" onClick={() => navigate("/dashboard")}>Back to Dashboard</Button>
           <Button variant="outline" onClick={() => handleExport("csv")}>Export CSV</Button>
           <Button variant="outline" onClick={() => handleExport("xlsx")}>Export Excel</Button>
           <Button variant="outline" onClick={() => handleExport("pdf")}>Export PDF</Button>

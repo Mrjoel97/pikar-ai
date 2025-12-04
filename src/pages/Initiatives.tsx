@@ -121,6 +121,7 @@ export default function InitiativesPage() {
               </SelectContent>
             </Select>
           ) : null}
+          <Button variant="outline" onClick={() => navigate("/dashboard")}>Back to Dashboard</Button>
           <Button variant="outline" onClick={() => navigate("/onboarding")}>Onboarding</Button>
         </div>
       </div>

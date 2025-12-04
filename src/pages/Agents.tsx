@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router";
 import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
@@ -132,6 +133,7 @@ class AgentsErrorBoundary extends React.Component<{ children: React.ReactNode },
 }
 
 const AgentsPage: React.FC = () => {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const location = useLocation();
   const isDirectory = location.pathname === "/ai-agents";
@@ -369,6 +371,9 @@ const AgentsPage: React.FC = () => {
 
           {/* Tier Switcher + Publish Gate badge */}
           <div className="flex items-center gap-3">
+            <Button variant="outline" onClick={() => navigate("/dashboard")}>
+              Back to Dashboard
+            </Button>
             {publishGateOk !== undefined && (
               <span
                 className={`rounded-full px-3 py-1 text-xs font-medium ${
