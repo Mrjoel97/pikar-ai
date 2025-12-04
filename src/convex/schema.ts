@@ -69,8 +69,45 @@ const schema = defineSchema({
     ),
   })
     .index("by_owner", ["ownerId"])
-    // Keep a single team member index
     .index("by_team_member", ["teamMembers"]),
+
+  // Add Team Chat tables
+  teamChannels: defineTable({
+    businessId: v.id("businesses"),
+    name: v.string(),
+    description: v.optional(v.string()),
+    isPrivate: v.boolean(),
+    createdBy: v.id("users"),
+    members: v.optional(v.array(v.id("users"))),
+    createdAt: v.number(),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_created_by", ["createdBy"]),
+
+  teamMessages: defineTable({
+    businessId: v.id("businesses"),
+    channelId: v.id("teamChannels"),
+    senderId: v.id("users"),
+    content: v.string(),
+    parentMessageId: v.optional(v.id("teamMessages")),
+    attachments: v.optional(v.array(v.object({
+      name: v.string(),
+      url: v.string(),
+      type: v.string(),
+      size: v.optional(v.number()),
+    }))),
+    reactions: v.array(v.object({
+      emoji: v.string(),
+      userId: v.id("users"),
+    })),
+    editedAt: v.optional(v.number()),
+    deletedAt: v.optional(v.number()),
+    createdAt: v.number(),
+  })
+    .index("by_channel", ["channelId"])
+    .index("by_sender", ["senderId"])
+    .index("by_parent", ["parentMessageId"])
+    .index("by_business", ["businessId"]),
 
   initiatives: defineTable({
     businessId: v.id("businesses"),
