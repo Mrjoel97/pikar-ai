@@ -113,11 +113,11 @@ export function StartupDashboard() {
   // Add: Growth metrics query
   const growthMetrics = useQuery(
     api.kpis.getGrowthMetrics,
-    isGuest || !businessId ? undefined : { businessId, timeRange: "30d" }
+    isGuest || !businessId ? "skip" : { businessId, timeRange: "30d" }
   );
 
   // Use growth metrics or fallback to demo data
-  const metrics = growthMetrics || (isGuest ? {
+  const metrics = (growthMetrics && growthMetrics !== "skip") ? growthMetrics : (isGuest ? {
     summary: {
       totalRevenue: 45000,
       activeCustomers: 127,
@@ -149,7 +149,7 @@ export function StartupDashboard() {
 
   const upgradeNudges = useQuery(
     api.telemetry.getUpgradeNudges,
-    isGuest || !businessId ? undefined : { businessId }
+    isGuest || !businessId ? "skip" : { businessId }
   );
 
   const UpgradeCTA = ({ feature }: { feature: string }) => (
@@ -194,16 +194,16 @@ export function StartupDashboard() {
 
   const envStatus = useQuery(
     api.health.envStatus,
-    isGuest || !businessId ? undefined : { businessId }
+    isGuest || !businessId ? "skip" : { businessId }
   );
 
   const recentActivity = useQuery(
     api.activityFeed.getRecent,
-    isGuest || !businessId ? undefined : { businessId, limit: 10 }
+    isGuest || !businessId ? "skip" : { businessId, limit: 10 }
   );
 const pendingApprovals = useQuery(
   api.approvals.getApprovalQueue,
-  isGuest || !businessId ? undefined : { businessId, status: "pending" as const }
+  isGuest || !businessId ? "skip" : { businessId, status: "pending" as const }
 );
 
   // Fallback counters
@@ -214,7 +214,7 @@ const pendingApprovals = useQuery(
   // A/B summary using campaigns as proxy
   const campaigns = useQuery(
     api.emails.listCampaignsByBusiness,
-    isGuest || !businessId ? undefined : { businessId }
+    isGuest || !businessId ? "skip" : { businessId }
   );
   const testsRunning = (campaigns && campaigns !== "skip") ? Math.min(campaigns.length, 3) : (isGuest ? 2 : 0);
   const lastUplift = isGuest ? 8.4 : (testsRunning > 0 ? 5.1 : 0);
@@ -222,7 +222,7 @@ const pendingApprovals = useQuery(
 
   const teamPerformance = useQuery(
     api.telemetry.getTeamPerformanceMetrics,
-    isGuest || !businessId ? undefined : { businessId, days: 7 }
+    isGuest || !businessId ? "skip" : { businessId, days: 7 }
   );
 
   const approveSelf = useMutation(api.approvals.approveSelf);
@@ -255,25 +255,25 @@ const pendingApprovals = useQuery(
   // Add queries for team onboarding and approval health
   const teamOnboarding = useQuery(
     api.teamOnboarding.listTeamOnboarding,
-    isGuest || !businessId ? undefined : { businessId }
+    isGuest || !businessId ? "skip" : { businessId }
   );
 
   const approvalMetrics = useQuery(
     api.approvalAnalytics.getApprovalMetrics,
-    isGuest || !businessId ? undefined : { businessId, timeRange: 7 }
+    isGuest || !businessId ? "skip" : { businessId, timeRange: 7 }
   );
 
-  const incompleteOnboarding = teamOnboarding?.filter((t: any) => !t.completedAt).length || 0;
+  const incompleteOnboarding = (Array.isArray(teamOnboarding) ? teamOnboarding : []).filter((t: any) => !t.completedAt).length || 0;
 
   // Add queries for social media data
   const connectedAccounts = useQuery(
     api.socialIntegrations.listConnectedAccounts,
-    isGuest || !businessId ? undefined : { businessId }
+    isGuest || !businessId ? "skip" : { businessId }
   );
 
   const upcomingPosts = useQuery(
     api.socialPosts.getUpcomingPosts,
-    isGuest || !businessId ? undefined : { businessId, limit: 5 }
+    isGuest || !businessId ? "skip" : { businessId, limit: 5 }
   );
 
   function BrainDumpSection({ businessId }: { businessId: string }) {
@@ -369,7 +369,7 @@ const pendingApprovals = useQuery(
       )}
 
       {/* Add: Upgrade nudge banner */}
-      {!isGuest && upgradeNudges && upgradeNudges.showBanner && (
+      {!isGuest && upgradeNudges && upgradeNudges !== "skip" && upgradeNudges.showBanner && (
         <div className="rounded-md border p-3 bg-amber-50 flex items-center gap-3">
           <Badge variant="outline" className="border-amber-300 text-amber-700">Upgrade</Badge>
           <div className="text-sm">
