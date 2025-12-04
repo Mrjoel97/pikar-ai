@@ -2558,3 +2558,36 @@ export const getWorkflowExecution = query({
     };
   },
 });
+
+export const executeWorkflow = mutation({
+  args: {
+    workflowId: v.id("workflows"),
+    input: v.optional(v.any()),
+  },
+  handler: async (ctx, args) => {
+    const workflow = await ctx.db.get(args.workflowId);
+    if (!workflow) {
+      throw new Error("Workflow not found");
+    }
+
+    // Create execution record
+    const executionId = await ctx.db.insert("workflowExecutions", {
+      workflowId: args.workflowId,
+      businessId: workflow.businessId,
+      status: "running",
+      startedAt: Date.now(),
+      input: args.input || {},
+      steps: [],
+      logs: [],
+    });
+
+    // Schedule the actual execution as an action
+    await ctx.scheduler.runAfter(0, internal.workflows.runWorkflowExecution, {
+      executionId,
+      workflowId: args.workflowId,
+      input: args.input || {},
+    });
+
+    return executionId;
+  },
+});

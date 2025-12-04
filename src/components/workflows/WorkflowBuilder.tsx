@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Trash2, GitBranch, Play, Save } from "lucide-react";
+import { Plus, Trash2, GitBranch, Play, Save, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 interface WorkflowStep {
@@ -23,8 +23,10 @@ export default function WorkflowBuilder({ businessId, onSave }: { businessId: st
   const [description, setDescription] = useState("");
   const [steps, setSteps] = useState<WorkflowStep[]>([]);
   const [executionMode, setExecutionMode] = useState<"sequential" | "parallel">("sequential");
+  const [isExecuting, setIsExecuting] = useState(false);
 
   const createWorkflow = useMutation(api.workflows.createWorkflow);
+  const executeWorkflow = useMutation(api.workflows.executeWorkflow);
 
   const addStep = () => {
     const newStep: WorkflowStep = {
@@ -41,6 +43,51 @@ export default function WorkflowBuilder({ businessId, onSave }: { businessId: st
 
   const updateStep = (id: string, updates: Partial<WorkflowStep>) => {
     setSteps(steps.map(s => s.id === id ? { ...s, ...updates } : s));
+  };
+
+  const handleExecute = async () => {
+    if (!name.trim() || steps.length === 0) {
+      toast.error("Please add a name and at least one step before executing");
+      return;
+    }
+
+    try {
+      setIsExecuting(true);
+      
+      // First create the workflow
+      const workflowId = await createWorkflow({
+        businessId: businessId as any,
+        name,
+        description,
+        pipeline: steps.map(s => ({
+          type: s.type,
+          config: s.config,
+          condition: s.condition,
+          branches: s.branches,
+        })),
+        trigger: { type: "manual" },
+        approval: { required: false, threshold: 1 },
+        template: false,
+        tags: [],
+        status: "active",
+      });
+
+      // Then execute it
+      await executeWorkflow({
+        workflowId,
+        input: {},
+      });
+
+      toast.success("Workflow executed successfully");
+      setName("");
+      setDescription("");
+      setSteps([]);
+      onSave?.();
+    } catch (error: any) {
+      toast.error(error.message || "Failed to execute workflow");
+    } finally {
+      setIsExecuting(false);
+    }
   };
 
   const handleSave = async () => {
@@ -204,9 +251,22 @@ export default function WorkflowBuilder({ businessId, onSave }: { businessId: st
         }}>
           Clear
         </Button>
-        <Button onClick={handleSave}>
+        <Button onClick={handleSave} variant="secondary">
           <Save className="h-4 w-4 mr-2" />
-          Save Workflow
+          Save Draft
+        </Button>
+        <Button onClick={handleExecute} disabled={isExecuting || steps.length === 0}>
+          {isExecuting ? (
+            <>
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              Executing...
+            </>
+          ) : (
+            <>
+              <Play className="h-4 w-4 mr-2" />
+              Save & Execute
+            </>
+          )}
         </Button>
       </div>
     </div>
