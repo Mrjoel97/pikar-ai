@@ -381,7 +381,15 @@ export function SmeDashboard() {
 
       <LazyLoadErrorBoundary moduleName="Integration Hub">
         <Suspense fallback={<div className="text-muted-foreground">Loading integrations...</div>}>
-          <IntegrationHub businessId={businessId || ""} tier={tier} />
+          {businessId && typeof businessId === "string" && businessId.length > 0 ? (
+            <IntegrationHub businessId={businessId as Id<"businesses">} tier={tier} />
+          ) : (
+            <Card>
+              <CardContent className="py-8 text-center text-muted-foreground">
+                No business workspace found. Complete onboarding to access integrations.
+              </CardContent>
+            </Card>
+          )}
         </Suspense>
       </LazyLoadErrorBoundary>
     </div>
