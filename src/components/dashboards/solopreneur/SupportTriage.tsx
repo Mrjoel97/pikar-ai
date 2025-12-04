@@ -1,119 +1,81 @@
-import React, { useState } from "react";
-import { useAction } from "convex/react";
+import React from "react";
+import { TriageWidget } from "@/components/support/TriageWidget";
+import { TicketList } from "@/components/support/TicketList";
+import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { toast } from "sonner";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface SupportTriageProps {
   isGuest: boolean;
 }
 
-interface TriageSuggestion {
-  label: string;
-  priority: "high" | "medium" | "low";
-  reply: string;
-}
-
 export function SupportTriage({ isGuest }: SupportTriageProps) {
-  const [emailBody, setEmailBody] = useState("");
-  const [triageLoading, setTriageLoading] = useState(false);
-  const [triageSuggestions, setTriageSuggestions] = useState<TriageSuggestion[]>([]);
-
-  const triageAction = useAction(api.supportTickets.triageEmail);
-
-  const handleSuggestReplies = async () => {
-    if (!emailBody.trim()) {
-      toast.error("Please enter an email body");
-      return;
-    }
-
-    setTriageLoading(true);
-    try {
-      const result = await triageAction({ emailBody });
-      setTriageSuggestions(result.suggestions || []);
-      toast.success("Suggestions generated");
-    } catch (error: any) {
-      toast.error(error?.message || "Failed to generate suggestions");
-    } finally {
-      setTriageLoading(false);
-    }
-  };
+  // For demo purposes - in production, get from auth context
+  const demoBusinessId = "demo-business-id" as any;
+  
+  const analytics = useQuery(
+    isGuest ? undefined : api.supportTickets.getTicketAnalytics,
+    isGuest ? "skip" : { businessId: demoBusinessId }
+  );
 
   return (
-    <section>
-      <h2 className="text-xl font-semibold mb-4">Support Triage (beta)</h2>
-      <Card>
-        <CardContent className="p-4 space-y-3">
-          <p className="text-sm text-muted-foreground">
-            Paste a customer email below to get AI-suggested replies and priority
-            classification.
-          </p>
-          <Textarea
-            placeholder="Paste customer email here..."
-            value={emailBody}
-            onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
-              setEmailBody(e.target.value)
-            }
-            className="min-h-28"
-          />
-          <div className="flex items-center gap-2">
-            <Button
-              size="sm"
-              onClick={handleSuggestReplies}
-              disabled={triageLoading}
-            >
-              {triageLoading ? "Generating..." : "Suggest Replies"}
-            </Button>
-            {!isGuest && (
-              <span className="text-xs text-muted-foreground">
-                Suggestions are also lightly logged to audit when signed in.
-              </span>
-            )}
-          </div>
+    <section className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h2 className="text-xl font-semibold">Support Triage</h2>
+        {isGuest && (
+          <Badge variant="outline">Guest Mode - Limited Features</Badge>
+        )}
+      </div>
 
-          {triageSuggestions.length > 0 && (
-            <div className="pt-2 grid grid-cols-1 md:grid-cols-2 gap-3">
-              {triageSuggestions.map((s: TriageSuggestion, idx: number) => (
-                <Card key={`${s.label}-${idx}`}>
-                  <CardContent className="p-3 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="font-medium">{s.label}</span>
-                      <Badge
-                        variant={
-                          s.priority === "high" ? "destructive" : "outline"
-                        }
-                        className="capitalize"
-                      >
-                        {s.priority}
-                      </Badge>
-                    </div>
-                    <div className="text-sm whitespace-pre-wrap">
-                      {s.reply}
-                    </div>
-                    <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => {
-                          navigator.clipboard.writeText(s.reply).then(
-                            () => toast("Copied reply"),
-                            () => toast.error("Copy failed"),
-                          );
-                        }}
-                      >
-                        Copy
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      {!isGuest && analytics && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <Card>
+            <CardContent className="p-4">
+              <div className="text-2xl font-bold">{analytics.total}</div>
+              <div className="text-xs text-muted-foreground">Total Tickets</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
+              <div className="text-2xl font-bold text-orange-600">{analytics.open}</div>
+              <div className="text-xs text-muted-foreground">Open</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
+              <div className="text-2xl font-bold text-blue-600">{analytics.inProgress}</div>
+              <div className="text-xs text-muted-foreground">In Progress</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
+              <div className="text-2xl font-bold text-green-600">{analytics.resolved}</div>
+              <div className="text-xs text-muted-foreground">Resolved</div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      <Tabs defaultValue="triage" className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="triage">AI Triage</TabsTrigger>
+          <TabsTrigger value="tickets" disabled={isGuest}>
+            Ticket List {isGuest && "(Sign in)"}
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="triage" className="space-y-4">
+          <TriageWidget 
+            businessId={isGuest ? undefined : demoBusinessId}
+          />
+        </TabsContent>
+
+        <TabsContent value="tickets" className="space-y-4">
+          {!isGuest && <TicketList businessId={demoBusinessId} />}
+        </TabsContent>
+      </Tabs>
     </section>
   );
 }
