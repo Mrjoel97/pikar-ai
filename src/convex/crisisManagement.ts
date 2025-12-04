@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { query, mutation, internalMutation, internalAction } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
+import { internal } from "./_generated/api";
 
 /**
  * Query: Detect crisis situations based on social media metrics
@@ -396,12 +397,12 @@ export const autoCreateCrisisAlertsForAll = internalAction({
   args: {},
   handler: async (ctx) => {
     // Get all active businesses
-    const businesses = await ctx.runQuery("businesses:listAllBusinesses" as any, {});
+    const businesses = await ctx.runQuery(internal.businesses.listAll as any, {});
     
     let totalCreated = 0;
     for (const business of businesses) {
       try {
-        const result = await ctx.runMutation("crisisManagement:autoCreateCrisisAlerts" as any, {
+        const result = await ctx.runMutation(internal.crisisManagement.autoCreateCrisisAlerts, {
           businessId: business._id,
         });
         totalCreated += result.alertsCreated || 0;
@@ -411,5 +412,51 @@ export const autoCreateCrisisAlertsForAll = internalAction({
     }
     
     return { success: true, totalAlertsCreated: totalCreated };
+  },
+});
+
+/**
+ * Query: Get crisis management dashboard data
+ */
+export const getCrisisDashboard = query({
+  args: { businessId: v.id("businesses") },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Unauthorized");
+
+    // Get active alerts
+    const activeAlerts = await ctx.db
+      .query("crisisAlerts")
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .filter((q) => q.neq(q.field("status"), "resolved"))
+      .collect();
+
+    // Get recent resolved alerts (last 7 days)
+    const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+    const recentResolved = await ctx.db
+      .query("crisisAlerts")
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .filter((q) => 
+        q.and(
+          q.eq(q.field("status"), "resolved"),
+          q.gte(q.field("resolvedAt"), sevenDaysAgo)
+        )
+      )
+      .collect();
+
+    // Calculate metrics
+    const avgResolutionTime = recentResolved.length > 0
+      ? recentResolved.reduce((sum, alert) => 
+          sum + ((alert.resolvedAt || 0) - alert.detectedAt), 0
+        ) / recentResolved.length
+      : 0;
+
+    return {
+      activeAlerts: activeAlerts.length,
+      criticalAlerts: activeAlerts.filter(a => a.severity === "critical").length,
+      recentResolved: recentResolved.length,
+      avgResolutionTimeMs: avgResolutionTime,
+      alerts: activeAlerts.slice(0, 10), // Top 10 active alerts
+    };
   },
 });

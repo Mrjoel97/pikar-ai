@@ -43,7 +43,7 @@ export const globalSearch = query({
 
     const results: any[] = [];
 
-    // Search workflows
+    // Search workflows with relevance scoring
     if (types.includes("workflows")) {
       for (const bizId of businessIds) {
         const workflows = await ctx.db
@@ -52,18 +52,21 @@ export const globalSearch = query({
           .collect();
 
         workflows
-          .filter((w) =>
-            w.name.toLowerCase().includes(searchTerm) ||
-            w.description?.toLowerCase().includes(searchTerm)
-          )
+          .map((w) => {
+            const nameMatch = w.name.toLowerCase().includes(searchTerm);
+            const descMatch = w.description?.toLowerCase().includes(searchTerm);
+            const relevance = nameMatch ? 2 : (descMatch ? 1 : 0);
+            return { workflow: w, relevance };
+          })
+          .filter((item) => item.relevance > 0)
+          .sort((a, b) => b.relevance - a.relevance)
           .slice(0, limit)
-          .forEach((w) =>
+          .forEach(({ workflow: w }) =>
             results.push({
               type: "workflow",
               id: w._id,
               title: w.name,
               description: w.description,
-              // Fix: use system field
               createdAt: w._creationTime,
             })
           );
