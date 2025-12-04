@@ -14,6 +14,8 @@ import { SegmentOverview } from "./segmentation/SegmentOverview";
 import { SegmentDetails } from "./segmentation/SegmentDetails";
 import { CustomSegments } from "./segmentation/CustomSegments";
 import { AIInsights } from "./segmentation/AIInsights";
+import { SimpleSegmentBuilder } from "@/components/customers/SimpleSegmentBuilder";
+import { SegmentInsights } from "@/components/customers/SegmentInsights";
 
 type Segments = {
   total: number;
@@ -237,6 +239,15 @@ export default function CustomerSegmentation({ businessId }: { businessId: Id<"b
           </TabsContent>
 
           <TabsContent value="custom" className="space-y-4">
+            <div className="grid gap-4 md:grid-cols-2">
+              <SimpleSegmentBuilder 
+                businessId={businessId} 
+                onSegmentCreated={() => {
+                  toast.success("Segment created! Refresh to see it in the list.");
+                }}
+              />
+              <SegmentInsights businessId={businessId} />
+            </div>
             <CustomSegments segments={customSegments || []} onDelete={handleDeleteSegment} />
           </TabsContent>
 

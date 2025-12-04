@@ -50,6 +50,8 @@ import type * as crmSync from "../crmSync.js";
 import type * as cron from "../cron.js";
 import type * as customApis from "../customApis.js";
 import type * as customerJourney from "../customerJourney.js";
+import type * as customerSegmentation_rules from "../customerSegmentation/rules.js";
+import type * as customerSegmentation_solopreneur from "../customerSegmentation/solopreneur.js";
 import type * as customerSegmentation from "../customerSegmentation.js";
 import type * as customerSegmentationData from "../customerSegmentationData.js";
 import type * as data_playbooksSeed from "../data/playbooksSeed.js";
@@ -228,6 +230,8 @@ declare const fullApi: ApiFromModules<{
   cron: typeof cron;
   customApis: typeof customApis;
   customerJourney: typeof customerJourney;
+  "customerSegmentation/rules": typeof customerSegmentation_rules;
+  "customerSegmentation/solopreneur": typeof customerSegmentation_solopreneur;
   customerSegmentation: typeof customerSegmentation;
   customerSegmentationData: typeof customerSegmentationData;
   "data/playbooksSeed": typeof data_playbooksSeed;
