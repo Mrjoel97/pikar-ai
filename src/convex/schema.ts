@@ -107,7 +107,8 @@ const schema = defineSchema({
     .index("by_channel", ["channelId"])
     .index("by_sender", ["senderId"])
     .index("by_parent", ["parentMessageId"])
-    .index("by_business", ["businessId"]),
+    .index("by_business", ["businessId"])
+    .index("by_business_and_channel", ["businessId", "channelId"]),
 
   initiatives: defineTable({
     businessId: v.id("businesses"),

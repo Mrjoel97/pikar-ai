@@ -13,9 +13,7 @@ export const getMessages = query({
     // Get only top-level messages (no parent)
     const messages = await ctx.db
       .query("teamMessages")
-      .withIndex("by_business_and_channel", (q) => 
-        q.eq("businessId", args.channelId).eq("channelId", args.channelId)
-      )
+      .withIndex("by_channel", (q) => q.eq("channelId", args.channelId))
       .filter((q) => q.eq(q.field("parentMessageId"), undefined))
       .order("desc")
       .take(limit);
