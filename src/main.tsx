@@ -4,7 +4,7 @@ import { ConvexAuthProvider } from "@convex-dev/auth/react";
 import { ConvexReactClient } from "convex/react";
 import React, { StrictMode, useEffect, Component } from "react";
 import { createRoot } from "react-dom/client";
-import { MemoryRouter, Route, Routes, useLocation, Navigate, useNavigate } from "react-router";
+import { BrowserRouter, Route, Routes, useLocation, Navigate, useNavigate } from "react-router";
 import { motion, AnimatePresence } from "framer-motion";
 import "./index.css";
 import "./i18n/config";
@@ -204,14 +204,10 @@ createRoot(document.getElementById("root")!).render(
     <ErrorBoundary>
       <AppProviders>
         <FullInstrumentationProvider>
-          <MemoryRouter
-            initialEntries={[
-              `${window.location.pathname}${window.location.search}${window.location.hash}`,
-            ]}
-          >
+          <BrowserRouter>
             <RouteSyncer />
             <AnimatedRoutes />
-          </MemoryRouter>
+          </BrowserRouter>
           <Toaster />
         </FullInstrumentationProvider>
       </AppProviders>
