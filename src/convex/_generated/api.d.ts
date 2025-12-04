@@ -135,6 +135,8 @@ import type * as roiCalculations from "../roiCalculations.js";
 import type * as saml from "../saml.js";
 import type * as samlActions from "../samlActions.js";
 import type * as schedule from "../schedule.js";
+import type * as scheduling_assistant from "../scheduling/assistant.js";
+import type * as scheduling_availability from "../scheduling/availability.js";
 import type * as scim from "../scim.js";
 import type * as search from "../search.js";
 import type * as seed from "../seed.js";
@@ -315,6 +317,8 @@ declare const fullApi: ApiFromModules<{
   saml: typeof saml;
   samlActions: typeof samlActions;
   schedule: typeof schedule;
+  "scheduling/assistant": typeof scheduling_assistant;
+  "scheduling/availability": typeof scheduling_availability;
   scim: typeof scim;
   search: typeof search;
   seed: typeof seed;

@@ -3135,6 +3135,31 @@ const schema = defineSchema({
     .index("by_business", ["businessId"])
     .index("by_campaign", ["campaignId"]),
 
+  // Scheduling & Availability (Solopreneur)
+  appointments: defineTable({
+    businessId: v.id("businesses"),
+    title: v.string(),
+    description: v.optional(v.string()),
+    startTime: v.number(),
+    endTime: v.number(),
+    attendees: v.array(v.string()),
+    location: v.optional(v.string()),
+    type: v.string(), // "meeting", "call", "focus", "break"
+    status: v.string(), // "scheduled", "completed", "cancelled"
+  })
+    .index("by_business", ["businessId"])
+    .index("by_business_and_start", ["businessId", "startTime"]),
+
+  availabilityBlocks: defineTable({
+    businessId: v.id("businesses"),
+    dayOfWeek: v.number(), // 0-6 (Sunday-Saturday)
+    startTime: v.string(), // "09:00"
+    endTime: v.string(), // "17:00"
+    isAvailable: v.boolean(),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_business_and_day", ["businessId", "dayOfWeek"]),
+
 });
 
 export default schema;
