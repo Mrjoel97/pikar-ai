@@ -148,9 +148,8 @@ export const canSchedulePost = mutation({
     // Count currently scheduled posts (not yet posted)
     const scheduledPosts = await ctx.db
       .query("socialPosts")
-      .withIndex("by_business_and_status", (q) => 
-        q.eq("businessId", args.businessId).eq("status", "scheduled")
-      )
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .filter((q) => q.eq(q.field("status"), "scheduled"))
       .collect()
       .then((r) => r.length);
     

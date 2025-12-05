@@ -195,7 +195,7 @@ export function OkrBuilder({ businessId, userId, onComplete }: OkrBuilderProps) 
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">None</SelectItem>
-                    {objectives?.map((obj) => (
+                    {objectives?.map((obj: any) => (
                       <SelectItem key={obj._id} value={obj._id}>
                         {obj.title}
                       </SelectItem>

@@ -18,12 +18,12 @@ export const recordHandoff = mutation({
     return await ctx.db.insert("workflowHandoffs", {
       businessId: args.businessId,
       workflowId: args.workflowId,
-      stepId: args.stepId,
       fromDepartment: args.fromDepartment,
       toDepartment: args.toDepartment,
       status: "pending",
-      initiatedBy: args.initiatedBy,
+      handoffData: { initiatedBy: args.initiatedBy },
       initiatedAt: Date.now(),
+      createdAt: Date.now(),
     });
   },
 });
@@ -75,7 +75,6 @@ export const rejectHandoff = mutation({
       status: "rejected",
       resolvedBy: args.userId,
       resolvedAt: Date.now(),
-      notes: args.reason,
     });
 
     const handoff = await ctx.db.get(args.handoffId);
@@ -165,7 +164,7 @@ export const getCrossDepartmentMetrics = query({
     const completedHandoffs = handoffs.filter((h) => h.status === "accepted" && h.resolvedAt);
     const avgHandoffTime =
       completedHandoffs.length > 0
-        ? completedHandoffs.reduce((sum, h) => sum + (h.resolvedAt! - h.initiatedAt), 0) /
+        ? completedHandoffs.reduce((sum, h) => sum + (h.resolvedAt! - (h.initiatedAt || 0)), 0) /
           completedHandoffs.length / (1000 * 60 * 60)
         : 0;
 
@@ -219,6 +218,6 @@ export const getHandoffHistory = query({
       .filter((q) => q.eq(q.field("workflowId"), args.workflowId))
       .collect();
 
-    return handoffs.sort((a, b) => a.initiatedAt - b.initiatedAt);
+    return handoffs.sort((a, b) => (a.initiatedAt || 0) - (b.initiatedAt || 0));
   },
 });

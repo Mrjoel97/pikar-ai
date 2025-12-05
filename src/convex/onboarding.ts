@@ -307,10 +307,7 @@ export const completeOnboarding = mutation({
           businessId: args.businessId,
           name: args.setupData.businessProfile?.name || "Default Brand",
           tagline: args.setupData.brandIdentity.tagline || "",
-          mission: args.setupData.brandIdentity.mission || "",
-          colors: args.setupData.brandIdentity.brandColors?.split(",").map((c: string) => c.trim()) || [],
-          voice: args.setupData.brandIdentity.brandVoice || "professional",
-          isActive: true,
+          description: args.setupData.brandIdentity.mission || "",
           createdAt: Date.now(),
           updatedAt: Date.now(),
         });

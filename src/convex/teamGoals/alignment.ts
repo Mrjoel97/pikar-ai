@@ -75,7 +75,7 @@ export const getBusinessAlignmentMap = query({
       (o) => o.category === "company" && !o.parentObjectiveId
     );
 
-    const buildTree = async (parentId: Id<"objectives">) => {
+    const buildTree = async (parentId: Id<"objectives">): Promise<any[]> => {
       const children = objectives.filter((o) => o.parentObjectiveId === parentId);
       
       return await Promise.all(

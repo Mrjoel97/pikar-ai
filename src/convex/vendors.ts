@@ -161,7 +161,7 @@ export const getUpcomingRenewals = query({
 
     return vendors.map((v) => ({
       ...v,
-      daysUntilRenewal: Math.floor((v.contractEnd - Date.now()) / (24 * 60 * 60 * 1000)),
+      daysUntilRenewal: Math.floor(((v.contractEnd || 0) - Date.now()) / (24 * 60 * 60 * 1000)),
     }));
   },
 });
@@ -234,9 +234,9 @@ export const getVendorScorecard = query({
     const latest = metrics[0];
     const previous = metrics[1];
     const trend = previous
-      ? latest.overallScore > previous.overallScore
+      ? (latest.overallScore || 0) > (previous.overallScore || 0)
         ? ("improving" as const)
-        : latest.overallScore < previous.overallScore
+        : (latest.overallScore || 0) < (previous.overallScore || 0)
         ? ("declining" as const)
         : ("stable" as const)
       : ("stable" as const);
@@ -275,9 +275,9 @@ export const getContractTimeline = query({
 
     const now = Date.now();
     const timeline = vendors.map((v) => {
-      const totalDays = Math.floor((v.contractEnd - v.contractStart) / (24 * 60 * 60 * 1000));
-      const elapsedDays = Math.floor((now - v.contractStart) / (24 * 60 * 60 * 1000));
-      const remainingDays = Math.floor((v.contractEnd - now) / (24 * 60 * 60 * 1000));
+      const totalDays = Math.floor(((v.contractEnd || 0) - (v.contractStart || 0)) / (24 * 60 * 60 * 1000));
+      const elapsedDays = Math.floor((now - (v.contractStart || 0)) / (24 * 60 * 60 * 1000));
+      const remainingDays = Math.floor(((v.contractEnd || 0) - now) / (24 * 60 * 60 * 1000));
       const progress = Math.min(100, Math.max(0, (elapsedDays / totalDays) * 100));
 
       return {
@@ -311,15 +311,15 @@ export const getSpendAnalytics = query({
       .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
       .collect();
 
-    const totalSpend = vendors.reduce((sum, v) => sum + v.contractValue, 0);
+    const totalSpend = vendors.reduce((sum, v) => sum + (v.contractValue || 0), 0);
     const activeSpend = vendors
       .filter((v) => v.status === "active")
-      .reduce((sum, v) => sum + v.contractValue, 0);
+      .reduce((sum, v) => sum + (v.contractValue || 0), 0);
 
     // Category breakdown
     const categorySpend: Record<string, number> = {};
     vendors.forEach((v) => {
-      categorySpend[v.category] = (categorySpend[v.category] || 0) + v.contractValue;
+      categorySpend[v.category] = (categorySpend[v.category] || 0) + (v.contractValue || 0);
     });
 
     const categoryBreakdown = Object.entries(categorySpend)
@@ -332,13 +332,13 @@ export const getSpendAnalytics = query({
 
     // Top vendors by spend
     const topVendors = vendors
-      .sort((a, b) => b.contractValue - a.contractValue)
+      .sort((a, b) => (b.contractValue || 0) - (a.contractValue || 0))
       .slice(0, 10)
       .map((v) => ({
         vendorId: v._id,
         name: v.name,
-        spend: v.contractValue,
-        percentage: (v.contractValue / totalSpend) * 100,
+        spend: v.contractValue || 0,
+        percentage: ((v.contractValue || 0) / totalSpend) * 100,
       }));
 
     // Monthly spend projection (simplified)
@@ -374,17 +374,17 @@ export const getVendorRiskDetails = query({
       .take(6);
 
     const now = Date.now();
-    const daysUntilExpiry = Math.floor((vendor.contractEnd - now) / (24 * 60 * 60 * 1000));
+    const daysUntilExpiry = Math.floor(((vendor.contractEnd || 0) - now) / (24 * 60 * 60 * 1000));
 
     // Calculate risk factors
     const riskFactors = [];
     let riskScore = 0;
 
     // Performance risk
-    if (vendor.performanceScore < 60) {
+    if ((vendor.performanceScore || 0) < 60) {
       riskFactors.push({ factor: "Low Performance Score", severity: "high", impact: 30 });
       riskScore += 30;
-    } else if (vendor.performanceScore < 75) {
+    } else if ((vendor.performanceScore || 0) < 75) {
       riskFactors.push({ factor: "Below Average Performance", severity: "medium", impact: 15 });
       riskScore += 15;
     }
@@ -400,8 +400,8 @@ export const getVendorRiskDetails = query({
 
     // Performance trend risk
     if (metrics.length >= 3) {
-      const recentScores = metrics.slice(0, 3).map((m) => m.overallScore);
-      const isDecreasing = recentScores[0] < recentScores[1] && recentScores[1] < recentScores[2];
+      const recentScores = metrics.slice(0, 3).map((m) => m.overallScore || 0);
+      const isDecreasing = (recentScores[0] || 0) < (recentScores[1] || 0) && (recentScores[1] || 0) < (recentScores[2] || 0);
       if (isDecreasing) {
         riskFactors.push({ factor: "Declining Performance Trend", severity: "medium", impact: 20 });
         riskScore += 20;
@@ -409,7 +409,7 @@ export const getVendorRiskDetails = query({
     }
 
     // High value risk
-    if (vendor.contractValue > 100000) {
+    if ((vendor.contractValue || 0) > 100000) {
       riskFactors.push({ factor: "High Contract Value", severity: "low", impact: 10 });
       riskScore += 10;
     }
@@ -576,9 +576,7 @@ export const createVendor = mutation({
       performanceScore: 0,
       riskLevel: "medium",
       lastReviewDate: Date.now(),
-      notes: args.notes,
       createdAt: Date.now(),
-      updatedAt: Date.now(),
     });
 
     // Audit log
@@ -627,7 +625,7 @@ export const updateVendor = mutation({
     const vendor = await ctx.db.get(args.vendorId);
     if (!vendor) throw new Error("Vendor not found");
 
-    const updates: any = { updatedAt: Date.now() };
+    const updates: any = {};
     if (args.name !== undefined) updates.name = args.name;
     if (args.category !== undefined) updates.category = args.category;
     if (args.status !== undefined) updates.status = args.status;
@@ -638,7 +636,6 @@ export const updateVendor = mutation({
     if (args.contractEnd !== undefined) updates.contractEnd = args.contractEnd;
     if (args.contractValue !== undefined) updates.contractValue = args.contractValue;
     if (args.riskLevel !== undefined) updates.riskLevel = args.riskLevel;
-    if (args.notes !== undefined) updates.notes = args.notes;
 
     await ctx.db.patch(args.vendorId, updates);
 
@@ -682,14 +679,15 @@ export const recordPerformance = mutation({
     const metricId = await ctx.db.insert("vendorPerformanceMetrics", {
       businessId: vendor.businessId,
       vendorId: args.vendorId,
+      metricType: "performance_review",
+      value: overallScore,
+      timestamp: Date.now(),
       onTimeDelivery: args.onTimeDelivery,
       qualityScore: args.qualityScore,
       responsiveness: args.responsiveness,
       costEfficiency: args.costEfficiency,
       overallScore,
-      notes: args.notes,
       recordedAt: Date.now(),
-      recordedBy: identity.email || "unknown",
     });
 
     // Update vendor's performance score
@@ -735,7 +733,7 @@ export const checkRenewalAlerts = internalMutation({
     if (!business) return;
 
     for (const vendor of vendors) {
-      const daysUntilRenewal = Math.floor((vendor.contractEnd - now) / (24 * 60 * 60 * 1000));
+      const daysUntilRenewal = Math.floor(((vendor.contractEnd || 0) - now) / (24 * 60 * 60 * 1000));
       
       if (daysUntilRenewal <= 90 && daysUntilRenewal > 0) {
         // Check if alert already exists
@@ -760,7 +758,7 @@ export const checkRenewalAlerts = internalMutation({
             userId: business.ownerId,
             type: "system_alert",
             title: `Contract Renewal: ${vendor.name}`,
-            message: `Contract expires in ${daysUntilRenewal} days. Value: $${vendor.contractValue.toLocaleString()}`,
+            message: `Contract expires in ${daysUntilRenewal} days. Value: ${(vendor.contractValue || 0).toLocaleString()}`,
             data: {
               kind: "vendor_renewal",
               vendorId: vendor._id,
@@ -816,10 +814,10 @@ export const calculatePerformanceScore = mutation({
     let totalScore = 0;
     for (const metric of metrics) {
       const weightedScore = 
-        (metric.onTimeDelivery * weights.onTimeDelivery) +
-        (metric.qualityScore * weights.qualityScore) +
-        (metric.responsiveness * weights.responsiveness) +
-        (metric.costEfficiency * weights.costEfficiency);
+        ((metric.onTimeDelivery || 0) * weights.onTimeDelivery) +
+        ((metric.qualityScore || 0) * weights.qualityScore) +
+        ((metric.responsiveness || 0) * weights.responsiveness) +
+        ((metric.costEfficiency || 0) * weights.costEfficiency);
       totalScore += weightedScore;
     }
 
@@ -828,8 +826,8 @@ export const calculatePerformanceScore = mutation({
     // Calculate trend (improving/declining/stable)
     let trend: "improving" | "declining" | "stable" = "stable";
     if (metrics.length >= 3) {
-      const recent = metrics.slice(-3).map(m => m.overallScore);
-      const older = metrics.slice(0, 3).map(m => m.overallScore);
+      const recent = metrics.slice(-3).map(m => m.overallScore || 0);
+      const older = metrics.slice(0, 3).map(m => m.overallScore || 0);
       const recentAvg = recent.reduce((a, b) => a + b, 0) / recent.length;
       const olderAvg = older.reduce((a, b) => a + b, 0) / older.length;
       
@@ -882,21 +880,21 @@ export const getVendorPerformanceInsights = query({
 
     const insights = {
       topPerformers: vendors
-        .filter(v => v.performanceScore >= 80)
-        .sort((a, b) => b.performanceScore - a.performanceScore)
+        .filter(v => (v.performanceScore || 0) >= 80)
+        .sort((a, b) => (b.performanceScore || 0) - (a.performanceScore || 0))
         .slice(0, 5),
       atRisk: vendors
-        .filter(v => v.performanceScore < 60 || v.riskLevel === "high")
-        .sort((a, b) => a.performanceScore - b.performanceScore)
+        .filter(v => (v.performanceScore || 0) < 60 || v.riskLevel === "high")
+        .sort((a, b) => (a.performanceScore || 0) - (b.performanceScore || 0))
         .slice(0, 5),
       needsReview: vendors
         .filter(v => {
-          const daysSinceReview = (Date.now() - v.lastReviewDate) / (24 * 60 * 60 * 1000);
+          const daysSinceReview = (Date.now() - (v.lastReviewDate || 0)) / (24 * 60 * 60 * 1000);
           return daysSinceReview > 90;
         })
         .slice(0, 5),
       averageScore: vendors.length > 0
-        ? Math.round(vendors.reduce((sum, v) => sum + v.performanceScore, 0) / vendors.length)
+        ? Math.round(vendors.reduce((sum, v) => sum + (v.performanceScore || 0), 0) / vendors.length)
         : 0,
     };
 

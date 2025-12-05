@@ -23,10 +23,9 @@ export default function WebhookManagementPage() {
   const [newWebhookUrl, setNewWebhookUrl] = useState("");
   const [selectedEvents, setSelectedEvents] = useState<string[]>([]);
 
-  const webhooks = useQuery(
-    api.webhooks.listWebhooks,
-    business ? { businessId: business._id } : "skip"
-  );
+  const webhooks = useQuery(api.webhooks.list as any, {
+    businessId: business ? business._id : "skip"
+  });
 
   const webhookAnalytics = useQuery(
     api.webhooks.getWebhookAnalytics,
@@ -40,10 +39,15 @@ export default function WebhookManagementPage() {
 
   const webhookTemplates = useQuery(api.webhooks.getWebhookTemplates);
 
-  const createWebhook = useMutation(api.webhooks.createWebhook);
-  const deleteWebhook = useMutation(api.webhooks.deleteWebhook);
-  const testWebhook = useMutation(api.webhooks.testWebhook);
+  const createWebhook = useMutation(api.webhooks.create as any);
+  const deleteWebhook = useMutation(api.webhooks.delete as any);
+  const testWebhook = useMutation(api.webhooks.test as any);
   const retryDelivery = useMutation(api.webhooks.retryWebhookDelivery);
+  const updateWebhook = useMutation(api.webhooks.update as any);
+
+  const deliveries = useQuery(api.webhooks.listDeliveries as any, {
+    webhookId: selectedWebhook
+  });
 
   const availableEvents = [
     "workflow.started",
@@ -321,7 +325,7 @@ export default function WebhookManagementPage() {
 
                 <TabsContent value="deliveries" className="space-y-4">
                   <div className="space-y-2">
-                    {webhookDeliveries?.map((delivery: any) => (
+                    {deliveries?.map((delivery: any) => (
                       <Card key={delivery._id}>
                         <CardContent className="p-4">
                           <div className="flex items-center justify-between">

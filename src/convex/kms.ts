@@ -41,12 +41,7 @@ export const saveKmsConfig = mutation({
       await ctx.db.patch(existing._id, {
         keyId: args.keyId,
         region: args.region,
-        keyVaultUrl: args.keyVaultUrl,
-        projectId: args.projectId,
-        location: args.location,
-        keyRing: args.keyRing,
-        credentials: args.credentials,
-        active: args.active,
+        isActive: args.active,
         updatedAt: now,
       });
       
@@ -61,16 +56,12 @@ export const saveKmsConfig = mutation({
     } else {
       const id = await ctx.db.insert("kmsConfigs", {
         businessId: args.businessId,
-        provider: args.provider,
+        provider: args.provider === "google" ? "gcp" : args.provider,
         keyId: args.keyId,
         region: args.region,
-        keyVaultUrl: args.keyVaultUrl,
-        projectId: args.projectId,
-        location: args.location,
-        keyRing: args.keyRing,
-        credentials: args.credentials,
-        active: args.active,
+        isActive: args.active,
         createdAt: now,
+        updatedAt: now,
       });
       
       await ctx.runMutation(api.audit.write, {
@@ -103,11 +94,7 @@ export const getKmsConfig = query({
       provider: c.provider,
       keyId: c.keyId,
       region: c.region,
-      keyVaultUrl: c.keyVaultUrl,
-      projectId: c.projectId,
-      location: c.location,
-      keyRing: c.keyRing,
-      active: c.active,
+      isActive: c.isActive,
       createdAt: c.createdAt,
       updatedAt: c.updatedAt,
     }));
@@ -123,7 +110,7 @@ export const getKmsConfigInternal = internalQuery({
     const config = await ctx.db
       .query("kmsConfigs")
       .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
-      .filter((q) => q.eq(q.field("active"), true))
+      .filter((q) => q.eq(q.field("isActive"), true))
       .first();
     
     return config || null;
@@ -154,12 +141,12 @@ export const scheduleKeyRotation = mutation({
     const rotationId = await ctx.db.insert("kmsKeyRotations", {
       businessId: args.businessId,
       configId: args.configId,
-      rotationIntervalDays: args.rotationIntervalDays,
-      autoRotate: args.autoRotate,
-      nextRotationDate: nextRotation,
-      lastRotationDate: Date.now(),
+      oldKeyId: config.keyId,
+      newKeyId: config.keyId, // Will be updated on rotation
+      rotatedAt: Date.now(),
       status: "scheduled",
-      createdAt: Date.now(),
+      nextRotationDate: nextRotation,
+      autoRotate: args.autoRotate,
     });
 
     await ctx.runMutation(api.audit.write, {
@@ -207,13 +194,14 @@ export const createEncryptionPolicy = mutation({
       businessId: args.businessId,
       name: args.name,
       description: args.description,
+      algorithm: "AES-256",
+      keySize: 256,
+      rotationPeriod: 90,
+      isActive: true,
       targetTables: args.targetTables,
-      targetFields: args.targetFields,
       encryptionLevel: args.encryptionLevel,
       mandatory: args.mandatory,
-      active: true,
       createdAt: Date.now(),
-      updatedAt: Date.now(),
     });
 
     await ctx.runMutation(api.audit.write, {
@@ -282,9 +270,7 @@ export const getKmsAnalytics = query({
 
     const logs = await ctx.db
       .query("kmsUsageLogs")
-      .withIndex("by_business_and_timestamp", (q) =>
-        q.eq("businessId", args.businessId)
-      )
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
       .filter((q) =>
         q.and(
           q.gte(q.field("timestamp"), start),
@@ -372,21 +358,19 @@ export const getComplianceReport = query({
 
     const recentLogs = await ctx.db
       .query("kmsUsageLogs")
-      .withIndex("by_business_and_timestamp", (q) =>
-        q.eq("businessId", args.businessId)
-      )
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
       .order("desc")
       .take(100);
 
-    const activeConfigs = configs.filter((c) => c.active).length;
+    const activeConfigs = configs.filter((c) => c.isActive).length;
     const scheduledRotations = rotations.filter((r) => r.status === "scheduled").length;
-    const activePolicies = policies.filter((p) => p.active).length;
+    const activePolicies = policies.filter((p) => p.isActive).length;
     const recentFailures = recentLogs.filter((l) => !l.success).length;
 
     // Check for overdue rotations
     const now = Date.now();
     const overdueRotations = rotations.filter(
-      (r) => r.nextRotationDate < now && r.status === "scheduled"
+      (r) => r.nextRotationDate && r.nextRotationDate < now && r.status === "scheduled"
     ).length;
 
     return {
@@ -399,7 +383,7 @@ export const getComplianceReport = query({
       },
       configs: configs.map((c) => ({
         provider: c.provider,
-        active: c.active,
+        isActive: c.isActive,
         createdAt: c.createdAt,
       })),
       rotations: rotations.map((r) => ({
@@ -412,7 +396,7 @@ export const getComplianceReport = query({
         name: p.name,
         encryptionLevel: p.encryptionLevel,
         mandatory: p.mandatory,
-        active: p.active,
+        isActive: p.isActive,
       })),
       complianceScore: calculateComplianceScore({
         activeConfigs,

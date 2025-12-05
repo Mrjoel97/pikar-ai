@@ -431,13 +431,23 @@ export const scheduleAuditReport = mutation({
     const now = Date.now();
     const nextRun = now + 24 * 60 * 60 * 1000; // 24 hours from now
 
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Unauthorized");
+    
+    const user = await ctx.db
+      .query("users")
+      .withIndex("email", (q) => q.eq("email", identity.email!))
+      .first();
+    if (!user) throw new Error("User not found");
+
     return await ctx.db.insert("auditReportSchedules", {
       businessId: args.businessId,
       name: args.name,
       reportType: args.reportType,
-      schedule: args.schedule,
+      frequency: args.schedule as "daily" | "weekly" | "monthly" | "quarterly",
       recipients: args.recipients,
       isActive: args.isActive,
+      createdBy: user._id,
       createdAt: now,
       updatedAt: now,
       nextRunAt: nextRun,

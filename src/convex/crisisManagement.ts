@@ -116,6 +116,12 @@ export const createCrisisAlert = mutation({
     const user = await ctx.auth.getUserIdentity();
     if (!user) throw new Error("Unauthorized");
 
+    const userDoc = await ctx.db
+      .query("users")
+      .withIndex("email", (q) => q.eq("email", user.email!))
+      .first();
+    if (!userDoc) throw new Error("User not found");
+
     const alertId = await ctx.db.insert("crisisAlerts", {
       businessId: args.businessId,
       severity: args.severity as "low" | "medium" | "high" | "critical",
@@ -123,7 +129,12 @@ export const createCrisisAlert = mutation({
       title: args.message.substring(0, 100),
       description: args.message,
       status: "active" as const,
+      affectedSystems: [],
+      createdBy: userDoc._id,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
       detectedAt: Date.now(),
+      resolvedAt: undefined,
     });
 
     return alertId;
@@ -372,6 +383,15 @@ export const autoCreateCrisisAlerts = internalMutation({
           .first();
 
         if (!existing) {
+          // Get system user for auto-created alerts
+          const systemUser = await ctx.db
+            .query("users")
+            .filter((q) => q.eq(q.field("email"), "system@pikar.ai"))
+            .first();
+          
+          const createdBy = systemUser?._id || (await ctx.db.query("users").first())?._id;
+          if (!createdBy) continue;
+
           await ctx.db.insert("crisisAlerts", {
             businessId,
             severity: "high" as const,
@@ -379,7 +399,12 @@ export const autoCreateCrisisAlerts = internalMutation({
             title: "Unusual Engagement Spike",
             description: `Post has received unusually high engagement (${engagement} interactions)`,
             status: "active" as const,
+            affectedSystems: ["social_media"],
+            createdBy,
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
             detectedAt: Date.now(),
+            resolvedAt: undefined,
           });
           alertsCreated++;
         }

@@ -145,9 +145,9 @@ export function PipelineBoard({ businessId, userId }: PipelineBoardProps) {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
-        {pipelineData.stages.map((stage) => {
-          const stageDeals = pipelineData.pipeline[stage] || [];
-          const stageValue = stageDeals.reduce((sum, d) => sum + (d.value || 0), 0);
+        {pipelineData.stages.map((stage: any) => {
+          const stageDeals = pipelineData.deals?.filter((d: any) => d.stage === stage) || [];
+          const stageValue = stageDeals.reduce((sum: number, d: any) => sum + (d.value || 0), 0);
 
           return (
             <div
@@ -170,7 +170,7 @@ export function PipelineBoard({ businessId, userId }: PipelineBoardProps) {
               </Card>
 
               <div className="space-y-2 min-h-[200px]">
-                {stageDeals.map((deal) => (
+                  {stageDeals.map((deal: any) => (
                   <div
                     key={deal._id}
                     draggable

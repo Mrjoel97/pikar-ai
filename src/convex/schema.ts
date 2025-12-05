@@ -3108,6 +3108,55 @@ const schema = defineSchema({
     .index("by_severity", ["severity"])
     .index("by_assigned_to", ["assignedTo"]),
 
+  trainingSessions: defineTable({
+    businessId: v.id("businesses"),
+    title: v.string(),
+    description: v.string(),
+    scheduledAt: v.number(),
+    durationMinutes: v.number(),
+    topic: v.string(),
+    maxAttendees: v.optional(v.number()),
+    status: v.union(
+      v.literal("scheduled"),
+      v.literal("in_progress"),
+      v.literal("completed"),
+      v.literal("cancelled")
+    ),
+    trainerId: v.optional(v.id("users")),
+    attendees: v.optional(v.array(v.id("users"))),
+    createdAt: v.number(),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_status", ["status"]),
+
+  webhooks: defineTable({
+    businessId: v.id("businesses"),
+    url: v.string(),
+    events: v.array(v.string()),
+    secret: v.string(),
+    active: v.boolean(),
+    createdAt: v.number(),
+  })
+    .index("by_business", ["businessId"]),
+
+  webhookDeliveries: defineTable({
+    webhookId: v.id("webhooks"),
+    event: v.string(),
+    payload: v.any(),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("success"),
+      v.literal("failed")
+    ),
+    attempts: v.number(),
+    lastAttemptAt: v.optional(v.number()),
+    responseCode: v.optional(v.number()),
+    errorMessage: v.optional(v.string()),
+    createdAt: v.number(),
+  })
+    .index("by_webhook", ["webhookId"])
+    .index("by_status", ["status"]),
+
 });
 
 export default schema;

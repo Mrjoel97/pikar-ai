@@ -63,7 +63,7 @@ export function MessageThread({ parentMessageId, businessId, onClose }: MessageT
 
         <ScrollArea className="flex-1 px-4">
           <div className="space-y-4 pb-4">
-            {threadReplies?.map((reply) => (
+            {threadReplies?.map((reply: any) => (
               <motion.div
                 key={reply._id}
                 initial={{ opacity: 0, y: 10 }}
@@ -88,7 +88,7 @@ export function MessageThread({ parentMessageId, businessId, onClose }: MessageT
 
                   {reply.attachments && reply.attachments.length > 0 && (
                     <div className="mt-2 space-y-1">
-                      {reply.attachments.map((att, idx) => (
+                      {reply.attachments.map((att: any, idx: number) => (
                         <div
                           key={idx}
                           className="flex items-center gap-2 p-2 rounded bg-muted/50 text-xs"

@@ -50,7 +50,7 @@ export function ChatInterface({ businessId, currentUserId }: ChatInterfaceProps)
       ? { businessId, searchTerm, channelId: selectedChannel || undefined }
       : "skip"
   );
-  const usersForMention = useQuery(api.teamChat.messages.getUsersForMention, { businessId });
+  const users = useQuery(api.teamChat.messages.getUsersForMention, { businessId });
 
   const sendMessage = useMutation(api.teamChat.messages.sendMessage);
   const createChannel = useMutation(api.teamChat.channels.createChannel);
@@ -129,7 +129,7 @@ export function ChatInterface({ businessId, currentUserId }: ChatInterfaceProps)
     setMentionSearch("");
   };
 
-  const filteredUsers = usersForMention?.filter((user) =>
+  const filteredUsers = users?.filter((user: any) =>
     user.name.toLowerCase().includes(mentionSearch.toLowerCase())
   );
 
@@ -152,7 +152,7 @@ export function ChatInterface({ businessId, currentUserId }: ChatInterfaceProps)
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2">
               <Hash className="h-5 w-5" />
-              {channels?.find((c) => c._id === selectedChannel)?.name || "Select a channel"}
+              {channels?.find((c: any) => c._id === selectedChannel)?.name || "Select a channel"}
             </CardTitle>
             <Button
               size="sm"

@@ -30,9 +30,10 @@ export const createPost = mutation({
       platforms: args.platforms,
       status: args.scheduledAt ? "scheduled" : "draft",
       scheduledAt: args.scheduledAt,
-      mediaUrls: args.mediaUrls || [],
+      mediaUrls: args.mediaUrls?.map(id => id.toString()) || [],
       characterCount: args.content.length,
       createdBy: user._id,
+      createdAt: Date.now(),
     });
 
     return postId;

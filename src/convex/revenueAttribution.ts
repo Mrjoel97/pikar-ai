@@ -49,9 +49,10 @@ export const trackTouchpoint = mutation({
       businessId: args.businessId,
       contactId: args.contactId,
       channel: args.channel,
+      campaign: args.campaignId,
       campaignId: args.campaignId,
-      metadata: args.metadata,
       timestamp: Date.now(),
+      value: 0,
     });
 
     return touchpointId;
@@ -97,12 +98,13 @@ export const recordConversion = mutation({
     const conversionId = await ctx.db.insert("revenueConversions", {
       businessId: args.businessId,
       contactId: args.contactId,
+      amount: args.revenue,
       revenue: args.revenue,
-      conversionType: args.conversionType,
-      touchpointCount: touchpoints.length,
-      attributions,
-      metadata: args.metadata,
+      convertedAt: now,
       timestamp: now,
+      conversionType: args.conversionType,
+      attributedTouchpoints: touchpoints.map(t => t._id),
+      attributions,
     });
 
     return conversionId;
@@ -194,9 +196,8 @@ export const getAttributionReport = query({
     // Use composite index to filter by business and range on timestamp
     const conversions = await ctx.db
       .query("revenueConversions")
-      .withIndex("by_business_and_timestamp", (q) =>
-        q.eq("businessId", args.businessId).gte("timestamp", cutoff)
-      )
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .filter((q) => q.gte(q.field("convertedAt"), cutoff))
       .collect();
 
     // Aggregate attribution by channel
@@ -214,7 +215,7 @@ export const getAttributionReport = query({
     });
 
     // Calculate totals
-    const totalRevenue = conversions.reduce((sum, c) => sum + c.revenue, 0);
+    const totalRevenue = conversions.reduce((sum, c) => sum + (c.revenue || c.amount), 0);
     const totalConversions = conversions.length;
 
     // Format channel data
@@ -255,9 +256,8 @@ export const getChannelROI = query({
     // Conversions in window (linear attribution as baseline)
     const conversions = await ctx.db
       .query("revenueConversions")
-      .withIndex("by_business_and_timestamp", (q) =>
-        q.eq("businessId", args.businessId).gte("timestamp", cutoff)
-      )
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .filter((q) => q.gte(q.field("convertedAt"), cutoff))
       .collect();
 
     // Aggregate revenue and conversion counts by channel using linear model
@@ -337,9 +337,8 @@ export const getMultiTouchComparison = query({
 
     const conversions = await ctx.db
       .query("revenueConversions")
-      .withIndex("by_business_and_timestamp", (q) =>
-        q.eq("businessId", args.businessId).gte("timestamp", cutoff)
-      )
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .filter((q) => q.gte(q.field("convertedAt"), cutoff))
       .collect();
 
     const models = ["first_touch", "last_touch", "linear", "time_decay", "position_based"];
@@ -379,9 +378,8 @@ export const getCustomerJourneys = query({
 
     const conversions = await ctx.db
       .query("revenueConversions")
-      .withIndex("by_business_and_timestamp", (q) =>
-        q.eq("businessId", args.businessId).gte("timestamp", cutoff)
-      )
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .filter((q) => q.gte(q.field("convertedAt"), cutoff))
       .take(limit);
 
     const journeys = [];
@@ -403,10 +401,10 @@ export const getCustomerJourneys = query({
         path: pathKey,
         channels: path,
         touchpointCount: touchpoints.length,
-        revenue: conversion.revenue,
-        conversionType: conversion.conversionType,
+        revenue: conversion.revenue || conversion.amount,
+        conversionType: conversion.conversionType || "unknown",
         duration: touchpoints.length > 0 
-          ? conversion.timestamp - touchpoints[0].timestamp 
+          ? (conversion.timestamp || conversion.convertedAt) - touchpoints[0].timestamp 
           : 0,
       });
     }
@@ -458,16 +456,15 @@ export const getChannelTrends = query({
 
     const conversions = await ctx.db
       .query("revenueConversions")
-      .withIndex("by_business_and_timestamp", (q) =>
-        q.eq("businessId", args.businessId).gte("timestamp", cutoff)
-      )
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .filter((q) => q.gte(q.field("convertedAt"), cutoff))
       .collect();
 
     // Group by date and channel
     const dailyStats: Record<string, Record<string, { revenue: number; conversions: number }>> = {};
 
     conversions.forEach((conversion) => {
-      const date = new Date(conversion.timestamp).toISOString().split("T")[0];
+      const date = new Date(conversion.timestamp || conversion.convertedAt).toISOString().split("T")[0];
       const linear = (conversion.attributions?.linear ?? {}) as Record<string, number>;
 
       if (!dailyStats[date]) {
@@ -517,16 +514,15 @@ export const getRevenueForecast = query({
 
     const conversions = await ctx.db
       .query("revenueConversions")
-      .withIndex("by_business_and_timestamp", (q) =>
-        q.eq("businessId", args.businessId).gte("timestamp", cutoff)
-      )
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .filter((q) => q.gte(q.field("convertedAt"), cutoff))
       .collect();
 
     // Group by date
     const dailyRevenue: Record<string, number> = {};
     conversions.forEach((c) => {
-      const date = new Date(c.timestamp).toISOString().split("T")[0];
-      dailyRevenue[date] = (dailyRevenue[date] || 0) + c.revenue;
+      const date = new Date(c.timestamp || c.convertedAt).toISOString().split("T")[0];
+      dailyRevenue[date] = (dailyRevenue[date] || 0) + (c.revenue || c.amount);
     });
 
     const historicalData = Object.entries(dailyRevenue)
@@ -591,9 +587,8 @@ export const getChannelPerformanceMetrics = query({
 
     const conversions = await ctx.db
       .query("revenueConversions")
-      .withIndex("by_business_and_timestamp", (q) =>
-        q.eq("businessId", args.businessId).gte("timestamp", cutoff)
-      )
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .filter((q) => q.gte(q.field("timestamp"), cutoff))
       .collect();
 
     const touchpoints = await ctx.db
@@ -637,7 +632,7 @@ export const getChannelPerformanceMetrics = query({
 
       contactTouchpoints.sort((a, b) => a.timestamp - b.timestamp);
       const timeToConversion = contactTouchpoints.length > 0 
-        ? conversion.timestamp - contactTouchpoints[0].timestamp 
+        ? (conversion.timestamp || conversion.convertedAt) - contactTouchpoints[0].timestamp 
         : 0;
 
       Object.entries(linear).forEach(([channel, revenue]) => {
