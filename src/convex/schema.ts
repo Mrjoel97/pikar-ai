@@ -2768,6 +2768,346 @@ const schema = defineSchema({
   })
     .index("by_user", ["userId"]),
 
+  // Invoices
+  invoices: defineTable({
+    businessId: v.id("businesses"),
+    invoiceNumber: v.string(),
+    clientName: v.string(),
+    clientEmail: v.optional(v.string()),
+    amount: v.number(),
+    currency: v.string(),
+    status: v.union(
+      v.literal("draft"),
+      v.literal("sent"),
+      v.literal("paid"),
+      v.literal("overdue"),
+      v.literal("cancelled")
+    ),
+    dueDate: v.number(),
+    issuedDate: v.number(),
+    paidDate: v.optional(v.number()),
+    items: v.array(v.object({
+      description: v.string(),
+      quantity: v.number(),
+      unitPrice: v.number(),
+      total: v.number(),
+    })),
+    notes: v.optional(v.string()),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_status", ["status"])
+    .index("by_invoice_number", ["invoiceNumber"]),
+
+  // KMS Configuration
+  kmsConfigs: defineTable({
+    businessId: v.id("businesses"),
+    provider: v.union(v.literal("aws"), v.literal("azure"), v.literal("gcp")),
+    keyId: v.string(),
+    region: v.optional(v.string()),
+    isActive: v.boolean(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_business", ["businessId"]),
+
+  kmsKeyRotations: defineTable({
+    businessId: v.id("businesses"),
+    configId: v.id("kmsConfigs"),
+    oldKeyId: v.string(),
+    newKeyId: v.string(),
+    rotatedAt: v.number(),
+    status: v.union(v.literal("completed"), v.literal("failed"), v.literal("scheduled")),
+    nextRotationDate: v.optional(v.number()),
+    autoRotate: v.optional(v.boolean()),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_config", ["configId"]),
+
+  kmsEncryptionPolicies: defineTable({
+    businessId: v.id("businesses"),
+    name: v.string(),
+    description: v.optional(v.string()),
+    algorithm: v.string(),
+    keySize: v.number(),
+    rotationPeriod: v.number(),
+    isActive: v.boolean(),
+    targetTables: v.optional(v.array(v.string())),
+    encryptionLevel: v.optional(v.string()),
+    mandatory: v.optional(v.boolean()),
+    createdAt: v.number(),
+  })
+    .index("by_business", ["businessId"]),
+
+  kmsUsageLogs: defineTable({
+    businessId: v.id("businesses"),
+    configId: v.id("kmsConfigs"),
+    operation: v.string(),
+    keyId: v.string(),
+    timestamp: v.number(),
+    userId: v.optional(v.id("users")),
+    success: v.optional(v.boolean()),
+    dataSize: v.optional(v.number()),
+    dataType: v.optional(v.string()),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_config", ["configId"]),
+
+  // Brands
+  brands: defineTable({
+    businessId: v.id("businesses"),
+    name: v.string(),
+    description: v.optional(v.string()),
+    tagline: v.optional(v.string()),
+    logo: v.optional(v.string()),
+    primaryColor: v.optional(v.string()),
+    secondaryColor: v.optional(v.string()),
+    fontFamily: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_business", ["businessId"]),
+
+  // Revenue Attribution
+  revenueTouchpoints: defineTable({
+    businessId: v.id("businesses"),
+    contactId: v.id("contacts"),
+    channel: v.string(),
+    campaign: v.optional(v.string()),
+    campaignId: v.optional(v.string()),
+    timestamp: v.number(),
+    value: v.optional(v.number()),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_contact", ["contactId"])
+    .index("by_business_and_timestamp", ["businessId", "timestamp"])
+    .index("by_contact_and_business", ["contactId", "businessId"]),
+
+  revenueConversions: defineTable({
+    businessId: v.id("businesses"),
+    contactId: v.id("contacts"),
+    amount: v.number(),
+    revenue: v.optional(v.number()),
+    convertedAt: v.number(),
+    timestamp: v.optional(v.number()),
+    conversionType: v.optional(v.string()),
+    attributedTouchpoints: v.array(v.id("revenueTouchpoints")),
+    attributions: v.optional(v.any()),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_contact", ["contactId"]),
+
+  // A/B Testing
+  experiments: defineTable({
+    businessId: v.id("businesses"),
+    name: v.string(),
+    description: v.optional(v.string()),
+    status: v.union(
+      v.literal("draft"),
+      v.literal("running"),
+      v.literal("completed"),
+      v.literal("cancelled")
+    ),
+    startDate: v.optional(v.number()),
+    endDate: v.optional(v.number()),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_status", ["status"]),
+
+  experimentVariants: defineTable({
+    experimentId: v.id("experiments"),
+    name: v.string(),
+    description: v.optional(v.string()),
+    weight: v.number(),
+    config: v.any(),
+    impressions: v.number(),
+    conversions: v.number(),
+  })
+    .index("by_experiment", ["experimentId"]),
+
+  // Vendors
+  vendors: defineTable({
+    businessId: v.id("businesses"),
+    name: v.string(),
+    category: v.string(),
+    contactName: v.optional(v.string()),
+    contactEmail: v.optional(v.string()),
+    contactPhone: v.optional(v.string()),
+    status: v.union(v.literal("active"), v.literal("inactive")),
+    contractStart: v.optional(v.number()),
+    contractEnd: v.optional(v.number()),
+    contractValue: v.optional(v.number()),
+    performanceScore: v.optional(v.number()),
+    riskLevel: v.optional(v.union(v.literal("low"), v.literal("medium"), v.literal("high"))),
+    lastReviewDate: v.optional(v.number()),
+    createdAt: v.number(),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_status", ["status"]),
+
+  vendorPerformanceMetrics: defineTable({
+    businessId: v.id("businesses"),
+    vendorId: v.id("vendors"),
+    metricType: v.string(),
+    value: v.number(),
+    timestamp: v.number(),
+    recordedAt: v.optional(v.number()),
+    overallScore: v.optional(v.number()),
+    onTimeDelivery: v.optional(v.number()),
+    qualityScore: v.optional(v.number()),
+    responsiveness: v.optional(v.number()),
+    costEfficiency: v.optional(v.number()),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_vendor", ["vendorId"]),
+
+  // Workflow Handoffs
+  workflowHandoffs: defineTable({
+    businessId: v.id("businesses"),
+    workflowId: v.id("workflows"),
+    fromDepartment: v.string(),
+    toDepartment: v.string(),
+    status: v.union(v.literal("pending"), v.literal("accepted"), v.literal("rejected")),
+    handoffData: v.any(),
+    stepId: v.optional(v.string()),
+    initiatedAt: v.optional(v.number()),
+    resolvedAt: v.optional(v.number()),
+    resolvedBy: v.optional(v.id("users")),
+    createdAt: v.number(),
+    completedAt: v.optional(v.number()),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_workflow", ["workflowId"])
+    .index("by_status", ["status"]),
+
+  // Social Media Posts
+  socialPosts: defineTable({
+    businessId: v.id("businesses"),
+    createdBy: v.id("users"),
+    content: v.string(),
+    platforms: v.array(v.union(
+      v.literal("twitter"),
+      v.literal("linkedin"),
+      v.literal("facebook"),
+      v.literal("instagram")
+    )),
+    scheduledAt: v.optional(v.number()),
+    publishedAt: v.optional(v.number()),
+    status: v.union(
+      v.literal("draft"),
+      v.literal("scheduled"),
+      v.literal("published"),
+      v.literal("posted"),
+      v.literal("posting"),
+      v.literal("failed")
+    ),
+    mediaUrls: v.optional(v.array(v.string())),
+    postIds: v.optional(v.record(v.string(), v.string())),
+    errorMessage: v.optional(v.string()),
+    createdAt: v.number(),
+    characterCount: v.optional(v.number()),
+    performanceMetrics: v.optional(v.object({
+      likes: v.number(),
+      comments: v.number(),
+      shares: v.number(),
+      impressions: v.number(),
+      engagements: v.number(),
+      clicks: v.number(),
+    })),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_status", ["status"])
+    .index("by_scheduled_at", ["scheduledAt"]),
+
+  // Social Media Accounts
+  socialAccounts: defineTable({
+    businessId: v.id("businesses"),
+    userId: v.id("users"),
+    platform: v.union(
+      v.literal("twitter"),
+      v.literal("linkedin"),
+      v.literal("facebook"),
+      v.literal("instagram")
+    ),
+    accountName: v.string(),
+    accountId: v.string(),
+    accessToken: v.string(),
+    refreshToken: v.optional(v.string()),
+    expiresAt: v.optional(v.number()),
+    isActive: v.boolean(),
+    connectedAt: v.number(),
+    lastSyncAt: v.optional(v.number()),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_user", ["userId"])
+    .index("by_platform", ["platform"])
+    .index("by_business_and_platform", ["businessId", "platform"]),
+
+  // Audit Report Schedules
+  auditReportSchedules: defineTable({
+    businessId: v.id("businesses"),
+    name: v.string(),
+    reportType: v.string(),
+    frequency: v.union(
+      v.literal("daily"),
+      v.literal("weekly"),
+      v.literal("monthly"),
+      v.literal("quarterly")
+    ),
+    recipients: v.array(v.string()),
+    filters: v.optional(v.any()),
+    schedule: v.optional(v.string()),
+    isActive: v.boolean(),
+    lastRunAt: v.optional(v.number()),
+    nextRunAt: v.number(),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_next_run", ["nextRunAt"])
+    .index("by_active", ["isActive"]),
+
+  // Crisis Management Alerts
+  crisisAlerts: defineTable({
+    businessId: v.id("businesses"),
+    title: v.string(),
+    description: v.string(),
+    alertType: v.string(),
+    severity: v.union(
+      v.literal("low"),
+      v.literal("medium"),
+      v.literal("high"),
+      v.literal("critical")
+    ),
+    status: v.union(
+      v.literal("active"),
+      v.literal("monitoring"),
+      v.literal("resolved"),
+      v.literal("closed")
+    ),
+    affectedSystems: v.array(v.string()),
+    assignedTo: v.optional(v.id("users")),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    detectedAt: v.number(),
+    resolvedAt: v.optional(v.number()),
+    responseActions: v.optional(v.array(v.object({
+      action: v.string(),
+      takenBy: v.id("users"),
+      takenAt: v.number(),
+      notes: v.optional(v.string()),
+    }))),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_status", ["status"])
+    .index("by_severity", ["severity"])
+    .index("by_assigned_to", ["assignedTo"]),
+
 });
 
 export default schema;
