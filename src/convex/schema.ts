@@ -2220,16 +2220,23 @@ const schema = defineSchema({
   // Governance Tables
   governanceEscalations: defineTable({
     businessId: v.id("businesses"),
+    workflowId: v.id("workflows"),
     violationId: v.optional(v.id("governanceViolations")),
-    title: v.string(),
-    description: v.string(),
-    priority: v.union(v.literal("low"), v.literal("medium"), v.literal("high"), v.literal("urgent")),
+    violationType: v.string(),
+    count: v.number(),
+    title: v.optional(v.string()),
+    description: v.optional(v.string()),
+    priority: v.optional(v.union(v.literal("low"), v.literal("medium"), v.literal("high"), v.literal("urgent"))),
     status: v.union(v.literal("pending"), v.literal("in_progress"), v.literal("resolved")),
+    escalatedTo: v.string(),
     assignedTo: v.optional(v.id("users")),
+    notes: v.optional(v.string()),
+    resolution: v.optional(v.string()),
     createdAt: v.number(),
     resolvedAt: v.optional(v.number()),
   })
-    .index("by_business", ["businessId"]),
+    .index("by_business", ["businessId"])
+    .index("by_workflow", ["workflowId"]),
 
   governanceRules: defineTable({
     businessId: v.id("businesses"),
@@ -2530,22 +2537,86 @@ const schema = defineSchema({
 
   governanceRemediations: defineTable({
     businessId: v.id("businesses"),
-    violationId: v.id("governanceViolations"),
+    violationId: v.optional(v.id("governanceViolations")),
     workflowId: v.id("workflows"),
-    status: v.string(),
+    violationType: v.string(),
+    action: v.string(),
+    changes: v.any(),
+    originalPipeline: v.any(),
+    newPipeline: v.any(),
+    status: v.union(v.literal("applied"), v.literal("rolled_back")),
     appliedAt: v.number(),
-    originalPipeline: v.optional(v.any()),
+    rollbackReason: v.optional(v.string()),
+    rolledBackAt: v.optional(v.number()),
   })
     .index("by_business", ["businessId"])
     .index("by_workflow", ["workflowId"]),
 
   governanceAutomationSettings: defineTable({
     businessId: v.id("businesses"),
-    autoRemediate: v.boolean(),
-    escalationRules: v.optional(v.any()),
+    autoRemediate: v.object({
+      missing_approval: v.boolean(),
+      insufficient_sla: v.boolean(),
+      insufficient_approvals: v.boolean(),
+      role_diversity: v.boolean(),
+    }),
+    escalationRules: v.object({
+      threshold: v.number(),
+      escalateTo: v.string(),
+    }),
     createdAt: v.number(),
+    updatedAt: v.number(),
   })
     .index("by_business", ["businessId"]),
+
+  locations: defineTable({
+    businessId: v.id("businesses"),
+    name: v.string(),
+    code: v.string(),
+    type: v.union(
+      v.literal("headquarters"),
+      v.literal("branch"),
+      v.literal("warehouse"),
+      v.literal("retail"),
+      v.literal("office")
+    ),
+    parentLocationId: v.optional(v.id("locations")),
+    address: v.object({
+      street: v.string(),
+      city: v.string(),
+      state: v.string(),
+      country: v.string(),
+      postalCode: v.string(),
+    }),
+    timezone: v.string(),
+    manager: v.optional(v.string()),
+    contactEmail: v.optional(v.string()),
+    contactPhone: v.optional(v.string()),
+    isActive: v.boolean(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_parent", ["parentLocationId"]),
+
+  locationAudits: defineTable({
+    businessId: v.id("businesses"),
+    locationId: v.id("locations"),
+    auditType: v.string(),
+    auditor: v.string(),
+    findings: v.array(v.object({
+      category: v.string(),
+      severity: v.union(v.literal("critical"), v.literal("high"), v.literal("medium"), v.literal("low")),
+      description: v.string(),
+    })),
+    overallScore: v.number(),
+    notes: v.optional(v.string()),
+    status: v.string(),
+    auditDate: v.number(),
+    createdAt: v.number(),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_location", ["locationId"]),
 
   dataQualityMetrics: defineTable({
     businessId: v.id("businesses"),
