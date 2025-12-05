@@ -43,10 +43,7 @@ export const getRuleViolations = query({
 export const recordViolation = mutation({
   args: {
     ruleId: v.id("governanceRules"),
-    workflowId: v.id("workflows"),
-    reason: v.string(),
-    remediated: v.boolean(),
-    remediationAction: v.optional(v.string()),
+    description: v.string(),
   },
   handler: async (ctx, args) => {
     const rule = await ctx.db.get(args.ruleId);
@@ -55,15 +52,10 @@ export const recordViolation = mutation({
     const violationId = await ctx.db.insert("governanceViolations", {
       businessId: rule.businessId,
       ruleId: args.ruleId,
-      workflowId: args.workflowId,
-      ruleName: rule.name,
-      ruleType: rule.ruleType,
       severity: rule.severity,
-      reason: args.reason,
-      status: args.remediated ? "remediated" : "open",
-      remediationAction: args.remediationAction,
+      description: args.description,
+      status: "open",
       detectedAt: Date.now(),
-      remediatedAt: args.remediated ? Date.now() : undefined,
     });
 
     await ctx.db.insert("audit_logs", {
@@ -73,8 +65,7 @@ export const recordViolation = mutation({
       entityId: violationId,
       details: {
         ruleId: args.ruleId,
-        workflowId: args.workflowId,
-        reason: args.reason,
+        description: args.description,
       },
       createdAt: Date.now(),
     });
@@ -96,9 +87,8 @@ export const dismissViolation = mutation({
     if (!violation) throw new Error("Violation not found");
 
     await ctx.db.patch(args.violationId, {
-      status: "dismissed",
-      dismissalReason: args.reason,
-      dismissedAt: Date.now(),
+      status: "acknowledged",
+      resolvedAt: Date.now(),
     });
 
     await ctx.db.insert("audit_logs", {
@@ -148,7 +138,7 @@ export const getEscalations = query({
 
         return {
           ...esc,
-          workflowName: workflow?.name || "Unknown",
+          workflowName: (workflow as any)?.name || "Unknown",
           slaDeadline,
           isOverdue,
           hoursRemaining,

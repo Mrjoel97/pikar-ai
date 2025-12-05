@@ -228,7 +228,7 @@ export function LocationManager({ businessId }: LocationManagerProps) {
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {locations.map((location) => (
+        {locations.map((location: any) => (
           <Card key={location._id}>
             <CardHeader>
               <div className="flex items-start justify-between">

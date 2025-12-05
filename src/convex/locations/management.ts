@@ -94,19 +94,26 @@ export const getLocationHierarchy = query({
     const locations = await ctx.db
       .query("locations")
       .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
-      .filter((q) => q.eq(q.field("isActive"), true))
       .collect();
 
-    const buildHierarchy = (parentId?: string) => {
+    interface LocationNode {
+      _id: string;
+      name: string;
+      code: string;
+      type: string;
+      parentLocationId?: string;
+      children: LocationNode[];
+    }
+
+    const buildHierarchy = (parentId?: string): LocationNode[] => {
       return locations
-        .filter((l) => {
-          if (parentId) {
-            return l.parentLocationId === parentId;
-          }
-          return !l.parentLocationId;
-        })
+        .filter((loc) => loc.parentLocationId === parentId)
         .map((location) => ({
-          ...location,
+          _id: location._id,
+          name: location.name,
+          code: location.code,
+          type: location.type,
+          parentLocationId: location.parentLocationId,
           children: buildHierarchy(location._id),
         }));
     };

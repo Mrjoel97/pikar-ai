@@ -26,7 +26,6 @@ export const getLocationCompliance = query({
       const workflows = await ctx.db
         .query("workflows")
         .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
-        .filter((q) => q.eq(q.field("locationId"), location._id))
         .collect();
 
       const total = workflows.length;
@@ -39,10 +38,7 @@ export const getLocationCompliance = query({
         .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
         .collect();
 
-      const locationViolations = violations.filter((v) => {
-        const workflow = workflows.find((w) => w._id === v.workflowId);
-        return !!workflow;
-      });
+      const locationViolations = violations;
 
       const openViolations = locationViolations.filter((v) => v.status === "open").length;
       const criticalViolations = locationViolations.filter(
@@ -174,7 +170,6 @@ export const getComplianceTrends = query({
         const workflows = await ctx.db
           .query("workflows")
           .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
-          .filter((q) => q.eq(q.field("locationId"), location._id))
           .collect();
 
         const total = workflows.length;

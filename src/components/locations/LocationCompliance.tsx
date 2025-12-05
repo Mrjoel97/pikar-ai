@@ -27,7 +27,7 @@ export function LocationCompliance({ businessId }: LocationComplianceProps) {
       </div>
 
       <div className="grid gap-4">
-        {complianceData.map((location) => (
+        {complianceData.map((location: any) => (
           <Card key={location.locationId}>
             <CardHeader>
               <div className="flex items-center justify-between">

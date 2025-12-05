@@ -25,7 +25,7 @@ export function LocationAnalytics({ businessId }: LocationAnalyticsProps) {
     locations && locations.length > 0
       ? {
           businessId,
-          locationIds: locations.map((l) => l._id),
+          locationIds: locations.map((l: any) => l._id),
           metric: "workflows",
         }
       : "skip"
@@ -51,7 +51,7 @@ export function LocationAnalytics({ businessId }: LocationAnalyticsProps) {
               <SelectValue placeholder="Select location" />
             </SelectTrigger>
             <SelectContent>
-              {locations.map((loc) => (
+              {locations.map((loc: any) => (
                 <SelectItem key={loc._id} value={loc._id}>
                   {loc.name}
                 </SelectItem>

@@ -146,10 +146,14 @@ export const enforceWorkflowCompliance = internalMutation({
     if (criticalViolations.length > 0) {
       await ctx.db.insert("governanceEscalations", {
         businessId: args.businessId,
+        workflowId: args.workflowId,
+        violationType: "critical_compliance",
+        count: criticalViolations.length,
         title: `Critical Compliance Violations in ${workflow.name}`,
         description: `Workflow has ${criticalViolations.length} critical violations that require immediate attention.`,
         priority: "urgent",
         status: "pending",
+        escalatedTo: "admin",
         createdAt: Date.now(),
       });
     }
@@ -199,5 +203,45 @@ export const getComplianceScore = query({
       openViolations: violations.length,
       criticalViolations: violations.filter((v) => v.severity === "critical").length,
     };
+  },
+});
+
+export const createGovernanceEscalation = mutation({
+  args: {
+    businessId: v.id("businesses"),
+    workflowId: v.id("workflows"),
+    violationType: v.string(),
+    title: v.string(),
+    description: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const workflow = await ctx.db.get(args.workflowId);
+    if (!workflow) throw new Error("Workflow not found");
+
+    const violations = await ctx.db
+      .query("governanceViolations")
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .collect();
+
+    const relatedViolations = violations.filter(
+      (v) => v.status === "open"
+    );
+
+    if (relatedViolations.length > 0) {
+      await ctx.db.insert("governanceEscalations", {
+        businessId: args.businessId,
+        workflowId: args.workflowId,
+        violationType: args.violationType,
+        count: relatedViolations.length,
+        title: args.title,
+        description: args.description,
+        priority: "urgent",
+        status: "pending",
+        escalatedTo: "admin",
+        createdAt: Date.now(),
+      });
+    }
+
+    return { success: true };
   },
 });
