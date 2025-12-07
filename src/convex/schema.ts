@@ -3157,6 +3157,34 @@ const schema = defineSchema({
     .index("by_webhook", ["webhookId"])
     .index("by_status", ["status"]),
 
+  departmentKpis: defineTable({
+    businessId: v.id("businesses"),
+    department: v.string(),
+    name: v.string(),
+    value: v.number(),
+    unit: v.string(),
+    period: v.string(),
+    recordedAt: v.number(),
+    createdAt: v.number(),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_department", ["businessId", "department"]),
+
+  kpiTargets: defineTable({
+    businessId: v.id("businesses"),
+    department: v.string(),
+    kpiName: v.string(),
+    targetValue: v.number(),
+    unit: v.string(),
+    timeframe: v.string(),
+    ownerId: v.id("users"),
+    alertThreshold: v.number(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_department", ["businessId", "department"]),
+
 });
 
 export default schema;
