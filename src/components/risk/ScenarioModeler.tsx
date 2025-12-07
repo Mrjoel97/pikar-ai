@@ -1,220 +1,276 @@
 import { useState } from "react";
-import { useMutation, useQuery } from "convex/react";
+import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
+import { Id } from "@/convex/_generated/dataModel";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Slider } from "@/components/ui/slider";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { AlertTriangle, TrendingUp, Play } from "lucide-react";
+import { Plus, Play, TrendingUp, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 
-export function ScenarioModeler({ businessId }: { businessId: string }) {
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [category, setCategory] = useState("operational");
-  const [likelihood, setLikelihood] = useState([3]);
-  const [impact, setImpact] = useState([3]);
-  const [timeframe, setTimeframe] = useState("medium-term");
+interface ScenarioModelerProps {
+  businessId: Id<"businesses">;
+}
 
-  const scenarios = useQuery(api.risk.scenarios.listScenarios, { businessId: businessId as any });
+export function ScenarioModeler({ businessId }: ScenarioModelerProps) {
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [selectedScenario, setSelectedScenario] = useState<Id<"riskScenarios"> | null>(null);
+
+  const scenarios = useQuery(api.risk.scenarios.listScenarios, { businessId });
+  const scenarioResults = useQuery(
+    api.risk.scenarios.getScenarioResults,
+    selectedScenario ? { scenarioId: selectedScenario } : "skip"
+  );
+
   const createScenario = useMutation(api.risk.scenarios.createScenario);
-  const runSimulation = useQuery(api.risk.scenarios.runSimulation, { 
-    businessId: businessId as any, 
-    iterations: 1000 
+  const runSimulation = useMutation(api.risk.scenarios.runScenarioSimulation);
+
+  const [formData, setFormData] = useState({
+    name: "",
+    description: "",
+    category: "operational",
+    timeframe: "30d",
+    assumptions: [{ factor: "", value: "", impact: "" }],
   });
 
-  const handleCreate = async () => {
-    if (!title || !description) {
-      toast.error("Please fill in all required fields");
-      return;
-    }
-
+  const handleCreateScenario = async () => {
     try {
-      await createScenario({
-        businessId: businessId as any,
-        title,
-        description,
-        category,
-        likelihood: likelihood[0],
-        impact: impact[0],
-        timeframe,
-        affectedAreas: [],
+      const scenarioId = await createScenario({
+        businessId,
+        ...formData,
       });
-      toast.success("Risk scenario created");
-      setTitle("");
-      setDescription("");
+      toast.success("Scenario created successfully");
+      setIsCreateOpen(false);
+      setFormData({
+        name: "",
+        description: "",
+        category: "operational",
+        timeframe: "30d",
+        assumptions: [{ factor: "", value: "", impact: "" }],
+      });
     } catch (error) {
       toast.error("Failed to create scenario");
     }
   };
 
-  const riskScore = likelihood[0] * impact[0];
-  const riskLevel = riskScore > 15 ? "Critical" : riskScore > 9 ? "High" : riskScore > 4 ? "Medium" : "Low";
-  const riskColor = riskScore > 15 ? "destructive" : riskScore > 9 ? "default" : "secondary";
+  const handleRunSimulation = async (scenarioId: Id<"riskScenarios">) => {
+    try {
+      await runSimulation({ scenarioId, iterations: 1000 });
+      toast.success("Simulation completed");
+      setSelectedScenario(scenarioId);
+    } catch (error) {
+      toast.error("Failed to run simulation");
+    }
+  };
+
+  const addAssumption = () => {
+    setFormData({
+      ...formData,
+      assumptions: [...formData.assumptions, { factor: "", value: "", impact: "" }],
+    });
+  };
 
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Create Risk Scenario</CardTitle>
-          <CardDescription>Model potential risks and their impacts</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="title">Scenario Title</Label>
-            <Input
-              id="title"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g., Supply chain disruption"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="description">Description</Label>
-            <Textarea
-              id="description"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Describe the risk scenario..."
-              rows={3}
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="category">Category</Label>
-              <Select value={category} onValueChange={setCategory}>
-                <SelectTrigger id="category">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="operational">Operational</SelectItem>
-                  <SelectItem value="financial">Financial</SelectItem>
-                  <SelectItem value="strategic">Strategic</SelectItem>
-                  <SelectItem value="compliance">Compliance</SelectItem>
-                  <SelectItem value="reputational">Reputational</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="timeframe">Timeframe</Label>
-              <Select value={timeframe} onValueChange={setTimeframe}>
-                <SelectTrigger id="timeframe">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="immediate">Immediate</SelectItem>
-                  <SelectItem value="short-term">Short-term (0-6 months)</SelectItem>
-                  <SelectItem value="medium-term">Medium-term (6-18 months)</SelectItem>
-                  <SelectItem value="long-term">Long-term (18+ months)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label>Likelihood: {likelihood[0]}/5</Label>
-            <Slider
-              value={likelihood}
-              onValueChange={setLikelihood}
-              min={1}
-              max={5}
-              step={1}
-              className="w-full"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label>Impact: {impact[0]}/5</Label>
-            <Slider
-              value={impact}
-              onValueChange={setImpact}
-              min={1}
-              max={5}
-              step={1}
-              className="w-full"
-            />
-          </div>
-
-          <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
-            <div>
-              <p className="text-sm font-medium">Risk Score</p>
-              <p className="text-2xl font-bold">{riskScore}</p>
-            </div>
-            <Badge variant={riskColor as any}>{riskLevel}</Badge>
-          </div>
-
-          <Button onClick={handleCreate} className="w-full">
-            <AlertTriangle className="mr-2 h-4 w-4" />
-            Create Scenario
-          </Button>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Monte Carlo Simulation</CardTitle>
-          <CardDescription>Run probabilistic risk analysis</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {runSimulation ? (
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold">Risk Scenario Modeler</h2>
+          <p className="text-muted-foreground">Model and simulate risk scenarios</p>
+        </div>
+        <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+          <DialogTrigger asChild>
+            <Button>
+              <Plus className="h-4 w-4 mr-2" />
+              New Scenario
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-2xl max-h-[80vh] overflow-auto">
+            <DialogHeader>
+              <DialogTitle>Create Risk Scenario</DialogTitle>
+            </DialogHeader>
             <div className="space-y-4">
-              <div className="grid grid-cols-3 gap-4">
-                <div className="text-center p-4 bg-muted rounded-lg">
-                  <p className="text-sm text-muted-foreground">Avg Impact</p>
-                  <p className="text-2xl font-bold">{runSimulation.avgImpact.toFixed(2)}</p>
+              <div>
+                <Label>Scenario Name</Label>
+                <Input
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  placeholder="e.g., Market Downturn 2024"
+                />
+              </div>
+              <div>
+                <Label>Description</Label>
+                <Textarea
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  placeholder="Describe the scenario..."
+                  rows={3}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Category</Label>
+                  <Select value={formData.category} onValueChange={(v) => setFormData({ ...formData, category: v })}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="operational">Operational</SelectItem>
+                      <SelectItem value="financial">Financial</SelectItem>
+                      <SelectItem value="strategic">Strategic</SelectItem>
+                      <SelectItem value="compliance">Compliance</SelectItem>
+                      <SelectItem value="reputational">Reputational</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
-                <div className="text-center p-4 bg-muted rounded-lg">
-                  <p className="text-sm text-muted-foreground">Max Impact</p>
-                  <p className="text-2xl font-bold">{runSimulation.maxImpact}</p>
-                </div>
-                <div className="text-center p-4 bg-muted rounded-lg">
-                  <p className="text-sm text-muted-foreground">Min Impact</p>
-                  <p className="text-2xl font-bold">{runSimulation.minImpact}</p>
+                <div>
+                  <Label>Timeframe</Label>
+                  <Select value={formData.timeframe} onValueChange={(v) => setFormData({ ...formData, timeframe: v })}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="30d">30 Days</SelectItem>
+                      <SelectItem value="90d">90 Days</SelectItem>
+                      <SelectItem value="6m">6 Months</SelectItem>
+                      <SelectItem value="1y">1 Year</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
-              <p className="text-sm text-muted-foreground text-center">
-                Based on {runSimulation.iterations} iterations
-              </p>
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <Label>Assumptions</Label>
+                  <Button type="button" variant="outline" size="sm" onClick={addAssumption}>
+                    <Plus className="h-3 w-3 mr-1" />
+                    Add
+                  </Button>
+                </div>
+                {formData.assumptions.map((assumption, idx) => (
+                  <div key={idx} className="grid grid-cols-3 gap-2 mb-2">
+                    <Input
+                      placeholder="Factor"
+                      value={assumption.factor}
+                      onChange={(e) => {
+                        const newAssumptions = [...formData.assumptions];
+                        newAssumptions[idx].factor = e.target.value;
+                        setFormData({ ...formData, assumptions: newAssumptions });
+                      }}
+                    />
+                    <Input
+                      placeholder="Value"
+                      value={assumption.value}
+                      onChange={(e) => {
+                        const newAssumptions = [...formData.assumptions];
+                        newAssumptions[idx].value = e.target.value;
+                        setFormData({ ...formData, assumptions: newAssumptions });
+                      }}
+                    />
+                    <Input
+                      placeholder="Impact"
+                      value={assumption.impact}
+                      onChange={(e) => {
+                        const newAssumptions = [...formData.assumptions];
+                        newAssumptions[idx].impact = e.target.value;
+                        setFormData({ ...formData, assumptions: newAssumptions });
+                      }}
+                    />
+                  </div>
+                ))}
+              </div>
+              <Button onClick={handleCreateScenario} className="w-full">
+                Create Scenario
+              </Button>
             </div>
-          ) : (
-            <div className="text-center py-8 text-muted-foreground">
-              <Play className="h-12 w-12 mx-auto mb-2 opacity-50" />
-              <p>Create scenarios to run simulation</p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+          </DialogContent>
+        </Dialog>
+      </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Active Scenarios ({scenarios?.length || 0})</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-2">
-            {scenarios?.slice(0, 5).map((scenario: any) => (
-              <div key={scenario._id} className="flex items-center justify-between p-3 border rounded-lg">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        {scenarios?.map((scenario: any) => (
+          <Card key={scenario._id} className="hover:shadow-lg transition-shadow">
+            <CardHeader>
+              <div className="flex items-start justify-between">
                 <div className="flex-1">
-                  <p className="font-medium">{scenario.title}</p>
-                  <p className="text-sm text-muted-foreground">{scenario.category}</p>
+                  <CardTitle className="text-lg">{scenario.name}</CardTitle>
+                  <CardDescription className="mt-1">{scenario.description}</CardDescription>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Badge variant={scenario.riskScore > 15 ? "destructive" : "default"}>
-                    Score: {scenario.riskScore}
-                  </Badge>
-                  <Badge variant="outline">{scenario.status}</Badge>
+                <Badge variant={scenario.status === "simulated" ? "default" : "secondary"}>
+                  {scenario.status}
+                </Badge>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Category:</span>
+                  <span className="font-medium capitalize">{scenario.category}</span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Timeframe:</span>
+                  <span className="font-medium">{scenario.timeframe}</span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Assumptions:</span>
+                  <span className="font-medium">{scenario.assumptions.length}</span>
+                </div>
+                <div className="flex gap-2 mt-4">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="flex-1"
+                    onClick={() => handleRunSimulation(scenario._id)}
+                  >
+                    <Play className="h-3 w-3 mr-1" />
+                    Run
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="flex-1"
+                    onClick={() => setSelectedScenario(scenario._id)}
+                  >
+                    View Results
+                  </Button>
                 </div>
               </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {selectedScenario && scenarioResults && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Simulation Results</CardTitle>
+            <CardDescription>Monte Carlo simulation with 1000 iterations</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 md:grid-cols-4">
+              <div className="text-center p-4 border rounded-lg">
+                <div className="text-2xl font-bold">{scenarioResults.summary.avgRiskScore.toFixed(2)}</div>
+                <div className="text-xs text-muted-foreground mt-1">Avg Risk Score</div>
+              </div>
+              <div className="text-center p-4 border rounded-lg">
+                <div className="text-2xl font-bold text-red-600">{scenarioResults.summary.maxRiskScore.toFixed(2)}</div>
+                <div className="text-xs text-muted-foreground mt-1">Max Risk Score</div>
+              </div>
+              <div className="text-center p-4 border rounded-lg">
+                <div className="text-2xl font-bold text-green-600">{scenarioResults.summary.minRiskScore.toFixed(2)}</div>
+                <div className="text-xs text-muted-foreground mt-1">Min Risk Score</div>
+              </div>
+              <div className="text-center p-4 border rounded-lg">
+                <div className="text-2xl font-bold">{(scenarioResults.summary.confidence * 100).toFixed(0)}%</div>
+                <div className="text-xs text-muted-foreground mt-1">Confidence</div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

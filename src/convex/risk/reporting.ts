@@ -1,129 +1,109 @@
 import { v } from "convex/values";
-import { query } from "../_generated/server";
+import { mutation, query } from "../_generated/server";
 
-/**
- * Generate comprehensive risk report
- */
-export const generateRiskReport = query({
+export const generateRiskReport = mutation({
   args: {
     businessId: v.id("businesses"),
-    startDate: v.optional(v.number()),
-    endDate: v.optional(v.number()),
+    title: v.string(),
+    reportType: v.union(
+      v.literal("executive_summary"),
+      v.literal("detailed_analysis"),
+      v.literal("trend_report"),
+      v.literal("compliance_report")
+    ),
+    period: v.object({
+      start: v.number(),
+      end: v.number(),
+    }),
+    generatedBy: v.id("users"),
   },
   handler: async (ctx, args) => {
-    const risks = await ctx.db
-      .query("riskRegister")
+    const scenarios = await ctx.db
+      .query("riskScenarios")
       .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .filter((q) => 
+        q.and(
+          q.gte(q.field("createdAt"), args.period.start),
+          q.lte(q.field("createdAt"), args.period.end)
+        )
+      )
       .collect();
 
-    // Filter by date range if provided
-    let filteredRisks = risks;
-    if (args.startDate) {
-      filteredRisks = filteredRisks.filter((r) => r.createdAt >= args.startDate!);
-    }
-    if (args.endDate) {
-      filteredRisks = filteredRisks.filter((r) => r.createdAt <= args.endDate!);
-    }
+    const mitigations = await ctx.db
+      .query("riskMitigations")
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .filter((q) => 
+        q.and(
+          q.gte(q.field("createdAt"), args.period.start),
+          q.lte(q.field("createdAt"), args.period.end)
+        )
+      )
+      .collect();
 
-    // Risk distribution by category
-    const byCategory: Record<string, number> = {};
-    filteredRisks.forEach((r) => {
-      byCategory[r.category] = (byCategory[r.category] || 0) + 1;
+    const totalRisks = scenarios.length;
+    const criticalRisks = scenarios.filter(s => s.probability * s.impact >= 16).length;
+    const mitigatedRisks = mitigations.filter(m => m.status === "completed").length;
+    const avgRiskScore = scenarios.reduce((sum, s) => sum + (s.probability * s.impact), 0) / totalRisks || 0;
+
+    const summary = `Risk report for period ${new Date(args.period.start).toLocaleDateString()} to ${new Date(args.period.end).toLocaleDateString()}`;
+    
+    const keyFindings = [
+      `Total risk scenarios: ${totalRisks}`,
+      `Critical risks identified: ${criticalRisks}`,
+      `Mitigations completed: ${mitigatedRisks}`,
+    ];
+
+    const recommendations = [
+      "Continue monitoring critical risk scenarios",
+      "Implement planned mitigation strategies",
+      "Review and update risk assessments quarterly",
+    ];
+
+    const reportId = await ctx.db.insert("riskReports", {
+      businessId: args.businessId,
+      title: args.title,
+      reportType: args.reportType,
+      period: args.period,
+      summary,
+      keyFindings,
+      recommendations,
+      metrics: {
+        totalRisks,
+        criticalRisks,
+        mitigatedRisks,
+        averageRiskScore: avgRiskScore,
+      },
+      generatedBy: args.generatedBy,
+      generatedAt: Date.now(),
     });
 
-    // Risk distribution by severity
-    const bySeverity = {
-      critical: filteredRisks.filter((r) => r.riskScore > 20).length,
-      high: filteredRisks.filter((r) => r.riskScore > 15 && r.riskScore <= 20).length,
-      medium: filteredRisks.filter((r) => r.riskScore > 9 && r.riskScore <= 15).length,
-      low: filteredRisks.filter((r) => r.riskScore <= 9).length,
-    };
-
-    // Top risks
-    const topRisks = filteredRisks
-      .sort((a, b) => b.riskScore - a.riskScore)
-      .slice(0, 10)
-      .map((r) => ({
-        id: r._id,
-        title: r.title,
-        category: r.category,
-        riskScore: r.riskScore,
-        status: r.status,
-      }));
-
-    // Mitigation status
-    const mitigationStatus = {
-      identified: filteredRisks.filter((r) => r.status === "identified").length,
-      assessed: filteredRisks.filter((r) => r.status === "assessed").length,
-      mitigated: filteredRisks.filter((r) => r.status === "mitigated").length,
-      closed: filteredRisks.filter((r) => r.status === "closed").length,
-    };
-
-    // Trend analysis (last 90 days)
-    const now = Date.now();
-    const thirtyDaysAgo = now - 30 * 24 * 60 * 60 * 1000;
-    const sixtyDaysAgo = now - 60 * 24 * 60 * 60 * 1000;
-    const ninetyDaysAgo = now - 90 * 24 * 60 * 60 * 1000;
-
-    const trend = {
-      last30Days: filteredRisks.filter((r) => r.createdAt >= thirtyDaysAgo).length,
-      days30to60: filteredRisks.filter((r) => r.createdAt >= sixtyDaysAgo && r.createdAt < thirtyDaysAgo).length,
-      days60to90: filteredRisks.filter((r) => r.createdAt >= ninetyDaysAgo && r.createdAt < sixtyDaysAgo).length,
-    };
-
-    return {
-      summary: {
-        totalRisks: filteredRisks.length,
-        avgRiskScore: filteredRisks.reduce((sum, r) => sum + r.riskScore, 0) / filteredRisks.length || 0,
-        activeRisks: filteredRisks.filter((r) => r.status !== "closed").length,
-      },
-      byCategory,
-      bySeverity,
-      topRisks,
-      mitigationStatus,
-      trend,
-      generatedAt: Date.now(),
-    };
+    return reportId;
   },
 });
 
-/**
- * Get risk heatmap data
- */
-export const getRiskHeatmap = query({
-  args: {
+export const listReports = query({
+  args: { 
     businessId: v.id("businesses"),
+    reportType: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const risks = await ctx.db
-      .query("riskRegister")
+    let reports = await ctx.db
+      .query("riskReports")
       .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
-      .filter((q) => q.neq(q.field("status"), "closed"))
+      .order("desc")
       .collect();
 
-    // Create 5x5 heatmap grid
-    const heatmap: Array<Array<{ count: number; risks: any[] }>> = [];
-    for (let i = 0; i < 5; i++) {
-      heatmap[i] = [];
-      for (let j = 0; j < 5; j++) {
-        heatmap[i][j] = { count: 0, risks: [] };
-      }
+    if (args.reportType) {
+      reports = reports.filter(r => r.reportType === args.reportType);
     }
 
-    risks.forEach((risk) => {
-      const impactIndex = Math.min(Math.floor(risk.impact) - 1, 4);
-      const probabilityIndex = Math.min(Math.floor(risk.probability) - 1, 4);
-      
-      if (impactIndex >= 0 && probabilityIndex >= 0) {
-        heatmap[impactIndex][probabilityIndex].count++;
-        heatmap[impactIndex][probabilityIndex].risks.push({
-          id: risk._id,
-          title: risk.title,
-          category: risk.category,
-        });
-      }
-    });
+    return reports;
+  },
+});
 
-    return heatmap;
+export const getReport = query({
+  args: { reportId: v.id("riskReports") },
+  handler: async (ctx, args) => {
+    return await ctx.db.get(args.reportId);
   },
 });

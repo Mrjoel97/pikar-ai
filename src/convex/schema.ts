@@ -3185,6 +3185,135 @@ const schema = defineSchema({
     .index("by_business", ["businessId"])
     .index("by_department", ["businessId", "department"]),
 
+  // Advanced Risk Analytics Tables
+  riskScenarios: defineTable({
+    businessId: v.id("businesses"),
+    name: v.string(),
+    description: v.string(),
+    category: v.string(),
+    probability: v.number(),
+    impact: v.number(),
+    timeframe: v.string(),
+    assumptions: v.array(v.string()),
+    outcomes: v.array(v.object({
+      description: v.string(),
+      likelihood: v.number(),
+      financialImpact: v.number(),
+    })),
+    status: v.union(
+      v.literal("draft"),
+      v.literal("active"),
+      v.literal("archived")
+    ),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_status", ["status"])
+    .index("by_category", ["category"]),
+
+  riskMitigations: defineTable({
+    businessId: v.id("businesses"),
+    scenarioId: v.optional(v.id("riskScenarios")),
+    riskId: v.optional(v.id("risks")),
+    title: v.string(),
+    description: v.string(),
+    strategy: v.union(
+      v.literal("avoid"),
+      v.literal("mitigate"),
+      v.literal("transfer"),
+      v.literal("accept")
+    ),
+    status: v.union(
+      v.literal("planned"),
+      v.literal("in_progress"),
+      v.literal("completed"),
+      v.literal("cancelled")
+    ),
+    priority: v.union(
+      v.literal("low"),
+      v.literal("medium"),
+      v.literal("high"),
+      v.literal("critical")
+    ),
+    ownerId: v.id("users"),
+    estimatedCost: v.optional(v.number()),
+    actualCost: v.optional(v.number()),
+    effectiveness: v.optional(v.number()),
+    dueDate: v.optional(v.number()),
+    completedAt: v.optional(v.number()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_scenario", ["scenarioId"])
+    .index("by_risk", ["riskId"])
+    .index("by_status", ["status"])
+    .index("by_owner", ["ownerId"]),
+
+  riskReports: defineTable({
+    businessId: v.id("businesses"),
+    title: v.string(),
+    reportType: v.union(
+      v.literal("executive_summary"),
+      v.literal("detailed_analysis"),
+      v.literal("trend_report"),
+      v.literal("compliance_report")
+    ),
+    period: v.object({
+      start: v.number(),
+      end: v.number(),
+    }),
+    summary: v.string(),
+    keyFindings: v.array(v.string()),
+    recommendations: v.array(v.string()),
+    metrics: v.object({
+      totalRisks: v.number(),
+      criticalRisks: v.number(),
+      mitigatedRisks: v.number(),
+      averageRiskScore: v.number(),
+    }),
+    generatedBy: v.id("users"),
+    generatedAt: v.number(),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_type", ["reportType"])
+    .index("by_generated_at", ["generatedAt"]),
+
+  kpiAlerts: defineTable({
+    businessId: v.id("businesses"),
+    targetId: v.id("kpiTargets"),
+    department: v.string(),
+    kpiName: v.string(),
+    alertType: v.union(
+      v.literal("threshold_breach"),
+      v.literal("trend_warning"),
+      v.literal("target_missed")
+    ),
+    severity: v.union(
+      v.literal("info"),
+      v.literal("warning"),
+      v.literal("critical")
+    ),
+    message: v.string(),
+    currentValue: v.number(),
+    targetValue: v.number(),
+    status: v.union(
+      v.literal("active"),
+      v.literal("acknowledged"),
+      v.literal("resolved")
+    ),
+    acknowledgedBy: v.optional(v.id("users")),
+    acknowledgedAt: v.optional(v.number()),
+    resolvedAt: v.optional(v.number()),
+    createdAt: v.number(),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_target", ["targetId"])
+    .index("by_status", ["status"])
+    .index("by_department", ["businessId", "department"]),
+
 });
 
 export default schema;

@@ -1,127 +1,118 @@
 import { v } from "convex/values";
 import { mutation, query } from "../_generated/server";
 
-/**
- * Add mitigation strategy to a risk
- */
-export const addMitigation = mutation({
+export const createMitigationStrategy = mutation({
   args: {
-    riskId: v.id("riskRegister"),
-    strategy: v.string(),
-    owner: v.id("users"),
+    businessId: v.id("businesses"),
+    scenarioId: v.optional(v.id("riskScenarios")),
+    riskId: v.optional(v.id("risks")),
+    title: v.string(),
+    description: v.string(),
+    strategy: v.union(
+      v.literal("avoid"),
+      v.literal("mitigate"),
+      v.literal("transfer"),
+      v.literal("accept")
+    ),
+    priority: v.union(
+      v.literal("low"),
+      v.literal("medium"),
+      v.literal("high"),
+      v.literal("critical")
+    ),
+    ownerId: v.id("users"),
     targetDate: v.number(),
-    budget: v.optional(v.number()),
-    expectedReduction: v.number(), // Percentage reduction in risk score
+    estimatedCost: v.optional(v.number()),
+    expectedImpactReduction: v.number(),
   },
   handler: async (ctx, args) => {
-    const risk = await ctx.db.get(args.riskId);
-    if (!risk) throw new Error("Risk not found");
-
-    await ctx.db.patch(args.riskId, {
-      mitigation: args.strategy,
-      ownerId: args.owner,
-      mitigationDeadline: args.targetDate,
-      status: "assessed",
-      updatedAt: Date.now(),
-    });
-
-    // Create a task for mitigation tracking
-    await ctx.db.insert("tasks", {
-      businessId: risk.businessId,
-      title: `Mitigate: ${risk.title}`,
-      description: args.strategy,
-      priority: risk.riskScore > 15 ? "high" : risk.riskScore > 9 ? "medium" : "low",
-      urgent: risk.riskScore > 15,
-      status: "todo",
+    const mitigationId = await ctx.db.insert("riskMitigations", {
+      businessId: args.businessId,
+      scenarioId: args.scenarioId,
+      riskId: args.riskId,
+      title: args.title,
+      description: args.description,
+      strategy: args.strategy,
+      status: "planned",
+      priority: args.priority,
+      ownerId: args.ownerId,
+      dueDate: args.targetDate,
+      estimatedCost: args.estimatedCost,
+      actualCost: 0,
+      effectiveness: 0,
       createdAt: Date.now(),
       updatedAt: Date.now(),
-      dueDate: args.targetDate,
     });
-
-    return args.riskId;
+    return mitigationId;
   },
 });
 
-/**
- * Track mitigation progress
- */
 export const updateMitigationProgress = mutation({
   args: {
-    riskId: v.id("riskRegister"),
-    progressNotes: v.string(),
-    newLikelihood: v.optional(v.number()),
-    newImpact: v.optional(v.number()),
+    mitigationId: v.id("riskMitigations"),
+    status: v.optional(v.union(
+      v.literal("planned"),
+      v.literal("in_progress"),
+      v.literal("completed"),
+      v.literal("cancelled")
+    )),
+    actualCost: v.optional(v.number()),
+    effectiveness: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const risk = await ctx.db.get(args.riskId);
-    if (!risk) throw new Error("Risk not found");
-
     const updates: any = {
       updatedAt: Date.now(),
     };
-
-    if (args.newLikelihood !== undefined) {
-      updates.probability = args.newLikelihood;
-      updates.riskScore = args.newLikelihood * (args.newImpact ?? risk.impact);
-    }
-
-    if (args.newImpact !== undefined) {
-      updates.impact = args.newImpact;
-      updates.riskScore = (args.newLikelihood ?? risk.probability) * args.newImpact;
-    }
-
-    // If risk score is significantly reduced, mark as mitigated
-    if (updates.riskScore && updates.riskScore < 6) {
-      updates.status = "mitigated";
-    }
-
-    await ctx.db.patch(args.riskId, updates);
-
-    // Log the progress
-    await ctx.db.insert("audit_logs", {
-      businessId: risk.businessId,
-      action: "risk_mitigation_update",
-      entityType: "risk",
-      entityId: args.riskId,
-      details: {
-        notes: args.progressNotes,
-        oldScore: risk.riskScore,
-        newScore: updates.riskScore,
-      },
-      createdAt: Date.now(),
-    });
-
-    return args.riskId;
+    
+    if (args.status) updates.status = args.status;
+    if (args.actualCost !== undefined) updates.actualCost = args.actualCost;
+    if (args.effectiveness !== undefined) updates.effectiveness = args.effectiveness;
+    
+    await ctx.db.patch(args.mitigationId, updates);
   },
 });
 
-/**
- * Get mitigation effectiveness metrics
- */
-export const getMitigationMetrics = query({
-  args: {
+export const listMitigations = query({
+  args: { 
     businessId: v.id("businesses"),
+    status: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const risks = await ctx.db
-      .query("riskRegister")
+    let mitigations = await ctx.db
+      .query("riskMitigations")
       .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
       .collect();
 
-    const totalRisks = risks.length;
-    const mitigatedRisks = risks.filter((r) => r.status === "mitigated").length;
-    const activeRisks = risks.filter((r) => r.status !== "closed" && r.status !== "mitigated").length;
+    if (args.status) {
+      mitigations = mitigations.filter(m => m.status === args.status);
+    }
 
-    const avgRiskScore = risks.reduce((sum, r) => sum + r.riskScore, 0) / totalRisks || 0;
-    const highRisks = risks.filter((r) => r.riskScore > 15).length;
+    return mitigations;
+  },
+});
+
+export const getMitigationEffectiveness = query({
+  args: { businessId: v.id("businesses") },
+  handler: async (ctx, args) => {
+    const mitigations = await ctx.db
+      .query("riskMitigations")
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .filter((q) => q.eq(q.field("status"), "completed"))
+      .collect();
+
+    const avgEffectiveness = mitigations.reduce((sum, m) => sum + (m.effectiveness || 0), 0) / mitigations.length || 0;
 
     return {
-      totalRisks,
-      mitigatedRisks,
-      activeRisks,
-      mitigationRate: totalRisks > 0 ? (mitigatedRisks / totalRisks) * 100 : 0,
-      avgRiskScore,
-      highRisks,
+      totalMitigations: mitigations.length,
+      averageEffectiveness: Math.round(avgEffectiveness),
+      byStrategy: mitigations.reduce((acc: any, m) => {
+        if (!acc[m.strategy]) {
+          acc[m.strategy] = { effectiveness: 0, count: 0 };
+        }
+        acc[m.strategy].effectiveness += (m.effectiveness || 0);
+        acc[m.strategy].count += 1;
+        return acc;
+      }, {}),
     };
   },
 });
