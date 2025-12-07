@@ -53,6 +53,11 @@ export const coreSchema = {
       maxWorkflows: v.number(),
       maxStorage: v.number(),
     })),
+    settings: v.optional(v.object({
+      aiAgentsEnabled: v.array(v.string()),
+      complianceLevel: v.string(),
+      dataIntegrations: v.array(v.string()),
+    })),
   })
     .index("by_owner", ["ownerId"])
     .index("by_tier", ["tier"]),
