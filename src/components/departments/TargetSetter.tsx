@@ -6,18 +6,34 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Target, Plus } from "lucide-react";
+import { Target, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { Id } from "@/convex/_generated/dataModel";
+
+interface KpiTarget {
+  _id: Id<"kpiTargets">;
+  businessId: Id<"businesses">;
+  department: string;
+  name: string;
+  targetValue: number;
+  unit: string;
+  timeframe: "monthly" | "quarterly" | "yearly";
+  ownerId: Id<"users">;
+  alertThreshold: number;
+  status: "active" | "archived";
+  createdAt: number;
+  updatedAt: number;
+}
 
 export function TargetSetter({ businessId, department, userId }: { businessId: string; department: string; userId: string }) {
   const [kpiName, setKpiName] = useState("");
   const [targetValue, setTargetValue] = useState("");
   const [unit, setUnit] = useState("");
-  const [timeframe, setTimeframe] = useState("monthly");
+  const [timeframe, setTimeframe] = useState<"monthly" | "quarterly" | "yearly">("monthly");
   const [alertThreshold, setAlertThreshold] = useState("10");
 
   const targets = useQuery(api.departmentKpis.targets.getDepartmentTargets, {
-    businessId: businessId as any,
+    businessId: businessId as Id<"businesses">,
     department,
   });
 
@@ -31,13 +47,13 @@ export function TargetSetter({ businessId, department, userId }: { businessId: s
 
     try {
       await setTarget({
-        businessId: businessId as any,
+        businessId: businessId as Id<"businesses">,
         department,
-        kpiName,
+        name: kpiName,
         targetValue: parseFloat(targetValue),
         unit,
         timeframe,
-        ownerId: userId as any,
+        ownerId: userId as Id<"users">,
         alertThreshold: parseFloat(alertThreshold),
       });
       toast.success("Target set successfully");
@@ -93,7 +109,7 @@ export function TargetSetter({ businessId, department, userId }: { businessId: s
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="timeframe">Timeframe</Label>
-              <Select value={timeframe} onValueChange={setTimeframe}>
+              <Select value={timeframe} onValueChange={(v) => setTimeframe(v as "monthly" | "quarterly" | "yearly")}>
                 <SelectTrigger id="timeframe">
                   <SelectValue />
                 </SelectTrigger>
@@ -130,20 +146,27 @@ export function TargetSetter({ businessId, department, userId }: { businessId: s
         </CardHeader>
         <CardContent>
           <div className="space-y-2">
-            {targets?.map((target: any) => (
-              <div key={target._id} className="flex items-center justify-between p-3 border rounded-lg">
-                <div>
-                  <p className="font-medium">{target.kpiName}</p>
-                  <p className="text-sm text-muted-foreground">{target.timeframe}</p>
+            {targets && targets.length > 0 ? (
+              targets.map((target: KpiTarget) => (
+                <div key={target._id} className="flex items-center justify-between p-3 border rounded-lg">
+                  <div>
+                    <p className="font-medium">{target.name}</p>
+                    <p className="text-sm text-muted-foreground capitalize">{target.timeframe}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-bold">
+                      {target.targetValue.toLocaleString()} {target.unit}
+                    </p>
+                    <p className="text-xs text-muted-foreground">±{target.alertThreshold}% alert</p>
+                  </div>
                 </div>
-                <div className="text-right">
-                  <p className="font-bold">
-                    {target.targetValue} {target.unit}
-                  </p>
-                  <p className="text-xs text-muted-foreground">±{target.alertThreshold}% alert</p>
-                </div>
+              ))
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                <Target className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                <p>No targets set yet</p>
               </div>
-            ))}
+            )}
           </div>
         </CardContent>
       </Card>
