@@ -12,6 +12,22 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { FileText, Download, Calendar, TrendingUp } from "lucide-react";
 import { toast } from "sonner";
 
+interface RiskReport {
+  _id: Id<"riskReports">;
+  businessId: Id<"businesses">;
+  reportType: "executive_summary" | "detailed_analysis" | "compliance" | "trend_analysis";
+  timeRange: { start: number; end: number };
+  summary: {
+    totalRisks: number;
+    criticalRisks: number;
+    highRisks: number;
+    mediumRisks: number;
+    lowRisks: number;
+    avgRiskScore: number;
+  };
+  generatedAt: number;
+}
+
 interface RiskReportsProps {
   businessId: Id<"businesses">;
 }
@@ -152,7 +168,7 @@ export function RiskReports({ businessId }: RiskReportsProps) {
       </div>
 
       <div className="space-y-3">
-        {reports?.map((report: any) => (
+        {reports?.map((report: RiskReport) => (
           <Card key={report._id} className="hover:shadow-md transition-shadow">
             <CardContent className="p-4">
               <div className="flex items-start justify-between gap-4">

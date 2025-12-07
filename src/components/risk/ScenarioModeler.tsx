@@ -13,6 +13,28 @@ import { Badge } from "@/components/ui/badge";
 import { Plus, Play, TrendingUp, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 
+interface RiskScenario {
+  _id: Id<"riskScenarios">;
+  businessId: Id<"businesses">;
+  name: string;
+  description: string;
+  category: string;
+  status: string;
+  timeframe: string;
+  assumptions: Array<{ factor: string; value: string; impact: string }>;
+  createdAt: number;
+  updatedAt: number;
+}
+
+interface ScenarioResults {
+  summary: {
+    avgRiskScore: number;
+    maxRiskScore: number;
+    minRiskScore: number;
+    confidence: number;
+  };
+}
+
 interface ScenarioModelerProps {
   businessId: Id<"businesses">;
 }
@@ -191,7 +213,7 @@ export function ScenarioModeler({ businessId }: ScenarioModelerProps) {
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {scenarios?.map((scenario: any) => (
+        {scenarios?.map((scenario: RiskScenario) => (
           <Card key={scenario._id} className="hover:shadow-lg transition-shadow">
             <CardHeader>
               <div className="flex items-start justify-between">

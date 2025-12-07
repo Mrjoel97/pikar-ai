@@ -14,6 +14,30 @@ import { Progress } from "@/components/ui/progress";
 import { Plus, CheckCircle, Clock, AlertCircle, TrendingUp } from "lucide-react";
 import { toast } from "sonner";
 
+interface RiskMitigation {
+  _id: Id<"riskMitigations">;
+  businessId: Id<"businesses">;
+  title: string;
+  description: string;
+  category: string;
+  priority: "critical" | "high" | "medium" | "low";
+  status: "planned" | "in_progress" | "completed" | "cancelled";
+  targetDate: number;
+  estimatedCost?: number;
+  expectedReduction: number;
+  actualReduction: number;
+  progress: number;
+  createdAt: number;
+  updatedAt: number;
+}
+
+interface MitigationEffectiveness {
+  totalMitigations: number;
+  totalExpectedReduction: number;
+  totalActualReduction: number;
+  effectiveness: number;
+}
+
 interface MitigationTrackerProps {
   businessId: Id<"businesses">;
 }
@@ -22,7 +46,7 @@ export function MitigationTracker({ businessId }: MitigationTrackerProps) {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
   const [updateDialogOpen, setUpdateDialogOpen] = useState(false);
-  const [selectedMitigation, setSelectedMitigation] = useState<any>(null);
+  const [selectedMitigation, setSelectedMitigation] = useState<RiskMitigation | null>(null);
 
   const mitigations = useQuery(
     api.risk.mitigation.listMitigations,
@@ -263,7 +287,7 @@ export function MitigationTracker({ businessId }: MitigationTrackerProps) {
       </div>
 
       <div className="space-y-3">
-        {mitigations?.map((mitigation: any) => (
+        {mitigations?.map((mitigation: RiskMitigation) => (
           <Card key={mitigation._id} className="hover:shadow-md transition-shadow">
             <CardContent className="p-4">
               <div className="flex items-start justify-between gap-4">
