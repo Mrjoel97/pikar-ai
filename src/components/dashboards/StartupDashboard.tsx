@@ -57,6 +57,10 @@ import { LazyLoadErrorBoundary } from "@/components/common/LazyLoadErrorBoundary
 import { useAuth } from "@/hooks/use-auth";
 import { isGuestMode } from "@/lib/guestUtils";
 import { demoData as importedDemoData } from "@/lib/demoData";
+import { KpiDashboard } from "@/components/departments/KpiDashboard";
+import { TargetSetter } from "@/components/departments/TargetSetter";
+import { KpiAlerts } from "@/components/departments/KpiAlerts";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 // Static imports to prevent lazy loading errors
 import TeamPerformance from "./startup/TeamPerformance";
@@ -430,6 +434,87 @@ const pendingApprovals = useQuery(
           <GrowthMetrics metrics={metrics} kpis={kpis} />
         </Suspense>
       </LazyLoadErrorBoundary>
+
+      {/* Add: Department KPI Tracking Section - NEW */}
+      {!isGuest && business?._id && (
+        <section className="mb-6">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <TrendingUp className="h-5 w-5" />
+                    Department KPI Tracking
+                  </CardTitle>
+                  <CardDescription>
+                    Monitor team performance across key departments
+                  </CardDescription>
+                </div>
+                <Badge variant="outline">Startup</Badge>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <Tabs defaultValue="overview" className="w-full">
+                <TabsList className="grid w-full grid-cols-4">
+                  <TabsTrigger value="overview">Overview</TabsTrigger>
+                  <TabsTrigger value="marketing">Marketing</TabsTrigger>
+                  <TabsTrigger value="sales">Sales</TabsTrigger>
+                  <TabsTrigger value="targets">Targets</TabsTrigger>
+                </TabsList>
+                <TabsContent value="overview" className="space-y-4">
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div>
+                      <h4 className="text-sm font-medium mb-2">Marketing KPIs</h4>
+                      <KpiDashboard 
+                        businessId={business._id as Id<"businesses">} 
+                        department="marketing"
+                      />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-medium mb-2">Sales KPIs</h4>
+                      <KpiDashboard 
+                        businessId={business._id as Id<"businesses">} 
+                        department="sales"
+                      />
+                    </div>
+                  </div>
+                  <KpiAlerts 
+                    businessId={business._id as Id<"businesses">} 
+                    department="all"
+                    userId={user?._id as Id<"users">}
+                  />
+                </TabsContent>
+                <TabsContent value="marketing">
+                  <KpiDashboard 
+                    businessId={business._id as Id<"businesses">} 
+                    department="marketing"
+                  />
+                </TabsContent>
+                <TabsContent value="sales">
+                  <KpiDashboard 
+                    businessId={business._id as Id<"businesses">} 
+                    department="sales"
+                  />
+                </TabsContent>
+                <TabsContent value="targets">
+                  <div className="space-y-4">
+                    <TargetSetter 
+                      businessId={business._id as Id<"businesses">} 
+                      department="marketing"
+                      userId={user?._id as Id<"users">}
+                    />
+                    <TargetSetter 
+                      businessId={business._id as Id<"businesses">} 
+                      department="sales"
+                      userId={user?._id as Id<"users">}
+                    />
+                  </div>
+                </TabsContent>
+              </Tabs>
+            </CardContent>
+          </Card>
+        </section>
+      )}
 
       <LazyLoadErrorBoundary moduleName="Campaign List">
         <Suspense fallback={<div className="text-muted-foreground">Loading campaigns...</div>}>

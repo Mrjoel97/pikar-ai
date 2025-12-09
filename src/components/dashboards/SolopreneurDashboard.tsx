@@ -190,6 +190,10 @@ import {
   demoData as importedDemoData 
 } from "@/lib/demoData";
 
+import { KpiDashboard } from "@/components/departments/KpiDashboard";
+import { TargetSetter } from "@/components/departments/TargetSetter";
+import { KpiAlerts } from "@/components/departments/KpiAlerts";
+
 function SolopreneurDashboard({ business: businessProp }: { business?: any }) {
   // Use auth status early to guard queries when not authenticated
   const { isAuthenticated: isAuthed } = useAuth();
@@ -3056,6 +3060,52 @@ function SolopreneurDashboard({ business: businessProp }: { business?: any }) {
           </div>
         )}
       </section>
+
+      {/* Add: Personal KPI Tracking Section - NEW */}
+      {!isGuest && business?._id && (
+        <section className="mb-6">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <Target className="h-5 w-5" />
+                    Personal KPI Tracking
+                  </CardTitle>
+                  <CardDescription>
+                    Track your key business metrics and goals
+                  </CardDescription>
+                </div>
+                <Badge variant="outline">Solopreneur</Badge>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <Tabs defaultValue="overview" className="w-full">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="overview">Overview</TabsTrigger>
+                  <TabsTrigger value="targets">Set Targets</TabsTrigger>
+                </TabsList>
+                <TabsContent value="overview" className="space-y-4">
+                  <KpiDashboard 
+                    businessId={business._id as Id<"businesses">} 
+                    department="general"
+                  />
+                  <KpiAlerts 
+                    businessId={business._id as Id<"businesses">} 
+                    department="general"
+                  />
+                </TabsContent>
+                <TabsContent value="targets">
+                  <TargetSetter 
+                    businessId={business._id as Id<"businesses">} 
+                    department="general"
+                  />
+                </TabsContent>
+              </Tabs>
+            </CardContent>
+          </Card>
+        </section>
+      )}
 
       {/* Quick Actions - now extracted */}
       <QuickActions
