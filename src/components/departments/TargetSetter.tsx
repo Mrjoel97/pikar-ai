@@ -159,7 +159,7 @@ export function TargetSetter({ businessId, department, userId }: TargetSetterPro
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
-        {targets?.map((target) => (
+        {targets?.map((target: any) => (
           <Card key={target._id}>
             <CardHeader className="pb-3">
               <div className="flex items-start justify-between">

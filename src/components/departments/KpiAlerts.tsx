@@ -77,8 +77,8 @@ export function KpiAlerts({ businessId, department, userId }: KpiAlertsProps) {
     );
   }
 
-  const activeAlerts = alerts.filter((a) => a.status === "active");
-  const acknowledgedAlerts = alerts.filter((a) => a.status === "acknowledged");
+  const activeAlerts = alerts.filter((a: any) => a.status === "active");
+  const acknowledgedAlerts = alerts.filter((a: any) => a.status === "acknowledged");
 
   return (
     <div className="space-y-6">
@@ -92,7 +92,7 @@ export function KpiAlerts({ businessId, department, userId }: KpiAlertsProps) {
       {activeAlerts.length > 0 && (
         <div className="space-y-3">
           <h4 className="text-sm font-medium">Active Alerts</h4>
-          {activeAlerts.map((alert, index) => (
+          {activeAlerts.map((alert: any, index: number) => (
             <motion.div
               key={alert._id}
               initial={{ opacity: 0, x: -20 }}
@@ -149,7 +149,7 @@ export function KpiAlerts({ businessId, department, userId }: KpiAlertsProps) {
       {acknowledgedAlerts.length > 0 && (
         <div className="space-y-3">
           <h4 className="text-sm font-medium">Acknowledged Alerts</h4>
-          {acknowledgedAlerts.map((alert) => (
+          {acknowledgedAlerts.map((alert: any) => (
             <Card key={alert._id} className="opacity-60">
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between">

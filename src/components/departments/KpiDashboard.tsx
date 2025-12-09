@@ -49,7 +49,7 @@ export function KpiDashboard({ businessId, department }: KpiDashboardProps) {
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {currentKpis?.map((kpi, index) => (
+        {currentKpis?.map((kpi: any, index: number) => (
           <motion.div
             key={kpi._id}
             initial={{ opacity: 0, y: 20 }}

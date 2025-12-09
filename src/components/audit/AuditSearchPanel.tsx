@@ -172,7 +172,7 @@ export function AuditSearchPanel({ businessId }: AuditSearchPanelProps) {
         </CardHeader>
         <CardContent>
           <div className="space-y-2">
-            {logs?.map((log, index) => (
+            {logs?.map((log: any, index: number) => (
               <motion.div
                 key={log._id}
                 initial={{ opacity: 0, y: 10 }}
