@@ -10,23 +10,22 @@ import { supportSchema } from "./support";
 import { contentSchema } from "./content";
 import { whiteLabelSchema } from "./whiteLabel";
 import { securitySchema } from "./security";
+import { enterpriseSchema } from "./enterprise";
 
 const { users: _authUsers, ...authWithoutUsers } = authTables;
 
 // Merge all schema modules
-const schema = defineSchema({
-  ...authWithoutUsers,
+export default defineSchema({
   ...coreSchema,
-  ...riskSchema,
-  ...kpiSchema,
   ...agentsSchema,
   ...workflowsSchema,
+  ...contentSchema,
   ...teamSchema,
   ...supportSchema,
-  ...contentSchema,
+  ...kpiSchema,
+  ...riskSchema,
   ...whiteLabelSchema,
   ...securitySchema,
+  ...enterpriseSchema,
   // Note: Additional tables (CRM, social, governance, analytics, etc.) can be added as needed
 });
-
-export default schema;

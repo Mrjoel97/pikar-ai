@@ -54,6 +54,7 @@ import type * as crisisManagement from "../crisisManagement.js";
 import type * as crmIntegrations from "../crmIntegrations.js";
 import type * as crmSync from "../crmSync.js";
 import type * as cron from "../cron.js";
+import type * as customApis_versioning from "../customApis/versioning.js";
 import type * as customApis from "../customApis.js";
 import type * as customerJourney from "../customerJourney.js";
 import type * as customerSegmentation_rules from "../customerSegmentation/rules.js";
@@ -163,6 +164,7 @@ import type * as scheduling_availability from "../scheduling/availability.js";
 import type * as schema_agents from "../schema/agents.js";
 import type * as schema_content from "../schema/content.js";
 import type * as schema_core from "../schema/core.js";
+import type * as schema_enterprise from "../schema/enterprise.js";
 import type * as schema_index from "../schema/index.js";
 import type * as schema_kpi from "../schema/kpi.js";
 import type * as schema_risk from "../schema/risk.js";
@@ -212,6 +214,7 @@ import type * as utils from "../utils.js";
 import type * as vectors from "../vectors.js";
 import type * as vendors from "../vendors.js";
 import type * as voiceNotes from "../voiceNotes.js";
+import type * as webhooks_retry from "../webhooks/retry.js";
 import type * as webhooks from "../webhooks.js";
 import type * as webhooksActions from "../webhooksActions.js";
 import type * as whiteLabel_branding from "../whiteLabel/branding.js";
@@ -221,6 +224,9 @@ import type * as workflowAssignments from "../workflowAssignments.js";
 import type * as workflowHandoffs from "../workflowHandoffs.js";
 import type * as workflowTemplates from "../workflowTemplates.js";
 import type * as workflows from "../workflows.js";
+import type * as workforce_capacity from "../workforce/capacity.js";
+import type * as workforce_optimization from "../workforce/optimization.js";
+import type * as workforce_skills from "../workforce/skills.js";
 import type * as workforceAnalytics from "../workforceAnalytics.js";
 
 import type {
@@ -284,6 +290,7 @@ declare const fullApi: ApiFromModules<{
   crmIntegrations: typeof crmIntegrations;
   crmSync: typeof crmSync;
   cron: typeof cron;
+  "customApis/versioning": typeof customApis_versioning;
   customApis: typeof customApis;
   customerJourney: typeof customerJourney;
   "customerSegmentation/rules": typeof customerSegmentation_rules;
@@ -393,6 +400,7 @@ declare const fullApi: ApiFromModules<{
   "schema/agents": typeof schema_agents;
   "schema/content": typeof schema_content;
   "schema/core": typeof schema_core;
+  "schema/enterprise": typeof schema_enterprise;
   "schema/index": typeof schema_index;
   "schema/kpi": typeof schema_kpi;
   "schema/risk": typeof schema_risk;
@@ -442,6 +450,7 @@ declare const fullApi: ApiFromModules<{
   vectors: typeof vectors;
   vendors: typeof vendors;
   voiceNotes: typeof voiceNotes;
+  "webhooks/retry": typeof webhooks_retry;
   webhooks: typeof webhooks;
   webhooksActions: typeof webhooksActions;
   "whiteLabel/branding": typeof whiteLabel_branding;
@@ -451,6 +460,9 @@ declare const fullApi: ApiFromModules<{
   workflowHandoffs: typeof workflowHandoffs;
   workflowTemplates: typeof workflowTemplates;
   workflows: typeof workflows;
+  "workforce/capacity": typeof workforce_capacity;
+  "workforce/optimization": typeof workforce_optimization;
+  "workforce/skills": typeof workforce_skills;
   workforceAnalytics: typeof workforceAnalytics;
 }>;
 declare const fullApiWithMounts: typeof fullApi;
