@@ -39,6 +39,9 @@ import GovernancePanel from "./sme/GovernancePanel";
 import { ComplianceRisk } from "./sme/ComplianceRisk";
 import VendorPerformanceWidget from "./sme/VendorPerformanceWidget";
 import IntegrationHub from "@/components/integrations/IntegrationHub";
+import { KpiDashboard } from "@/components/departments/KpiDashboard";
+import { TargetSetter } from "@/components/departments/TargetSetter";
+import { KpiAlerts } from "@/components/departments/KpiAlerts";
 
 export function SmeDashboard() {
   const { user } = useAuth();
@@ -351,6 +354,56 @@ export function SmeDashboard() {
           </Card>
         </div>
       </section>
+
+      {/* NEW: Department KPI Dashboards Section */}
+      {!isGuest && businessId && user?._id && departmentDashboardsEnabled && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Department KPI Tracking</CardTitle>
+            <CardDescription>
+              Monitor and manage performance metrics across departments
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Tabs defaultValue="marketing" className="w-full">
+              <TabsList className="grid w-full grid-cols-4">
+                <TabsTrigger value="marketing">Marketing</TabsTrigger>
+                <TabsTrigger value="sales">Sales</TabsTrigger>
+                <TabsTrigger value="operations">Operations</TabsTrigger>
+                <TabsTrigger value="finance">Finance</TabsTrigger>
+              </TabsList>
+              <TabsContent value="marketing" className="space-y-4">
+                <KpiDashboard businessId={businessId as Id<"businesses">} department="marketing" />
+                <div className="grid gap-4 lg:grid-cols-2">
+                  <TargetSetter businessId={businessId as Id<"businesses">} department="marketing" userId={user._id as Id<"users">} />
+                  <KpiAlerts businessId={businessId as Id<"businesses">} department="marketing" userId={user._id as Id<"users">} />
+                </div>
+              </TabsContent>
+              <TabsContent value="sales" className="space-y-4">
+                <KpiDashboard businessId={businessId as Id<"businesses">} department="sales" />
+                <div className="grid gap-4 lg:grid-cols-2">
+                  <TargetSetter businessId={businessId as Id<"businesses">} department="sales" userId={user._id as Id<"users">} />
+                  <KpiAlerts businessId={businessId as Id<"businesses">} department="sales" userId={user._id as Id<"users">} />
+                </div>
+              </TabsContent>
+              <TabsContent value="operations" className="space-y-4">
+                <KpiDashboard businessId={businessId as Id<"businesses">} department="operations" />
+                <div className="grid gap-4 lg:grid-cols-2">
+                  <TargetSetter businessId={businessId as Id<"businesses">} department="operations" userId={user._id as Id<"users">} />
+                  <KpiAlerts businessId={businessId as Id<"businesses">} department="operations" userId={user._id as Id<"users">} />
+                </div>
+              </TabsContent>
+              <TabsContent value="finance" className="space-y-4">
+                <KpiDashboard businessId={businessId as Id<"businesses">} department="finance" />
+                <div className="grid gap-4 lg:grid-cols-2">
+                  <TargetSetter businessId={businessId as Id<"businesses">} department="finance" userId={user._id as Id<"users">} />
+                  <KpiAlerts businessId={businessId as Id<"businesses">} department="finance" userId={user._id as Id<"users">} />
+                </div>
+              </TabsContent>
+            </Tabs>
+          </CardContent>
+        </Card>
+      )}
 
       <LazyLoadErrorBoundary moduleName="Department Tabs">
         <Suspense fallback={<div className="text-muted-foreground">Loading departments...</div>}>

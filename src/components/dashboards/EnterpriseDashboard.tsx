@@ -25,6 +25,10 @@ import { LazyLoadErrorBoundary } from "@/components/common/LazyLoadErrorBoundary
 import { useAuth } from "@/hooks/use-auth";
 import { isGuestMode } from "@/lib/guestUtils";
 import { demoData as importedDemoData } from "@/lib/demoData";
+import { AuditSearchPanel } from "@/components/audit/AuditSearchPanel";
+import { KpiDashboard } from "@/components/departments/KpiDashboard";
+import { TargetSetter } from "@/components/departments/TargetSetter";
+import { KpiAlerts } from "@/components/departments/KpiAlerts";
 
 // Static imports to prevent lazy loading errors
 import { RoiDashboard } from "./RoiDashboard";
@@ -405,6 +409,87 @@ export function EnterpriseDashboard() {
           isGuest={isGuest}
         />
       </LazyLoadErrorBoundary>
+
+      {!isGuest && businessId && (
+        <LazyLoadErrorBoundary moduleName="Audit Trail & Compliance">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <Shield className="h-5 w-5" />
+                    Audit Trail & Compliance Logs
+                  </CardTitle>
+                  <CardDescription>
+                    Advanced search, export, and retention management for regulatory compliance
+                  </CardDescription>
+                </div>
+                <Badge variant="outline" className="gap-1">
+                  <Lock className="h-3 w-3" />
+                  Enterprise
+                </Badge>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <AuditSearchPanel businessId={businessId as Id<"businesses">} />
+            </CardContent>
+          </Card>
+        </LazyLoadErrorBoundary>
+      )}
+
+      {!isGuest && businessId && user?._id && (
+        <LazyLoadErrorBoundary moduleName="Enterprise KPI Dashboard">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Globe className="h-5 w-5" />
+                Global Department KPIs
+              </CardTitle>
+              <CardDescription>
+                Cross-department performance tracking and alerting
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Tabs defaultValue="overview" className="w-full">
+                <TabsList className="grid w-full grid-cols-5">
+                  <TabsTrigger value="overview">Overview</TabsTrigger>
+                  <TabsTrigger value="marketing">Marketing</TabsTrigger>
+                  <TabsTrigger value="sales">Sales</TabsTrigger>
+                  <TabsTrigger value="operations">Operations</TabsTrigger>
+                  <TabsTrigger value="finance">Finance</TabsTrigger>
+                </TabsList>
+                <TabsContent value="overview" className="space-y-4">
+                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                    {["marketing", "sales", "operations", "finance"].map((dept) => (
+                      <Card key={dept}>
+                        <CardHeader className="pb-2">
+                          <CardTitle className="text-sm font-medium capitalize">{dept}</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <KpiAlerts 
+                            businessId={businessId as Id<"businesses">} 
+                            department={dept} 
+                            userId={user._id as Id<"users">} 
+                          />
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                </TabsContent>
+                {["marketing", "sales", "operations", "finance"].map((dept) => (
+                  <TabsContent key={dept} value={dept} className="space-y-4">
+                    <KpiDashboard businessId={businessId as Id<"businesses">} department={dept} />
+                    <div className="grid gap-4 lg:grid-cols-2">
+                      <TargetSetter businessId={businessId as Id<"businesses">} department={dept} userId={user._id as Id<"users">} />
+                      <KpiAlerts businessId={businessId as Id<"businesses">} department={dept} userId={user._id as Id<"users">} />
+                    </div>
+                  </TabsContent>
+                ))}
+              </Tabs>
+            </CardContent>
+          </Card>
+        </LazyLoadErrorBoundary>
+      )}
 
       <LazyLoadErrorBoundary moduleName="Advanced Panels">
         <AdvancedPanels 
