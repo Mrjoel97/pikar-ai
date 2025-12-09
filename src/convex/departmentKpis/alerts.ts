@@ -1,125 +1,60 @@
 import { v } from "convex/values";
 import { mutation, query } from "../_generated/server";
 
-export const createAlert = mutation({
-  args: {
-    businessId: v.id("businesses"),
-    targetId: v.id("kpiTargets"),
-    department: v.string(),
-    kpiName: v.string(),
-    alertType: v.union(
-      v.literal("threshold_breach"),
-      v.literal("trend_warning"),
-      v.literal("target_missed")
-    ),
-    severity: v.union(
-      v.literal("info"),
-      v.literal("warning"),
-      v.literal("critical")
-    ),
-    message: v.string(),
-    currentValue: v.number(),
-    targetValue: v.number(),
-  },
-  handler: async (ctx, args) => {
-    const alertId = await ctx.db.insert("kpiAlerts", {
-      businessId: args.businessId,
-      targetId: args.targetId,
-      department: args.department,
-      kpiName: args.kpiName,
-      alertType: args.alertType,
-      severity: args.severity,
-      message: args.message,
-      currentValue: args.currentValue,
-      targetValue: args.targetValue,
-      status: "active",
-      createdAt: Date.now(),
-    });
-    return alertId;
-  },
-});
-
-export const checkAlerts = mutation({
-  args: {
-    businessId: v.id("businesses"),
-    department: v.string(),
-    kpiName: v.string(),
-    currentValue: v.number(),
-  },
-  handler: async (ctx, args) => {
-    const target = await ctx.db
-      .query("kpiTargets")
-      .withIndex("by_department", (q) =>
-        q.eq("businessId", args.businessId).eq("department", args.department)
-      )
-      .filter((q) => q.eq(q.field("kpiName"), args.kpiName))
-      .first();
-
-    if (!target) return [];
-
-    const triggeredAlerts = [];
-    const threshold = target.alertThreshold;
-
-    // Check if threshold is breached
-    if (Math.abs(args.currentValue - target.targetValue) > threshold) {
-      const alertId = await ctx.db.insert("kpiAlerts", {
-        businessId: args.businessId,
-        targetId: target._id,
-        department: args.department,
-        kpiName: args.kpiName,
-        alertType: "threshold_breach",
-        severity: args.currentValue < target.targetValue ? "warning" : "info",
-        message: `KPI ${args.kpiName} is ${args.currentValue < target.targetValue ? "below" : "above"} target`,
-        currentValue: args.currentValue,
-        targetValue: target.targetValue,
-        status: "active",
-        createdAt: Date.now(),
-      });
-
-      const alert = await ctx.db.get(alertId);
-      if (alert) triggeredAlerts.push(alert);
-    }
-
-    return triggeredAlerts;
-  },
-});
-
+/**
+ * Get active alerts for a department
+ */
 export const getAlerts = query({
   args: {
     businessId: v.id("businesses"),
     department: v.optional(v.string()),
-    status: v.optional(v.string()),
+    status: v.optional(v.union(v.literal("active"), v.literal("acknowledged"), v.literal("resolved"))),
+    severity: v.optional(v.union(v.literal("info"), v.literal("warning"), v.literal("critical"))),
   },
   handler: async (ctx, args) => {
     let alerts = await ctx.db
       .query("kpiAlerts")
       .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
       .order("desc")
-      .collect();
+      .take(100);
 
     if (args.department) {
-      alerts = alerts.filter(a => a.department === args.department);
+      alerts = alerts.filter((a) => a.department === args.department);
     }
 
     if (args.status) {
-      alerts = alerts.filter(a => a.status === args.status);
+      alerts = alerts.filter((a) => a.status === args.status);
+    }
+
+    if (args.severity) {
+      alerts = alerts.filter((a) => a.severity === args.severity);
     }
 
     return alerts;
   },
 });
 
+/**
+ * Acknowledge an alert
+ */
 export const acknowledgeAlert = mutation({
   args: {
     alertId: v.id("kpiAlerts"),
+    userId: v.id("users"),
   },
   handler: async (ctx, args) => {
     await ctx.db.patch(args.alertId, {
       status: "acknowledged",
+      acknowledgedBy: args.userId,
+      acknowledgedAt: Date.now(),
     });
+    return args.alertId;
   },
 });
 
+/**
+ * Resolve an alert
+ */
 export const resolveAlert = mutation({
   args: {
     alertId: v.id("kpiAlerts"),
@@ -127,6 +62,52 @@ export const resolveAlert = mutation({
   handler: async (ctx, args) => {
     await ctx.db.patch(args.alertId, {
       status: "resolved",
+      resolvedAt: Date.now(),
     });
+    return args.alertId;
+  },
+});
+
+/**
+ * Get alert statistics
+ */
+export const getAlertStats = query({
+  args: {
+    businessId: v.id("businesses"),
+    department: v.optional(v.string()),
+    timeRange: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const cutoff = args.timeRange ? Date.now() - args.timeRange : 0;
+
+    let alerts = await ctx.db
+      .query("kpiAlerts")
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .filter((q) => q.gte(q.field("createdAt"), cutoff))
+      .collect();
+
+    if (args.department) {
+      alerts = alerts.filter((a) => a.department === args.department);
+    }
+
+    const total = alerts.length;
+    const active = alerts.filter((a) => a.status === "active").length;
+    const acknowledged = alerts.filter((a) => a.status === "acknowledged").length;
+    const resolved = alerts.filter((a) => a.status === "resolved").length;
+    const critical = alerts.filter((a) => a.severity === "critical").length;
+    const warning = alerts.filter((a) => a.severity === "warning").length;
+
+    return {
+      total,
+      active,
+      acknowledged,
+      resolved,
+      critical,
+      warning,
+      byDepartment: alerts.reduce((acc, a) => {
+        acc[a.department] = (acc[a.department] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>),
+    };
   },
 });
