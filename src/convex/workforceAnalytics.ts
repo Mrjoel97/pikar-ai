@@ -251,6 +251,12 @@ export const getAttritionPredictions = query({
       highRiskEmployees,
       attritionByDepartment,
       retentionRecommendations,
+      retentionCost: 225000, // Annual retention investment
+      departmentBreakdown: attritionByDepartment.map(dept => ({
+        department: dept.department,
+        attritionRate: dept.currentRate,
+        atRiskCount: Math.round((dept.currentRate / 100) * (teamSize / 4)),
+      })),
     };
   },
 });
@@ -366,11 +372,23 @@ export const getAdvancedSkillGapAnalysis = query({
     ];
 
     return {
-      criticalGaps,
+      criticalGaps: criticalGaps.map(gap => ({
+        ...gap,
+        recommendedTraining: `${gap.skill} certification program - 12 weeks`,
+      })),
       emergingSkills,
       trainingPrograms,
       skillTrends,
       hiringNeeds,
+      totalSkills: criticalGaps.length + emergingSkills.length,
+      trainingRoi: 35, // Expected productivity gain percentage
+      skillDistribution: [
+        { skill: "AI/ML Engineering", employees: 8, proficiency: 45 },
+        { skill: "Cloud Architecture", employees: 12, proficiency: 62 },
+        { skill: "Data Analytics", employees: 15, proficiency: 58 },
+        { skill: "DevOps", employees: 10, proficiency: 72 },
+        { skill: "Security", employees: 6, proficiency: 68 },
+      ],
     };
   },
 });
@@ -567,6 +585,38 @@ export const getPerformanceForecasting = query({
       productivityPredictions,
       performanceRisks,
       improvementOpportunities,
+      avgPerformanceScore: 83,
+      highPerformers: Math.round(teamSize * 0.25),
+      needsImprovement: Math.round(teamSize * 0.15),
+      quarterlyForecasts: [
+        { quarter: "Q1 2025", avgScore: 83, productivity: 87, trend: "up", change: 3 },
+        { quarter: "Q2 2025", avgScore: 85, productivity: 89, trend: "up", change: 2 },
+        { quarter: "Q3 2025", avgScore: 86, productivity: 90, trend: "up", change: 1 },
+        { quarter: "Q4 2025", avgScore: 88, productivity: 92, trend: "up", change: 2 },
+      ],
+      topPerformers: [
+        {
+          id: "emp_101",
+          name: "Sarah Chen",
+          department: "Engineering",
+          score: 95,
+          achievements: ["Led 3 major projects", "Mentored 5 juniors", "Innovation award"],
+        },
+        {
+          id: "emp_102",
+          name: "Marcus Johnson",
+          department: "Sales",
+          score: 92,
+          achievements: ["150% quota attainment", "Top closer Q3", "New market expansion"],
+        },
+        {
+          id: "emp_103",
+          name: "Emily Rodriguez",
+          department: "Marketing",
+          score: 90,
+          achievements: ["Campaign ROI 300%", "Brand refresh lead", "Team leadership"],
+        },
+      ],
     };
   },
 });
@@ -698,6 +748,10 @@ export const getWorkforceOptimization = query({
       costSavings,
       efficiencyGains,
       implementationPlan,
+      potentialSavings: costSavings.reduce((sum, item) => sum + item.netSavings, 0),
+      efficiencyGain: Math.round(
+        efficiencyGains.reduce((sum, area) => sum + area.gain, 0) / efficiencyGains.length
+      ),
     };
   },
 });
