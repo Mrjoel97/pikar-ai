@@ -1,156 +1,199 @@
-import { useQuery, useMutation } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { AlertTriangle, CheckCircle2, Bell } from "lucide-react";
 import { toast } from "sonner";
+import { AlertTriangle, CheckCircle, Clock, XCircle } from "lucide-react";
+import { motion } from "framer-motion";
 import { Id } from "@/convex/_generated/dataModel";
 
-interface KpiAlert {
-  _id: Id<"kpiAlerts">;
+interface KpiAlertsProps {
   businessId: Id<"businesses">;
-  targetId: Id<"kpiTargets">;
-  department: string;
-  kpiName: string;
-  alertType: "threshold_breach" | "trend_warning" | "target_missed";
-  severity: "info" | "warning" | "critical";
-  message: string;
-  currentValue: number;
-  targetValue: number;
-  status: "active" | "acknowledged" | "resolved";
-  acknowledgedBy?: Id<"users">;
-  acknowledgedAt?: number;
-  resolvedAt?: number;
-  createdAt: number;
+  department?: string;
+  userId: Id<"users">;
 }
 
-interface AlertSummary {
-  totalAlerts: number;
-  unreadAlerts: number;
-  highPriorityAlerts: number;
-}
-
-export function KpiAlerts({ businessId, department, userId }: { businessId: string; department: string; userId: string }) {
-  const alerts = useQuery(api.departmentKpis.alerts.getDepartmentAlerts, {
-    businessId: businessId as Id<"businesses">,
+export function KpiAlerts({ businessId, department, userId }: KpiAlertsProps) {
+  const alerts = useQuery(api.departmentKpis.alerts.getAlerts, {
+    businessId,
     department,
   });
 
-  const summary = useQuery(api.departmentKpis.alerts.getAlertSummary, {
-    businessId: businessId as Id<"businesses">,
-  });
-
   const acknowledgeAlert = useMutation(api.departmentKpis.alerts.acknowledgeAlert);
+  const resolveAlert = useMutation(api.departmentKpis.alerts.resolveAlert);
 
   const handleAcknowledge = async (alertId: Id<"kpiAlerts">) => {
     try {
-      await acknowledgeAlert({
-        alertId,
-        userId: userId as Id<"users">,
-      });
+      await acknowledgeAlert({ alertId, userId });
       toast.success("Alert acknowledged");
     } catch (error) {
       toast.error("Failed to acknowledge alert");
+      console.error(error);
     }
   };
 
+  const handleResolve = async (alertId: Id<"kpiAlerts">) => {
+    try {
+      await resolveAlert({ alertId });
+      toast.success("Alert resolved");
+    } catch (error) {
+      toast.error("Failed to resolve alert");
+      console.error(error);
+    }
+  };
+
+  const getSeverityColor = (severity: string) => {
+    switch (severity) {
+      case "critical":
+        return "destructive";
+      case "warning":
+        return "default";
+      case "info":
+        return "secondary";
+      default:
+        return "outline";
+    }
+  };
+
+  const getSeverityIcon = (severity: string) => {
+    switch (severity) {
+      case "critical":
+        return <XCircle className="h-4 w-4" />;
+      case "warning":
+        return <AlertTriangle className="h-4 w-4" />;
+      case "info":
+        return <Clock className="h-4 w-4" />;
+      default:
+        return <AlertTriangle className="h-4 w-4" />;
+    }
+  };
+
+  if (alerts === undefined) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+      </div>
+    );
+  }
+
+  const activeAlerts = alerts.filter((a) => a.status === "active");
+  const acknowledgedAlerts = alerts.filter((a) => a.status === "acknowledged");
+
   return (
     <div className="space-y-6">
-      {summary && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium">Total Alerts</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{summary.totalAlerts}</div>
-            </CardContent>
-          </Card>
+      <div>
+        <h3 className="text-lg font-semibold">KPI Alerts</h3>
+        <p className="text-sm text-muted-foreground">
+          Monitor and respond to performance deviations
+        </p>
+      </div>
 
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium">Unread</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-orange-600">{summary.unreadAlerts}</div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium">High Priority</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-red-600">{summary.highPriorityAlerts}</div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Active Alerts for {department}</CardTitle>
-          <CardDescription>KPI performance notifications</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            {alerts && alerts.length > 0 ? (
-              alerts.map((alert: KpiAlert) => (
-                <div
-                  key={alert._id}
-                  className={`p-4 border rounded-lg ${alert.status === "acknowledged" ? "opacity-60" : "bg-muted/50"}`}
-                >
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <AlertTriangle
-                          className={`h-4 w-4 ${
-                            alert.severity === "critical" ? "text-red-600" : alert.severity === "warning" ? "text-orange-600" : "text-blue-600"
-                          }`}
-                        />
-                        <h4 className="font-medium">{alert.kpiName}</h4>
-                        <Badge variant={alert.severity === "critical" ? "destructive" : "secondary"}>
-                          {alert.severity}
-                        </Badge>
-                        <Badge variant="outline">{alert.alertType.replace(/_/g, " ")}</Badge>
+      {activeAlerts.length > 0 && (
+        <div className="space-y-3">
+          <h4 className="text-sm font-medium">Active Alerts</h4>
+          {activeAlerts.map((alert, index) => (
+            <motion.div
+              key={alert._id}
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.3, delay: index * 0.05 }}
+            >
+              <Card>
+                <CardHeader className="pb-3">
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-start gap-3">
+                      <div className="mt-0.5">
+                        {getSeverityIcon(alert.severity)}
                       </div>
-                      <p className="text-sm text-muted-foreground mb-2">{alert.message}</p>
-                      <div className="flex gap-4 text-xs text-muted-foreground">
-                        <span>Target: {alert.targetValue}</span>
-                        <span>Current: {alert.currentValue}</span>
-                        <span
-                          className={alert.currentValue >= alert.targetValue ? "text-green-600" : "text-red-600"}
-                        >
-                          {alert.currentValue >= alert.targetValue ? "Above" : "Below"} target
-                        </span>
+                      <div>
+                        <CardTitle className="text-base">{alert.kpiName}</CardTitle>
+                        <CardDescription className="text-xs mt-1">
+                          {alert.department} • {alert.message}
+                        </CardDescription>
                       </div>
-                      <p className="text-xs text-muted-foreground mt-2">
-                        {new Date(alert.createdAt).toLocaleString()}
-                      </p>
                     </div>
-                    {alert.status === "active" && (
+                    <Badge variant={getSeverityColor(alert.severity) as any}>
+                      {alert.severity}
+                    </Badge>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex items-center justify-between">
+                    <div className="text-xs text-muted-foreground">
+                      Current: {alert.currentValue} • Target: {alert.targetValue}
+                    </div>
+                    <div className="flex gap-2">
                       <Button
                         size="sm"
                         variant="outline"
                         onClick={() => handleAcknowledge(alert._id)}
                       >
-                        <CheckCircle2 className="h-4 w-4 mr-1" />
                         Acknowledge
                       </Button>
-                    )}
+                      <Button
+                        size="sm"
+                        onClick={() => handleResolve(alert._id)}
+                      >
+                        Resolve
+                      </Button>
+                    </div>
                   </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+          ))}
+        </div>
+      )}
+
+      {acknowledgedAlerts.length > 0 && (
+        <div className="space-y-3">
+          <h4 className="text-sm font-medium">Acknowledged Alerts</h4>
+          {acknowledgedAlerts.map((alert) => (
+            <Card key={alert._id} className="opacity-60">
+              <CardHeader className="pb-3">
+                <div className="flex items-start justify-between">
+                  <div className="flex items-start gap-3">
+                    <CheckCircle className="h-4 w-4 mt-0.5 text-muted-foreground" />
+                    <div>
+                      <CardTitle className="text-base">{alert.kpiName}</CardTitle>
+                      <CardDescription className="text-xs mt-1">
+                        {alert.department} • {alert.message}
+                      </CardDescription>
+                    </div>
+                  </div>
+                  <Badge variant="outline">acknowledged</Badge>
                 </div>
-              ))
-            ) : (
-              <div className="text-center py-8 text-muted-foreground">
-                <Bell className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                <p>No active alerts</p>
-              </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-between">
+                  <div className="text-xs text-muted-foreground">
+                    Acknowledged {alert.acknowledgedAt ? new Date(alert.acknowledgedAt).toLocaleDateString() : ""}
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleResolve(alert._id)}
+                  >
+                    Resolve
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {alerts.length === 0 && (
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <CheckCircle className="h-12 w-12 text-green-600 mb-4" />
+            <p className="text-sm text-muted-foreground">
+              All clear! No active alerts at this time.
+            </p>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

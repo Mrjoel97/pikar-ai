@@ -1,320 +1,208 @@
 import { useState } from "react";
-import { useQuery, useMutation } from "convex/react";
+import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { toast } from "sonner";
-import { Search, Download, Calendar, Filter, Mail } from "lucide-react";
+import { Search, Download, Filter } from "lucide-react";
+import { motion } from "framer-motion";
 import { Id } from "@/convex/_generated/dataModel";
 
 interface AuditSearchPanelProps {
-  businessId: Id<"businesses"> | undefined;
+  businessId: Id<"businesses">;
 }
 
 export function AuditSearchPanel({ businessId }: AuditSearchPanelProps) {
   const [searchTerm, setSearchTerm] = useState("");
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
-  const [selectedAction, setSelectedAction] = useState<string>("");
-  const [selectedEntity, setSelectedEntity] = useState<string>("");
-  const [isScheduleOpen, setIsScheduleOpen] = useState(false);
+  const [action, setAction] = useState<string | undefined>(undefined);
+  const [entityType, setEntityType] = useState<string | undefined>(undefined);
+  const [startDate, setStartDate] = useState<string>("");
+  const [endDate, setEndDate] = useState<string>("");
 
-  const [scheduleForm, setScheduleForm] = useState({
-    frequency: "weekly" as "daily" | "weekly" | "monthly",
-    format: "csv" as "csv" | "pdf",
-    recipients: "",
+  const logs = useQuery(api.audit.search.searchAuditLogs, {
+    businessId,
+    action: action || undefined,
+    entityType: entityType || undefined,
+    searchTerm: searchTerm || undefined,
+    startDate: startDate ? new Date(startDate).getTime() : undefined,
+    endDate: endDate ? new Date(endDate).getTime() : undefined,
+    limit: 100,
   });
 
-  // Queries
-  const auditLogs = useQuery(
-    api.audit.searchAuditLogs,
-    businessId
-      ? {
-          businessId,
-          searchTerm: searchTerm || undefined,
-          startDate: startDate ? new Date(startDate).getTime() : undefined,
-          endDate: endDate ? new Date(endDate).getTime() : undefined,
-          action: selectedAction || undefined,
-          entityType: selectedEntity || undefined,
-          limit: 100,
-        }
-      : undefined
-  );
-
-  const actionTypes = useQuery(api.audit.getActionTypes, businessId ? { businessId } : undefined);
-  const entityTypes = useQuery(api.audit.getEntityTypes, businessId ? { businessId } : undefined);
-
-  const scheduleReport = useMutation(api.audit.scheduleAuditReport);
-
-  const handleExportCSV = () => {
-    if (!businessId) return;
-    
-    const params = new URLSearchParams({ businessId });
-    if (startDate) params.append("startDate", new Date(startDate).getTime().toString());
-    if (endDate) params.append("endDate", new Date(endDate).getTime().toString());
-    if (selectedAction) params.append("action", selectedAction);
-    if (selectedEntity) params.append("entityType", selectedEntity);
-
-    const url = `/api/audit/export?${params.toString()}`;
-    window.open(url, "_blank");
-    toast.success("Exporting audit logs to CSV");
-  };
-
-  const handleScheduleReport = async () => {
-    if (!businessId) return;
-
-    try {
-      const recipients = scheduleForm.recipients
-        .split(",")
-        .map((e) => e.trim())
-        .filter(Boolean);
-
-      if (recipients.length === 0) {
-        toast.error("Please enter at least one recipient email");
-        return;
-      }
-
-      await scheduleReport({
-        businessId,
-        frequency: scheduleForm.frequency,
-        format: scheduleForm.format,
-        recipients,
-        filters: {
-          startDate: startDate ? new Date(startDate).getTime() : undefined,
-          endDate: endDate ? new Date(endDate).getTime() : undefined,
-          action: selectedAction || undefined,
-          entityType: selectedEntity || undefined,
-        },
-      });
-
-      toast.success("Audit report scheduled successfully");
-      setIsScheduleOpen(false);
-      setScheduleForm({ frequency: "weekly", format: "csv", recipients: "" });
-    } catch (error: any) {
-      toast.error(error.message || "Failed to schedule report");
-    }
-  };
-
-  const handleClearFilters = () => {
-    setSearchTerm("");
-    setStartDate("");
-    setEndDate("");
-    setSelectedAction("");
-    setSelectedEntity("");
-  };
-
-  if (!businessId) {
-    return (
-      <Card>
-        <CardContent className="p-6">
-          <p className="text-muted-foreground">Sign in to search audit logs</p>
-        </CardContent>
-      </Card>
-    );
-  }
+  const stats = useQuery(api.audit.search.getAuditStats, {
+    businessId,
+    timeRange: 30 * 24 * 60 * 60 * 1000, // Last 30 days
+  });
 
   return (
     <div className="space-y-6">
-      {/* Search & Filters */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Search className="h-5 w-5" />
-            Audit Trail Search
+            Audit Log Search
           </CardTitle>
+          <CardDescription>
+            Search and filter audit logs with advanced criteria
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Search Bar */}
-          <div>
-            <Label>Search</Label>
-            <Input
-              placeholder="Search by action, entity, or details..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-
-          {/* Filters Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div>
-              <Label>Start Date</Label>
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <div className="space-y-2">
+              <Label htmlFor="search">Search Term</Label>
               <Input
+                id="search"
+                placeholder="Search logs..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="action">Action</Label>
+              <Select value={action || "all"} onValueChange={(v) => setAction(v === "all" ? undefined : v)}>
+                <SelectTrigger id="action">
+                  <SelectValue placeholder="All actions" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Actions</SelectItem>
+                  <SelectItem value="create">Create</SelectItem>
+                  <SelectItem value="update">Update</SelectItem>
+                  <SelectItem value="delete">Delete</SelectItem>
+                  <SelectItem value="view">View</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="entityType">Entity Type</Label>
+              <Select value={entityType || "all"} onValueChange={(v) => setEntityType(v === "all" ? undefined : v)}>
+                <SelectTrigger id="entityType">
+                  <SelectValue placeholder="All types" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Types</SelectItem>
+                  <SelectItem value="user">User</SelectItem>
+                  <SelectItem value="workflow">Workflow</SelectItem>
+                  <SelectItem value="agent">Agent</SelectItem>
+                  <SelectItem value="document">Document</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="startDate">Start Date</Label>
+              <Input
+                id="startDate"
                 type="date"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
               />
             </div>
-            <div>
-              <Label>End Date</Label>
-              <Input
-                type="date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-              />
-            </div>
-            <div>
-              <Label>Action Type</Label>
-              <Select value={selectedAction} onValueChange={setSelectedAction}>
-                <SelectTrigger>
-                  <SelectValue placeholder="All actions" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">All actions</SelectItem>
-                  {actionTypes?.map((action: string) => (
-                    <SelectItem key={action} value={action}>
-                      {action}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label>Entity Type</Label>
-              <Select value={selectedEntity} onValueChange={setSelectedEntity}>
-                <SelectTrigger>
-                  <SelectValue placeholder="All entities" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">All entities</SelectItem>
-                  {entityTypes?.map((entity: string) => (
-                    <SelectItem key={entity} value={entity}>
-                      {entity}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
           </div>
-
-          {/* Action Buttons */}
           <div className="flex gap-2">
-            <Button variant="outline" onClick={handleClearFilters}>
-              <Filter className="h-4 w-4 mr-2" />
-              Clear Filters
+            <Button variant="outline" size="sm" className="gap-2">
+              <Filter className="h-4 w-4" />
+              Apply Filters
             </Button>
-            <Button variant="outline" onClick={handleExportCSV}>
-              <Download className="h-4 w-4 mr-2" />
-              Export CSV
+            <Button variant="outline" size="sm" className="gap-2">
+              <Download className="h-4 w-4" />
+              Export Results
             </Button>
-            <Dialog open={isScheduleOpen} onOpenChange={setIsScheduleOpen}>
-              <DialogTrigger asChild>
-                <Button variant="outline">
-                  <Mail className="h-4 w-4 mr-2" />
-                  Schedule Report
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Schedule Audit Report</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4">
-                  <div>
-                    <Label>Frequency</Label>
-                    <Select
-                      value={scheduleForm.frequency}
-                      onValueChange={(v: any) =>
-                        setScheduleForm({ ...scheduleForm, frequency: v })
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="daily">Daily</SelectItem>
-                        <SelectItem value="weekly">Weekly</SelectItem>
-                        <SelectItem value="monthly">Monthly</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label>Format</Label>
-                    <Select
-                      value={scheduleForm.format}
-                      onValueChange={(v: any) =>
-                        setScheduleForm({ ...scheduleForm, format: v })
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="csv">CSV</SelectItem>
-                        <SelectItem value="pdf">PDF</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label>Recipients (comma-separated emails)</Label>
-                    <Input
-                      placeholder="admin@example.com, manager@example.com"
-                      value={scheduleForm.recipients}
-                      onChange={(e) =>
-                        setScheduleForm({ ...scheduleForm, recipients: e.target.value })
-                      }
-                    />
-                  </div>
-                  <div className="flex justify-end gap-2">
-                    <Button variant="outline" onClick={() => setIsScheduleOpen(false)}>
-                      Cancel
-                    </Button>
-                    <Button onClick={handleScheduleReport}>Schedule</Button>
-                  </div>
-                </div>
-              </DialogContent>
-            </Dialog>
           </div>
         </CardContent>
       </Card>
 
-      {/* Results */}
+      {stats && (
+        <div className="grid gap-4 md:grid-cols-4">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium">Total Events</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.total.toLocaleString()}</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium">Top Action</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {stats.byAction[0]?.action || "N/A"}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {stats.byAction[0]?.count || 0} events
+              </p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium">Top Entity</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {stats.byEntityType[0]?.entityType || "N/A"}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {stats.byEntityType[0]?.count || 0} events
+              </p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium">Most Active User</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {stats.byUser[0]?.count || 0}
+              </div>
+              <p className="text-xs text-muted-foreground">events</p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
       <Card>
         <CardHeader>
-          <CardTitle>
-            Audit Logs ({auditLogs?.length || 0} results)
-          </CardTitle>
+          <CardTitle>Audit Logs</CardTitle>
+          <CardDescription>
+            {logs?.length || 0} results found
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          {!auditLogs ? (
-            <p className="text-sm text-muted-foreground">Loading...</p>
-          ) : auditLogs.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No audit logs found</p>
-          ) : (
-            <div className="space-y-2">
-              {auditLogs.map((log: any) => (
-                <div key={log._id} className="border rounded-md p-3">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <Badge variant="outline">{log.action}</Badge>
-                        <Badge variant="secondary">{log.entityType}</Badge>
-                        <span className="text-xs text-muted-foreground">
-                          {new Date(log.createdAt).toLocaleString()}
-                        </span>
-                      </div>
-                      <p className="text-sm">
-                        Entity ID: <code className="text-xs">{log.entityId || "N/A"}</code>
-                      </p>
-                      {log.details && Object.keys(log.details).length > 0 && (
-                        <details className="mt-2">
-                          <summary className="text-xs text-muted-foreground cursor-pointer">
-                            View details
-                          </summary>
-                          <pre className="text-xs mt-1 p-2 bg-muted rounded">
-                            {JSON.stringify(log.details, null, 2)}
-                          </pre>
-                        </details>
-                      )}
-                    </div>
+          <div className="space-y-2">
+            {logs?.map((log, index) => (
+              <motion.div
+                key={log._id}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.2, delay: index * 0.02 }}
+                className="flex items-center justify-between p-3 border rounded-lg hover:bg-accent/50 transition-colors"
+              >
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline">{log.action}</Badge>
+                    <span className="text-sm font-medium">{log.entityType}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {new Date(log.timestamp).toLocaleString()}
+                    </span>
                   </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Entity ID: {log.entityId}
+                  </p>
                 </div>
-              ))}
-            </div>
-          )}
+                <Button variant="ghost" size="sm">
+                  View Details
+                </Button>
+              </motion.div>
+            ))}
+            {logs?.length === 0 && (
+              <div className="text-center py-8 text-sm text-muted-foreground">
+                No audit logs found matching your criteria
+              </div>
+            )}
+          </div>
         </CardContent>
       </Card>
     </div>
