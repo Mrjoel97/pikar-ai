@@ -3329,6 +3329,14 @@ function SolopreneurDashboard({ business: businessProp }: { business?: any }) {
         onClearWins={utils.clearLocalWins}
       />
 
+      {/* Initiative Journey - Show first active initiative */}
+      {initiatives && initiatives.length > 0 && (
+        <InitiativeJourney 
+          initiativeId={initiatives.find(i => i.status === "active")?._id || initiatives[0]._id}
+          businessId={business?._id}
+        />
+      )}
+
       {/* Add: Customer Segmentation widget */}
       <CustomerSegmentation businessId={businessId} />
 

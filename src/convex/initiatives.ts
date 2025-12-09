@@ -1,7 +1,103 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import { getAuthUserId } from "@convex-dev/auth/server";
-import { internal } from "./_generated/api";
+
+/**
+ * Create a new initiative
+ */
+export const createInitiative = mutation({
+  args: {
+    businessId: v.id("businesses"),
+    title: v.string(),
+    description: v.optional(v.string()),
+    status: v.optional(v.union(
+      v.literal("planning"),
+      v.literal("active"),
+      v.literal("completed"),
+      v.literal("on_hold")
+    )),
+    priority: v.optional(v.union(
+      v.literal("low"),
+      v.literal("medium"),
+      v.literal("high"),
+      v.literal("critical")
+    )),
+    startDate: v.optional(v.number()),
+    targetDate: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const initiativeId = await ctx.db.insert("initiatives", {
+      businessId: args.businessId,
+      title: args.title,
+      description: args.description,
+      status: args.status || "planning",
+      priority: args.priority || "medium",
+      startDate: args.startDate,
+      targetDate: args.targetDate,
+      completedAt: undefined,
+      createdAt: Date.now(),
+    });
+
+    return initiativeId;
+  },
+});
+
+/**
+ * Get initiatives for a business
+ */
+export const getInitiatives = query({
+  args: {
+    businessId: v.id("businesses"),
+  },
+  handler: async (ctx, args) => {
+    const initiatives = await ctx.db
+      .query("initiatives")
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .order("desc")
+      .collect();
+
+    return initiatives;
+  },
+});
+
+/**
+ * Update initiative status
+ */
+export const updateInitiativeStatus = mutation({
+  args: {
+    initiativeId: v.id("initiatives"),
+    status: v.union(
+      v.literal("planning"),
+      v.literal("active"),
+      v.literal("completed"),
+      v.literal("on_hold")
+    ),
+  },
+  handler: async (ctx, args) => {
+    const updates: any = {
+      status: args.status,
+    };
+
+    if (args.status === "completed") {
+      updates.completedAt = Date.now();
+    }
+
+    await ctx.db.patch(args.initiativeId, updates);
+    return { success: true };
+  },
+});
+
+/**
+ * Delete an initiative
+ */
+export const deleteInitiative = mutation({
+  args: {
+    initiativeId: v.id("initiatives"),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.delete(args.initiativeId);
+    return { success: true };
+  },
+});
 
 export const upsertForBusiness = mutation({
   args: {

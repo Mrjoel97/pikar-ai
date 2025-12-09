@@ -62,6 +62,30 @@ export const coreSchema = {
     .index("by_owner", ["ownerId"])
     .index("by_tier", ["tier"]),
 
+  initiatives: defineTable({
+    businessId: v.id("businesses"),
+    title: v.string(),
+    description: v.optional(v.string()),
+    status: v.optional(v.union(
+      v.literal("planning"),
+      v.literal("active"),
+      v.literal("completed"),
+      v.literal("on_hold")
+    )),
+    priority: v.optional(v.union(
+      v.literal("low"),
+      v.literal("medium"),
+      v.literal("high"),
+      v.literal("critical")
+    )),
+    startDate: v.optional(v.number()),
+    targetDate: v.optional(v.number()),
+    completedAt: v.optional(v.number()),
+    createdAt: v.number(),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_status", ["status"]),
+
   wins: defineTable({
     businessId: v.id("businesses"),
     title: v.string(),
