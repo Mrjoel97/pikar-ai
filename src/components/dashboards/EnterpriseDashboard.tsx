@@ -29,6 +29,10 @@ import { AuditSearchPanel } from "@/components/audit/AuditSearchPanel";
 import { KpiDashboard } from "@/components/departments/KpiDashboard";
 import { TargetSetter } from "@/components/departments/TargetSetter";
 import { KpiAlerts } from "@/components/departments/KpiAlerts";
+import { WorkforceDashboard } from "./enterprise/WorkforceDashboard";
+import { AlertDashboard } from "@/components/crisis/AlertDashboard";
+import { ResponseCenter } from "@/components/crisis/ResponseCenter";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 // Static imports to prevent lazy loading errors
 import { RoiDashboard } from "./RoiDashboard";
