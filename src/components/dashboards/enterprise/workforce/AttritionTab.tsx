@@ -1,8 +1,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { TrendingDown, AlertCircle, TrendingUp } from "lucide-react";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
+import { AlertTriangle, TrendingUp, Users } from "lucide-react";
 
 interface AttritionTabProps {
   attritionPredictions: any;
@@ -10,83 +9,79 @@ interface AttritionTabProps {
 
 export function AttritionTab({ attritionPredictions }: AttritionTabProps) {
   if (!attritionPredictions) {
-    return <div className="text-sm text-muted-foreground">Loading attrition data...</div>;
+    return <div className="text-sm text-muted-foreground">Loading attrition predictions...</div>;
   }
-
-  const getRiskColor = (score: number) => {
-    if (score >= 80) return "bg-red-100 text-red-700 border-red-300";
-    if (score >= 60) return "bg-orange-100 text-orange-700 border-orange-300";
-    if (score >= 40) return "bg-yellow-100 text-yellow-700 border-yellow-300";
-    return "bg-green-100 text-green-700 border-green-300";
-  };
-
-  const getTrendColor = (trend: string) => {
-    if (trend === "increasing" || trend === "improving") return "text-green-600";
-    if (trend === "decreasing" || trend === "declining") return "text-red-600";
-    return "text-blue-600";
-  };
 
   return (
     <div className="space-y-4">
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-2xl font-bold">{attritionPredictions.overallAttritionRate || 0}%</div>
-                <div className="text-xs text-muted-foreground mt-1">Overall Attrition Rate</div>
-              </div>
-              <TrendingDown className="h-8 w-8 text-orange-500" />
-            </div>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Overall Attrition Rate</CardTitle>
+            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{attritionPredictions.overallAttritionRate}%</div>
+            <p className="text-xs text-muted-foreground">Industry avg: 13.2%</p>
           </CardContent>
         </Card>
 
         <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-2xl font-bold">{attritionPredictions.predictedAttrition || 0}</div>
-                <div className="text-xs text-muted-foreground mt-1">Predicted Departures</div>
-              </div>
-              <AlertCircle className="h-8 w-8 text-red-500" />
-            </div>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">High Risk Employees</CardTitle>
+            <AlertTriangle className="h-4 w-4 text-orange-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{attritionPredictions.predictedAttrition}</div>
+            <p className="text-xs text-orange-600">Requires immediate attention</p>
           </CardContent>
         </Card>
 
         <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-2xl font-bold capitalize">{attritionPredictions.attritionTrend || "stable"}</div>
-                <div className="text-xs text-muted-foreground mt-1">Trend</div>
-              </div>
-              <TrendingUp className={`h-8 w-8 ${getTrendColor(attritionPredictions.attritionTrend || "stable")}`} />
-            </div>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Retention Cost</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">${attritionPredictions.retentionCost?.toLocaleString() || 0}</div>
+            <p className="text-xs text-muted-foreground">Annual investment</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* High Risk Employees */}
       <Card>
         <CardHeader>
-          <CardTitle>High Risk Employees</CardTitle>
-          <CardDescription>Employees with elevated attrition risk</CardDescription>
+          <CardTitle>High-Risk Employees</CardTitle>
+          <CardDescription>Employees with elevated attrition risk scores</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
             {attritionPredictions.highRiskEmployees?.map((emp: any) => (
-              <div key={emp.employeeId} className="p-4 border rounded-lg">
-                <div className="flex items-center justify-between mb-2">
-                  <div>
-                    <div className="font-medium">{emp.name}</div>
-                    <div className="text-xs text-muted-foreground">{emp.department} • {emp.tenure} months tenure</div>
+              <div key={emp.id} className="flex items-center justify-between border-b pb-3 last:border-0">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="font-medium">{emp.name}</span>
+                    <Badge variant="outline">{emp.department}</Badge>
                   </div>
-                  <Badge variant="outline" className={getRiskColor(emp.riskScore)}>
-                    Risk: {emp.riskScore}
-                  </Badge>
+                  <div className="text-sm text-muted-foreground">
+                    Tenure: {emp.tenure} months | Performance: {emp.performanceScore}%
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-1">
+                    Risk Factors: {emp.riskFactors?.join(", ")}
+                  </div>
                 </div>
-                <div className="text-xs text-muted-foreground">
-                  <span className="font-medium">Risk Factors:</span> {emp.riskFactors.join(", ")}
+                <div className="text-right">
+                  <Badge
+                    variant={
+                      emp.riskScore > 75
+                        ? "destructive"
+                        : emp.riskScore > 50
+                        ? "default"
+                        : "outline"
+                    }
+                  >
+                    {emp.riskScore}% risk
+                  </Badge>
                 </div>
               </div>
             ))}
@@ -94,50 +89,22 @@ export function AttritionTab({ attritionPredictions }: AttritionTabProps) {
         </CardContent>
       </Card>
 
-      {/* Attrition by Department */}
       <Card>
         <CardHeader>
           <CardTitle>Attrition by Department</CardTitle>
-          <CardDescription>Current and predicted attrition rates</CardDescription>
+          <CardDescription>Department-level attrition trends</CardDescription>
         </CardHeader>
         <CardContent>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={attritionPredictions.attritionByDepartment || []}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="department" />
-              <YAxis />
-              <Tooltip />
-              <Legend />
-              <Bar dataKey="currentRate" fill="#3b82f6" name="Current Rate %" />
-              <Bar dataKey="predictedRate" fill="#f59e0b" name="Predicted Rate %" />
-            </BarChart>
-          </ResponsiveContainer>
-        </CardContent>
-      </Card>
-
-      {/* Retention Recommendations */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Retention Recommendations</CardTitle>
-          <CardDescription>Actions to reduce attrition</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            {attritionPredictions.retentionRecommendations?.map((rec: any, idx: number) => (
-              <div key={idx} className="p-3 border rounded-lg">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="font-medium">{rec.action}</span>
-                  <Badge variant="outline" className={
-                    rec.priority === "high" ? "bg-red-100 text-red-700" :
-                    rec.priority === "medium" ? "bg-yellow-100 text-yellow-700" :
-                    "bg-blue-100 text-blue-700"
-                  }>
-                    {rec.priority}
-                  </Badge>
+          <div className="space-y-4">
+            {attritionPredictions.departmentBreakdown?.map((dept: any) => (
+              <div key={dept.department} className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="font-medium">{dept.department}</span>
+                  <span className="text-sm">{dept.attritionRate}%</span>
                 </div>
-                <div className="text-xs text-muted-foreground space-y-1">
-                  <div><span className="font-medium">Impact:</span> {rec.impact}</div>
-                  <div><span className="font-medium">Cost:</span> {rec.cost}</div>
+                <Progress value={dept.attritionRate} className="h-2" />
+                <div className="text-xs text-muted-foreground">
+                  {dept.atRiskCount} employees at risk
                 </div>
               </div>
             ))}

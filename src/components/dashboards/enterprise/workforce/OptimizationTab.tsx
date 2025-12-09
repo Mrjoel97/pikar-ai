@@ -1,8 +1,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Lightbulb } from "lucide-react";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
+import { Target, DollarSign, Users, TrendingUp } from "lucide-react";
 
 interface OptimizationTabProps {
   workforceOptimization: any;
@@ -10,54 +9,92 @@ interface OptimizationTabProps {
 
 export function OptimizationTab({ workforceOptimization }: OptimizationTabProps) {
   if (!workforceOptimization) {
-    return <div className="text-sm text-muted-foreground">Loading optimization data...</div>;
+    return <div className="text-sm text-muted-foreground">Loading optimization recommendations...</div>;
   }
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-lg font-semibold">Workforce Optimization</h3>
-          <p className="text-sm text-muted-foreground">
-            Overall Score: <span className="font-bold">{workforceOptimization.optimizationScore || 0}/100</span>
-          </p>
-        </div>
-        <Button>
-          <Lightbulb className="h-4 w-4 mr-2" />
-          Generate Plan
-        </Button>
+      <div className="grid gap-4 md:grid-cols-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Optimization Score</CardTitle>
+            <Target className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{workforceOptimization.optimizationScore || 0}</div>
+            <p className="text-xs text-muted-foreground">Out of 100</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Cost Savings</CardTitle>
+            <DollarSign className="h-4 w-4 text-green-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              ${(workforceOptimization.potentialSavings || 0).toLocaleString()}
+            </div>
+            <p className="text-xs text-green-600">Annual potential</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Efficiency Gain</CardTitle>
+            <TrendingUp className="h-4 w-4 text-blue-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{workforceOptimization.efficiencyGain || 0}%</div>
+            <p className="text-xs text-blue-600">Projected improvement</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Recommendations</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{workforceOptimization.recommendations?.length || 0}</div>
+            <p className="text-xs text-muted-foreground">Action items</p>
+          </CardContent>
+        </Card>
       </div>
 
-      {/* Optimization Recommendations */}
       <Card>
         <CardHeader>
           <CardTitle>Optimization Recommendations</CardTitle>
-          <CardDescription>Prioritized actions to improve workforce efficiency</CardDescription>
+          <CardDescription>AI-powered workforce optimization strategies</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
             {workforceOptimization.recommendations?.map((rec: any, idx: number) => (
-              <div key={idx} className="p-4 border rounded-lg">
-                <div className="flex items-center justify-between mb-2">
-                  <div>
-                    <Badge variant="outline" className="mb-1">{rec.category}</Badge>
-                    <div className="font-medium">{rec.recommendation}</div>
+              <div key={idx} className="border rounded-lg p-4">
+                <div className="flex items-start justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <Badge
+                      variant={
+                        rec.priority === "high"
+                          ? "destructive"
+                          : rec.priority === "medium"
+                          ? "default"
+                          : "outline"
+                      }
+                    >
+                      {rec.priority} priority
+                    </Badge>
+                    <span className="font-medium">{rec.category}</span>
                   </div>
-                  <Badge variant="outline" className={
-                    rec.priority === "critical" ? "bg-red-100 text-red-700" :
-                    rec.priority === "high" ? "bg-orange-100 text-orange-700" :
-                    "bg-yellow-100 text-yellow-700"
-                  }>
-                    {rec.priority}
-                  </Badge>
                 </div>
-                <div className="text-xs text-muted-foreground space-y-1">
-                  <div><span className="font-medium">Rationale:</span> {rec.rationale}</div>
-                  <div><span className="font-medium">Impact:</span> {rec.impact}</div>
-                  <div className="flex items-center gap-4">
-                    <span><span className="font-medium">Effort:</span> {rec.effort}</span>
-                    <span><span className="font-medium">Timeframe:</span> {rec.timeframe}</span>
+                <p className="text-sm mb-2">{rec.recommendation}</p>
+                <div className="flex items-center justify-between">
+                  <div className="text-sm text-muted-foreground">
+                    Impact: <span className="font-medium text-green-600">{rec.impact}</span>
                   </div>
+                  <Button size="sm" variant="outline">
+                    Implement
+                  </Button>
                 </div>
               </div>
             ))}
@@ -65,77 +102,26 @@ export function OptimizationTab({ workforceOptimization }: OptimizationTabProps)
         </CardContent>
       </Card>
 
-      {/* Cost Savings */}
       <Card>
         <CardHeader>
-          <CardTitle>Projected Cost Savings</CardTitle>
-          <CardDescription>Financial impact of optimization initiatives</CardDescription>
+          <CardTitle>Cost Savings Opportunities</CardTitle>
+          <CardDescription>Potential annual savings by initiative</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
             {workforceOptimization.costSavings?.map((saving: any, idx: number) => (
-              <div key={idx} className="flex items-center justify-between p-3 border rounded-lg">
-                <div>
-                  <div className="font-medium">{saving.initiative}</div>
-                  <div className="text-xs text-muted-foreground">
-                    Payback: {saving.paybackPeriod}
+              <div key={idx} className="flex items-center justify-between border-b pb-3 last:border-0">
+                <div className="flex-1">
+                  <div className="font-medium mb-1">{saving.initiative}</div>
+                  <div className="text-sm text-muted-foreground">
+                    Implementation cost: ${saving.implementation?.toLocaleString()}
                   </div>
                 </div>
                 <div className="text-right">
                   <div className="text-lg font-bold text-green-600">
-                    ${saving.netSavings.toLocaleString()}
+                    ${saving.annualSavings?.toLocaleString()}
                   </div>
-                  <div className="text-xs text-muted-foreground">
-                    Annual savings
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Efficiency Gains */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Efficiency Gains by Area</CardTitle>
-          <CardDescription>Potential improvements across departments</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <ResponsiveContainer width="100%" height={250}>
-            <BarChart data={workforceOptimization.efficiencyGains || []}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="area" />
-              <YAxis />
-              <Tooltip />
-              <Legend />
-              <Bar dataKey="currentEfficiency" fill="#94a3b8" name="Current %" />
-              <Bar dataKey="targetEfficiency" fill="#10b981" name="Target %" />
-            </BarChart>
-          </ResponsiveContainer>
-        </CardContent>
-      </Card>
-
-      {/* Implementation Plan */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Implementation Roadmap</CardTitle>
-          <CardDescription>Phased approach to workforce optimization</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            {workforceOptimization.implementationPlan?.map((phase: any, idx: number) => (
-              <div key={idx} className="p-4 border rounded-lg">
-                <div className="flex items-center justify-between mb-2">
-                  <div>
-                    <div className="font-medium">{phase.phase}</div>
-                    <div className="text-xs text-muted-foreground">{phase.duration}</div>
-                  </div>
-                  <Badge variant="outline">${phase.cost.toLocaleString()}</Badge>
-                </div>
-                <div className="text-xs text-muted-foreground space-y-1">
-                  <div><span className="font-medium">Actions:</span> {phase.actions.join(", ")}</div>
-                  <div><span className="font-medium">Expected Impact:</span> {phase.expectedImpact}</div>
+                  <div className="text-xs text-muted-foreground">annual savings</div>
                 </div>
               </div>
             ))}

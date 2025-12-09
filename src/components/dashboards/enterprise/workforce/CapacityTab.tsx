@@ -1,6 +1,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
+import { Progress } from "@/components/ui/progress";
+import { Users, TrendingUp, AlertCircle } from "lucide-react";
 
 interface CapacityTabProps {
   capacityPlanning: any;
@@ -8,79 +9,77 @@ interface CapacityTabProps {
 
 export function CapacityTab({ capacityPlanning }: CapacityTabProps) {
   if (!capacityPlanning) {
-    return <div className="text-sm text-muted-foreground">Loading capacity data...</div>;
+    return <div className="text-sm text-muted-foreground">Loading capacity planning...</div>;
   }
 
   return (
     <div className="space-y-4">
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
-          <CardContent className="p-6">
-            <div className="text-sm text-muted-foreground">Current Capacity</div>
-            <div className="text-2xl font-bold">{capacityPlanning.currentCapacity || 0}</div>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Current Capacity</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{capacityPlanning.currentCapacity}</div>
+            <p className="text-xs text-muted-foreground">Full-time employees</p>
           </CardContent>
         </Card>
+
         <Card>
-          <CardContent className="p-6">
-            <div className="text-sm text-muted-foreground">Q4 Projected Demand</div>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Projected Demand</CardTitle>
+            <TrendingUp className="h-4 w-4 text-blue-600" />
+          </CardHeader>
+          <CardContent>
             <div className="text-2xl font-bold">
-              {Math.round(capacityPlanning.projectedDemand?.[3]?.demand || 0)}
+              {capacityPlanning.projectedDemand?.[capacityPlanning.projectedDemand.length - 1]?.demand?.toFixed(0) || 0}
             </div>
+            <p className="text-xs text-blue-600">By Q4 2025</p>
           </CardContent>
         </Card>
+
         <Card>
-          <CardContent className="p-6">
-            <div className="text-sm text-muted-foreground">Q4 Capacity Gap</div>
-            <div className="text-2xl font-bold text-red-600">
-              {capacityPlanning.capacityGap?.[3]?.gap || 0}
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Capacity Gap</CardTitle>
+            <AlertCircle className="h-4 w-4 text-orange-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {capacityPlanning.capacityGap?.[capacityPlanning.capacityGap.length - 1]?.gap || 0}
             </div>
+            <p className="text-xs text-orange-600">Additional headcount needed</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Utilization Forecast */}
       <Card>
         <CardHeader>
-          <CardTitle>Utilization Forecast</CardTitle>
-          <CardDescription>Projected capacity utilization over time</CardDescription>
+          <CardTitle>Quarterly Capacity Forecast</CardTitle>
+          <CardDescription>Projected demand vs current capacity</CardDescription>
         </CardHeader>
         <CardContent>
-          <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={capacityPlanning.utilizationForecast || []}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="month" />
-              <YAxis />
-              <Tooltip />
-              <Legend />
-              <Line type="monotone" dataKey="utilization" stroke="#3b82f6" name="Utilization %" strokeWidth={2} />
-              <Line type="monotone" dataKey="capacity" stroke="#10b981" name="Capacity" strokeWidth={2} />
-              <Line type="monotone" dataKey="demand" stroke="#f59e0b" name="Demand" strokeWidth={2} />
-            </LineChart>
-          </ResponsiveContainer>
-        </CardContent>
-      </Card>
-
-      {/* Capacity Gap Analysis */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Quarterly Capacity Gap</CardTitle>
-          <CardDescription>Projected shortfalls by quarter</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            {capacityPlanning.capacityGap?.map((gap: any) => (
-              <div key={gap.quarter} className="flex items-center justify-between p-3 border rounded-lg">
-                <span className="font-medium">{gap.quarter}</span>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm">{gap.gap} employees short</span>
-                  <Badge variant="outline" className={
-                    gap.severity === "critical" ? "bg-red-100 text-red-700" :
-                    gap.severity === "high" ? "bg-orange-100 text-orange-700" :
-                    gap.severity === "medium" ? "bg-yellow-100 text-yellow-700" :
-                    "bg-blue-100 text-blue-700"
-                  }>
-                    {gap.severity}
-                  </Badge>
+          <div className="space-y-4">
+            {capacityPlanning.projectedDemand?.map((quarter: any) => (
+              <div key={quarter.quarter} className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium">{quarter.quarter}</span>
+                    <Badge variant="outline">{quarter.projects} projects</Badge>
+                  </div>
+                  <span className="text-sm">
+                    {quarter.demand.toFixed(0)} FTEs needed
+                  </span>
+                </div>
+                <div className="space-y-1">
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <span>Workload</span>
+                    <span>{quarter.workload}%</span>
+                  </div>
+                  <Progress 
+                    value={quarter.workload} 
+                    className={`h-2 ${quarter.workload > 100 ? 'bg-red-100' : ''}`}
+                  />
                 </div>
               </div>
             ))}
@@ -88,24 +87,33 @@ export function CapacityTab({ capacityPlanning }: CapacityTabProps) {
         </CardContent>
       </Card>
 
-      {/* Scaling Recommendations */}
       <Card>
         <CardHeader>
-          <CardTitle>Scaling Recommendations</CardTitle>
-          <CardDescription>Actions to address capacity gaps</CardDescription>
+          <CardTitle>Capacity Gap Analysis</CardTitle>
+          <CardDescription>Hiring needs by quarter</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            {capacityPlanning.scalingRecommendations?.map((rec: any, idx: number) => (
-              <div key={idx} className="p-3 border rounded-lg">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="font-medium">{rec.action}</span>
-                  <Badge variant="outline">${rec.cost.toLocaleString()}</Badge>
-                </div>
-                <div className="text-xs text-muted-foreground space-y-1">
-                  <div><span className="font-medium">Rationale:</span> {rec.rationale}</div>
-                  <div><span className="font-medium">Impact:</span> {rec.impact}</div>
-                  <div><span className="font-medium">Timeline:</span> {rec.timeline}</div>
+            {capacityPlanning.capacityGap?.map((gap: any) => (
+              <div key={gap.quarter} className="flex items-center justify-between border-b pb-3 last:border-0">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="font-medium">{gap.quarter}</span>
+                    <Badge
+                      variant={
+                        gap.severity === "critical"
+                          ? "destructive"
+                          : gap.severity === "high"
+                          ? "default"
+                          : "outline"
+                      }
+                    >
+                      {gap.severity}
+                    </Badge>
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    Additional headcount needed: {gap.gap}
+                  </div>
                 </div>
               </div>
             ))}
