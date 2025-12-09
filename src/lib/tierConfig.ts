@@ -216,6 +216,7 @@ export const tierConfigs: Record<TierType, TierConfig> = {
       { label: "Initiatives", icon: Target, to: "/initiatives", feature: "strategic_initiatives" },
       { label: "Portfolio", icon: Briefcase, to: "/portfolio-dashboard" },
       { label: "Data Warehouse", icon: Database, to: "/data-warehouse" },
+      { label: "Security", icon: Shield, to: "/enterprise/security" },
       { label: "CRM Hub", icon: Network, to: "/crm-integration-hub", feature: "crm_integration" },
       { label: "Customer Journey", icon: Map, to: "/customer-journey" },
       { label: "Vendor Management", icon: Building2, to: "/vendor-management" },
@@ -224,7 +225,7 @@ export const tierConfigs: Record<TierType, TierConfig> = {
       { label: "Business Units", icon: Building, to: "/business" },
       { label: "Compliance", icon: FileText, to: "/analytics", feature: "global_compliance" },
       { label: "Analytics", icon: TrendingUp, to: "/analytics", feature: "enterprise_analytics" },
-      { label: "Settings", icon: Settings, to: "/dashboard" }
+      { label: "Settings", icon: Settings, to: "/settings" }
     ],
     dashboardSections: [
       "global_overview",

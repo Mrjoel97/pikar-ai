@@ -50,6 +50,7 @@ import { DataWarehouseManager } from "./components/enterprise/DataWarehouseManag
 import { SecurityDashboard } from "./components/enterprise/SecurityDashboard";
 import { PortfolioDashboard } from "./components/enterprise/PortfolioDashboard";
 import ResetPassword from "./pages/ResetPassword";
+import SecurityPage from "./pages/Security";
 
 console.log("Main.tsx: Module loaded");
 
@@ -182,7 +183,7 @@ function AnimatedRoutes() {
           <Route path="/support" element={<SupportPage />} />
           <Route path="/admin/test-runner" element={<TestRunnerPage />} />
           <Route path="/enterprise/data-warehouse" element={<DataWarehouseManager />} />
-          <Route path="/enterprise/security" element={<SecurityDashboard />} />
+          <Route path="/enterprise/security" element={<SecurityPage />} />
           <Route path="/enterprise/portfolio" element={<PortfolioDashboard />} />
           <Route path="/docs" element={<DocsPage />} />
           <Route path="/crm-integration-hub" element={<CrmIntegrationHubPage />} />

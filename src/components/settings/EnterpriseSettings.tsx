@@ -84,7 +84,7 @@ export default function EnterpriseSettings({ business }: { business: any }) {
           </div>
         </CardHeader>
         <CardContent>
-          <Button onClick={() => navigate("/branding-portal")} className="neu-raised">
+          <Button onClick={() => navigate("/branding")} className="neu-raised">
             Manage Branding
           </Button>
         </CardContent>
