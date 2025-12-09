@@ -8,6 +8,8 @@ import { workflowsSchema } from "./workflows";
 import { teamSchema } from "./team";
 import { supportSchema } from "./support";
 import { contentSchema } from "./content";
+import { whiteLabelSchema } from "./whiteLabel";
+import { securitySchema } from "./security";
 
 const { users: _authUsers, ...authWithoutUsers } = authTables;
 
@@ -22,6 +24,8 @@ const schema = defineSchema({
   ...teamSchema,
   ...supportSchema,
   ...contentSchema,
+  ...whiteLabelSchema,
+  ...securitySchema,
   // Note: Additional tables (CRM, social, governance, analytics, etc.) can be added as needed
 });
 
