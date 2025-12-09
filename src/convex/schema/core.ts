@@ -61,4 +61,38 @@ export const coreSchema = {
   })
     .index("by_owner", ["ownerId"])
     .index("by_tier", ["tier"]),
+
+  wins: defineTable({
+    businessId: v.id("businesses"),
+    title: v.string(),
+    description: v.optional(v.string()),
+    impact: v.optional(v.string()),
+    timeSaved: v.optional(v.number()),
+    category: v.optional(v.union(
+      v.literal("automation"),
+      v.literal("revenue"),
+      v.literal("efficiency"),
+      v.literal("customer"),
+      v.literal("other")
+    )),
+    date: v.number(),
+  }).index("by_business", ["businessId"]),
+
+  journeyMilestones: defineTable({
+    businessId: v.id("businesses"),
+    initiativeId: v.id("initiatives"),
+    title: v.string(),
+    description: v.optional(v.string()),
+    targetDate: v.optional(v.number()),
+    status: v.union(
+      v.literal("not_started"),
+      v.literal("in_progress"),
+      v.literal("completed"),
+      v.literal("blocked")
+    ),
+    completedAt: v.optional(v.number()),
+    createdAt: v.number(),
+  })
+    .index("by_initiative", ["initiativeId"])
+    .index("by_business", ["businessId"]),
 };
