@@ -27,6 +27,17 @@ export default function SystemTelemetry({ agents, demoData, businessId }: System
     businessId ? { businessId, days: 7 } : "skip"
   );
 
+  // Add new predictive alerts query
+  const predictiveAlerts = useQuery(
+    api.telemetry.getPredictiveAlerts,
+    businessId ? { businessId } : "skip"
+  );
+
+  const advancedHealth = useQuery(
+    api.telemetry.getAdvancedHealthMetrics,
+    businessId ? { businessId } : "skip"
+  );
+
   // Generate performance data with real-time variations
   const performanceData = Array.from({ length: 12 }, (_, i) => ({
     time: `${i * 2}h`,
@@ -92,6 +103,40 @@ export default function SystemTelemetry({ agents, demoData, businessId }: System
         </TabsList>
 
         <TabsContent value="overview" className="space-y-4">
+          {/* Add Advanced Health Metrics */}
+          {advancedHealth && (
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">Advanced Health Metrics</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {advancedHealth.metrics.map((metric: any) => (
+                    <div key={metric.name} className="flex items-center justify-between">
+                      <span className="text-sm">{metric.name}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-bold">{metric.value}%</span>
+                        <Badge variant={metric.status === "healthy" ? "default" : "destructive"}>
+                          {metric.status}
+                        </Badge>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {advancedHealth.recommendations.length > 0 && (
+                  <div className="mt-4 pt-4 border-t">
+                    <div className="text-xs font-semibold mb-2">Recommendations:</div>
+                    <ul className="text-xs text-muted-foreground space-y-1">
+                      {advancedHealth.recommendations.map((rec: string, idx: number) => (
+                        <li key={idx}>• {rec}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <Card>
               <CardContent className="p-4">
@@ -328,6 +373,44 @@ export default function SystemTelemetry({ agents, demoData, businessId }: System
         </TabsContent>
 
         <TabsContent value="alerts" className="space-y-3">
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">Predictive Alerts</CardTitle>
+              <CardDescription>AI-powered capacity planning and risk detection</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {predictiveAlerts?.alerts && predictiveAlerts.alerts.length > 0 ? (
+                <>
+                  <div className="mb-4 p-3 bg-blue-50 rounded-lg">
+                    <div className="text-sm font-semibold mb-1">Risk Score: {predictiveAlerts.riskScore}/100</div>
+                    <Progress value={predictiveAlerts.riskScore} className="h-2" />
+                  </div>
+                  {predictiveAlerts.alerts.map((alert: any, idx: number) => (
+                    <div key={idx} className="flex items-start gap-3 p-3 border rounded-lg">
+                      <AlertTriangle className={`h-4 w-4 mt-0.5 ${
+                        alert.severity === "warning" ? "text-amber-600" : "text-blue-600"
+                      }`} />
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-sm font-medium">{alert.title}</span>
+                          <Badge variant={alert.severity === "warning" ? "destructive" : "secondary"}>
+                            {alert.severity}
+                          </Badge>
+                        </div>
+                        <p className="text-sm text-muted-foreground mb-1">{alert.message}</p>
+                        <p className="text-xs text-blue-600">→ {alert.recommendation}</p>
+                      </div>
+                    </div>
+                  ))}
+                </>
+              ) : (
+                <div className="text-center py-8 text-sm text-muted-foreground">
+                  No predictive alerts. System operating within normal parameters.
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-base">Critical Alerts</CardTitle>

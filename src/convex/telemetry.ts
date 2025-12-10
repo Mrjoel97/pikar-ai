@@ -263,3 +263,163 @@ export const trackTemplateUsage = mutation({
     return { success: true };
   },
 });
+
+/**
+ * Get predictive system alerts
+ */
+export const getPredictiveAlerts = query({
+  args: {
+    businessId: v.optional(v.id("businesses")),
+  },
+  handler: async (ctx, args) => {
+    if (!args.businessId) {
+      return { alerts: [], riskScore: 0 };
+    }
+
+    const businessId = args.businessId;
+    const business = await ctx.db.get(businessId);
+    const tier = resolveTier(business?.tier);
+    const caps = CAP_MAP[tier];
+
+    // Get current usage
+    const workflowsCount = await ctx.db
+      .query("workflows")
+      .withIndex("by_business", (q) => q.eq("businessId", businessId))
+      .collect()
+      .then((r) => r.length);
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayMs = today.getTime();
+
+    const runsToday = await ctx.db
+      .query("workflowRuns")
+      .withIndex("by_business", (q) => q.eq("businessId", businessId))
+      .filter((q) => q.gt(q.field("_creationTime"), todayMs))
+      .collect()
+      .then((r) => r.length);
+
+    const agentsCount = await ctx.db
+      .query("aiAgents")
+      .withIndex("by_business", (q) => q.eq("businessId", businessId))
+      .collect()
+      .then((r) => r.length);
+
+    const alerts = [];
+    let riskScore = 0;
+
+    // Predict if limits will be hit in next 7 days
+    const projectedWorkflows = workflowsCount * 1.15; // 15% growth assumption
+    const projectedRuns = runsToday * 7 * 1.2; // 20% growth assumption
+    const projectedAgents = agentsCount * 1.1; // 10% growth assumption
+
+    if (projectedWorkflows > caps.workflows * 0.9) {
+      alerts.push({
+        type: "predictive",
+        severity: "warning",
+        title: "Workflow Limit Approaching",
+        message: `Projected to reach ${Math.round((projectedWorkflows / caps.workflows) * 100)}% of workflow limit in 7 days`,
+        recommendation: "Consider upgrading tier or optimizing workflows",
+      });
+      riskScore += 30;
+    }
+
+    if (projectedRuns > caps.runsPerDay * 7 * 0.9) {
+      alerts.push({
+        type: "predictive",
+        severity: "warning",
+        title: "Daily Runs Limit Risk",
+        message: "Current usage trend suggests you may hit daily run limits",
+        recommendation: "Review workflow efficiency or upgrade tier",
+      });
+      riskScore += 25;
+    }
+
+    if (projectedAgents > caps.agents * 0.9) {
+      alerts.push({
+        type: "predictive",
+        severity: "info",
+        title: "Agent Capacity Planning",
+        message: "Agent usage growing, plan for capacity expansion",
+        recommendation: "Evaluate agent consolidation or tier upgrade",
+      });
+      riskScore += 20;
+    }
+
+    return {
+      alerts,
+      riskScore: Math.min(riskScore, 100),
+      projections: {
+        workflows: Math.round(projectedWorkflows),
+        runs: Math.round(projectedRuns),
+        agents: Math.round(projectedAgents),
+      },
+    };
+  },
+});
+
+/**
+ * Get advanced system health metrics
+ */
+export const getAdvancedHealthMetrics = query({
+  args: {
+    businessId: v.optional(v.id("businesses")),
+  },
+  handler: async (ctx, args) => {
+    if (!args.businessId) {
+      return {
+        overallHealth: 0,
+        metrics: [],
+        recommendations: [],
+      };
+    }
+
+    const businessId = args.businessId;
+    const last24h = Date.now() - (24 * 60 * 60 * 1000);
+
+    // Workflow health
+    const recentRuns = await ctx.db
+      .query("workflowRuns")
+      .withIndex("by_business", (q) => q.eq("businessId", businessId))
+      .filter((q) => q.gte(q.field("_creationTime"), last24h))
+      .collect();
+
+    const successfulRuns = recentRuns.filter(r => r.status === "completed").length;
+    const workflowHealth = recentRuns.length > 0 ? (successfulRuns / recentRuns.length) * 100 : 100;
+
+    // Agent health
+    const agents = await ctx.db
+      .query("aiAgents")
+      .withIndex("by_business", (q) => q.eq("businessId", businessId))
+      .collect();
+
+    const activeAgents = agents.filter(a => a.status === "active").length;
+    const agentHealth = agents.length > 0 ? (activeAgents / agents.length) * 100 : 100;
+
+    // Data quality health (simulated)
+    const dataHealth = 95 + Math.random() * 5;
+
+    const overallHealth = (workflowHealth * 0.4 + agentHealth * 0.3 + dataHealth * 0.3);
+
+    const recommendations = [];
+    if (workflowHealth < 90) {
+      recommendations.push("Review failed workflow runs and optimize error handling");
+    }
+    if (agentHealth < 90) {
+      recommendations.push("Check inactive agents and update configurations");
+    }
+    if (dataHealth < 95) {
+      recommendations.push("Run data quality checks and clean up inconsistencies");
+    }
+
+    return {
+      overallHealth: Math.round(overallHealth),
+      metrics: [
+        { name: "Workflow Success Rate", value: Math.round(workflowHealth), status: workflowHealth >= 90 ? "healthy" : "warning" },
+        { name: "Agent Availability", value: Math.round(agentHealth), status: agentHealth >= 90 ? "healthy" : "warning" },
+        { name: "Data Quality", value: Math.round(dataHealth), status: dataHealth >= 95 ? "healthy" : "warning" },
+      ],
+      recommendations,
+    };
+  },
+});

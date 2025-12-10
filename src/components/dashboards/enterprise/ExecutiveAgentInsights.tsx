@@ -2,6 +2,11 @@ import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Brain, Activity, Sparkles } from "lucide-react";
+import { useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
+import { Id } from "@/convex/_generated/dataModel";
+import { LineChart, Line, CartesianGrid, XAxis, YAxis, ResponsiveContainer } from "recharts";
+import { motion } from "framer-motion";
 import { OverviewTab } from "./executive-insights/OverviewTab";
 import { PerformanceTab } from "./executive-insights/PerformanceTab";
 import { InsightsTab } from "./executive-insights/InsightsTab";
@@ -9,9 +14,21 @@ import { InsightsTab } from "./executive-insights/InsightsTab";
 interface ExecutiveAgentInsightsProps {
   entAgents: Array<any>;
   onNavigate: (path: string) => void;
+  businessId?: Id<"businesses"> | null;
 }
 
-export function ExecutiveAgentInsights({ entAgents, onNavigate }: ExecutiveAgentInsightsProps) {
+export function ExecutiveAgentInsights({ entAgents, onNavigate, businessId }: ExecutiveAgentInsightsProps) {
+  // Fetch real predictive insights
+  const predictiveInsights = useQuery(
+    api.agentPerformance.getPredictiveAgentInsights,
+    businessId ? { businessId } : "skip"
+  );
+
+  const costOptimization = useQuery(
+    api.agentPerformance.getAgentCostOptimization,
+    businessId ? { businessId } : "skip"
+  );
+
   if (!Array.isArray(entAgents) || entAgents.length === 0) {
     return null;
   }
@@ -74,6 +91,24 @@ export function ExecutiveAgentInsights({ entAgents, onNavigate }: ExecutiveAgent
       metric: `$${totalCostSavings.toLocaleString()} saved`,
       action: "Document ROI for stakeholder reporting",
     },
+  ];
+
+  // Enhanced insights with real data
+  const enhancedInsights = [
+    ...(predictiveInsights?.predictions.filter(p => p.trend === "declining").slice(0, 2).map(p => ({
+      title: "Performance Decline Detected",
+      description: `${p.agentName} showing ${p.trend} trend`,
+      impact: "high",
+      metric: `${Math.round(p.currentPerformance)}% success rate`,
+      action: p.recommendedActions[0] || "Review agent configuration",
+    })) || []),
+    ...(costOptimization?.recommendations.filter(r => r.optimizationPotential === "high").slice(0, 1).map(r => ({
+      title: "Cost Optimization Opportunity",
+      description: `${r.agentName} has high optimization potential`,
+      impact: "medium",
+      metric: `Save $${Math.round(r.estimatedSavings)}`,
+      action: r.recommendations[0] || "Optimize agent configuration",
+    })) || []),
   ];
 
   // Performance trend data (simulated 7-day trend)
@@ -229,6 +264,45 @@ export function ExecutiveAgentInsights({ entAgents, onNavigate }: ExecutiveAgent
           </Tabs>
         </CardContent>
       </Card>
+
+      {/* Add new Predictive Analytics tab content */}
+      {predictiveInsights && (
+        <div className="mt-4 space-y-3">
+          <h4 className="text-sm font-semibold">Predictive Performance Analysis</h4>
+          {predictiveInsights.predictions.map((pred: any) => (
+            <Card key={pred.agentId} className="p-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="font-medium text-sm">{pred.agentName}</div>
+                  <div className="text-xs text-muted-foreground">
+                    Trend: {pred.trend} | Risk: {pred.riskLevel}
+                  </div>
+                </div>
+                <Badge variant={pred.trend === "improving" ? "default" : pred.trend === "declining" ? "destructive" : "secondary"}>
+                  {Math.round(pred.predictedPerformance)}%
+                </Badge>
+              </div>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {/* Cost optimization summary */}
+      {costOptimization && (
+        <Card className="mt-4 p-4">
+          <div className="text-sm font-semibold mb-2">Cost Optimization Summary</div>
+          <div className="grid grid-cols-2 gap-4 text-sm">
+            <div>
+              <div className="text-muted-foreground">Current Cost</div>
+              <div className="text-lg font-bold">${Math.round(costOptimization.totalCurrentCost)}</div>
+            </div>
+            <div>
+              <div className="text-muted-foreground">Potential Savings</div>
+              <div className="text-lg font-bold text-green-600">${Math.round(costOptimization.totalPotentialSavings)}</div>
+            </div>
+          </div>
+        </Card>
+      )}
     </div>
   );
 }

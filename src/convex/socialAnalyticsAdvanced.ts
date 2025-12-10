@@ -113,3 +113,142 @@ export const getContentRecommendations = action({
     ];
   },
 });
+
+/**
+ * Multi-platform sentiment analysis
+ */
+export const getSentimentAnalysis = query({
+  args: {
+    businessId: v.id("businesses"),
+    platforms: v.optional(v.array(v.string())),
+    days: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const days = args.days || 30;
+    const cutoff = Date.now() - (days * 24 * 60 * 60 * 1000);
+
+    const posts = await ctx.db
+      .query("socialPosts")
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .filter((q) => q.gte(q.field("_creationTime"), cutoff))
+      .collect();
+
+    const filteredPosts = args.platforms 
+      ? posts.filter(p => args.platforms!.includes(p.platform))
+      : posts;
+
+    // Aggregate sentiment scores
+    const sentimentData = filteredPosts.reduce((acc: any, post) => {
+      const sentiment = post.sentiment || "neutral";
+      acc[sentiment] = (acc[sentiment] || 0) + 1;
+      return acc;
+    }, {});
+
+    const total = filteredPosts.length;
+    const positive = sentimentData.positive || 0;
+    const negative = sentimentData.negative || 0;
+    const neutral = sentimentData.neutral || 0;
+
+    return {
+      overall: {
+        positive: total > 0 ? (positive / total) * 100 : 0,
+        negative: total > 0 ? (negative / total) * 100 : 0,
+        neutral: total > 0 ? (neutral / total) * 100 : 0,
+      },
+      byPlatform: filteredPosts.reduce((acc: any, post) => {
+        const platform = post.platform;
+        if (!acc[platform]) {
+          acc[platform] = { positive: 0, negative: 0, neutral: 0, total: 0 };
+        }
+        const sentiment = post.sentiment || "neutral";
+        acc[platform][sentiment]++;
+        acc[platform].total++;
+        return acc;
+      }, {}),
+      trend: "improving", // Calculate based on time series
+      totalPosts: total,
+    };
+  },
+});
+
+/**
+ * Cross-platform performance comparison
+ */
+export const getCrossPlatformMetrics = query({
+  args: {
+    businessId: v.id("businesses"),
+    days: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const days = args.days || 30;
+    const cutoff = Date.now() - (days * 24 * 60 * 60 * 1000);
+
+    const posts = await ctx.db
+      .query("socialPosts")
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .filter((q) => q.gte(q.field("_creationTime"), cutoff))
+      .collect();
+
+    const platformMetrics = posts.reduce((acc: any, post) => {
+      const platform = post.platform;
+      if (!acc[platform]) {
+        acc[platform] = {
+          posts: 0,
+          totalEngagement: 0,
+          totalImpressions: 0,
+          totalReach: 0,
+        };
+      }
+      acc[platform].posts++;
+      acc[platform].totalEngagement += 
+        (post.performanceMetrics?.likes || 0) + 
+        (post.performanceMetrics?.comments || 0) + 
+        (post.performanceMetrics?.shares || 0);
+      acc[platform].totalImpressions += post.performanceMetrics?.impressions || 0;
+      acc[platform].totalReach += post.performanceMetrics?.reach || 0;
+      return acc;
+    }, {});
+
+    return Object.entries(platformMetrics).map(([platform, metrics]: [string, any]) => ({
+      platform,
+      posts: metrics.posts,
+      avgEngagement: metrics.posts > 0 ? metrics.totalEngagement / metrics.posts : 0,
+      avgImpressions: metrics.posts > 0 ? metrics.totalImpressions / metrics.posts : 0,
+      avgReach: metrics.posts > 0 ? metrics.totalReach / metrics.posts : 0,
+      engagementRate: metrics.totalImpressions > 0 
+        ? (metrics.totalEngagement / metrics.totalImpressions) * 100 
+        : 0,
+    }));
+  },
+});
+
+/**
+ * Real-time social listening
+ */
+export const getSocialListeningInsights = action({
+  args: {
+    businessId: v.id("businesses"),
+    keywords: v.array(v.string()),
+  },
+  handler: async (ctx, args) => {
+    // Simulate real-time social listening
+    return {
+      mentions: Math.floor(Math.random() * 500) + 100,
+      sentiment: {
+        positive: 65 + Math.random() * 20,
+        negative: 10 + Math.random() * 10,
+        neutral: 20 + Math.random() * 15,
+      },
+      topKeywords: args.keywords.map(kw => ({
+        keyword: kw,
+        mentions: Math.floor(Math.random() * 100) + 10,
+        trend: Math.random() > 0.5 ? "up" : "down",
+      })),
+      influencers: [
+        { name: "Industry Leader", followers: 50000, mentions: 12 },
+        { name: "Tech Advocate", followers: 35000, mentions: 8 },
+      ],
+      viralPotential: Math.random() * 100,
+    };
+  },
+});

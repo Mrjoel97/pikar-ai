@@ -3,6 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Globe, Zap, FileText, Palette, AlertTriangle } from "lucide-react";
 import { LockedRibbon } from "./LockedRibbon";
+import { SentimentAnalysis } from "./social/SentimentAnalysis";
+import { CrossPlatformMetrics } from "./social/CrossPlatformMetrics";
 
 type GlobalSocialSectionProps = {
   globalSocialCommandEnabled: boolean;
@@ -16,6 +18,8 @@ type GlobalSocialSectionProps = {
   onOpenWebhooks: () => void;
   onOpenAnalytics: () => void;
   onUpgrade: () => void;
+  businessId: string;
+  onNavigate: () => void;
 };
 
 export function GlobalSocialSection({
@@ -30,9 +34,11 @@ export function GlobalSocialSection({
   onOpenWebhooks,
   onOpenAnalytics,
   onUpgrade,
+  businessId,
+  onNavigate,
 }: GlobalSocialSectionProps) {
   return (
-    <section className="relative">
+    <section className="space-y-4">
       {!globalSocialCommandEnabled && (
         <LockedRibbon label="Global Social Command requires Enterprise tier" onUpgrade={onUpgrade} />
       )}
@@ -229,6 +235,126 @@ export function GlobalSocialSection({
           </CardContent>
         </Card>
       </div>
+
+      <Tabs defaultValue="overview" className="w-full">
+        <TabsList className="grid w-full grid-cols-5">
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="sentiment">Sentiment</TabsTrigger>
+          <TabsTrigger value="platforms">Platforms</TabsTrigger>
+          <TabsTrigger value="content">Content</TabsTrigger>
+          <TabsTrigger value="listening">Listening</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="overview" className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Global Reach</CardTitle>
+                <CardDescription>Monthly reach across all brands</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold">12.4M</div>
+                <div className="text-sm text-green-600">+18% vs last month</div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Engagement Rate</CardTitle>
+                <CardDescription>Average engagement across platforms</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold">4.7%</div>
+                <div className="text-sm text-green-600">+0.8% vs last month</div>
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Response Time</CardTitle>
+                <CardDescription>Time to respond to customer messages</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold">2.3 min</div>
+                <div className="text-sm text-green-600">-1.2 min vs last month</div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>ROI</CardTitle>
+                <CardDescription>Return on investment for social campaigns</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold">3.8x</div>
+                <div className="text-sm text-green-600">+0.4x vs last month</div>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="sentiment" className="space-y-4">
+          {businessId && <SentimentAnalysis businessId={businessId} />}
+        </TabsContent>
+
+        <TabsContent value="platforms" className="space-y-4">
+          {businessId && <CrossPlatformMetrics businessId={businessId} />}
+        </TabsContent>
+
+        <TabsContent value="content" className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Content Calendar</CardTitle>
+                <CardDescription>Planned content for the next 30 days</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">24 posts</div>
+                <div className="text-sm text-muted-foreground">Planned for next 30 days</div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Content Performance</CardTitle>
+                <CardDescription>Performance of recent content</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">+34%</div>
+                <div className="text-sm text-green-600">Avg engagement rate</div>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="listening" className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Listening Alerts</CardTitle>
+                <CardDescription>Active monitoring alerts</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">0 alerts</div>
+                <div className="text-sm text-muted-foreground">No active alerts</div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Brand Mentions</CardTitle>
+                <CardDescription>Recent brand mentions</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">12 mentions</div>
+                <div className="text-sm text-muted-foreground">Last 7 days</div>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+      </Tabs>
     </section>
   );
 }
