@@ -3,9 +3,12 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
-import { CheckCircle, AlertCircle, XCircle, Clock, RefreshCw, TrendingUp, Activity, Zap } from "lucide-react";
+import { CheckCircle, AlertCircle, XCircle, Clock, RefreshCw, TrendingUp, Activity, Zap, AlertTriangle } from "lucide-react";
 import { useState } from "react";
 import { motion } from "framer-motion";
+import { useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
+import { Id } from "@/convex/_generated/dataModel";
 
 interface Integration {
   name: string;
@@ -19,10 +22,26 @@ interface Integration {
   errorRate?: number;
 }
 
-export default function IntegrationStatus() {
+interface IntegrationStatusProps {
+  businessId?: Id<"businesses"> | null;
+}
+
+export default function IntegrationStatus({ businessId }: IntegrationStatusProps) {
   const [selectedIntegration, setSelectedIntegration] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
+  // Fetch real warehouse analytics if available
+  const warehouseAnalytics = useQuery(
+    api.dataWarehouse.getWarehouseAnalytics,
+    businessId ? { businessId, timeRange: "7d" } : "skip"
+  );
+
+  const handleRefresh = () => {
+    setRefreshing(true);
+    setTimeout(() => setRefreshing(false), 1500);
+  };
+
+  // Enhanced integrations with real data when available
   const integrations: Integration[] = [
     { 
       name: "CRM Sync", 
@@ -59,14 +78,14 @@ export default function IntegrationStatus() {
     },
     { 
       name: "Data Warehouse", 
-      status: "active", 
-      icon: CheckCircle, 
-      color: "text-green-600",
-      uptime: 99.7,
+      status: warehouseAnalytics?.sources.error ? "error" : "active", 
+      icon: warehouseAnalytics?.sources.error ? AlertCircle : CheckCircle, 
+      color: warehouseAnalytics?.sources.error ? "text-red-600" : "text-green-600",
+      uptime: warehouseAnalytics ? (warehouseAnalytics.sources.connected / warehouseAnalytics.sources.total) * 100 : 99.7,
       lastSync: "5 minutes ago",
-      apiCalls: 567,
+      apiCalls: warehouseAnalytics?.jobs.total || 567,
       latency: 210,
-      errorRate: 0.3
+      errorRate: warehouseAnalytics ? (100 - warehouseAnalytics.jobs.successRate) : 0.3
     },
     { 
       name: "Payment Gateway", 
@@ -92,11 +111,6 @@ export default function IntegrationStatus() {
     },
   ];
 
-  const handleRefresh = () => {
-    setRefreshing(true);
-    setTimeout(() => setRefreshing(false), 1500);
-  };
-
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "active":
@@ -116,13 +130,23 @@ export default function IntegrationStatus() {
   const avgUptime = integrations.reduce((sum, i) => sum + i.uptime, 0) / integrations.length;
   const totalApiCalls = integrations.reduce((sum, i) => sum + (i.apiCalls || 0), 0);
   const avgLatency = integrations.reduce((sum, i) => sum + (i.latency || 0), 0) / integrations.length;
+  const criticalIssues = integrations.filter(i => i.status === "error").length;
+  const warnings = integrations.filter(i => i.status === "warning").length;
 
   return (
     <Card className="xl:col-span-1">
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle>Integration Status</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              Integration Status
+              {criticalIssues > 0 && (
+                <Badge variant="destructive" className="gap-1">
+                  <AlertTriangle className="h-3 w-3" />
+                  {criticalIssues}
+                </Badge>
+              )}
+            </CardTitle>
             <CardDescription>Real-time monitoring of all integrations</CardDescription>
           </div>
           <Button 
@@ -241,6 +265,25 @@ export default function IntegrationStatus() {
                   </div>
                 ))}
               </div>
+
+              {/* Real-time alerts */}
+              {(criticalIssues > 0 || warnings > 0) && (
+                <div className="pt-2 border-t">
+                  <div className="text-xs font-medium mb-2">Active Alerts</div>
+                  {criticalIssues > 0 && (
+                    <div className="flex items-center gap-2 p-2 bg-red-50 border border-red-200 rounded text-xs">
+                      <AlertTriangle className="h-3 w-3 text-red-600" />
+                      <span className="text-red-700">{criticalIssues} critical issue{criticalIssues > 1 ? 's' : ''} require immediate attention</span>
+                    </div>
+                  )}
+                  {warnings > 0 && (
+                    <div className="flex items-center gap-2 p-2 bg-amber-50 border border-amber-200 rounded text-xs mt-2">
+                      <AlertCircle className="h-3 w-3 text-amber-600" />
+                      <span className="text-amber-700">{warnings} warning{warnings > 1 ? 's' : ''} detected</span>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </TabsContent>
         </Tabs>
