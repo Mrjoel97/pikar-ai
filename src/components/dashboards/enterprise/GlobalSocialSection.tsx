@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Globe, Zap, FileText, Palette, AlertTriangle } from "lucide-react";
 import { LockedRibbon } from "./LockedRibbon";
 import { SentimentAnalysis } from "./social/SentimentAnalysis";

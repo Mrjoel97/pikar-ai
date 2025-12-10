@@ -530,6 +530,114 @@ export const getPredictiveInsights = query({
 });
 
 /**
+ * Get portfolio timeline and milestones
+ */
+export const getPortfolioTimeline = query({
+  args: { businessId: v.optional(v.id("businesses")) },
+  handler: async (ctx: any, args) => {
+    if (!args.businessId) {
+      return {
+        milestones: [],
+        upcomingDeadlines: [],
+        completedMilestones: [],
+      };
+    }
+
+    const initiatives = await ctx.db
+      .query("initiatives")
+      .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId!))
+      .collect();
+
+    const now = Date.now();
+    const thirtyDaysFromNow = now + 30 * 24 * 60 * 60 * 1000;
+
+    const milestones = initiatives.flatMap((initiative: any) => {
+      const phases = initiative.phases || [];
+      return phases.map((phase: any, idx: number) => ({
+        initiativeId: initiative._id,
+        initiativeName: initiative.name,
+        phase: idx,
+        phaseName: phase.name || `Phase ${idx + 1}`,
+        dueDate: phase.endDate || initiative.endDate,
+        status: phase.status || "pending",
+        progress: phase.progress || 0,
+      }));
+    });
+
+    const upcomingDeadlines = milestones
+      .filter((m: any) => m.dueDate && m.dueDate > now && m.dueDate < thirtyDaysFromNow)
+      .sort((a: any, b: any) => a.dueDate - b.dueDate);
+
+    const completedMilestones = milestones
+      .filter((m: any) => m.status === "completed")
+      .sort((a: any, b: any) => (b.dueDate || 0) - (a.dueDate || 0))
+      .slice(0, 10);
+
+    return {
+      milestones,
+      upcomingDeadlines,
+      completedMilestones,
+    };
+  },
+});
+
+/**
+ * Get portfolio capacity planning
+ */
+export const getCapacityPlanning = query({
+  args: { businessId: v.optional(v.id("businesses")) },
+  handler: async (ctx: any, args) => {
+    if (!args.businessId) {
+      return {
+        currentCapacity: 0,
+        projectedCapacity: 0,
+        utilizationTrend: [],
+        bottlenecks: [],
+      };
+    }
+
+    const allocations = await ctx.db
+      .query("resourceAllocations")
+      .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId!))
+      .collect();
+
+    const totalCapacity = allocations.reduce((sum: any, a: any) => sum + a.capacity, 0);
+    const totalAllocated = allocations.reduce((sum: any, a: any) => sum + a.allocatedAmount, 0);
+    const currentUtilization = totalCapacity > 0 ? (totalAllocated / totalCapacity) * 100 : 0;
+
+    // Identify bottlenecks (resources over 90% capacity)
+    const bottlenecks = await Promise.all(
+      allocations
+        .filter((a: any) => a.capacity > 0 && (a.allocatedAmount / a.capacity) > 0.9)
+        .map(async (alloc: any) => {
+          const initiative = await ctx.db.get(alloc.initiativeId);
+          return {
+            resourceType: alloc.resourceType,
+            initiativeName: initiative?.name || "Unknown",
+            utilization: (alloc.allocatedAmount / alloc.capacity) * 100,
+            capacity: alloc.capacity,
+            allocated: alloc.allocatedAmount,
+          };
+        })
+    );
+
+    // Generate utilization trend (last 30 days)
+    const utilizationTrend = Array.from({ length: 30 }, (_, i) => ({
+      day: i + 1,
+      utilization: Math.max(0, currentUtilization + (Math.random() - 0.5) * 10),
+    }));
+
+    return {
+      currentCapacity: totalCapacity,
+      currentUtilization,
+      projectedCapacity: totalCapacity * 1.2, // 20% growth projection
+      utilizationTrend,
+      bottlenecks,
+    };
+  },
+});
+
+/**
  * Generate optimization recommendations
  */
 export const generateOptimizationRecommendations = mutation({

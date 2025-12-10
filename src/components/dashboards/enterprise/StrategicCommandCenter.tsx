@@ -43,6 +43,21 @@ export function StrategicCommandCenter({ businessId }: StrategicCommandCenterPro
     businessId ? { businessId } : undefined
   );
 
+  const portfolioTimeline = useQuery(
+    api.portfolioManagement.getPortfolioTimeline,
+    businessId ? { businessId } : undefined
+  );
+
+  const capacityPlanning = useQuery(
+    api.portfolioManagement.getCapacityPlanning,
+    businessId ? { businessId } : undefined
+  );
+
+  const portfolioRisk = useQuery(
+    api.portfolioManagement.getPortfolioRiskAssessment,
+    businessId ? { businessId } : undefined
+  );
+
   const getTrendIcon = (trend: string) => {
     if (trend === "up") return <ArrowUpRight className="h-4 w-4 text-green-500" />;
     if (trend === "down") return <ArrowDownRight className="h-4 w-4 text-red-500" />;
@@ -279,6 +294,117 @@ export function StrategicCommandCenter({ businessId }: StrategicCommandCenterPro
           </CardContent>
         </Card>
       </div>
+
+      {/* Add Portfolio Risk Overview */}
+      {portfolioRisk && portfolioRisk.risks.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              Portfolio Risk Assessment
+              <Badge variant={
+                portfolioRisk.riskLevel === "critical" ? "destructive" :
+                portfolioRisk.riskLevel === "high" ? "destructive" :
+                portfolioRisk.riskLevel === "medium" ? "secondary" : "outline"
+              }>
+                {portfolioRisk.riskLevel}
+              </Badge>
+            </CardTitle>
+            <CardDescription>
+              Overall risk score: {portfolioRisk.overallRiskScore}/25
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {portfolioRisk.risks.slice(0, 5).map((risk: any) => (
+                <div key={risk._id} className="flex items-start gap-3 p-3 border rounded-lg">
+                  <AlertCircle className="h-4 w-4 text-amber-600 mt-0.5" />
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-sm font-medium">{risk.riskType}</span>
+                      <Badge variant="outline">
+                        Impact: {risk.impact} | Probability: {risk.probability}
+                      </Badge>
+                    </div>
+                    <p className="text-sm text-muted-foreground">{risk.description}</p>
+                    {risk.mitigationStrategy && (
+                      <p className="text-xs text-blue-600 mt-1">→ {risk.mitigationStrategy}</p>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Add Capacity Planning */}
+      {capacityPlanning && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Capacity Planning</CardTitle>
+            <CardDescription>
+              Current utilization: {capacityPlanning.currentUtilization?.toFixed(1)}%
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div>
+                <div className="flex items-center justify-between text-sm mb-2">
+                  <span>Resource Utilization</span>
+                  <span className="font-medium">
+                    {capacityPlanning.currentUtilization?.toFixed(1)}%
+                  </span>
+                </div>
+                <Progress value={capacityPlanning.currentUtilization || 0} />
+              </div>
+
+              {capacityPlanning.bottlenecks && capacityPlanning.bottlenecks.length > 0 && (
+                <div className="pt-3 border-t">
+                  <div className="text-sm font-medium mb-2">Resource Bottlenecks</div>
+                  <div className="space-y-2">
+                    {capacityPlanning.bottlenecks.map((bottleneck: any, idx: number) => (
+                      <div key={idx} className="flex items-center justify-between text-xs p-2 bg-amber-50 border border-amber-200 rounded">
+                        <span className="font-medium">{bottleneck.resourceType}</span>
+                        <span className="text-amber-700">
+                          {bottleneck.utilization.toFixed(0)}% utilized
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Add Upcoming Milestones */}
+      {portfolioTimeline && portfolioTimeline.upcomingDeadlines.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Upcoming Milestones</CardTitle>
+            <CardDescription>Next 30 days</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {portfolioTimeline.upcomingDeadlines.slice(0, 5).map((milestone: any, idx: number) => (
+                <div key={idx} className="flex items-center justify-between p-3 border rounded-lg">
+                  <div className="flex-1">
+                    <div className="font-medium text-sm">{milestone.initiativeName}</div>
+                    <div className="text-xs text-muted-foreground">{milestone.phaseName}</div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-sm font-medium">
+                      {new Date(milestone.dueDate).toLocaleDateString()}
+                    </div>
+                    <Progress value={milestone.progress || 0} className="w-20 h-1 mt-1" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

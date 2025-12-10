@@ -403,3 +403,116 @@ export const generateIntegrationDocs = query({
     return docs;
   },
 });
+
+/**
+ * Get integration analytics dashboard
+ */
+export const getIntegrationAnalytics = query({
+  args: {
+    businessId: v.id("businesses"),
+    timeRange: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const cutoff = args.timeRange ? Date.now() - args.timeRange : Date.now() - 7 * 24 * 60 * 60 * 1000;
+
+    const integrations = await ctx.db
+      .query("customIntegrations")
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .collect();
+
+    const analytics = await Promise.all(
+      integrations.map(async (integration) => {
+        const metrics = await ctx.db
+          .query("integrationMetrics")
+          .withIndex("by_integration", (q) => q.eq("integrationId", integration._id))
+          .filter((q) => q.gte(q.field("timestamp"), cutoff))
+          .collect();
+
+        const requests = metrics.filter(m => m.metricType === "request").length;
+        const errors = metrics.filter(m => m.metricType === "error").length;
+        const latencies = metrics.filter(m => m.metricType === "latency");
+        const avgLatency = latencies.length > 0
+          ? latencies.reduce((sum, m) => sum + m.value, 0) / latencies.length
+          : 0;
+
+        return {
+          integrationId: integration._id,
+          name: integration.name,
+          type: integration.type,
+          status: integration.status,
+          totalRequests: requests,
+          totalErrors: errors,
+          errorRate: requests > 0 ? (errors / requests) * 100 : 0,
+          avgLatency: Math.round(avgLatency),
+        };
+      })
+    );
+
+    const totalRequests = analytics.reduce((sum, a) => sum + a.totalRequests, 0);
+    const totalErrors = analytics.reduce((sum, a) => sum + a.totalErrors, 0);
+    const overallErrorRate = totalRequests > 0 ? (totalErrors / totalRequests) * 100 : 0;
+    const avgLatency = analytics.length > 0
+      ? analytics.reduce((sum, a) => sum + a.avgLatency, 0) / analytics.length
+      : 0;
+
+    return {
+      integrations: analytics,
+      summary: {
+        totalIntegrations: integrations.length,
+        activeIntegrations: integrations.filter(i => i.status === "active").length,
+        totalRequests,
+        totalErrors,
+        overallErrorRate,
+        avgLatency: Math.round(avgLatency),
+      },
+    };
+  },
+});
+
+/**
+ * Get integration cost analysis
+ */
+export const getIntegrationCostAnalysis = query({
+  args: {
+    businessId: v.id("businesses"),
+    timeRange: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const cutoff = args.timeRange ? Date.now() - args.timeRange : Date.now() - 30 * 24 * 60 * 60 * 1000;
+
+    const integrations = await ctx.db
+      .query("customIntegrations")
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .collect();
+
+    const costAnalysis = await Promise.all(
+      integrations.map(async (integration) => {
+        const metrics = await ctx.db
+          .query("integrationMetrics")
+          .withIndex("by_integration", (q) => q.eq("integrationId", integration._id))
+          .filter((q) => q.gte(q.field("timestamp"), cutoff))
+          .collect();
+
+        const requests = metrics.filter(m => m.metricType === "request").length;
+        // Estimate cost: $0.001 per request (example pricing)
+        const estimatedCost = requests * 0.001;
+
+        return {
+          integrationId: integration._id,
+          name: integration.name,
+          requests,
+          estimatedCost,
+          costPerRequest: 0.001,
+        };
+      })
+    );
+
+    const totalCost = costAnalysis.reduce((sum, c) => sum + c.estimatedCost, 0);
+
+    return {
+      integrations: costAnalysis,
+      totalCost,
+      projectedMonthlyCost: totalCost * (30 / ((Date.now() - cutoff) / (24 * 60 * 60 * 1000))),
+    };
+  },
+});
