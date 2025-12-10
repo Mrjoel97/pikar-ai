@@ -546,7 +546,7 @@ export function EnterpriseDashboard() {
       </LazyLoadErrorBoundary>
 
       <LazyLoadErrorBoundary moduleName="Executive Agent Insights">
-        <ExecutiveAgentInsights entAgents={entAgents} onNavigate={(path: string) => nav(path)} />
+        <ExecutiveAgentInsights businessId={businessId as Id<"businesses">} />
       </LazyLoadErrorBoundary>
 
       <LazyLoadErrorBoundary moduleName="Integration Status">

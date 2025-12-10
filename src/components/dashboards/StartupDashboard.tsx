@@ -63,16 +63,16 @@ import { KpiAlerts } from "@/components/departments/KpiAlerts";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 // Static imports to prevent lazy loading errors
-import TeamPerformance from "./startup/TeamPerformance";
-import GrowthMetrics from "./startup/GrowthMetrics";
-import CampaignList from "./startup/CampaignList";
-import GoalsDashboardWidget from "./startup/GoalsDashboardWidget";
+import { TeamPerformance } from "./startup/TeamPerformance";
+import { GrowthMetrics } from "./startup/GrowthMetrics";
+import { CampaignList } from "./startup/CampaignList";
+import { GoalsDashboardWidget } from "./startup/GoalsDashboardWidget";
 import ApprovalWorkflow from "@/components/social/ApprovalWorkflow";
-import CollaborationFeed from "./startup/CollaborationFeed";
+import { CollaborationFeed } from "./startup/CollaborationFeed";
 import { WorkflowAssignments } from "./startup/WorkflowAssignments";
 import { CustomerJourneyMap } from "./startup/CustomerJourneyMap";
-import RevenueAttribution from "./startup/RevenueAttribution";
-import TeamOnboardingWidget from "./startup/TeamOnboardingWidget";
+import { RevenueAttribution } from "./startup/RevenueAttribution";
+import { TeamOnboardingWidget } from "./startup/TeamOnboardingWidget";
 import { ABTestingWidget } from "./startup/ABTestingWidget";
 
 export function StartupDashboard() {

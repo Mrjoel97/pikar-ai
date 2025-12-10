@@ -168,7 +168,7 @@ export function ExecutiveAgentInsights({ businessId }: ExecutiveAgentInsightsPro
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {predictiveInsights?.predictions.map((prediction) => (
+                {predictiveInsights?.predictions.map((prediction: any) => (
                   <div
                     key={prediction.agentId}
                     className="flex flex-col gap-3 p-4 border rounded-lg"
@@ -218,7 +218,7 @@ export function ExecutiveAgentInsights({ businessId }: ExecutiveAgentInsightsPro
                           Recommended Actions
                         </div>
                         <ul className="space-y-1">
-                          {prediction.recommendedActions.map((action, idx) => (
+                          {prediction.recommendedActions.map((action: string, idx: number) => (
                             <li key={idx} className="text-xs text-muted-foreground pl-4">
                               • {action}
                             </li>
@@ -243,7 +243,7 @@ export function ExecutiveAgentInsights({ businessId }: ExecutiveAgentInsightsPro
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {costOptimization?.recommendations.map((rec) => (
+                {costOptimization?.recommendations.map((rec: any) => (
                   <div
                     key={rec.agentId}
                     className="flex flex-col gap-3 p-4 border rounded-lg"
@@ -295,7 +295,7 @@ export function ExecutiveAgentInsights({ businessId }: ExecutiveAgentInsightsPro
                           Cost Reduction Strategies
                         </div>
                         <ul className="space-y-1">
-                          {rec.recommendations.map((action, idx) => (
+                          {rec.recommendations.map((action: string, idx: number) => (
                             <li key={idx} className="text-xs text-muted-foreground pl-4">
                               • {action}
                             </li>
