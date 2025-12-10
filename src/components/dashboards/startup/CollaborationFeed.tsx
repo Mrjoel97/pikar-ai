@@ -2,124 +2,170 @@ import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { MessageSquare, AtSign, Heart, Share2, Clock } from "lucide-react";
-import { Id } from "@/convex/_generated/dataModel";
-import { formatDistanceToNow } from "date-fns";
+import { Button } from "@/components/ui/button";
+import { MessageSquare, AtSign, Heart, Share2, TrendingUp, Users, Zap } from "lucide-react";
+import { useNavigate } from "react-router";
 
 interface CollaborationFeedProps {
-  businessId: Id<"businesses">;
+  businessId: string;
 }
 
 export function CollaborationFeed({ businessId }: CollaborationFeedProps) {
-  const teamActivity = useQuery(api.activityFeed.getTeamActivity, {
-    businessId,
-    timeRange: 7,
-  });
+  const navigate = useNavigate();
+  
+  const teamActivity = useQuery(
+    api.activityFeed.getTeamActivity,
+    businessId ? { businessId: businessId as any, timeRange: 7 } : "skip"
+  );
+
+  const recentActivity = useQuery(
+    api.activityFeed.getRecent,
+    businessId ? { businessId: businessId as any, limit: 10 } : "skip"
+  );
 
   if (!teamActivity) {
     return (
-      <Card>
+      <Card className="neu-raised">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <MessageSquare className="h-5 w-5" />
-            Team Collaboration
+            Collaboration Feed
           </CardTitle>
+          <CardDescription>Loading activity...</CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="animate-pulse space-y-2">
-            <div className="h-4 bg-muted rounded w-3/4" />
-            <div className="h-4 bg-muted rounded w-1/2" />
-          </div>
-        </CardContent>
       </Card>
     );
   }
 
-  const getActivityIcon = (type: string) => {
-    switch (type) {
-      case "mention":
-        return <AtSign className="h-4 w-4 text-blue-600" />;
-      case "reply":
-        return <MessageSquare className="h-4 w-4 text-green-600" />;
-      case "reaction":
-        return <Heart className="h-4 w-4 text-pink-600" />;
-      case "share":
-        return <Share2 className="h-4 w-4 text-purple-600" />;
-      default:
-        return <MessageSquare className="h-4 w-4" />;
-    }
-  };
+  const { activities, metrics } = teamActivity;
 
   return (
-    <Card>
+    <Card className="neu-raised">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <MessageSquare className="h-5 w-5" />
-          Team Collaboration
-        </CardTitle>
-        <CardDescription>
-          {teamActivity.metrics.totalActivities} activities in the last 7 days
-        </CardDescription>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <MessageSquare className="h-5 w-5" />
+              Collaboration Feed
+            </CardTitle>
+            <CardDescription>Team activity with mentions, replies, and engagement tracking</CardDescription>
+          </div>
+          <Button size="sm" onClick={() => navigate("/workflows")}>
+            View All
+          </Button>
+        </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Activity Metrics */}
-        <div className="grid grid-cols-4 gap-2">
-          <div className="text-center p-2 bg-blue-50 rounded-lg">
-            <AtSign className="h-4 w-4 mx-auto mb-1 text-blue-600" />
-            <p className="text-lg font-bold">{teamActivity.metrics.mentions}</p>
-            <p className="text-xs text-muted-foreground">Mentions</p>
+        {/* Enhanced Activity Metrics */}
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <Zap className="h-3 w-3" />
+              Total Activity
+            </div>
+            <div className="text-xl font-bold">{metrics.totalActivities}</div>
           </div>
-          <div className="text-center p-2 bg-green-50 rounded-lg">
-            <MessageSquare className="h-4 w-4 mx-auto mb-1 text-green-600" />
-            <p className="text-lg font-bold">{teamActivity.metrics.replies}</p>
-            <p className="text-xs text-muted-foreground">Replies</p>
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <AtSign className="h-3 w-3" />
+              Mentions
+            </div>
+            <div className="text-xl font-bold text-blue-600">{metrics.mentions}</div>
           </div>
-          <div className="text-center p-2 bg-pink-50 rounded-lg">
-            <Heart className="h-4 w-4 mx-auto mb-1 text-pink-600" />
-            <p className="text-lg font-bold">{teamActivity.metrics.reactions}</p>
-            <p className="text-xs text-muted-foreground">Reactions</p>
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <MessageSquare className="h-3 w-3" />
+              Replies
+            </div>
+            <div className="text-xl font-bold text-green-600">{metrics.replies}</div>
           </div>
-          <div className="text-center p-2 bg-purple-50 rounded-lg">
-            <Share2 className="h-4 w-4 mx-auto mb-1 text-purple-600" />
-            <p className="text-lg font-bold">{teamActivity.metrics.shares}</p>
-            <p className="text-xs text-muted-foreground">Shares</p>
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <Heart className="h-3 w-3" />
+              Reactions
+            </div>
+            <div className="text-xl font-bold text-pink-600">{metrics.reactions}</div>
+          </div>
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <Share2 className="h-3 w-3" />
+              Shares
+            </div>
+            <div className="text-xl font-bold text-purple-600">{metrics.shares}</div>
           </div>
         </div>
 
-        {/* Activity Feed */}
-        <div className="pt-3 border-t">
-          <p className="text-xs font-medium mb-2">Recent Activity</p>
-          <ScrollArea className="h-[200px]">
-            <div className="space-y-2">
-              {teamActivity.activities.map((activity: any) => (
-                <div key={activity._id} className="flex items-start gap-2 p-2 hover:bg-muted rounded-lg">
-                  <div className="mt-0.5">{getActivityIcon(activity.activityType)}</div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm">
-                      <span className="font-medium">{activity.userName}</span>
-                      <span className="text-muted-foreground ml-1">
-                        {activity.activityType === "mention" && "mentioned someone"}
-                        {activity.activityType === "reply" && "replied"}
-                        {activity.activityType === "reaction" && "reacted"}
-                        {activity.activityType === "share" && "shared"}
-                      </span>
-                    </p>
-                    <div className="flex items-center gap-2 mt-1">
-                      <Badge variant="outline" className="text-xs">
-                        {activity.entityType}
-                      </Badge>
-                      <span className="text-xs text-muted-foreground flex items-center gap-1">
-                        <Clock className="h-3 w-3" />
-                        {formatDistanceToNow(activity.timestamp, { addSuffix: true })}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              ))}
+        {/* Engagement Summary */}
+        <div className="rounded-lg bg-muted/50 p-3 space-y-2">
+          <h4 className="text-sm font-semibold flex items-center gap-2">
+            <TrendingUp className="h-4 w-4" />
+            7-Day Engagement
+          </h4>
+          <div className="grid grid-cols-3 gap-3 text-sm">
+            <div>
+              <div className="text-muted-foreground">Avg/Day</div>
+              <div className="text-lg font-bold">
+                {Math.round(metrics.totalActivities / 7)}
+              </div>
             </div>
-          </ScrollArea>
+            <div>
+              <div className="text-muted-foreground">Most Active</div>
+              <div className="text-lg font-bold text-green-600">
+                {activities[0]?.userName || "N/A"}
+              </div>
+            </div>
+            <div>
+              <div className="text-muted-foreground">Engagement Rate</div>
+              <div className="text-lg font-bold text-blue-600">
+                {metrics.totalActivities > 0 
+                  ? Math.round(((metrics.replies + metrics.reactions) / metrics.totalActivities) * 100)
+                  : 0}%
+              </div>
+            </div>
+          </div>
         </div>
+
+        {/* Recent Activity Feed */}
+        <div className="space-y-2">
+          <h4 className="text-sm font-semibold flex items-center gap-2">
+            <MessageSquare className="h-4 w-4" />
+            Recent Activity
+          </h4>
+          <div className="space-y-2 max-h-96 overflow-y-auto">
+            {activities.slice(0, 10).map((activity: any) => (
+              <div key={activity._id} className="flex items-start gap-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors">
+                <div className="flex-shrink-0 mt-1">
+                  {activity.activityType === "mention" && <AtSign className="h-4 w-4 text-blue-600" />}
+                  {activity.activityType === "reply" && <MessageSquare className="h-4 w-4 text-green-600" />}
+                  {activity.activityType === "reaction" && <Heart className="h-4 w-4 text-pink-600" />}
+                  {activity.activityType === "share" && <Share2 className="h-4 w-4 text-purple-600" />}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium text-sm">{activity.userName}</span>
+                    <Badge variant="outline" className="text-xs">
+                      {activity.activityType}
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {activity.entityType} • {new Date(activity.timestamp).toLocaleString()}
+                  </p>
+                  {activity.metadata?.content && (
+                    <p className="text-sm mt-2 line-clamp-2">{activity.metadata.content}</p>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {activities.length === 0 && (
+          <div className="text-center py-8 text-muted-foreground">
+            <MessageSquare className="h-12 w-12 mx-auto mb-3 opacity-50" />
+            <p className="text-sm">No team activity yet</p>
+            <p className="text-xs mt-1">Start collaborating to see activity here</p>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
