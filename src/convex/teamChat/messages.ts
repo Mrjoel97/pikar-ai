@@ -8,7 +8,7 @@ export const getMessages = query({
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const limit = args.limit || 50;
+    const limit = Math.min(args.limit || 50, 50); // Cap at 50 messages
     
     // Get only top-level messages (no parent)
     const messages = await ctx.db
@@ -23,14 +23,27 @@ export const getMessages = query({
       messages.map(async (msg) => {
         const sender = await ctx.db.get(msg.senderId);
         
-        // Get reply count for threading
+        // Get reply count for threading (more efficient - just count)
         const replies = await ctx.db
           .query("teamMessages")
           .withIndex("by_parent", (q) => q.eq("parentMessageId", msg._id))
-          .collect();
+          .take(100); // Limit reply count queries
+        
+        // Reduce attachment data size - only include essential fields
+        const compactAttachments = msg.attachments?.map(att => ({
+          name: att.name,
+          url: att.url,
+          type: att.type,
+        })) || [];
         
         return {
-          ...msg,
+          _id: msg._id,
+          channelId: msg.channelId,
+          content: msg.content.substring(0, 5000), // Limit content length
+          attachments: compactAttachments,
+          reactions: msg.reactions || [],
+          createdAt: msg.createdAt,
+          editedAt: msg.editedAt,
           sender: sender ? { name: sender.name, email: sender.email } : null,
           replyCount: replies.length,
         };
