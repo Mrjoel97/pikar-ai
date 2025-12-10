@@ -1,4 +1,4 @@
-import { query } from "./_generated/server";
+import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import { Id } from "./_generated/dataModel";
 
@@ -60,6 +60,120 @@ export const getRecent = query({
       // Table might not exist yet
       return [];
     }
+  },
+});
+
+/**
+ * Track collaboration activity (mentions, replies, reactions)
+ */
+export const trackCollaboration = mutation({
+  args: {
+    businessId: v.id("businesses"),
+    userId: v.id("users"),
+    activityType: v.union(
+      v.literal("mention"),
+      v.literal("reply"),
+      v.literal("reaction"),
+      v.literal("share")
+    ),
+    entityType: v.string(),
+    entityId: v.string(),
+    metadata: v.optional(v.any()),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Unauthorized");
+
+    const activityId = await ctx.db.insert("activityFeed", {
+      businessId: args.businessId,
+      userId: args.userId,
+      activityType: args.activityType,
+      entityType: args.entityType,
+      entityId: args.entityId,
+      metadata: args.metadata,
+      timestamp: Date.now(),
+    });
+
+    return activityId;
+  },
+});
+
+/**
+ * Get team activity metrics for collaboration feed
+ */
+export const getTeamActivity = query({
+  args: {
+    businessId: v.id("businesses"),
+    timeRange: v.optional(v.number()), // days
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return { activities: [], metrics: {} };
+
+    const timeRange = args.timeRange ?? 7;
+    const startTime = Date.now() - timeRange * 24 * 60 * 60 * 1000;
+
+    const activities = await ctx.db
+      .query("activityFeed")
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .filter((q) => q.gte(q.field("timestamp"), startTime))
+      .order("desc")
+      .take(100);
+
+    // Calculate metrics
+    const metrics = {
+      totalActivities: activities.length,
+      mentions: activities.filter((a) => a.activityType === "mention").length,
+      replies: activities.filter((a) => a.activityType === "reply").length,
+      reactions: activities.filter((a) => a.activityType === "reaction").length,
+      shares: activities.filter((a) => a.activityType === "share").length,
+    };
+
+    // Enrich with user info
+    const enrichedActivities = await Promise.all(
+      activities.map(async (activity) => {
+        const user = await ctx.db.get(activity.userId);
+        return {
+          ...activity,
+          userName: user?.name || user?.email || "Unknown",
+        };
+      })
+    );
+
+    return { activities: enrichedActivities, metrics };
+  },
+});
+
+/**
+ * Get mentions for a specific user
+ */
+export const getMentions = query({
+  args: {
+    businessId: v.id("businesses"),
+    userId: v.id("users"),
+    unreadOnly: v.optional(v.boolean()),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return [];
+
+    let mentions = await ctx.db
+      .query("activityFeed")
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .filter((q) => q.eq(q.field("activityType"), "mention"))
+      .order("desc")
+      .take(50);
+
+    // Filter by mentioned user in metadata
+    mentions = mentions.filter(
+      (m) => m.metadata?.mentionedUserId === args.userId
+    );
+
+    if (args.unreadOnly) {
+      mentions = mentions.filter((m) => !m.metadata?.read);
+    }
+
+    return mentions;
   },
 });
 

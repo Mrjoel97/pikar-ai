@@ -460,3 +460,65 @@ export const getDashboardSummary = query({
     };
   },
 });
+
+/**
+ * Get team goals analytics for dashboard
+ */
+export const getGoalsAnalytics = query({
+  args: {
+    businessId: v.id("businesses"),
+    timeRange: v.optional(v.number()), // days
+  },
+  handler: async (ctx: any, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return null;
+
+    const timeRange = args.timeRange ?? 30;
+    const startTime = Date.now() - timeRange * 24 * 60 * 60 * 1000;
+
+    const goals = await ctx.db
+      .query("teamGoals")
+      .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId))
+      .collect();
+
+    const updates = await ctx.db
+      .query("goalUpdates")
+      .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId))
+      .filter((q: any) => q.gte(q.field("timestamp"), startTime))
+      .collect();
+
+    // Calculate velocity (progress per day)
+    const totalProgress = updates.reduce(
+      (sum: number, u: any) => sum + (u.newValue - u.previousValue),
+      0
+    );
+    const velocity = totalProgress / timeRange;
+
+    // Calculate completion rate
+    const completedGoals = goals.filter((g: any) => g.status === "completed");
+    const completionRate =
+      goals.length > 0 ? (completedGoals.length / goals.length) * 100 : 0;
+
+    // Get top contributors
+    const contributorMap = new Map<string, number>();
+    for (const update of updates) {
+      const userId = String(update.updatedBy);
+      contributorMap.set(userId, (contributorMap.get(userId) || 0) + 1);
+    }
+
+    const topContributors = Array.from(contributorMap.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([userId, count]) => ({ userId, updateCount: count }));
+
+    return {
+      totalGoals: goals.length,
+      activeGoals: goals.filter((g: any) => g.status === "active").length,
+      completedGoals: completedGoals.length,
+      completionRate: Math.round(completionRate),
+      velocity: Math.round(velocity * 10) / 10,
+      topContributors,
+      recentUpdates: updates.slice(0, 10),
+    };
+  },
+});

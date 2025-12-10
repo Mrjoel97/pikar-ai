@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { useQuery } from "convex/react";
+import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -13,7 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, Filter, User, Clock } from "lucide-react";
+import { Search, Filter, User, Clock, Users, AtSign, MessageSquare, Heart, Share2 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
 interface CollaborationFeedProps {
@@ -21,29 +21,17 @@ interface CollaborationFeedProps {
 }
 
 export default function CollaborationFeed({ businessId }: CollaborationFeedProps) {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedUserId, setSelectedUserId] = useState<string | undefined>();
-  const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
-
-  const activities = useQuery(
-    api.activityFeed.getRecent,
-    businessId
-      ? {
-          businessId,
-          limit: 20,
-          searchTerm: searchTerm || undefined,
-          userId: selectedUserId as Id<"users"> | undefined,
-          activityTypes: selectedTypes.length > 0 ? selectedTypes : undefined,
-        }
-      : "skip"
+  const [timeRange, setTimeRange] = useState(7);
+  
+  const teamActivity = useQuery(
+    api.activityFeed.getTeamActivity,
+    businessId ? { businessId: businessId as any, timeRange } : "skip"
   );
 
-  const teamMembers = useQuery(
-    api.activityFeed.getTeamMembers,
-    businessId ? { businessId } : "skip"
+  const mentions = useQuery(
+    api.activityFeed.getMentions,
+    businessId && userId ? { businessId: businessId as any, userId: userId as any } : "skip"
   );
-
-  const activityTypes = useQuery(api.activityFeed.getActivityTypes);
 
   const getActivityIcon = (type: string) => {
     switch (type) {
@@ -90,131 +78,73 @@ export default function CollaborationFeed({ businessId }: CollaborationFeedProps
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center justify-between">
-          <span>Team Collaboration Feed</span>
-          <Badge variant="outline" className="ml-2">
-            {activities && activities !== "skip" ? activities.length : 0} activities
-          </Badge>
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {/* Filters */}
-        <div className="flex flex-col sm:flex-row gap-2">
-          <div className="relative flex-1">
-            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search activities..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-8"
-            />
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5" />
+              Team Collaboration Feed
+            </CardTitle>
+            <CardDescription>Real-time team activity and mentions</CardDescription>
           </div>
-          <Select
-            value={selectedUserId || "all"}
-            onValueChange={(value) => setSelectedUserId(value === "all" ? undefined : value)}
-          >
-            <SelectTrigger className="w-full sm:w-[180px]">
-              <User className="h-4 w-4 mr-2" />
-              <SelectValue placeholder="All members" />
+          <Select value={String(timeRange)} onValueChange={(v) => setTimeRange(Number(v))}>
+            <SelectTrigger className="w-32">
+              <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All members</SelectItem>
-              {teamMembers &&
-                teamMembers !== "skip" &&
-                teamMembers.map((member: any) => (
-                  <SelectItem key={member.id} value={member.id}>
-                    {member.name}
-                  </SelectItem>
-                ))}
-            </SelectContent>
-          </Select>
-          <Select
-            value={selectedTypes.length > 0 ? selectedTypes[0] : "all"}
-            onValueChange={(value) =>
-              setSelectedTypes(value === "all" ? [] : [value])
-            }
-          >
-            <SelectTrigger className="w-full sm:w-[180px]">
-              <Filter className="h-4 w-4 mr-2" />
-              <SelectValue placeholder="All types" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All types</SelectItem>
-              {activityTypes &&
-                activityTypes !== "skip" &&
-                activityTypes.map((type: any) => (
-                  <SelectItem key={type.value} value={type.value}>
-                    {type.label}
-                  </SelectItem>
-                ))}
+              <SelectItem value="7">7 days</SelectItem>
+              <SelectItem value="14">14 days</SelectItem>
+              <SelectItem value="30">30 days</SelectItem>
             </SelectContent>
           </Select>
         </div>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {/* Activity Metrics */}
+        {teamActivity?.metrics && (
+          <div className="grid grid-cols-4 gap-3">
+            <div className="text-center p-3 bg-muted rounded-lg">
+              <div className="text-2xl font-bold">{teamActivity.metrics.mentions}</div>
+              <div className="text-xs text-muted-foreground">Mentions</div>
+            </div>
+            <div className="text-center p-3 bg-muted rounded-lg">
+              <div className="text-2xl font-bold">{teamActivity.metrics.replies}</div>
+              <div className="text-xs text-muted-foreground">Replies</div>
+            </div>
+            <div className="text-center p-3 bg-muted rounded-lg">
+              <div className="text-2xl font-bold">{teamActivity.metrics.reactions}</div>
+              <div className="text-xs text-muted-foreground">Reactions</div>
+            </div>
+            <div className="text-center p-3 bg-muted rounded-lg">
+              <div className="text-2xl font-bold">{teamActivity.metrics.shares}</div>
+              <div className="text-xs text-muted-foreground">Shares</div>
+            </div>
+          </div>
+        )}
 
-        {/* Activity List */}
-        <div className="space-y-3 max-h-[600px] overflow-y-auto">
-          {!activities || activities === "skip" ? (
-            <div className="text-sm text-muted-foreground text-center py-8">
-              Loading activities...
-            </div>
-          ) : activities.length === 0 ? (
-            <div className="text-sm text-muted-foreground text-center py-8">
-              No activities found. {searchTerm && "Try adjusting your search."}
-            </div>
-          ) : (
-            activities.map((activity: any) => (
-              <div
-                key={activity.id}
-                className="flex gap-3 p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors"
-              >
-                <div className="text-2xl">{getActivityIcon(activity.type)}</div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex-1">
-                      <h4 className="font-medium text-sm">{activity.title}</h4>
-                      {activity.userName && (
-                        <p className="text-xs text-muted-foreground">
-                          by {activity.userName}
-                        </p>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {activity.status && (
-                        <Badge
-                          variant="outline"
-                          className={getStatusColor(activity.status)}
-                        >
-                          {activity.status}
-                        </Badge>
-                      )}
-                      {activity.priority && (
-                        <Badge variant="outline">{activity.priority}</Badge>
-                      )}
-                    </div>
-                  </div>
-                  <p
-                    className="text-sm text-muted-foreground mt-1"
-                    dangerouslySetInnerHTML={{
-                      __html: highlightMentions(activity.message),
-                    }}
-                  />
-                  {activity.mentions && activity.mentions.length > 0 && (
-                    <div className="flex gap-1 mt-2">
-                      {activity.mentions.map((mention: string, idx: number) => (
-                        <Badge key={idx} variant="secondary" className="text-xs">
-                          @{mention}
-                        </Badge>
-                      ))}
-                    </div>
-                  )}
-                  <div className="flex items-center gap-1 mt-2 text-xs text-muted-foreground">
-                    <Clock className="h-3 w-3" />
-                    {formatDistanceToNow(activity.createdAt, { addSuffix: true })}
-                  </div>
-                </div>
+        {/* Activity Feed */}
+        <div className="space-y-2 max-h-96 overflow-y-auto">
+          {teamActivity?.activities.map((activity: any) => (
+            <div key={activity._id} className="flex items-start gap-3 p-3 border rounded-lg hover:bg-muted/50">
+              <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                {activity.activityType === "mention" && <AtSign className="h-4 w-4" />}
+                {activity.activityType === "reply" && <MessageSquare className="h-4 w-4" />}
+                {activity.activityType === "reaction" && <Heart className="h-4 w-4" />}
+                {activity.activityType === "share" && <Share2 className="h-4 w-4" />}
               </div>
-            ))
-          )}
+              <div className="flex-1">
+                <p className="text-sm">
+                  <span className="font-medium">{activity.userName}</span>{" "}
+                  {activity.activityType === "mention" && "mentioned you"}
+                  {activity.activityType === "reply" && "replied to your message"}
+                  {activity.activityType === "reaction" && "reacted to your post"}
+                  {activity.activityType === "share" && "shared your content"}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {new Date(activity.timestamp).toLocaleString()}
+                </p>
+              </div>
+            </div>
+          ))}
         </div>
       </CardContent>
     </Card>

@@ -151,6 +151,70 @@ export const getUserLifecycleStages = query({
   },
 });
 
+// Get growth metrics for startup dashboard
+export const getGrowthMetrics = query({
+  args: {
+    businessId: v.id("businesses"),
+    timeRange: v.optional(v.number()), // days
+  },
+  handler: async (ctx, args) => {
+    const timeRange = args.timeRange ?? 30;
+    const startTime = Date.now() - timeRange * 24 * 60 * 60 * 1000;
+
+    const contacts = await ctx.db
+      .query("contacts")
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .collect();
+
+    // Calculate growth metrics
+    const newContacts = contacts.filter((c) => c.createdAt >= startTime);
+    const activeContacts = contacts.filter(
+      (c) => c.lastEngagedAt && c.lastEngagedAt >= startTime
+    );
+
+    // Calculate growth rate
+    const previousPeriodStart = startTime - timeRange * 24 * 60 * 60 * 1000;
+    const previousContacts = contacts.filter(
+      (c) => c.createdAt >= previousPeriodStart && c.createdAt < startTime
+    );
+
+    const growthRate =
+      previousContacts.length > 0
+        ? ((newContacts.length - previousContacts.length) / previousContacts.length) * 100
+        : 0;
+
+    // Calculate engagement rate
+    const engagementRate =
+      contacts.length > 0 ? (activeContacts.length / contacts.length) * 100 : 0;
+
+    // Daily breakdown
+    const dailyGrowth = [];
+    for (let i = timeRange - 1; i >= 0; i--) {
+      const dayStart = Date.now() - i * 24 * 60 * 60 * 1000;
+      const dayEnd = dayStart + 24 * 60 * 60 * 1000;
+
+      const dayContacts = contacts.filter(
+        (c) => c.createdAt >= dayStart && c.createdAt < dayEnd
+      );
+
+      dailyGrowth.push({
+        date: new Date(dayStart).toISOString().split("T")[0],
+        newContacts: dayContacts.length,
+        totalContacts: contacts.filter((c) => c.createdAt < dayEnd).length,
+      });
+    }
+
+    return {
+      totalContacts: contacts.length,
+      newContacts: newContacts.length,
+      activeContacts: activeContacts.length,
+      growthRate: Math.round(growthRate * 10) / 10,
+      engagementRate: Math.round(engagementRate * 10) / 10,
+      dailyGrowth,
+    };
+  },
+});
+
 // Helper functions
 function getIntervalMs(interval: string): number {
   switch (interval) {

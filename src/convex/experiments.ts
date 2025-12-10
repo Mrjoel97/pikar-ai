@@ -534,3 +534,110 @@ export const getExperimentForCampaign = query({
     return { ...experiment, variants };
   },
 });
+
+/**
+ * Get A/B test results with detailed analysis
+ */
+export const getABTestResults = query({
+  args: {
+    experimentId: v.id("experiments"),
+  },
+  handler: async (ctx, args) => {
+    const experiment = await ctx.db.get(args.experimentId);
+    if (!experiment) throw new Error("Experiment not found");
+
+    const variants = await ctx.db
+      .query("experimentVariants")
+      .withIndex("by_experiment", (q) => q.eq("experimentId", args.experimentId))
+      .collect();
+
+    // Calculate detailed metrics for each variant
+    const results = variants.map((variant) => {
+      const conversionRate =
+        variant.metrics.sent > 0
+          ? (variant.metrics.converted / variant.metrics.sent) * 100
+          : 0;
+      const clickRate =
+        variant.metrics.sent > 0
+          ? (variant.metrics.clicked / variant.metrics.sent) * 100
+          : 0;
+
+      return {
+        variantKey: variant.variantKey,
+        name: variant.name,
+        sent: variant.metrics.sent,
+        opened: variant.metrics.opened,
+        clicked: variant.metrics.clicked,
+        converted: variant.metrics.converted,
+        conversionRate: Math.round(conversionRate * 100) / 100,
+        clickRate: Math.round(clickRate * 100) / 100,
+        revenue: variant.metrics.revenue || 0,
+      };
+    });
+
+    // Determine winner
+    const winner = results.reduce((best, current) =>
+      current.conversionRate > best.conversionRate ? current : best
+    );
+
+    return {
+      experimentId: args.experimentId,
+      status: experiment.status,
+      results,
+      winner: winner.variantKey,
+      totalSent: results.reduce((sum, r) => sum + r.sent, 0),
+      totalConverted: results.reduce((sum, r) => sum + r.converted, 0),
+    };
+  },
+});
+
+/**
+ * Analyze experiment performance over time
+ */
+export const analyzeExperiment = query({
+  args: {
+    experimentId: v.id("experiments"),
+  },
+  handler: async (ctx, args) => {
+    const experiment = await ctx.db.get(args.experimentId);
+    if (!experiment) throw new Error("Experiment not found");
+
+    const variants = await ctx.db
+      .query("experimentVariants")
+      .withIndex("by_experiment", (q) => q.eq("experimentId", args.experimentId))
+      .collect();
+
+    // Calculate confidence intervals
+    const analysis = variants.map((variant) => {
+      const conversionRate =
+        variant.metrics.sent > 0
+          ? variant.metrics.converted / variant.metrics.sent
+          : 0;
+
+      // Simple confidence interval calculation (95%)
+      const standardError = Math.sqrt(
+        (conversionRate * (1 - conversionRate)) / variant.metrics.sent
+      );
+      const marginOfError = 1.96 * standardError;
+
+      return {
+        variantKey: variant.variantKey,
+        conversionRate: Math.round(conversionRate * 10000) / 100,
+        confidenceInterval: {
+          lower: Math.max(0, Math.round((conversionRate - marginOfError) * 10000) / 100),
+          upper: Math.min(100, Math.round((conversionRate + marginOfError) * 10000) / 100),
+        },
+        sampleSize: variant.metrics.sent,
+        isSignificant: variant.metrics.sent >= (experiment.configuration?.minimumSampleSize || 100),
+      };
+    });
+
+    return {
+      experimentId: args.experimentId,
+      analysis,
+      recommendation: analysis.every((a) => a.isSignificant)
+        ? "Sufficient data collected for decision"
+        : "Continue collecting data for statistical significance",
+    };
+  },
+});
