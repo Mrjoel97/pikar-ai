@@ -10,9 +10,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
-import { AlertCircle, CheckCircle, Clock, TrendingUp, FileText, Target } from "lucide-react";
+import { AlertCircle, CheckCircle, Clock, TrendingUp, FileText, Target, BarChart3 } from "lucide-react";
 import { useState } from "react";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from "recharts";
 
 interface CapaConsoleProps {
   businessId: Id<"businesses">;
@@ -27,6 +29,7 @@ export function CapaConsole({ businessId }: CapaConsoleProps) {
     status: selectedStatus 
   });
   const capaStats = useQuery(api.capa.getCapaStats, { businessId });
+  const capaTrends = useQuery(api.capa.getCapaTrends, { businessId, days: 30 });
   
   const createCapa = useMutation(api.capa.createCapaItem);
   const updateCapa = useMutation(api.capa.updateCapaItem);
@@ -89,10 +92,13 @@ export function CapaConsole({ businessId }: CapaConsoleProps) {
     }
   };
 
+  const completionRate = capaStats.total > 0 ? (capaStats.closed / capaStats.total) * 100 : 0;
+  const onTimeRate = capaStats.total > 0 ? ((capaStats.total - capaStats.overdue) / capaStats.total) * 100 : 0;
+
   return (
     <div className="space-y-4">
-      {/* Stats Overview */}
-      <div className="grid grid-cols-5 gap-4">
+      {/* Enhanced Stats Overview */}
+      <div className="grid grid-cols-2 lg:grid-cols-6 gap-4">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm">Total</CardTitle>
@@ -131,6 +137,87 @@ export function CapaConsole({ businessId }: CapaConsoleProps) {
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-red-600">{capaStats.critical}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm">Completion</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold text-green-600">{completionRate.toFixed(0)}%</div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Performance Metrics */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <TrendingUp className="h-4 w-4" />
+              CAPA Trends
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {capaTrends && capaTrends.length > 0 ? (
+              <div className="h-48">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={capaTrends}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis
+                      dataKey="date"
+                      tickFormatter={(value) => {
+                        const date = new Date(value);
+                        return `${date.getMonth() + 1}/${date.getDate()}`;
+                      }}
+                    />
+                    <YAxis />
+                    <Tooltip />
+                    <Line type="monotone" dataKey="opened" stroke="#ef4444" name="Opened" />
+                    <Line type="monotone" dataKey="closed" stroke="#10b981" name="Closed" />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            ) : (
+              <div className="h-48 flex items-center justify-center text-muted-foreground">
+                No trend data available
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <BarChart3 className="h-4 w-4" />
+              Performance Metrics
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <div className="flex justify-between text-sm mb-2">
+                <span>Completion Rate</span>
+                <span className="font-medium">{completionRate.toFixed(1)}%</span>
+              </div>
+              <Progress value={completionRate} className="h-2" />
+            </div>
+            <div>
+              <div className="flex justify-between text-sm mb-2">
+                <span>On-Time Rate</span>
+                <span className="font-medium">{onTimeRate.toFixed(1)}%</span>
+              </div>
+              <Progress value={onTimeRate} className="h-2" />
+            </div>
+            <div className="grid grid-cols-2 gap-4 pt-2">
+              <div className="text-center p-3 bg-muted rounded-lg">
+                <div className="text-2xl font-bold">{capaStats.avgResolutionTime || 0}</div>
+                <div className="text-xs text-muted-foreground">Avg Days to Close</div>
+              </div>
+              <div className="text-center p-3 bg-muted rounded-lg">
+                <div className="text-2xl font-bold">{capaStats.verification || 0}</div>
+                <div className="text-xs text-muted-foreground">Pending Verification</div>
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>
