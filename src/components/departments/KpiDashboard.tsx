@@ -3,10 +3,12 @@ import { api } from "@/convex/_generated/api";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { TrendingUp, TrendingDown, AlertTriangle, Target, Activity, ArrowUpRight, ArrowDownRight } from "lucide-react";
+import { TrendingUp, TrendingDown, AlertTriangle, Target, Activity } from "lucide-react";
 import { motion } from "framer-motion";
 import { Id } from "@/convex/_generated/dataModel";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Cell } from "recharts";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { KpiSummaryCards } from "./kpi-dashboard/KpiSummaryCards";
+import { DepartmentBreakdown } from "./kpi-dashboard/DepartmentBreakdown";
 
 interface KpiDashboardProps {
   businessId: Id<"businesses">;
@@ -60,7 +62,6 @@ export function KpiDashboard({ businessId, department }: KpiDashboardProps) {
     );
   }
 
-  // Get department-specific data
   const deptData = marketingKpis || salesKpis || opsKpis || financeKpis;
 
   return (
@@ -80,40 +81,7 @@ export function KpiDashboard({ businessId, department }: KpiDashboardProps) {
         )}
       </div>
 
-      {/* Department Summary Cards */}
-      {deptData?.summary && (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {Object.entries(deptData.summary).map(([key, value]: [string, any], index) => {
-            const isPositive = typeof value === "number" && value > 0;
-            return (
-              <motion.div
-                key={key}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3, delay: index * 0.05 }}
-              >
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium">
-                      {key.replace(/([A-Z])/g, " $1").trim()}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex items-baseline justify-between">
-                      <div className="text-2xl font-bold">
-                        {typeof value === "number" ? value.toLocaleString() : value}
-                      </div>
-                      {isPositive && (
-                        <ArrowUpRight className="h-4 w-4 text-green-600" />
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            );
-          })}
-        </div>
-      )}
+      {deptData?.summary && <KpiSummaryCards summary={deptData.summary} />}
 
       <Tabs defaultValue="current" className="w-full">
         <TabsList>
@@ -232,197 +200,7 @@ export function KpiDashboard({ businessId, department }: KpiDashboardProps) {
         </TabsContent>
 
         <TabsContent value="breakdown" className="space-y-4">
-          {/* Marketing Breakdown */}
-          {department === "Marketing" && marketingKpis && (
-            <div className="space-y-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle>ROI by Channel</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-64">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={marketingKpis.roiByChannel}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="channel" />
-                        <YAxis />
-                        <Tooltip />
-                        <Bar dataKey="roi" fill="#10b981" name="ROI" />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Top Campaigns</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    {marketingKpis.topCampaigns?.map((campaign: any, idx: number) => (
-                      <div key={idx} className="flex items-center justify-between p-2 border rounded">
-                        <div>
-                          <div className="font-medium">{campaign.name}</div>
-                          <div className="text-sm text-muted-foreground">
-                            {campaign.conversions} conversions
-                          </div>
-                        </div>
-                        <Badge variant="outline">{campaign.roi.toFixed(1)}x ROI</Badge>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          )}
-
-          {/* Sales Breakdown */}
-          {department === "Sales" && salesKpis && (
-            <div className="space-y-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Pipeline by Stage</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-64">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={salesKpis.pipelineByStage}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="stage" />
-                        <YAxis />
-                        <Tooltip />
-                        <Bar dataKey="value" fill="#3b82f6" name="Value ($)" />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Top Sales Reps</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    {salesKpis.topReps?.map((rep: any, idx: number) => (
-                      <div key={idx} className="flex items-center justify-between p-2 border rounded">
-                        <div>
-                          <div className="font-medium">{rep.name}</div>
-                          <div className="text-sm text-muted-foreground">
-                            ${rep.achieved.toLocaleString()} / ${rep.quota.toLocaleString()}
-                          </div>
-                        </div>
-                        <Badge variant={rep.attainment >= 90 ? "default" : "secondary"}>
-                          {rep.attainment}%
-                        </Badge>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          )}
-
-          {/* Operations Breakdown */}
-          {department === "Operations" && opsKpis && (
-            <div className="space-y-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Throughput by Team</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-64">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={opsKpis.throughputByTeam}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="team" />
-                        <YAxis />
-                        <Tooltip />
-                        <Bar dataKey="throughput" fill="#8b5cf6" name="Throughput" />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Bottleneck Processes</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    {opsKpis.bottleneckProcesses?.map((process: any, idx: number) => (
-                      <div key={idx} className="flex items-center justify-between p-2 border rounded">
-                        <div>
-                          <div className="font-medium">{process.process}</div>
-                          <div className="text-sm text-muted-foreground">
-                            Avg time: {process.avgTime} days
-                          </div>
-                        </div>
-                        <Badge variant={process.impact === "High" ? "destructive" : "secondary"}>
-                          {process.impact}
-                        </Badge>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          )}
-
-          {/* Finance Breakdown */}
-          {department === "Finance" && financeKpis && (
-            <div className="space-y-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Department Spending</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    {financeKpis.departmentSpending?.map((dept: any, idx: number) => (
-                      <div key={idx} className="space-y-1">
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="font-medium">{dept.department}</span>
-                          <span className="text-muted-foreground">
-                            ${dept.spend.toLocaleString()} / ${dept.budget.toLocaleString()}
-                          </span>
-                        </div>
-                        <div className="h-2 bg-muted rounded-full overflow-hidden">
-                          <div
-                            className={`h-full ${
-                              dept.variance < -20 ? "bg-red-500" : "bg-green-500"
-                            }`}
-                            style={{ width: `${(dept.spend / dept.budget) * 100}%` }}
-                          />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>AR/AP Aging</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-64">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={financeKpis.arApAging}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="bucket" />
-                        <YAxis />
-                        <Tooltip />
-                        <Bar dataKey="ar" fill="#10b981" name="AR" />
-                        <Bar dataKey="ap" fill="#ef4444" name="AP" />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          )}
+          <DepartmentBreakdown department={department} data={deptData} />
         </TabsContent>
 
         <TabsContent value="alerts" className="space-y-4">
