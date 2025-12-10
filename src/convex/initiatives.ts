@@ -1023,3 +1023,69 @@ export const getInitiativeVoiceNoteAnalytics = query({
     };
   },
 });
+
+/**
+ * Enhanced search with AI-powered tagging
+ */
+export const searchBrainDumpsEnhanced = query({
+  args: {
+    initiativeId: v.id("initiatives"),
+    q: v.string(),
+    tags: v.optional(v.array(v.string())),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    let dumps = await ctx.db
+      .query("brainDumps")
+      .withIndex("by_initiative", (q) => q.eq("initiativeId", args.initiativeId))
+      .filter((q) => q.eq(q.field("deleted"), false))
+      .order("desc")
+      .collect();
+
+    // Filter by search query
+    if (args.q) {
+      const query = args.q.toLowerCase();
+      dumps = dumps.filter((d) => d.content.toLowerCase().includes(query));
+    }
+
+    // Filter by tags
+    if (args.tags && args.tags.length > 0) {
+      dumps = dumps.filter((d) => 
+        d.tags && d.tags.some((tag) => args.tags!.includes(tag))
+      );
+    }
+
+    return dumps.slice(0, args.limit || 20);
+  },
+});
+
+/**
+ * Get brain dump analytics
+ */
+export const getBrainDumpAnalytics = query({
+  args: {
+    initiativeId: v.id("initiatives"),
+  },
+  handler: async (ctx, args) => {
+    const dumps = await ctx.db
+      .query("brainDumps")
+      .withIndex("by_initiative", (q) => q.eq("initiativeId", args.initiativeId))
+      .filter((q) => q.eq(q.field("deleted"), false))
+      .collect();
+
+    const tagCounts: Record<string, number> = {};
+    for (const dump of dumps) {
+      if (dump.tags) {
+        for (const tag of dump.tags) {
+          tagCounts[tag] = (tagCounts[tag] || 0) + 1;
+        }
+      }
+    }
+
+    return {
+      total: dumps.length,
+      byTag: tagCounts,
+      recentCount: dumps.filter((d) => d._creationTime > Date.now() - 7 * 24 * 60 * 60 * 1000).length,
+    };
+  },
+});

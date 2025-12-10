@@ -120,3 +120,51 @@ export const deleteMilestone = mutation({
     return { success: true };
   },
 });
+
+/**
+ * Track milestone dependencies
+ */
+export const trackDependencies = mutation({
+  args: {
+    milestoneId: v.id("journeyMilestones"),
+    dependsOn: v.array(v.id("journeyMilestones")),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.milestoneId, {
+      dependencies: args.dependsOn,
+    });
+    return { success: true };
+  },
+});
+
+/**
+ * Predict timeline completion
+ */
+export const predictCompletion = query({
+  args: {
+    initiativeId: v.id("initiatives"),
+  },
+  handler: async (ctx, args) => {
+    const milestones = await ctx.db
+      .query("journeyMilestones")
+      .withIndex("by_initiative", (q) => q.eq("initiativeId", args.initiativeId))
+      .collect();
+
+    const completed = milestones.filter((m) => m.status === "completed").length;
+    const total = milestones.length;
+
+    if (total === 0) return null;
+
+    const completionRate = completed / total;
+    const avgTimePerMilestone = 7 * 24 * 60 * 60 * 1000; // 7 days in ms
+    const remaining = total - completed;
+    const estimatedDays = Math.ceil((remaining * avgTimePerMilestone) / (24 * 60 * 60 * 1000));
+
+    return {
+      completionRate: Math.round(completionRate * 100),
+      estimatedCompletionDate: Date.now() + (estimatedDays * 24 * 60 * 60 * 1000),
+      estimatedDaysRemaining: estimatedDays,
+      onTrack: completionRate >= 0.5,
+    };
+  },
+});

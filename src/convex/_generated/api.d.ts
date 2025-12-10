@@ -57,6 +57,7 @@ import type * as cron from "../cron.js";
 import type * as customApis_versioning from "../customApis/versioning.js";
 import type * as customApis from "../customApis.js";
 import type * as customerJourney from "../customerJourney.js";
+import type * as customerSegmentation_actions from "../customerSegmentation/actions.js";
 import type * as customerSegmentation_rules from "../customerSegmentation/rules.js";
 import type * as customerSegmentation_solopreneur from "../customerSegmentation/solopreneur.js";
 import type * as customerSegmentation from "../customerSegmentation.js";
@@ -295,6 +296,7 @@ declare const fullApi: ApiFromModules<{
   "customApis/versioning": typeof customApis_versioning;
   customApis: typeof customApis;
   customerJourney: typeof customerJourney;
+  "customerSegmentation/actions": typeof customerSegmentation_actions;
   "customerSegmentation/rules": typeof customerSegmentation_rules;
   "customerSegmentation/solopreneur": typeof customerSegmentation_solopreneur;
   customerSegmentation: typeof customerSegmentation;

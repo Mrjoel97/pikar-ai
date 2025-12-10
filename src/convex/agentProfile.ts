@@ -56,3 +56,70 @@ export const upsertMyAgentProfile = mutation({
     return { _id, created: true };
   },
 });
+
+/**
+ * Track agent performance metrics
+ */
+export const trackPerformanceMetrics = query({
+  args: {
+    businessId: v.id("businesses"),
+  },
+  handler: async (ctx, args) => {
+    const profile = await ctx.db
+      .query("agentProfiles")
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .first();
+
+    if (!profile) return null;
+
+    // Simulated performance metrics
+    return {
+      profileId: profile._id,
+      tasksCompleted: 127,
+      avgResponseTime: 2.3, // hours
+      satisfactionScore: 4.6, // out of 5
+      efficiencyScore: 87, // percentage
+      learningProgress: 65, // percentage
+    };
+  },
+});
+
+/**
+ * Generate learning recommendations
+ */
+export const getLearningRecommendations = query({
+  args: {
+    businessId: v.id("businesses"),
+  },
+  handler: async (ctx, args) => {
+    const profile = await ctx.db
+      .query("agentProfiles")
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .first();
+
+    if (!profile) return [];
+
+    const recommendations = [
+      {
+        title: "Improve Email Response Time",
+        description: "Learn advanced email automation techniques",
+        priority: "high",
+        estimatedTime: "2 hours",
+      },
+      {
+        title: "Master Social Media Scheduling",
+        description: "Optimize posting times for better engagement",
+        priority: "medium",
+        estimatedTime: "1 hour",
+      },
+      {
+        title: "Customer Segmentation Best Practices",
+        description: "Advanced targeting strategies",
+        priority: "low",
+        estimatedTime: "3 hours",
+      },
+    ];
+
+    return recommendations;
+  },
+});

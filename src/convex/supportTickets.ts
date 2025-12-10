@@ -228,3 +228,78 @@ export const suggestResponse = action({
     };
   },
 });
+
+/**
+ * Calculate ticket priority score
+ */
+export const calculatePriorityScore = query({
+  args: {
+    ticketId: v.id("supportTickets"),
+  },
+  handler: async (ctx, args) => {
+    const ticket = await ctx.db.get(args.ticketId);
+    if (!ticket) return null;
+
+    let score = 0;
+
+    // Priority weight
+    const priorityWeights = { low: 1, medium: 2, high: 3, critical: 4 };
+    score += priorityWeights[ticket.priority] * 25;
+
+    // Age weight (older tickets get higher priority)
+    const ageInHours = (Date.now() - ticket.createdAt) / (1000 * 60 * 60);
+    score += Math.min(ageInHours * 2, 50);
+
+    // Status weight
+    if (ticket.status === "open") score += 25;
+
+    return {
+      ticketId: args.ticketId,
+      priorityScore: Math.round(score),
+      recommendation: score > 75 ? "Urgent - Address immediately" : score > 50 ? "High priority" : "Normal priority",
+    };
+  },
+});
+
+/**
+ * Track SLA compliance
+ */
+export const trackSLA = query({
+  args: {
+    businessId: v.id("businesses"),
+  },
+  handler: async (ctx, args) => {
+    const tickets = await ctx.db
+      .query("supportTickets")
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .collect();
+
+    const slaTargets = {
+      critical: 1, // 1 hour
+      high: 4, // 4 hours
+      medium: 24, // 24 hours
+      low: 48, // 48 hours
+    };
+
+    let withinSLA = 0;
+    let breachedSLA = 0;
+
+    for (const ticket of tickets) {
+      const responseTime = (ticket.updatedAt - ticket.createdAt) / (1000 * 60 * 60);
+      const target = slaTargets[ticket.priority];
+
+      if (responseTime <= target) {
+        withinSLA++;
+      } else {
+        breachedSLA++;
+      }
+    }
+
+    return {
+      total: tickets.length,
+      withinSLA,
+      breachedSLA,
+      complianceRate: tickets.length > 0 ? (withinSLA / tickets.length) * 100 : 100,
+    };
+  },
+});

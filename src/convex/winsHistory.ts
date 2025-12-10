@@ -152,3 +152,74 @@ export const clearAllWins = mutation({
     return { deleted: wins.length };
   },
 });
+
+/**
+ * Get wins analytics by category
+ */
+export const getWinsByCategory = query({
+  args: {
+    businessId: v.id("businesses"),
+  },
+  handler: async (ctx, args) => {
+    const wins = await ctx.db
+      .query("wins")
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .collect();
+
+    const categoryStats: Record<string, { count: number; totalTimeSaved: number }> = {};
+
+    for (const win of wins) {
+      const category = win.category || "other";
+      if (!categoryStats[category]) {
+        categoryStats[category] = { count: 0, totalTimeSaved: 0 };
+      }
+      categoryStats[category].count++;
+      categoryStats[category].totalTimeSaved += win.timeSaved || 0;
+    }
+
+    return Object.entries(categoryStats).map(([category, stats]) => ({
+      category,
+      count: stats.count,
+      totalTimeSaved: stats.totalTimeSaved,
+      avgTimeSaved: stats.count > 0 ? Math.round(stats.totalTimeSaved / stats.count) : 0,
+    }));
+  },
+});
+
+/**
+ * Get wins trend over time
+ */
+export const getWinsTrend = query({
+  args: {
+    businessId: v.id("businesses"),
+    days: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const wins = await ctx.db
+      .query("wins")
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .order("desc")
+      .collect();
+
+    const days = args.days || 30;
+    const dayMs = 24 * 60 * 60 * 1000;
+    const now = Date.now();
+    const cutoff = now - (days * dayMs);
+
+    const trendData: Array<{ date: string; count: number; timeSaved: number }> = [];
+
+    for (let i = 0; i < days; i++) {
+      const dayStart = cutoff + (i * dayMs);
+      const dayEnd = dayStart + dayMs;
+      const dayWins = wins.filter((w) => w.date >= dayStart && w.date < dayEnd);
+
+      trendData.push({
+        date: new Date(dayStart).toISOString().split("T")[0],
+        count: dayWins.length,
+        timeSaved: dayWins.reduce((sum, w) => sum + (w.timeSaved || 0), 0),
+      });
+    }
+
+    return trendData;
+  },
+});
