@@ -74,7 +74,6 @@ import { CustomerJourneyMap } from "./startup/CustomerJourneyMap";
 import RevenueAttribution from "./startup/RevenueAttribution";
 import TeamOnboardingWidget from "./startup/TeamOnboardingWidget";
 import { ABTestingWidget } from "./startup/ABTestingWidget";
-import { TeamOnboardingWidget } from "./startup/TeamOnboardingWidget";
 import { CollaborationFeed } from "./startup/CollaborationFeed";
 import { TeamPerformance } from "./startup/TeamPerformance";
 
