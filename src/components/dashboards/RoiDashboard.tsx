@@ -5,8 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
-import { TrendingUp, Clock, DollarSign, Target, Settings } from "lucide-react";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar } from "recharts";
+import { TrendingUp, Clock, DollarSign, Target, Settings, Zap, Award } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -64,6 +64,7 @@ export function RoiDashboard({ businessId, userId }: RoiDashboardProps) {
   }
 
   const roiColor = roiData.roiPercentage >= 100 ? "text-green-600" : roiData.roiPercentage >= 50 ? "text-yellow-600" : "text-orange-600";
+  const roiStatus = roiData.roiPercentage >= 100 ? "Exceeding" : roiData.roiPercentage >= 50 ? "On Track" : "Growing";
 
   return (
     <Card className="neu-raised">
@@ -74,7 +75,7 @@ export function RoiDashboard({ businessId, userId }: RoiDashboardProps) {
               <TrendingUp className="h-5 w-5" />
               ROI Dashboard
             </CardTitle>
-            <CardDescription>Time saved converted to revenue impact</CardDescription>
+            <CardDescription>Time saved converted to revenue impact with advanced analytics</CardDescription>
           </div>
           <Dialog open={showSettings} onOpenChange={setShowSettings}>
             <DialogTrigger asChild>
@@ -133,7 +134,7 @@ export function RoiDashboard({ businessId, userId }: RoiDashboardProps) {
               Time Saved
             </div>
             <div className="text-2xl font-bold">{roiData.timeSavedHours}h</div>
-            <div className="text-xs text-muted-foreground">{roiData.timeSavedMinutes} minutes</div>
+            <div className="text-xs text-muted-foreground">{roiData.timeSavedMinutes} minutes total</div>
           </div>
 
           <div className="space-y-1">
@@ -161,8 +162,36 @@ export function RoiDashboard({ businessId, userId }: RoiDashboardProps) {
             </div>
             <div className={`text-2xl font-bold ${roiColor}`}>{roiData.roiPercentage}%</div>
             <Badge variant={roiData.roiPercentage >= 100 ? "default" : "secondary"} className="text-xs">
-              {roiData.roiPercentage >= 100 ? "Exceeding" : "Growing"}
+              {roiStatus}
             </Badge>
+          </div>
+        </div>
+
+        {/* Performance Breakdown */}
+        <div className="rounded-lg bg-muted/50 p-4 space-y-3">
+          <h4 className="text-sm font-semibold flex items-center gap-2">
+            <Zap className="h-4 w-4" />
+            Performance Breakdown
+          </h4>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
+            <div>
+              <div className="text-muted-foreground">Daily Avg Time Saved</div>
+              <div className="text-lg font-bold">
+                {Math.round((roiData.timeSavedMinutes / period) / 60 * 10) / 10}h
+              </div>
+            </div>
+            <div>
+              <div className="text-muted-foreground">Daily Avg Revenue</div>
+              <div className="text-lg font-bold text-green-600">
+                ${Math.round(roiData.actualRevenue / period)}
+              </div>
+            </div>
+            <div>
+              <div className="text-muted-foreground">Efficiency Gain</div>
+              <div className="text-lg font-bold text-blue-600">
+                {Math.round((roiData.timeSavedHours / (period * 8)) * 100)}%
+              </div>
+            </div>
           </div>
         </div>
 
@@ -195,19 +224,25 @@ export function RoiDashboard({ businessId, userId }: RoiDashboardProps) {
 
         {/* Insights */}
         <div className="rounded-lg bg-muted/50 p-4 space-y-2">
-          <h4 className="font-semibold text-sm">💡 Insights</h4>
+          <h4 className="font-semibold text-sm flex items-center gap-2">
+            <Award className="h-4 w-4" />
+            ROI Insights
+          </h4>
           <ul className="text-sm space-y-1 text-muted-foreground">
             {roiData.timeSavedHours > 0 && (
               <li>• You've saved {roiData.timeSavedHours} hours in the last {period} days</li>
             )}
             {roiData.roiPercentage >= 100 && (
-              <li>• Your actual revenue exceeds estimated value - great job!</li>
+              <li>• Your actual revenue exceeds estimated value - excellent performance!</li>
             )}
             {roiData.roiPercentage < 50 && (
               <li>• Consider tracking more revenue events to see full ROI impact</li>
             )}
             {roiData.estimatedRevenue > 0 && (
-              <li>• Time saved is worth ${roiData.estimatedRevenue} at your current rate</li>
+              <li>• Time saved is worth ${roiData.estimatedRevenue.toLocaleString()} at your current rate</li>
+            )}
+            {Math.round((roiData.timeSavedHours / (period * 8)) * 100) > 10 && (
+              <li>• You're gaining {Math.round((roiData.timeSavedHours / (period * 8)) * 100)}% efficiency - keep it up!</li>
             )}
           </ul>
         </div>
