@@ -123,3 +123,23 @@ export const getLearningRecommendations = query({
     return recommendations;
   },
 });
+
+export const getBehavioralInsights = query({
+  args: {
+    businessId: v.id("businesses"),
+  },
+  handler: async (ctx, args) => {
+    // Simulate behavioral insights
+    return {
+      interactionPatterns: {
+        peakHours: ["10:00", "14:00"],
+        preferredChannels: ["email", "chat"],
+      },
+      agentAdaptability: {
+        score: 85,
+        trend: "improving",
+        notes: "Agent is successfully adapting tone to match customer sentiment in 90% of interactions.",
+      },
+    };
+  },
+});

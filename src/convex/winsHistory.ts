@@ -223,3 +223,24 @@ export const getWinsTrend = query({
     return trendData;
   },
 });
+
+/**
+ * Get goal alignment tracking
+ */
+export const trackGoalAlignment = query({
+  args: {
+    businessId: v.id("businesses"),
+  },
+  handler: async (ctx, args) => {
+    // Simulate goal alignment tracking
+    return {
+      goals: [
+        { name: "Increase Revenue", alignmentScore: 85, relatedWins: 12 },
+        { name: "Improve Efficiency", alignmentScore: 92, relatedWins: 8 },
+        { name: "Customer Satisfaction", alignmentScore: 78, relatedWins: 5 },
+      ],
+      overallAlignment: 85,
+      suggestion: "Focus more on Customer Satisfaction wins to balance your portfolio.",
+    };
+  },
+});

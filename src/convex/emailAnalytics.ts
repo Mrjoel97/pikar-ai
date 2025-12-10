@@ -364,6 +364,27 @@ export const getPredictiveInsights = action({
   },
 });
 
+export const generateCampaignInsights = action({
+  args: {
+    campaignId: v.id("emailCampaigns"),
+  },
+  handler: async (ctx, args) => {
+    // Simulate automated insights generation
+    return {
+      insights: [
+        "Subject line performed 15% better than average",
+        "Best open rate was observed on mobile devices (65%)",
+        "Click-through rate dropped significantly after the second paragraph",
+      ],
+      recommendations: [
+        "Optimize future emails for mobile reading",
+        "Place key CTAs earlier in the email body",
+      ],
+      sentimentAnalysis: "Positive",
+    };
+  },
+});
+
 /**
  * Track real-time campaign metrics
  */

@@ -303,3 +303,23 @@ export const trackSLA = query({
     };
   },
 });
+
+/**
+ * Generate auto-response based on ticket content
+ */
+export const generateAutoResponse = action({
+  args: {
+    ticketId: v.id("supportTickets"),
+  },
+  handler: async (ctx, args) => {
+    // Simulate generating a context-aware auto-response
+    return {
+      draft: "Hello, thank you for reaching out. Based on your description of the issue, we recommend checking your account settings page first. Here is a link to our troubleshooting guide...",
+      confidence: 0.88,
+      relevantArticles: [
+        { title: "Troubleshooting Login Issues", url: "/help/login" },
+        { title: "Account Recovery", url: "/help/recovery" },
+      ],
+    };
+  },
+});

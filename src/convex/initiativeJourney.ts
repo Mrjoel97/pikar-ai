@@ -168,3 +168,32 @@ export const predictCompletion = query({
     };
   },
 });
+
+/**
+ * Get dependency graph
+ */
+export const getDependencyGraph = query({
+  args: {
+    initiativeId: v.id("initiatives"),
+  },
+  handler: async (ctx, args) => {
+    const milestones = await ctx.db
+      .query("journeyMilestones")
+      .withIndex("by_initiative", (q) => q.eq("initiativeId", args.initiativeId))
+      .collect();
+
+    // Build dependency nodes and links
+    const nodes = milestones.map(m => ({ id: m._id, label: m.title, status: m.status }));
+    const links: any[] = [];
+    
+    milestones.forEach(m => {
+      if (m.dependencies) {
+        m.dependencies.forEach((depId: any) => {
+          links.push({ source: depId, target: m._id });
+        });
+      }
+    });
+
+    return { nodes, links };
+  },
+});
