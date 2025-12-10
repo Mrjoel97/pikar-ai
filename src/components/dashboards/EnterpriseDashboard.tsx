@@ -489,6 +489,9 @@ export function EnterpriseDashboard() {
                     </div>
                   </TabsContent>
                 ))}
+                <TabsContent value="insights" className="space-y-6">
+                  <ExecutiveAgentInsights businessId={businessId} />
+                </TabsContent>
               </Tabs>
             </CardContent>
           </Card>
