@@ -4,13 +4,14 @@ import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { RefreshCw, Mail, TrendingUp, DollarSign, Users } from "lucide-react";
+import { RefreshCw, Mail, TrendingUp, DollarSign, Users, Beaker } from "lucide-react";
 import { toast } from "sonner";
 import { CampaignMetricsCard } from "./email/CampaignMetricsCard";
 import { CampaignPerformanceChart } from "./email/CampaignPerformanceChart";
 import { ConversionFunnelChart } from "./email/ConversionFunnelChart";
 import { RevenueAttributionTable } from "./email/RevenueAttributionTable";
 import { PredictiveInsightsCard } from "./email/PredictiveInsightsCard";
+import { Badge } from "@/components/ui/badge";
 
 interface EmailCampaignAnalyticsProps {
   businessId: Id<"businesses">;
@@ -34,6 +35,10 @@ export default function EmailCampaignAnalytics({ businessId }: EmailCampaignAnal
   const attribution = useQuery(
     api.emailAnalytics.getRevenueAttribution,
     businessId ? { businessId } : "skip"
+  );
+  const abTest = useQuery(
+    api.emailAnalytics.analyzeABTest,
+    selectedCampaignId ? { campaignId: selectedCampaignId } : "skip"
   );
   
   const getPredictiveInsights = useAction(api.emailAnalytics.getPredictiveInsights);
@@ -107,6 +112,7 @@ export default function EmailCampaignAnalytics({ businessId }: EmailCampaignAnal
           <TabsTrigger value="performance">Performance</TabsTrigger>
           <TabsTrigger value="funnel">Conversion Funnel</TabsTrigger>
           <TabsTrigger value="revenue">Revenue Attribution</TabsTrigger>
+          <TabsTrigger value="abtest">A/B Testing</TabsTrigger>
           <TabsTrigger value="insights">AI Insights</TabsTrigger>
         </TabsList>
 
@@ -120,6 +126,64 @@ export default function EmailCampaignAnalytics({ businessId }: EmailCampaignAnal
 
         <TabsContent value="revenue" className="space-y-4">
           {attribution && <RevenueAttributionTable attribution={attribution} />}
+        </TabsContent>
+
+        <TabsContent value="abtest" className="space-y-4">
+          {abTest ? (
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="p-6 border rounded-lg bg-muted/10">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-semibold flex items-center gap-2">
+                    <Beaker className="h-5 w-5 text-purple-600" />
+                    Variant A (Control)
+                  </h3>
+                  <Badge variant="outline">Original</Badge>
+                </div>
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">Open Rate</span>
+                    <span className="font-medium">{abTest.variantA.openRate.toFixed(1)}%</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">Click Rate</span>
+                    <span className="font-medium">{abTest.variantA.clickRate.toFixed(1)}%</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-6 border rounded-lg bg-green-50/50 border-green-200">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-semibold flex items-center gap-2">
+                    <Beaker className="h-5 w-5 text-green-600" />
+                    Variant B (Test)
+                  </h3>
+                  <Badge className="bg-green-600">Winner 🏆</Badge>
+                </div>
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">Open Rate</span>
+                    <span className="font-medium">{abTest.variantB.openRate.toFixed(1)}%</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">Click Rate</span>
+                    <span className="font-medium">{abTest.variantB.clickRate.toFixed(1)}%</span>
+                  </div>
+                </div>
+                <div className="mt-4 pt-4 border-t border-green-200">
+                  <p className="text-sm text-green-800 font-medium">
+                    Recommendation: {abTest.recommendation}
+                  </p>
+                  <p className="text-xs text-green-600 mt-1">
+                    Confidence: {(abTest.confidence * 100).toFixed(0)}%
+                  </p>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="text-center p-8 text-muted-foreground border rounded-lg border-dashed">
+              No A/B test data available for this campaign.
+            </div>
+          )}
         </TabsContent>
 
         <TabsContent value="insights" className="space-y-4">

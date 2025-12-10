@@ -6,6 +6,7 @@ import { api } from "@/convex/_generated/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ShieldCheck, AlertTriangle } from "lucide-react";
 
 interface SupportTriageProps {
   isGuest: boolean;
@@ -17,6 +18,11 @@ export function SupportTriage({ isGuest }: SupportTriageProps) {
   
   const analytics = useQuery(
     isGuest ? undefined : api.supportTickets.getTicketAnalytics,
+    isGuest ? "skip" : { businessId: demoBusinessId }
+  );
+
+  const sla = useQuery(
+    isGuest ? undefined : api.supportTickets.trackSLA,
     isGuest ? "skip" : { businessId: demoBusinessId }
   );
 
@@ -56,6 +62,28 @@ export function SupportTriage({ isGuest }: SupportTriageProps) {
             </CardContent>
           </Card>
         </div>
+      )}
+
+      {!isGuest && sla && (
+        <Card className="bg-muted/20 border-dashed">
+          <CardContent className="p-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <ShieldCheck className={`h-8 w-8 ${sla.complianceRate >= 90 ? 'text-green-600' : 'text-yellow-600'}`} />
+              <div>
+                <div className="font-semibold">SLA Compliance: {sla.complianceRate.toFixed(1)}%</div>
+                <div className="text-xs text-muted-foreground">
+                  {sla.withinSLA} tickets within target time • {sla.breachedSLA} breached
+                </div>
+              </div>
+            </div>
+            {sla.breachedSLA > 0 && (
+              <Badge variant="destructive" className="flex items-center gap-1">
+                <AlertTriangle className="h-3 w-3" />
+                Attention Needed
+              </Badge>
+            )}
+          </CardContent>
+        </Card>
       )}
 
       <Tabs defaultValue="triage" className="w-full">
