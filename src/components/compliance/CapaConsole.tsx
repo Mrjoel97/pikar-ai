@@ -12,9 +12,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
-import { AlertCircle, CheckCircle, Clock, TrendingUp, FileText, Target, BarChart3 } from "lucide-react";
+import { AlertCircle, CheckCircle, Clock, TrendingUp, FileText, Target, BarChart3, Activity } from "lucide-react";
 import { useState } from "react";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from "recharts";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from "recharts";
 
 interface CapaConsoleProps {
   businessId: Id<"businesses">;
@@ -32,8 +32,6 @@ export function CapaConsole({ businessId }: CapaConsoleProps) {
   const capaTrends = useQuery(api.capa.getCapaTrends, { businessId, days: 30 });
   
   const createCapa = useMutation(api.capa.createCapaItem);
-  const updateCapa = useMutation(api.capa.updateCapaItem);
-  const verifyCapa = useMutation(api.capa.verifyCapaItem);
 
   const [formData, setFormData] = useState({
     title: "",
@@ -95,6 +93,14 @@ export function CapaConsole({ businessId }: CapaConsoleProps) {
   const completionRate = capaStats.total > 0 ? (capaStats.closed / capaStats.total) * 100 : 0;
   const onTimeRate = capaStats.total > 0 ? ((capaStats.total - capaStats.overdue) / capaStats.total) * 100 : 0;
 
+  // Prepare severity distribution data
+  const severityData = [
+    { name: "Critical", value: capaStats.critical, color: "#ef4444" },
+    { name: "High", value: capaStats.high || 0, color: "#f97316" },
+    { name: "Medium", value: capaStats.medium || 0, color: "#eab308" },
+    { name: "Low", value: capaStats.low || 0, color: "#22c55e" },
+  ].filter(d => d.value > 0);
+
   return (
     <div className="space-y-4">
       {/* Enhanced Stats Overview */}
@@ -150,7 +156,7 @@ export function CapaConsole({ businessId }: CapaConsoleProps) {
       </div>
 
       {/* Performance Metrics */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <Card>
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
@@ -218,6 +224,44 @@ export function CapaConsole({ businessId }: CapaConsoleProps) {
                 <div className="text-xs text-muted-foreground">Pending Verification</div>
               </div>
             </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Activity className="h-4 w-4" />
+              Severity Distribution
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {severityData.length > 0 ? (
+              <div className="h-48">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={severityData}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      label={(entry) => `${entry.name}: ${entry.value}`}
+                      outerRadius={60}
+                      fill="#8884d8"
+                      dataKey="value"
+                    >
+                      {severityData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            ) : (
+              <div className="h-48 flex items-center justify-center text-muted-foreground">
+                No severity data available
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
