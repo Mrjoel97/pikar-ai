@@ -8,7 +8,7 @@ export const getMessages = query({
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const limit = Math.min(args.limit || 50, 50); // Cap at 50 messages
+    const limit = Math.min(args.limit || 20, 20); // Reduce to 20 messages max
     
     // Get only top-level messages (no parent)
     const messages = await ctx.db
@@ -23,28 +23,34 @@ export const getMessages = query({
       messages.map(async (msg) => {
         const sender = await ctx.db.get(msg.senderId);
         
-        // Get reply count for threading (more efficient - just count)
+        // Get reply count for threading - just count, don't fetch all
         const replies = await ctx.db
           .query("teamMessages")
           .withIndex("by_parent", (q) => q.eq("parentMessageId", msg._id))
-          .take(100); // Limit reply count queries
+          .take(10); // Reduce reply count limit
         
-        // Reduce attachment data size - only include essential fields
-        const compactAttachments = msg.attachments?.map(att => ({
-          name: att.name,
+        // Minimal attachment data - only first 3 attachments
+        const compactAttachments = (msg.attachments || []).slice(0, 3).map(att => ({
+          name: att.name.substring(0, 50), // Truncate long names
           url: att.url,
           type: att.type,
-        })) || [];
+        }));
+        
+        // Limit reactions to first 10
+        const limitedReactions = (msg.reactions || []).slice(0, 10);
         
         return {
           _id: msg._id,
           channelId: msg.channelId,
-          content: msg.content.substring(0, 5000), // Limit content length
+          content: msg.content.substring(0, 1000), // Reduce to 1000 chars
           attachments: compactAttachments,
-          reactions: msg.reactions || [],
+          reactions: limitedReactions,
           createdAt: msg.createdAt,
           editedAt: msg.editedAt,
-          sender: sender ? { name: sender.name, email: sender.email } : null,
+          sender: sender ? { 
+            name: (sender.name || "").substring(0, 50), 
+            email: (sender.email || "").substring(0, 50) 
+          } : null,
           replyCount: replies.length,
         };
       })
