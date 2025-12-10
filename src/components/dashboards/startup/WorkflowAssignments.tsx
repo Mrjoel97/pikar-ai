@@ -22,12 +22,12 @@ export function WorkflowAssignments({ businessId, userId }: WorkflowAssignmentsP
 
   const dueSoon = useQuery(
     api.workflowAssignments.getStepsDueSoon,
-    businessId && userId ? { businessId: businessId as any, userId: userId as any, hours: 24 } : "skip"
+    userId ? { userId: userId as any, hoursAhead: 24 } : "skip"
   );
 
   const analytics = useQuery(
     api.workflowAssignments.getAssignmentAnalytics,
-    businessId ? { businessId: businessId as any, days: 30 } : "skip"
+    businessId ? { businessId: businessId as any } : "skip"
   );
 
   if (!assignments) {
@@ -47,6 +47,14 @@ export function WorkflowAssignments({ businessId, userId }: WorkflowAssignmentsP
   const pendingAssignments = assignments.filter((a: any) => a.status === "pending");
   const inProgressAssignments = assignments.filter((a: any) => a.status === "in_progress");
   const completedAssignments = assignments.filter((a: any) => a.status === "completed");
+
+  // Calculate velocity (tasks completed per day)
+  const velocity = analytics ? Math.round((analytics.completedSteps / 30) * 10) / 10 : 0;
+  
+  // Calculate on-time rate
+  const onTimeRate = analytics && analytics.completedSteps > 0
+    ? Math.round(((analytics.completedSteps - analytics.overdueTasks) / analytics.completedSteps) * 100)
+    : 0;
 
   return (
     <Card className="neu-raised">
@@ -74,7 +82,7 @@ export function WorkflowAssignments({ businessId, userId }: WorkflowAssignmentsP
             </div>
             <div className="text-xl font-bold text-amber-600">{pendingAssignments.length}</div>
             {dueSoon && dueSoon.length > 0 && (
-              <p className="text-xs text-red-600">{dueSoon.length} due soon</p>
+              <p className="text-xs text-red-600 font-semibold">{dueSoon.length} due soon</p>
             )}
           </div>
           <div className="space-y-1">
@@ -83,11 +91,7 @@ export function WorkflowAssignments({ businessId, userId }: WorkflowAssignmentsP
               In Progress
             </div>
             <div className="text-xl font-bold text-blue-600">{inProgressAssignments.length}</div>
-            {analytics && (
-              <p className="text-xs text-muted-foreground">
-                {Math.round(analytics.avgCompletionTime || 0)}h avg
-              </p>
-            )}
+            <p className="text-xs text-muted-foreground">Active tasks</p>
           </div>
           <div className="space-y-1">
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -97,7 +101,7 @@ export function WorkflowAssignments({ businessId, userId }: WorkflowAssignmentsP
             <div className="text-xl font-bold text-green-600">{completedAssignments.length}</div>
             {analytics && (
               <p className="text-xs text-muted-foreground">
-                {Math.round(analytics.completionRate || 0)}% rate
+                {Math.round(analytics.completionRate)}% rate
               </p>
             )}
           </div>
@@ -113,21 +117,17 @@ export function WorkflowAssignments({ businessId, userId }: WorkflowAssignmentsP
             <div className="grid grid-cols-3 gap-3 text-sm">
               <div>
                 <div className="text-muted-foreground">Velocity</div>
-                <div className="text-lg font-bold">{analytics.velocity || 0}</div>
+                <div className="text-lg font-bold">{velocity}</div>
                 <div className="text-xs text-muted-foreground">tasks/day</div>
               </div>
               <div>
                 <div className="text-muted-foreground">On-Time</div>
-                <div className="text-lg font-bold text-green-600">
-                  {Math.round(analytics.onTimeRate || 0)}%
-                </div>
+                <div className="text-lg font-bold text-green-600">{onTimeRate}%</div>
                 <div className="text-xs text-muted-foreground">completion</div>
               </div>
               <div>
                 <div className="text-muted-foreground">Overdue</div>
-                <div className="text-lg font-bold text-red-600">
-                  {analytics.overdueCount || 0}
-                </div>
+                <div className="text-lg font-bold text-red-600">{analytics.overdueTasks}</div>
                 <div className="text-xs text-muted-foreground">tasks</div>
               </div>
             </div>
@@ -135,24 +135,27 @@ export function WorkflowAssignments({ businessId, userId }: WorkflowAssignmentsP
         )}
 
         {/* Team Workload Summary */}
-        {analytics && analytics.teamWorkload && analytics.teamWorkload.length > 0 && (
+        {analytics && analytics.assigneeStats && Object.keys(analytics.assigneeStats).length > 0 && (
           <div className="space-y-2">
             <h4 className="text-sm font-semibold flex items-center gap-2">
               <User className="h-4 w-4" />
               Team Workload
             </h4>
-            {analytics.teamWorkload.slice(0, 5).map((member: any) => (
-              <div key={member.userId} className="space-y-1">
+            {Object.entries(analytics.assigneeStats).slice(0, 5).map(([userId, stats]: [string, any]) => (
+              <div key={userId} className="space-y-1">
                 <div className="flex items-center justify-between text-sm">
-                  <span className="font-medium">{member.userName}</span>
+                  <span className="font-medium">Team Member</span>
                   <span className="text-muted-foreground">
-                    {member.activeAssignments} active
+                    {stats.assigned} assigned ({stats.completed} done)
                   </span>
                 </div>
                 <Progress 
-                  value={Math.min(100, (member.activeAssignments / 10) * 100)} 
+                  value={stats.assigned > 0 ? (stats.completed / stats.assigned) * 100 : 0} 
                   className="h-2"
                 />
+                {stats.overdue > 0 && (
+                  <p className="text-xs text-red-600">{stats.overdue} overdue</p>
+                )}
               </div>
             ))}
           </div>
@@ -164,45 +167,37 @@ export function WorkflowAssignments({ businessId, userId }: WorkflowAssignmentsP
             <Zap className="h-4 w-4" />
             My Active Tasks
           </h4>
-          {[...pendingAssignments, ...inProgressAssignments].slice(0, 5).map((assignment: any) => (
-            <div
-              key={assignment._id}
-              className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors"
-            >
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <p className="font-medium text-sm truncate">{assignment.workflowName || "Workflow Task"}</p>
-                  <Badge variant={assignment.status === "in_progress" ? "default" : "secondary"} className="text-xs">
-                    {assignment.status}
-                  </Badge>
-                </div>
-                <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
-                  {assignment.dueDate && (
-                    <span className={assignment.dueDate < Date.now() ? "text-red-600 font-semibold" : ""}>
-                      Due {new Date(assignment.dueDate).toLocaleDateString()}
-                    </span>
-                  )}
-                  {assignment.priority && (
-                    <Badge 
-                      variant={assignment.priority === "urgent" || assignment.priority === "high" ? "destructive" : "outline"} 
-                      className="text-xs"
-                    >
-                      {assignment.priority}
+          {[...pendingAssignments, ...inProgressAssignments].slice(0, 5).map((assignment: any) => {
+            const isOverdue = assignment.dueDate && assignment.dueDate < Date.now();
+            return (
+              <div
+                key={assignment._id}
+                className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors"
+              >
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <p className="font-medium text-sm truncate">{assignment.name || "Workflow Task"}</p>
+                    <Badge variant={assignment.status === "in_progress" ? "default" : "secondary"} className="text-xs">
+                      {assignment.status}
                     </Badge>
-                  )}
-                  {assignment.estimatedTime && (
-                    <span className="flex items-center gap-1">
-                      <Clock className="h-3 w-3" />
-                      {assignment.estimatedTime}h
-                    </span>
-                  )}
+                  </div>
+                  <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
+                    {assignment.dueDate && (
+                      <span className={isOverdue ? "text-red-600 font-semibold" : ""}>
+                        Due {new Date(assignment.dueDate).toLocaleDateString()}
+                      </span>
+                    )}
+                    {assignment.workflow && (
+                      <span className="truncate">{assignment.workflow.name}</span>
+                    )}
+                  </div>
                 </div>
+                {isOverdue && (
+                  <AlertCircle className="h-4 w-4 text-red-600 flex-shrink-0" />
+                )}
               </div>
-              {assignment.dueDate && assignment.dueDate < Date.now() && assignment.status !== "completed" && (
-                <AlertCircle className="h-4 w-4 text-red-600" />
-              )}
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         {assignments.length === 0 && (

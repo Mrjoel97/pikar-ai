@@ -22,13 +22,17 @@ export function ABTestingWidget({ businessId }: ABTestingWidgetProps) {
   const activeExperiments = experiments?.filter((e: any) => e.status === "running") || [];
   const completedExperiments = experiments?.filter((e: any) => e.status === "completed") || [];
 
-  // Get detailed results for active experiments
-  const activeResults = activeExperiments.map((exp: any) => {
-    const results = useQuery(
-      api.experiments.getABTestResults,
+  // Get statistical significance for each active experiment
+  const activeExperimentsWithStats = activeExperiments.map((exp: any) => {
+    const significance = useQuery(
+      api.experiments.calculateStatisticalSignificance,
       exp ? { experimentId: exp._id } : "skip"
     );
-    return { experiment: exp, results };
+    const results = useQuery(
+      api.experiments.calculateResults,
+      exp ? { experimentId: exp._id } : "skip"
+    );
+    return { experiment: exp, significance, results };
   });
 
   if (!experiments) {
@@ -44,6 +48,12 @@ export function ABTestingWidget({ businessId }: ABTestingWidgetProps) {
       </Card>
     );
   }
+
+  // Calculate win rate
+  const decisiveResults = completedExperiments.filter((e: any) => e.winnerVariantId).length;
+  const winRate = completedExperiments.length > 0 
+    ? Math.round((decisiveResults / completedExperiments.length) * 100) 
+    : 0;
 
   return (
     <Card className="neu-raised">
@@ -70,7 +80,7 @@ export function ABTestingWidget({ businessId }: ABTestingWidgetProps) {
               Total Tests
             </div>
             <div className="text-xl font-bold">{experiments.length}</div>
-            <Progress value={(completedExperiments.length / experiments.length) * 100} className="h-1" />
+            <Progress value={(completedExperiments.length / Math.max(experiments.length, 1)) * 100} className="h-1" />
           </div>
           <div className="space-y-1">
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -95,74 +105,88 @@ export function ABTestingWidget({ businessId }: ABTestingWidgetProps) {
               <Target className="h-3 w-3" />
               Win Rate
             </div>
-            <div className="text-xl font-bold text-purple-600">
-              {completedExperiments.filter((e: any) => e.winner).length}
-            </div>
-            <p className="text-xs text-muted-foreground">Decisive results</p>
+            <div className="text-xl font-bold text-purple-600">{winRate}%</div>
+            <p className="text-xs text-muted-foreground">{decisiveResults} decisive</p>
           </div>
         </div>
 
         {/* Active Experiments with Statistical Significance */}
-        {activeResults.length > 0 && (
+        {activeExperimentsWithStats.length > 0 && (
           <div className="space-y-2">
             <h4 className="text-sm font-semibold flex items-center gap-2">
               <BarChart3 className="h-4 w-4" />
-              Active Experiments
+              Active Experiments with Statistical Analysis
             </h4>
-            {activeResults.map(({ experiment, results }: any) => (
+            {activeExperimentsWithStats.map(({ experiment, significance, results }: any) => (
               <div key={experiment._id} className="space-y-2 p-3 border rounded-lg">
                 <div className="flex items-center justify-between">
                   <p className="font-medium text-sm">{experiment.name}</p>
                   <Badge variant="secondary" className="text-xs">
-                    {results?.sampleSize || 0} samples
+                    {experiment.goal}
                   </Badge>
                 </div>
                 
-                {results && (
-                  <>
-                    <div className="grid grid-cols-2 gap-2 text-xs">
-                      <div className="space-y-1">
-                        <div className="text-muted-foreground">Variant A</div>
-                        <div className="font-bold text-blue-600">
-                          {Math.round((results.variantA?.conversionRate || 0) * 100)}%
+                {results && results.length > 0 && (
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    {results.slice(0, 2).map((variant: any, idx: number) => (
+                      <div key={variant.variantId} className="space-y-1 p-2 rounded bg-muted/50">
+                        <div className="text-muted-foreground font-semibold">{variant.name}</div>
+                        <div className="font-bold text-lg">
+                          {Math.round(variant.conversionRate)}%
                         </div>
                         <div className="text-muted-foreground">
-                          {results.variantA?.conversions || 0} / {results.variantA?.visitors || 0}
+                          {variant.metrics.converted} / {variant.metrics.sent}
                         </div>
+                        <Progress value={variant.conversionRate} className="h-1" />
                       </div>
-                      <div className="space-y-1">
-                        <div className="text-muted-foreground">Variant B</div>
-                        <div className="font-bold text-green-600">
-                          {Math.round((results.variantB?.conversionRate || 0) * 100)}%
-                        </div>
-                        <div className="text-muted-foreground">
-                          {results.variantB?.conversions || 0} / {results.variantB?.visitors || 0}
-                        </div>
-                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {significance && (
+                  <div className="rounded-lg bg-muted/50 p-2 space-y-1">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-muted-foreground">Statistical Significance</span>
+                      <Badge variant={significance.overallSignificance ? "default" : "outline"}>
+                        {significance.overallSignificance ? "Significant" : "Collecting data"}
+                      </Badge>
                     </div>
-
-                    {results.statisticalSignificance && (
-                      <div className="rounded-lg bg-muted/50 p-2 space-y-1">
-                        <div className="flex items-center justify-between text-xs">
-                          <span className="text-muted-foreground">Statistical Significance</span>
-                          <Badge variant={results.statisticalSignificance.isSignificant ? "default" : "outline"}>
-                            {Math.round(results.statisticalSignificance.confidence * 100)}%
-                          </Badge>
-                        </div>
-                        {results.statisticalSignificance.isSignificant && (
-                          <div className="text-xs text-green-600 font-semibold">
-                            ✓ Significant result detected
+                    {significance.comparisons && significance.comparisons.length > 0 && (
+                      <div className="space-y-1">
+                        {significance.comparisons.map((comp: any) => (
+                          <div key={comp.variantId} className="text-xs">
+                            <div className="flex items-center justify-between">
+                              <span>{comp.name} vs Control</span>
+                              <span className={comp.isSignificant ? "text-green-600 font-semibold" : "text-muted-foreground"}>
+                                {comp.isSignificant ? "✓" : "..."} p={comp.pValue.toFixed(4)}
+                              </span>
+                            </div>
+                            {comp.isSignificant && (
+                              <div className="text-green-600 font-semibold">
+                                {comp.relativeImprovement > 0 ? "+" : ""}{comp.relativeImprovement.toFixed(1)}% improvement
+                              </div>
+                            )}
                           </div>
-                        )}
+                        ))}
                       </div>
                     )}
+                  </div>
+                )}
 
-                    {results.recommendation && (
-                      <div className="text-xs text-muted-foreground italic">
-                        💡 {results.recommendation}
-                      </div>
-                    )}
-                  </>
+                {/* Sample size progress */}
+                {experiment.configuration && (
+                  <div className="text-xs">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-muted-foreground">Sample Size Progress</span>
+                      <span className="font-semibold">
+                        {results && results[0] ? results[0].metrics.sent : 0} / {experiment.configuration.minimumSampleSize}
+                      </span>
+                    </div>
+                    <Progress 
+                      value={results && results[0] ? (results[0].metrics.sent / experiment.configuration.minimumSampleSize) * 100 : 0} 
+                      className="h-1" 
+                    />
+                  </div>
                 )}
               </div>
             ))}
@@ -181,9 +205,13 @@ export function ABTestingWidget({ businessId }: ABTestingWidgetProps) {
                     {exp.completedAt && new Date(exp.completedAt).toLocaleDateString()}
                   </p>
                 </div>
-                {exp.winner && (
+                {exp.winnerVariantId ? (
                   <Badge variant="default" className="text-xs">
-                    Winner: {exp.winner}
+                    Winner Declared
+                  </Badge>
+                ) : (
+                  <Badge variant="outline" className="text-xs">
+                    Inconclusive
                   </Badge>
                 )}
               </div>
