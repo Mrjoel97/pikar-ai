@@ -1,4 +1,6 @@
-// ...
-const wins = useQuery(api.wins.get) || [];
-// ...
-<WinsHistory wins={wins} />
+import { readFilesToContextTool } from "default_api";
+
+readFilesToContextTool({
+  file_paths: ["src/components/dashboards/StartupDashboard.tsx"],
+  replace_files_in_context: true
+});
