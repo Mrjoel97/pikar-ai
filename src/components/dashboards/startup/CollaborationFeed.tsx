@@ -1,150 +1,124 @@
-import { useState } from "react";
-import { useQuery, useMutation } from "convex/react";
+import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { Id } from "@/convex/_generated/dataModel";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Search, Filter, User, Clock, Users, AtSign, MessageSquare, Heart, Share2 } from "lucide-react";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { MessageSquare, AtSign, Heart, Share2, Clock } from "lucide-react";
+import { Id } from "@/convex/_generated/dataModel";
 import { formatDistanceToNow } from "date-fns";
 
 interface CollaborationFeedProps {
   businessId: Id<"businesses">;
 }
 
-export default function CollaborationFeed({ businessId }: CollaborationFeedProps) {
-  const [timeRange, setTimeRange] = useState(7);
-  
-  const teamActivity = useQuery(
-    api.activityFeed.getTeamActivity,
-    businessId ? { businessId: businessId as any, timeRange } : "skip"
-  );
+export function CollaborationFeed({ businessId }: CollaborationFeedProps) {
+  const teamActivity = useQuery(api.activityFeed.getTeamActivity, {
+    businessId,
+    timeRange: 7,
+  });
 
-  const mentions = useQuery(
-    api.activityFeed.getMentions,
-    businessId && userId ? { businessId: businessId as any, userId: userId as any } : "skip"
-  );
+  if (!teamActivity) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <MessageSquare className="h-5 w-5" />
+            Team Collaboration
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="animate-pulse space-y-2">
+            <div className="h-4 bg-muted rounded w-3/4" />
+            <div className="h-4 bg-muted rounded w-1/2" />
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   const getActivityIcon = (type: string) => {
     switch (type) {
-      case "notification":
-        return "🔔";
-      case "workflow_run":
-        return "⚙️";
-      case "team_message":
-        return "💬";
-      case "goal_update":
-        return "🎯";
-      case "approval":
-        return "✅";
-      case "social_post":
-        return "📱";
+      case "mention":
+        return <AtSign className="h-4 w-4 text-blue-600" />;
+      case "reply":
+        return <MessageSquare className="h-4 w-4 text-green-600" />;
+      case "reaction":
+        return <Heart className="h-4 w-4 text-pink-600" />;
+      case "share":
+        return <Share2 className="h-4 w-4 text-purple-600" />;
       default:
-        return "📋";
+        return <MessageSquare className="h-4 w-4" />;
     }
-  };
-
-  const getStatusColor = (status?: string) => {
-    switch (status) {
-      case "succeeded":
-      case "completed":
-      case "approved":
-      case "posted":
-        return "bg-green-500/10 text-green-700 dark:text-green-400";
-      case "failed":
-      case "rejected":
-        return "bg-red-500/10 text-red-700 dark:text-red-400";
-      case "running":
-      case "in_progress":
-      case "pending":
-        return "bg-blue-500/10 text-blue-700 dark:text-blue-400";
-      default:
-        return "bg-gray-500/10 text-gray-700 dark:text-gray-400";
-    }
-  };
-
-  const highlightMentions = (text: string) => {
-    return text.replace(/@(\w+)/g, '<span class="text-blue-600 font-semibold">@$1</span>');
   };
 
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle className="flex items-center gap-2">
-              <Users className="h-5 w-5" />
-              Team Collaboration Feed
-            </CardTitle>
-            <CardDescription>Real-time team activity and mentions</CardDescription>
-          </div>
-          <Select value={String(timeRange)} onValueChange={(v) => setTimeRange(Number(v))}>
-            <SelectTrigger className="w-32">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="7">7 days</SelectItem>
-              <SelectItem value="14">14 days</SelectItem>
-              <SelectItem value="30">30 days</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+        <CardTitle className="flex items-center gap-2">
+          <MessageSquare className="h-5 w-5" />
+          Team Collaboration
+        </CardTitle>
+        <CardDescription>
+          {teamActivity.metrics.totalActivities} activities in the last 7 days
+        </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Activity Metrics */}
-        {teamActivity?.metrics && (
-          <div className="grid grid-cols-4 gap-3">
-            <div className="text-center p-3 bg-muted rounded-lg">
-              <div className="text-2xl font-bold">{teamActivity.metrics.mentions}</div>
-              <div className="text-xs text-muted-foreground">Mentions</div>
-            </div>
-            <div className="text-center p-3 bg-muted rounded-lg">
-              <div className="text-2xl font-bold">{teamActivity.metrics.replies}</div>
-              <div className="text-xs text-muted-foreground">Replies</div>
-            </div>
-            <div className="text-center p-3 bg-muted rounded-lg">
-              <div className="text-2xl font-bold">{teamActivity.metrics.reactions}</div>
-              <div className="text-xs text-muted-foreground">Reactions</div>
-            </div>
-            <div className="text-center p-3 bg-muted rounded-lg">
-              <div className="text-2xl font-bold">{teamActivity.metrics.shares}</div>
-              <div className="text-xs text-muted-foreground">Shares</div>
-            </div>
+        <div className="grid grid-cols-4 gap-2">
+          <div className="text-center p-2 bg-blue-50 rounded-lg">
+            <AtSign className="h-4 w-4 mx-auto mb-1 text-blue-600" />
+            <p className="text-lg font-bold">{teamActivity.metrics.mentions}</p>
+            <p className="text-xs text-muted-foreground">Mentions</p>
           </div>
-        )}
+          <div className="text-center p-2 bg-green-50 rounded-lg">
+            <MessageSquare className="h-4 w-4 mx-auto mb-1 text-green-600" />
+            <p className="text-lg font-bold">{teamActivity.metrics.replies}</p>
+            <p className="text-xs text-muted-foreground">Replies</p>
+          </div>
+          <div className="text-center p-2 bg-pink-50 rounded-lg">
+            <Heart className="h-4 w-4 mx-auto mb-1 text-pink-600" />
+            <p className="text-lg font-bold">{teamActivity.metrics.reactions}</p>
+            <p className="text-xs text-muted-foreground">Reactions</p>
+          </div>
+          <div className="text-center p-2 bg-purple-50 rounded-lg">
+            <Share2 className="h-4 w-4 mx-auto mb-1 text-purple-600" />
+            <p className="text-lg font-bold">{teamActivity.metrics.shares}</p>
+            <p className="text-xs text-muted-foreground">Shares</p>
+          </div>
+        </div>
 
         {/* Activity Feed */}
-        <div className="space-y-2 max-h-96 overflow-y-auto">
-          {teamActivity?.activities.map((activity: any) => (
-            <div key={activity._id} className="flex items-start gap-3 p-3 border rounded-lg hover:bg-muted/50">
-              <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                {activity.activityType === "mention" && <AtSign className="h-4 w-4" />}
-                {activity.activityType === "reply" && <MessageSquare className="h-4 w-4" />}
-                {activity.activityType === "reaction" && <Heart className="h-4 w-4" />}
-                {activity.activityType === "share" && <Share2 className="h-4 w-4" />}
-              </div>
-              <div className="flex-1">
-                <p className="text-sm">
-                  <span className="font-medium">{activity.userName}</span>{" "}
-                  {activity.activityType === "mention" && "mentioned you"}
-                  {activity.activityType === "reply" && "replied to your message"}
-                  {activity.activityType === "reaction" && "reacted to your post"}
-                  {activity.activityType === "share" && "shared your content"}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {new Date(activity.timestamp).toLocaleString()}
-                </p>
-              </div>
+        <div className="pt-3 border-t">
+          <p className="text-xs font-medium mb-2">Recent Activity</p>
+          <ScrollArea className="h-[200px]">
+            <div className="space-y-2">
+              {teamActivity.activities.map((activity: any) => (
+                <div key={activity._id} className="flex items-start gap-2 p-2 hover:bg-muted rounded-lg">
+                  <div className="mt-0.5">{getActivityIcon(activity.activityType)}</div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm">
+                      <span className="font-medium">{activity.userName}</span>
+                      <span className="text-muted-foreground ml-1">
+                        {activity.activityType === "mention" && "mentioned someone"}
+                        {activity.activityType === "reply" && "replied"}
+                        {activity.activityType === "reaction" && "reacted"}
+                        {activity.activityType === "share" && "shared"}
+                      </span>
+                    </p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <Badge variant="outline" className="text-xs">
+                        {activity.entityType}
+                      </Badge>
+                      <span className="text-xs text-muted-foreground flex items-center gap-1">
+                        <Clock className="h-3 w-3" />
+                        {formatDistanceToNow(activity.timestamp, { addSuffix: true })}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
-          ))}
+          </ScrollArea>
         </div>
       </CardContent>
     </Card>

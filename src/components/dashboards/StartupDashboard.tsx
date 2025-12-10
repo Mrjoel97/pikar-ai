@@ -73,7 +73,10 @@ import { WorkflowAssignments } from "./startup/WorkflowAssignments";
 import { CustomerJourneyMap } from "./startup/CustomerJourneyMap";
 import RevenueAttribution from "./startup/RevenueAttribution";
 import TeamOnboardingWidget from "./startup/TeamOnboardingWidget";
-import ABTestingWidget from "./startup/ABTestingWidget";
+import { ABTestingWidget } from "./startup/ABTestingWidget";
+import { TeamOnboardingWidget } from "./startup/TeamOnboardingWidget";
+import { CollaborationFeed } from "./startup/CollaborationFeed";
+import { TeamPerformance } from "./startup/TeamPerformance";
 
 export function StartupDashboard() {
   const { user } = useAuth();
@@ -385,12 +388,12 @@ const pendingApprovals = useQuery(
         </div>
       )}
 
-      <div className="grid gap-6 lg:grid-cols-2">
-      <LazyLoadErrorBoundary moduleName="Team Performance">
-        <Suspense fallback={<div className="text-muted-foreground">Loading team performance...</div>}>
-          <TeamPerformance teamPerformance={teamPerformance} isGuest={isGuest} />
-        </Suspense>
-      </LazyLoadErrorBoundary>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <ABTestingWidget businessId={businessId} />
+        <TeamOnboardingWidget businessId={businessId} />
+        <CollaborationFeed businessId={businessId} />
+        <TeamPerformance businessId={businessId} />
+      </div>
 
       <LazyLoadErrorBoundary moduleName="Workflow Assignments">
         <Suspense fallback={<div className="text-muted-foreground">Loading workflows...</div>}>
@@ -401,13 +404,6 @@ const pendingApprovals = useQuery(
           )}
         </Suspense>
       </LazyLoadErrorBoundary>
-      </div>
-
-      {/* Phase 1: Team Onboarding & A/B Testing Widgets */}
-      <div className="grid gap-6 lg:grid-cols-2">
-        <TeamOnboardingWidget businessId={businessId} />
-        <ABTestingWidget businessId={businessId} />
-      </div>
 
       <LazyLoadErrorBoundary moduleName="Customer Journey Map">
         <Suspense fallback={<div className="text-muted-foreground">Loading customer journey...</div>}>
