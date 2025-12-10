@@ -1,332 +1,156 @@
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { useQuery, useMutation } from "convex/react";
+import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { toast } from "sonner";
-import { useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { format } from "date-fns";
-import { CalendarIcon, CheckCircle2, Clock, AlertCircle, User } from "lucide-react";
-import type { Id } from "@/convex/_generated/dataModel";
+import { Progress } from "@/components/ui/progress";
+import { Workflow, User, Clock, CheckCircle, AlertCircle } from "lucide-react";
+import { useNavigate } from "react-router";
 
 interface WorkflowAssignmentsProps {
-  businessId: Id<"businesses">;
-  userId: Id<"users">;
+  businessId: string;
+  userId: string;
 }
 
 export function WorkflowAssignments({ businessId, userId }: WorkflowAssignmentsProps) {
-  const [showAssignDialog, setShowAssignDialog] = useState(false);
-  const [selectedStepId, setSelectedStepId] = useState<Id<"workflowSteps"> | null>(null);
-  const [selectedAssignee, setSelectedAssignee] = useState<Id<"users"> | null>(null);
-  const [dueDate, setDueDate] = useState<Date | undefined>(undefined);
-
-  // Queries
-  const assignedSteps = useQuery(
-    api.workflowAssignments.getAssignedSteps,
-    { userId, businessId, status: "pending" }
+  const navigate = useNavigate();
+  
+  const assignments = useQuery(
+    api.workflowAssignments.getMyAssignments,
+    businessId && userId ? { businessId: businessId as any, userId: userId as any } : "skip"
   );
 
-  const analytics = useQuery(
-    api.workflowAssignments.getAssignmentAnalytics,
-    { businessId }
+  const workloadSummary = useQuery(
+    api.workflowAssignments.getWorkloadSummary,
+    businessId ? { businessId: businessId as any } : "skip"
   );
 
-  const teamMembers = useQuery(
-    api.activityFeed.getTeamMembers,
-    { businessId }
-  );
+  if (!assignments) {
+    return (
+      <Card className="neu-raised">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Workflow className="h-5 w-5" />
+            Workflow Assignments
+          </CardTitle>
+          <CardDescription>Loading assignments...</CardDescription>
+        </CardHeader>
+      </Card>
+    );
+  }
 
-  // Mutations
-  const assignStep = useMutation(api.workflowAssignments.assignStep);
-  const updateStatus = useMutation(api.workflowAssignments.updateStepStatus);
-
-  const handleAssign = async () => {
-    if (!selectedStepId || !selectedAssignee) {
-      toast.error("Please select a step and assignee");
-      return;
-    }
-
-    try {
-      await assignStep({
-        stepId: selectedStepId,
-        assigneeId: selectedAssignee,
-        dueDate: dueDate ? dueDate.getTime() : undefined,
-      });
-      toast.success("Task assigned successfully");
-      setShowAssignDialog(false);
-      setSelectedStepId(null);
-      setSelectedAssignee(null);
-      setDueDate(undefined);
-    } catch (error: any) {
-      toast.error(error?.message || "Failed to assign task");
-    }
-  };
-
-  const handleStatusUpdate = async (stepId: Id<"workflowSteps">, status: "in_progress" | "completed") => {
-    try {
-      await updateStatus({ stepId, status });
-      toast.success(`Task marked as ${status.replace("_", " ")}`);
-    } catch (error: any) {
-      toast.error(error?.message || "Failed to update status");
-    }
-  };
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case "completed":
-        return <CheckCircle2 className="h-4 w-4 text-green-600" />;
-      case "in_progress":
-        return <Clock className="h-4 w-4 text-blue-600" />;
-      case "blocked":
-        return <AlertCircle className="h-4 w-4 text-red-600" />;
-      default:
-        return <Clock className="h-4 w-4 text-gray-400" />;
-    }
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "completed":
-        return "bg-green-100 text-green-800";
-      case "in_progress":
-        return "bg-blue-100 text-blue-800";
-      case "blocked":
-        return "bg-red-100 text-red-800";
-      default:
-        return "bg-gray-100 text-gray-800";
-    }
-  };
+  const pendingAssignments = assignments.filter((a: any) => a.status === "pending");
+  const inProgressAssignments = assignments.filter((a: any) => a.status === "in_progress");
+  const completedAssignments = assignments.filter((a: any) => a.status === "completed");
 
   return (
-    <div className="space-y-6">
-      {/* Workload Balancing View */}
-      {analytics && (
-        <Card>
-          <CardHeader>
+    <Card className="neu-raised">
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <div>
             <CardTitle className="flex items-center gap-2">
-              <User className="h-5 w-5" />
-              Team Workload Balance
+              <Workflow className="h-5 w-5" />
+              Workflow Assignments
             </CardTitle>
-            <CardDescription>
-              Overview of task distribution across team members
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-              <div>
-                <div className="text-sm text-muted-foreground">Total Tasks</div>
-                <div className="text-2xl font-bold">{analytics.totalSteps}</div>
-              </div>
-              <div>
-                <div className="text-sm text-muted-foreground">Assigned</div>
-                <div className="text-2xl font-bold">{analytics.assignedSteps}</div>
-              </div>
-              <div>
-                <div className="text-sm text-muted-foreground">Completed</div>
-                <div className="text-2xl font-bold text-green-600">{analytics.completedSteps}</div>
-              </div>
-              <div>
-                <div className="text-sm text-muted-foreground">Overdue</div>
-                <div className="text-2xl font-bold text-red-600">{analytics.overdueTasks}</div>
-              </div>
+            <CardDescription>Your workflow tasks and team workload</CardDescription>
+          </div>
+          <Button size="sm" onClick={() => navigate("/workflows")}>
+            View All
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {/* Summary Stats */}
+        <div className="grid grid-cols-3 gap-3">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <Clock className="h-3 w-3" />
+              Pending
             </div>
+            <div className="text-xl font-bold text-amber-600">{pendingAssignments.length}</div>
+          </div>
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <Workflow className="h-3 w-3" />
+              In Progress
+            </div>
+            <div className="text-xl font-bold text-blue-600">{inProgressAssignments.length}</div>
+          </div>
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <CheckCircle className="h-3 w-3" />
+              Completed
+            </div>
+            <div className="text-xl font-bold text-green-600">{completedAssignments.length}</div>
+          </div>
+        </div>
 
-            {/* Team Member Workload */}
-            <div className="space-y-3">
-              <h4 className="text-sm font-medium">Team Member Workload</h4>
-              {(Object.entries(
-                analytics.assigneeStats as Record<
-                  string,
-                  { assigned: number; completed: number; overdue: number }
-                >
-              ) as Array<[string, { assigned: number; completed: number; overdue: number }]>).map(
-                ([assigneeId, stats]) => {
-                  const member = Array.isArray(teamMembers)
-                    ? (teamMembers as any[]).find(
-                        (m: any) => (m._id ?? m.id) === assigneeId
-                      )
-                    : undefined;
-                  const completionRate =
-                    stats.assigned > 0
-                      ? Math.round((stats.completed / stats.assigned) * 100)
-                      : 0;
+        {/* Team Workload Summary */}
+        {workloadSummary && workloadSummary.length > 0 && (
+          <div className="space-y-2">
+            <h4 className="text-sm font-semibold flex items-center gap-2">
+              <User className="h-4 w-4" />
+              Team Workload
+            </h4>
+            {workloadSummary.slice(0, 5).map((member: any) => (
+              <div key={member.userId} className="space-y-1">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="font-medium">{member.userName}</span>
+                  <span className="text-muted-foreground">
+                    {member.activeAssignments} active
+                  </span>
+                </div>
+                <Progress 
+                  value={Math.min(100, (member.activeAssignments / 10) * 100)} 
+                  className="h-2"
+                />
+              </div>
+            ))}
+          </div>
+        )}
 
-                  return (
-                    <div key={assigneeId} className="flex items-center gap-3 p-3 border rounded-lg">
-                      <div className="flex-1">
-                        <div className="font-medium">{member?.name || "Unknown"}</div>
-                        <div className="text-xs text-muted-foreground">{member?.email}</div>
-                      </div>
-                      <div className="flex gap-4 text-sm">
-                        <div>
-                          <span className="text-muted-foreground">Assigned:</span>{" "}
-                          <span className="font-medium">{stats.assigned}</span>
-                        </div>
-                        <div>
-                          <span className="text-muted-foreground">Completed:</span>{" "}
-                          <span className="font-medium text-green-600">{stats.completed}</span>
-                        </div>
-                        <div>
-                          <span className="text-muted-foreground">Overdue:</span>{" "}
-                          <span className="font-medium text-red-600">{stats.overdue}</span>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-sm font-medium">{completionRate}%</div>
-                        <div className="text-xs text-muted-foreground">completion</div>
-                      </div>
-                    </div>
-                  );
-                }
+        {/* My Assignments */}
+        <div className="space-y-2">
+          <h4 className="text-sm font-semibold">My Active Tasks</h4>
+          {[...pendingAssignments, ...inProgressAssignments].slice(0, 5).map((assignment: any) => (
+            <div
+              key={assignment._id}
+              className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors"
+            >
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <p className="font-medium text-sm truncate">{assignment.workflowName || "Workflow Task"}</p>
+                  <Badge variant={assignment.status === "in_progress" ? "default" : "secondary"} className="text-xs">
+                    {assignment.status}
+                  </Badge>
+                </div>
+                <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
+                  {assignment.dueDate && (
+                    <span className={assignment.dueDate < Date.now() ? "text-red-600" : ""}>
+                      Due {new Date(assignment.dueDate).toLocaleDateString()}
+                    </span>
+                  )}
+                  {assignment.priority && (
+                    <Badge variant="outline" className="text-xs">
+                      {assignment.priority}
+                    </Badge>
+                  )}
+                </div>
+              </div>
+              {assignment.dueDate && assignment.dueDate < Date.now() && assignment.status !== "completed" && (
+                <AlertCircle className="h-4 w-4 text-red-600" />
               )}
             </div>
-          </CardContent>
-        </Card>
-      )}
+          ))}
+        </div>
 
-      {/* My Assigned Tasks */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>My Assigned Tasks</CardTitle>
-              <CardDescription>
-                Tasks assigned to you across all workflows
-              </CardDescription>
-            </div>
-            <Badge variant="outline">
-              {assignedSteps?.length || 0} pending
-            </Badge>
+        {assignments.length === 0 && (
+          <div className="text-center py-8 text-muted-foreground">
+            <Workflow className="h-12 w-12 mx-auto mb-3 opacity-50" />
+            <p className="text-sm">No workflow assignments yet</p>
           </div>
-        </CardHeader>
-        <CardContent>
-          {!assignedSteps || assignedSteps.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              No tasks assigned to you
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {assignedSteps.map((step: any) => {
-                const isOverdue = step.dueDate && step.dueDate < Date.now();
-                
-                return (
-                  <div
-                    key={step._id}
-                    className={`p-4 border rounded-lg ${isOverdue ? "border-red-300 bg-red-50" : ""}`}
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          {getStatusIcon(step.status)}
-                          <h4 className="font-medium">{step.name}</h4>
-                          <Badge className={getStatusColor(step.status)}>
-                            {step.status.replace("_", " ")}
-                          </Badge>
-                        </div>
-                        {step.workflow && (
-                          <div className="text-sm text-muted-foreground mb-2">
-                            Workflow: {step.workflow.name}
-                          </div>
-                        )}
-                        {step.dueDate && (
-                          <div className={`text-xs flex items-center gap-1 ${isOverdue ? "text-red-600 font-medium" : "text-muted-foreground"}`}>
-                            <CalendarIcon className="h-3 w-3" />
-                            Due: {format(new Date(step.dueDate), "PPP")}
-                            {isOverdue && " (Overdue)"}
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex gap-2">
-                        {step.status === "pending" && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleStatusUpdate(step._id, "in_progress")}
-                          >
-                            Start
-                          </Button>
-                        )}
-                        {step.status === "in_progress" && (
-                          <Button
-                            size="sm"
-                            onClick={() => handleStatusUpdate(step._id, "completed")}
-                          >
-                            Complete
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Assignment Dialog */}
-      <Dialog open={showAssignDialog} onOpenChange={setShowAssignDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Assign Task</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label>Assignee</Label>
-              <Select
-                value={selectedAssignee || undefined}
-                onValueChange={(value) => setSelectedAssignee(value as Id<"users">)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select team member" />
-                </SelectTrigger>
-                <SelectContent>
-                  {teamMembers?.map((member: any) => (
-                    <SelectItem key={member._id} value={member._id}>
-                      {member.name || member.email}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <Label>Due Date (Optional)</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" className="w-full justify-start text-left">
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {dueDate ? format(dueDate, "PPP") : "Pick a date"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0">
-                  <Calendar
-                    mode="single"
-                    selected={dueDate}
-                    onSelect={setDueDate}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
-
-            <div className="flex gap-2 justify-end">
-              <Button variant="outline" onClick={() => setShowAssignDialog(false)}>
-                Cancel
-              </Button>
-              <Button onClick={handleAssign}>
-                Assign Task
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-    </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
