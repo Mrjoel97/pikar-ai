@@ -1,348 +1,230 @@
-import { useQuery, useMutation } from "convex/react";
+import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { AlertCircle, TrendingUp, TrendingDown, DollarSign, AlertTriangle } from "lucide-react";
-import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
-import { useState } from "react";
-import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { DollarSign, TrendingUp, TrendingDown, AlertTriangle, Target } from "lucide-react";
 
 interface BudgetDashboardProps {
-  businessId?: Id<"businesses">;
-  isGuest?: boolean;
+  businessId: Id<"businesses">;
 }
 
-export function BudgetDashboard({ businessId, isGuest }: BudgetDashboardProps) {
-  const [selectedDept, setSelectedDept] = useState<string>("Marketing");
-  const [forecastAmount, setForecastAmount] = useState<string>("");
-  const [forecastReason, setForecastReason] = useState<string>("");
-  const [adjustDialogOpen, setAdjustDialogOpen] = useState(false);
+export function BudgetDashboard({ businessId }: BudgetDashboardProps) {
+  const budgetTracking = useQuery(api.departmentKpis.getBudgetTracking, { businessId });
+  const crossDeptAnalytics = useQuery(api.departmentKpis.getCrossDepartmentAnalytics, { businessId });
 
-  type BudgetDepartment = {
-    department: string;
-    allocated: number;
-    spent: number;
-    remaining: number;
-    variance: number;
-    forecast: number;
-    alerts: string[];
-  };
-
-  type BudgetData = {
-    fiscalYear: number;
-    departments: BudgetDepartment[];
-  };
-
-  const budgetData = useQuery(
-    api.departmentBudgets.getBudgetAllocations,
-    businessId ? { businessId } : undefined
-  ) as BudgetData | undefined;
-
-  const trendData = useQuery(
-    api.departmentBudgets.getBudgetTrend,
-    businessId ? { businessId, department: selectedDept, months: 6 } : undefined
-  );
-
-  const adjustForecast = useMutation(api.departmentBudgets.adjustForecast);
-
-  const handleAdjustForecast = async () => {
-    if (!businessId || !forecastAmount) {
-      toast.error("Please enter a forecast amount");
-      return;
-    }
-
-    try {
-      await adjustForecast({
-        businessId,
-        department: selectedDept,
-        fiscalYear: budgetData?.fiscalYear || new Date().getFullYear(),
-        newForecast: parseFloat(forecastAmount),
-        reason: forecastReason || "Manual adjustment",
-      });
-      toast.success("Forecast adjusted successfully");
-      setAdjustDialogOpen(false);
-      setForecastAmount("");
-      setForecastReason("");
-    } catch (error) {
-      toast.error("Failed to adjust forecast");
-    }
-  };
-
-  if (!budgetData) {
-    return (
-      <div className="space-y-4">
-        <div className="grid gap-4 md:grid-cols-4">
-          {[1, 2, 3, 4].map((i) => (
-            <Card key={i} className="animate-pulse">
-              <CardHeader className="pb-2">
-                <div className="h-4 bg-gray-200 rounded w-20"></div>
-              </CardHeader>
-              <CardContent>
-                <div className="h-8 bg-gray-200 rounded w-16"></div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </div>
-    );
+  if (!budgetTracking || !crossDeptAnalytics) {
+    return <div>Loading budget data...</div>;
   }
 
-  // Provide a safe default to avoid undefined access during initial render
-  const departments = (budgetData?.departments ?? []) as BudgetDepartment[];
+  const totalBudget = budgetTracking.reduce((sum: number, dept: any) => sum + dept.allocated, 0);
+  const totalSpent = budgetTracking.reduce((sum: number, dept: any) => sum + dept.spent, 0);
+  const totalRemaining = totalBudget - totalSpent;
+  const overallUtilization = (totalSpent / totalBudget) * 100;
 
-  // Totals computed from safe array
-  const totalAllocated = departments.reduce(
-    (sum: number, d: BudgetDepartment) => sum + d.allocated,
-    0
-  );
-  const totalSpent = departments.reduce(
-    (sum: number, d: BudgetDepartment) => sum + d.spent,
-    0
-  );
-  const totalRemaining = totalAllocated - totalSpent;
-  const overallVariance = ((totalSpent - totalAllocated) / totalAllocated) * 100;
+  const atRiskDepts = budgetTracking.filter((dept: any) => dept.utilizationRate > 90);
+  const underUtilizedDepts = budgetTracking.filter((dept: any) => dept.utilizationRate < 50);
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold">Department Budget Tracking</h2>
-          <p className="text-muted-foreground">FY {budgetData.fiscalYear} Budget vs. Actual</p>
-        </div>
-        <Dialog open={adjustDialogOpen} onOpenChange={setAdjustDialogOpen}>
-          <DialogTrigger asChild>
-            <Button variant="outline">Adjust Forecast</Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Adjust Budget Forecast</DialogTitle>
-              <DialogDescription>Update the forecast for {selectedDept}</DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div>
-                <Label>Department</Label>
-                <Select value={selectedDept} onValueChange={setSelectedDept}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {departments.map((dept: BudgetDepartment) => (
-                      <SelectItem key={dept.department} value={dept.department}>
-                        {dept.department}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>New Forecast Amount ($)</Label>
-                <Input
-                  type="number"
-                  value={forecastAmount}
-                  onChange={(e) => setForecastAmount(e.target.value)}
-                  placeholder="Enter amount"
-                />
-              </div>
-              <div>
-                <Label>Reason for Adjustment</Label>
-                <Textarea
-                  value={forecastReason}
-                  onChange={(e) => setForecastReason(e.target.value)}
-                  placeholder="Explain the reason for this adjustment..."
-                  rows={3}
-                />
-              </div>
-              <Button onClick={handleAdjustForecast} className="w-full">
-                Save Forecast
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
-      </div>
-
-      {/* Overall Summary Cards */}
-      <div className="grid gap-4 md:grid-cols-4">
+    <div className="space-y-4">
+      {/* Overview Cards */}
+      <div className="grid grid-cols-4 gap-4">
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Total Allocated</CardTitle>
-            <DollarSign className="h-4 w-4 text-blue-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">${(totalAllocated / 1000).toFixed(0)}K</div>
-            <p className="text-xs text-muted-foreground">FY {budgetData.fiscalYear}</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Total Spent</CardTitle>
-            <TrendingUp className="h-4 w-4 text-orange-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">${(totalSpent / 1000).toFixed(0)}K</div>
-            <p className="text-xs text-muted-foreground">
-              {((totalSpent / totalAllocated) * 100).toFixed(1)}% of budget
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Remaining</CardTitle>
-            <TrendingDown className="h-4 w-4 text-green-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">${(totalRemaining / 1000).toFixed(0)}K</div>
-            <p className="text-xs text-muted-foreground">Available to spend</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Variance</CardTitle>
-            <AlertCircle className={`h-4 w-4 ${overallVariance > 0 ? "text-red-600" : "text-green-600"}`} />
-          </CardHeader>
-          <CardContent>
-            <div className={`text-2xl font-bold ${overallVariance > 0 ? "text-red-600" : "text-green-600"}`}>
-              {overallVariance > 0 ? "+" : ""}{overallVariance.toFixed(1)}%
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {overallVariance > 0 ? "Over budget" : "Under budget"}
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Budget Alerts */}
-      {departments.some((d: BudgetDepartment) => d.alerts.length > 0) && (
-        <Card className="border-orange-200 bg-orange-50">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-orange-900">
-              <AlertTriangle className="h-5 w-5" />
-              Budget Alerts
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <DollarSign className="h-4 w-4" />
+              Total Budget
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-2">
-              {departments.map((dept: BudgetDepartment) =>
-                dept.alerts.map((alert: string, idx: number) => (
-                  <div key={`${dept.department}-${idx}`} className="flex items-start gap-2 text-sm">
-                    <span className="font-semibold text-orange-900">{dept.department}:</span>
-                    <span className="text-orange-800">{alert}</span>
-                  </div>
-                ))
-              )}
-            </div>
+            <div className="text-2xl font-bold">${(totalBudget / 1000).toFixed(0)}K</div>
+            <Progress value={overallUtilization} className="mt-2" />
+            <p className="text-xs text-muted-foreground mt-1">
+              {overallUtilization.toFixed(1)}% utilized
+            </p>
           </CardContent>
         </Card>
-      )}
 
-      {/* Department Budget Comparison */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Budget vs. Actual by Department</CardTitle>
-          <CardDescription>Allocated, spent, and forecast comparison</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <ResponsiveContainer width="100%" height={350}>
-            <BarChart data={departments}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="department" />
-              <YAxis />
-              <Tooltip />
-              <Legend />
-              <Bar dataKey="allocated" fill="#3b82f6" name="Allocated" />
-              <Bar dataKey="spent" fill="#f59e0b" name="Spent" />
-              <Bar dataKey="forecast" fill="#10b981" name="Forecast" />
-            </BarChart>
-          </ResponsiveContainer>
-        </CardContent>
-      </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm">Total Spent</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-red-600">${(totalSpent / 1000).toFixed(0)}K</div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Across all departments
+            </p>
+          </CardContent>
+        </Card>
 
-      {/* Trend Chart */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Budget Trend: {selectedDept}</CardTitle>
-          <CardDescription>Monthly spending vs. allocation</CardDescription>
-          <Select value={selectedDept} onValueChange={setSelectedDept}>
-            <SelectTrigger className="w-48">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {departments.map((dept: BudgetDepartment) => (
-                <SelectItem key={dept.department} value={dept.department}>
-                  {dept.department}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </CardHeader>
-        <CardContent>
-          <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={trendData || []}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="month" />
-              <YAxis />
-              <Tooltip />
-              <Legend />
-              <Line type="monotone" dataKey="allocated" stroke="#3b82f6" name="Allocated" strokeWidth={2} />
-              <Line type="monotone" dataKey="spent" stroke="#f59e0b" name="Spent" strokeWidth={2} />
-              <Line type="monotone" dataKey="forecast" stroke="#10b981" name="Forecast" strokeWidth={2} strokeDasharray="5 5" />
-            </LineChart>
-          </ResponsiveContainer>
-        </CardContent>
-      </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm">Remaining</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600">${(totalRemaining / 1000).toFixed(0)}K</div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Available to spend
+            </p>
+          </CardContent>
+        </Card>
 
-      {/* Department Details Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Department Budget Details</CardTitle>
-          <CardDescription>Detailed breakdown by department</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b">
-                  <th className="text-left py-2 px-4">Department</th>
-                  <th className="text-right py-2 px-4">Allocated</th>
-                  <th className="text-right py-2 px-4">Spent</th>
-                  <th className="text-right py-2 px-4">Remaining</th>
-                  <th className="text-right py-2 px-4">Variance</th>
-                  <th className="text-right py-2 px-4">Forecast</th>
-                </tr>
-              </thead>
-              <tbody>
-                {departments.map((dept: BudgetDepartment) => (
-                  <tr key={dept.department} className="border-b hover:bg-muted/50">
-                    <td className="py-2 px-4 font-medium">{dept.department}</td>
-                    <td className="text-right py-2 px-4">${dept.allocated.toLocaleString()}</td>
-                    <td className="text-right py-2 px-4">${dept.spent.toLocaleString()}</td>
-                    <td className="text-right py-2 px-4">
-                      <span className={dept.remaining < 0 ? "text-red-600 font-semibold" : ""}>
-                        ${dept.remaining.toLocaleString()}
-                      </span>
-                    </td>
-                    <td className="text-right py-2 px-4">
-                      <span className={`font-semibold ${dept.variance > 0 ? "text-red-600" : "text-green-600"}`}>
-                        {dept.variance > 0 ? "+" : ""}{dept.variance.toFixed(1)}%
-                      </span>
-                    </td>
-                    <td className="text-right py-2 px-4">${dept.forecast.toLocaleString()}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4" />
+              At Risk
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-orange-600">{atRiskDepts.length}</div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Departments over 90%
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Tabs defaultValue="departments" className="w-full">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="departments">By Department</TabsTrigger>
+          <TabsTrigger value="trends">Spending Trends</TabsTrigger>
+          <TabsTrigger value="insights">AI Insights</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="departments" className="space-y-4">
+          <div className="space-y-3">
+            {budgetTracking.map((dept: any) => (
+              <Card key={dept.department}>
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-base capitalize">{dept.department}</CardTitle>
+                    <div className="flex items-center gap-2">
+                      <Badge variant={dept.utilizationRate > 90 ? "destructive" : dept.utilizationRate > 75 ? "default" : "secondary"}>
+                        {dept.utilizationRate.toFixed(1)}%
+                      </Badge>
+                      {dept.trend === "increasing" && <TrendingUp className="h-4 w-4 text-red-600" />}
+                      {dept.trend === "decreasing" && <TrendingDown className="h-4 w-4 text-green-600" />}
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="grid grid-cols-3 gap-4 text-sm">
+                    <div>
+                      <p className="text-muted-foreground">Allocated</p>
+                      <p className="font-semibold">${(dept.allocated / 1000).toFixed(1)}K</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Spent</p>
+                      <p className="font-semibold text-red-600">${(dept.spent / 1000).toFixed(1)}K</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Remaining</p>
+                      <p className="font-semibold text-green-600">${(dept.remaining / 1000).toFixed(1)}K</p>
+                    </div>
+                  </div>
+                  <Progress value={dept.utilizationRate} />
+                  {dept.utilizationRate > 90 && (
+                    <div className="flex items-start gap-2 p-2 bg-red-50 border border-red-200 rounded text-xs">
+                      <AlertTriangle className="h-4 w-4 text-red-600 mt-0.5" />
+                      <p className="text-red-900">
+                        Budget nearly exhausted. Consider reallocation or additional funding.
+                      </p>
+                    </div>
+                  )}
+                  {dept.projectedOverrun && (
+                    <div className="flex items-start gap-2 p-2 bg-orange-50 border border-orange-200 rounded text-xs">
+                      <Target className="h-4 w-4 text-orange-600 mt-0.5" />
+                      <p className="text-orange-900">
+                        Projected to exceed budget by ${(dept.projectedOverrun / 1000).toFixed(1)}K
+                      </p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            ))}
           </div>
-        </CardContent>
-      </Card>
+        </TabsContent>
+
+        <TabsContent value="trends" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Monthly Spending Velocity</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {budgetTracking.map((dept: any) => (
+                  <div key={dept.department} className="space-y-1">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="capitalize font-medium">{dept.department}</span>
+                      <span className="text-muted-foreground">
+                        ${(dept.monthlyBurnRate / 1000).toFixed(1)}K/mo
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-blue-500"
+                          style={{ width: `${Math.min(100, (dept.monthlyBurnRate / (dept.allocated / 12)) * 100)}%` }}
+                        />
+                      </div>
+                      {dept.trend === "increasing" && <TrendingUp className="h-3 w-3 text-red-600" />}
+                      {dept.trend === "decreasing" && <TrendingDown className="h-3 w-3 text-green-600" />}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="insights" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Budget Optimization Insights</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {atRiskDepts.length > 0 && (
+                <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                  <h4 className="font-semibold text-sm text-red-900 mb-2">⚠️ High Risk Departments</h4>
+                  <ul className="space-y-1 text-sm text-red-800">
+                    {atRiskDepts.map((dept: any) => (
+                      <li key={dept.department} className="capitalize">
+                        • {dept.department}: {dept.utilizationRate.toFixed(1)}% utilized
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              
+              {underUtilizedDepts.length > 0 && (
+                <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <h4 className="font-semibold text-sm text-blue-900 mb-2">💡 Reallocation Opportunities</h4>
+                  <ul className="space-y-1 text-sm text-blue-800">
+                    {underUtilizedDepts.map((dept: any) => (
+                      <li key={dept.department} className="capitalize">
+                        • {dept.department}: ${(dept.remaining / 1000).toFixed(1)}K available for reallocation
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                <h4 className="font-semibold text-sm text-green-900 mb-2">✓ Recommendations</h4>
+                <ul className="space-y-1 text-sm text-green-800">
+                  <li>• Review high-utilization departments for cost optimization</li>
+                  <li>• Consider reallocating funds from under-utilized departments</li>
+                  <li>• Set up automated alerts for departments exceeding 85% utilization</li>
+                  <li>• Implement quarterly budget reviews for better forecasting</li>
+                </ul>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

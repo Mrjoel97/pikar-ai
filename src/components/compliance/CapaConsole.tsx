@@ -1,70 +1,48 @@
-import React, { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import type { Id } from "@/convex/_generated/dataModel";
+import { Id } from "@/convex/_generated/dataModel";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  AlertTriangle,
-  CheckCircle,
-  Clock,
-  Plus,
-  Filter,
-  TrendingUp,
-  FileText,
-  User,
-  Calendar,
-} from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
+import { AlertCircle, CheckCircle, Clock, TrendingUp, FileText, Target } from "lucide-react";
+import { useState } from "react";
 
 interface CapaConsoleProps {
   businessId: Id<"businesses">;
 }
 
 export function CapaConsole({ businessId }: CapaConsoleProps) {
-  const [statusFilter, setStatusFilter] = useState<string | undefined>(undefined);
-  const [severityFilter, setSeverityFilter] = useState<string | undefined>(undefined);
-  const [createDialogOpen, setCreateDialogOpen] = useState(false);
-  const [selectedCapaId, setSelectedCapaId] = useState<Id<"capaItems"> | null>(null);
-
-  // Form state
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [severity, setSeverity] = useState<"low" | "medium" | "high" | "critical">("medium");
-  const [assigneeId, setAssigneeId] = useState<Id<"users"> | null>(null);
-  const [slaDeadline, setSlaDeadline] = useState("");
-  const [verificationRequired, setVerificationRequired] = useState(true);
-
-  // Queries
-  const capaItems = useQuery(api.capa.listCapaItems, {
+  const [selectedStatus, setSelectedStatus] = useState<"open" | "in_progress" | "verification" | "closed" | undefined>();
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  
+  const capaItems = useQuery(api.capa.listCapaItems, { 
     businessId,
-    status: statusFilter as any,
-    severity: severityFilter as any,
+    status: selectedStatus 
   });
-  const stats = useQuery(api.capa.getCapaStats, { businessId });
-  const selectedCapa = useQuery(
-    api.capa.getCapaItem,
-    selectedCapaId ? { capaId: selectedCapaId } : "skip"
-  );
-  const teamMembers = useQuery(api.teamChat.listTeamMembers, { businessId });
-
-  // Mutations
+  const capaStats = useQuery(api.capa.getCapaStats, { businessId });
+  
   const createCapa = useMutation(api.capa.createCapaItem);
   const updateCapa = useMutation(api.capa.updateCapaItem);
   const verifyCapa = useMutation(api.capa.verifyCapaItem);
-  const deleteCapa = useMutation(api.capa.deleteCapaItem);
 
-  const handleCreateCapa = async () => {
-    if (!title.trim() || !description.trim() || !assigneeId || !slaDeadline) {
+  const [formData, setFormData] = useState({
+    title: "",
+    description: "",
+    severity: "medium" as "low" | "medium" | "high" | "critical",
+    assigneeId: "",
+    slaDeadline: Date.now() + 7 * 24 * 60 * 60 * 1000,
+    verificationRequired: true,
+  });
+
+  const handleCreate = async () => {
+    if (!formData.title || !formData.description) {
       toast.error("Please fill in all required fields");
       return;
     }
@@ -72,373 +50,279 @@ export function CapaConsole({ businessId }: CapaConsoleProps) {
     try {
       await createCapa({
         businessId,
-        title,
-        description,
-        severity,
-        assigneeId,
-        slaDeadline: new Date(slaDeadline).getTime(),
-        verificationRequired,
+        ...formData,
       });
       toast.success("CAPA item created successfully");
-      setCreateDialogOpen(false);
-      resetForm();
-    } catch (error: any) {
-      toast.error(`Failed to create CAPA: ${error.message}`);
+      setIsCreateOpen(false);
+      setFormData({
+        title: "",
+        description: "",
+        severity: "medium",
+        assigneeId: "",
+        slaDeadline: Date.now() + 7 * 24 * 60 * 60 * 1000,
+        verificationRequired: true,
+      });
+    } catch (error) {
+      toast.error("Failed to create CAPA item");
     }
   };
 
-  const handleUpdateStatus = async (capaId: Id<"capaItems">, status: string) => {
-    try {
-      await updateCapa({ capaId, status: status as any });
-      toast.success("Status updated");
-    } catch (error: any) {
-      toast.error(`Failed to update: ${error.message}`);
-    }
-  };
-
-  const handleVerify = async (capaId: Id<"capaItems">, approved: boolean) => {
-    try {
-      await verifyCapa({ capaId, approved });
-      toast.success(approved ? "CAPA approved and closed" : "CAPA verification rejected");
-      setSelectedCapaId(null);
-    } catch (error: any) {
-      toast.error(`Failed to verify: ${error.message}`);
-    }
-  };
-
-  const resetForm = () => {
-    setTitle("");
-    setDescription("");
-    setSeverity("medium");
-    setAssigneeId(null);
-    setSlaDeadline("");
-    setVerificationRequired(true);
-  };
+  if (!capaItems || !capaStats) {
+    return <div>Loading CAPA data...</div>;
+  }
 
   const getSeverityColor = (severity: string) => {
     switch (severity) {
-      case "critical":
-        return "destructive";
-      case "high":
-        return "default";
-      case "medium":
-        return "secondary";
-      case "low":
-        return "outline";
-      default:
-        return "outline";
+      case "critical": return "destructive";
+      case "high": return "default";
+      case "medium": return "secondary";
+      default: return "outline";
     }
   };
 
-  const getStatusColor = (status: string) => {
+  const getStatusIcon = (status: string) => {
     switch (status) {
-      case "open":
-        return "destructive";
-      case "in_progress":
-        return "default";
-      case "verification":
-        return "secondary";
-      case "closed":
-        return "outline";
-      default:
-        return "outline";
+      case "closed": return <CheckCircle className="h-4 w-4 text-green-600" />;
+      case "verification": return <Target className="h-4 w-4 text-blue-600" />;
+      case "in_progress": return <Clock className="h-4 w-4 text-orange-600" />;
+      default: return <AlertCircle className="h-4 w-4 text-red-600" />;
     }
   };
 
   return (
-    <div className="space-y-6">
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+    <div className="space-y-4">
+      {/* Stats Overview */}
+      <div className="grid grid-cols-5 gap-4">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Total CAPA</CardTitle>
+            <CardTitle className="text-sm">Total</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats?.total || 0}</div>
+            <div className="text-3xl font-bold">{capaStats.total}</div>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Open</CardTitle>
+            <CardTitle className="text-sm">Open</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-600">{stats?.open || 0}</div>
+            <div className="text-3xl font-bold text-red-600">{capaStats.open}</div>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">In Progress</CardTitle>
+            <CardTitle className="text-sm">In Progress</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-600">{stats?.inProgress || 0}</div>
+            <div className="text-3xl font-bold text-orange-600">{capaStats.inProgress}</div>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Overdue</CardTitle>
+            <CardTitle className="text-sm">Overdue</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-orange-600">{stats?.overdue || 0}</div>
+            <div className="text-3xl font-bold text-red-600">{capaStats.overdue}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm">Critical</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold text-red-600">{capaStats.critical}</div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Actions and Filters */}
-      <div className="flex flex-wrap gap-4 items-center">
-        <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
-              Create CAPA
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>Create CAPA Item</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div>
-                <Label>Title *</Label>
-                <Input
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  placeholder="Brief description of the issue"
-                />
-              </div>
-              <div>
-                <Label>Description *</Label>
-                <Textarea
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Detailed description"
-                  rows={4}
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label>Severity *</Label>
-                  <Select value={severity} onValueChange={(v) => setSeverity(v as any)}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="low">Low</SelectItem>
-                      <SelectItem value="medium">Medium</SelectItem>
-                      <SelectItem value="high">High</SelectItem>
-                      <SelectItem value="critical">Critical</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label>Assignee *</Label>
-                  <Select value={assigneeId || ""} onValueChange={(v) => setAssigneeId(v as any)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select assignee" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {teamMembers?.map((member: { _id: string; name: string }) => (
-                        <SelectItem key={member._id} value={member._id}>
-                          {member.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-=======
-                  </Select>
-                </div>
-              </div>
-              <div>
-                <Label>SLA Deadline *</Label>
-                <Input
-                  type="datetime-local"
-                  value={slaDeadline}
-                  onChange={(e) => setSlaDeadline(e.target.value)}
-                />
-              </div>
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={verificationRequired}
-                  onChange={(e) => setVerificationRequired(e.target.checked)}
-                  className="h-4 w-4"
-                />
-                <Label>Verification Required</Label>
-              </div>
-              <Button onClick={handleCreateCapa} className="w-full">
-                Create CAPA Item
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
-
-        <Select value={statusFilter || "all"} onValueChange={(v) => setStatusFilter(v === "all" ? undefined : v)}>
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Filter by status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Statuses</SelectItem>
-            <SelectItem value="open">Open</SelectItem>
-            <SelectItem value="in_progress">In Progress</SelectItem>
-            <SelectItem value="verification">Verification</SelectItem>
-            <SelectItem value="closed">Closed</SelectItem>
-          </SelectContent>
-        </Select>
-
-        <Select value={severityFilter || "all"} onValueChange={(v) => setSeverityFilter(v === "all" ? undefined : v)}>
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Filter by severity" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Severities</SelectItem>
-            <SelectItem value="low">Low</SelectItem>
-            <SelectItem value="medium">Medium</SelectItem>
-            <SelectItem value="high">High</SelectItem>
-            <SelectItem value="critical">Critical</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-      {/* CAPA Items List */}
       <Card>
         <CardHeader>
-          <CardTitle>CAPA Items</CardTitle>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>CAPA Management</CardTitle>
+              <CardDescription>
+                Corrective and Preventive Action tracking system
+              </CardDescription>
+            </div>
+            <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+              <DialogTrigger asChild>
+                <Button>Create CAPA</Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-2xl">
+                <DialogHeader>
+                  <DialogTitle>Create New CAPA Item</DialogTitle>
+                  <DialogDescription>
+                    Document a corrective or preventive action
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div>
+                    <Label>Title *</Label>
+                    <Input
+                      value={formData.title}
+                      onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                      placeholder="Brief description of the issue"
+                    />
+                  </div>
+                  <div>
+                    <Label>Description *</Label>
+                    <Textarea
+                      value={formData.description}
+                      onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                      placeholder="Detailed description of the issue and context"
+                      rows={4}
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label>Severity</Label>
+                      <Select
+                        value={formData.severity}
+                        onValueChange={(value: any) => setFormData({ ...formData, severity: value })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="low">Low</SelectItem>
+                          <SelectItem value="medium">Medium</SelectItem>
+                          <SelectItem value="high">High</SelectItem>
+                          <SelectItem value="critical">Critical</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label>SLA Deadline</Label>
+                      <Input
+                        type="date"
+                        value={new Date(formData.slaDeadline).toISOString().split('T')[0]}
+                        onChange={(e) => setFormData({ 
+                          ...formData, 
+                          slaDeadline: new Date(e.target.value).getTime() 
+                        })}
+                      />
+                    </div>
+                  </div>
+                  <Button onClick={handleCreate} className="w-full">
+                    Create CAPA Item
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+          </div>
         </CardHeader>
         <CardContent>
-          <ScrollArea className="h-[600px]">
-            <div className="space-y-4">
-              {capaItems?.map((item: { _id: Id<"capaItems">; title: string; description: string; severity: string; status: string; slaDeadline: number; assigneeName: string }) => (
-                <Card key={item._id} className="cursor-pointer hover:bg-muted/50" onClick={() => setSelectedCapaId(item._id)}>
-                  <CardContent className="pt-6">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
-                          <h3 className="font-semibold">{item.title}</h3>
-                          <Badge variant={getSeverityColor(item.severity)}>{item.severity}</Badge>
-                          <Badge variant={getStatusColor(item.status)}>{item.status}</Badge>
-                          {item.slaDeadline < Date.now() && item.status !== "closed" && (
-                            <Badge variant="destructive">
-                              <Clock className="h-3 w-3 mr-1" />
-                              Overdue
+          <Tabs defaultValue="all" className="w-full">
+            <TabsList>
+              <TabsTrigger value="all" onClick={() => setSelectedStatus(undefined)}>
+                All ({capaStats.total})
+              </TabsTrigger>
+              <TabsTrigger value="open" onClick={() => setSelectedStatus("open")}>
+                Open ({capaStats.open})
+              </TabsTrigger>
+              <TabsTrigger value="in_progress" onClick={() => setSelectedStatus("in_progress")}>
+                In Progress ({capaStats.inProgress})
+              </TabsTrigger>
+              <TabsTrigger value="verification" onClick={() => setSelectedStatus("verification")}>
+                Verification ({capaStats.verification})
+              </TabsTrigger>
+              <TabsTrigger value="closed" onClick={() => setSelectedStatus("closed")}>
+                Closed ({capaStats.closed})
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="all" className="space-y-3 mt-4">
+              {capaItems.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <FileText className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                  <p>No CAPA items found</p>
+                </div>
+              ) : (
+                capaItems.map((item: any) => {
+                  const isOverdue = item.status !== "closed" && item.slaDeadline < Date.now();
+                  const daysRemaining = Math.ceil((item.slaDeadline - Date.now()) / (24 * 60 * 60 * 1000));
+                  
+                  return (
+                    <Card key={item._id} className={isOverdue ? "border-red-500" : ""}>
+                      <CardHeader className="pb-3">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              {getStatusIcon(item.status)}
+                              <CardTitle className="text-base">{item.title}</CardTitle>
+                            </div>
+                            <CardDescription>{item.description}</CardDescription>
+                          </div>
+                          <div className="flex flex-col items-end gap-2">
+                            <Badge variant={getSeverityColor(item.severity)}>
+                              {item.severity}
                             </Badge>
+                            {isOverdue && (
+                              <Badge variant="destructive">Overdue</Badge>
+                            )}
+                          </div>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        <div className="grid grid-cols-3 gap-4 text-sm">
+                          <div>
+                            <p className="text-muted-foreground">Assignee</p>
+                            <p className="font-medium">{item.assigneeName}</p>
+                          </div>
+                          <div>
+                            <p className="text-muted-foreground">Status</p>
+                            <p className="font-medium capitalize">{item.status.replace('_', ' ')}</p>
+                          </div>
+                          <div>
+                            <p className="text-muted-foreground">SLA</p>
+                            <p className={`font-medium ${isOverdue ? 'text-red-600' : daysRemaining <= 2 ? 'text-orange-600' : ''}`}>
+                              {isOverdue ? `${Math.abs(daysRemaining)} days overdue` : `${daysRemaining} days remaining`}
+                            </p>
+                          </div>
+                        </div>
+                        
+                        {item.rootCause && (
+                          <div className="p-2 bg-muted rounded text-sm">
+                            <p className="font-semibold mb-1">Root Cause:</p>
+                            <p>{item.rootCause}</p>
+                          </div>
+                        )}
+                        
+                        {item.correctiveAction && (
+                          <div className="p-2 bg-blue-50 rounded text-sm">
+                            <p className="font-semibold mb-1">Corrective Action:</p>
+                            <p>{item.correctiveAction}</p>
+                          </div>
+                        )}
+                        
+                        {item.preventiveAction && (
+                          <div className="p-2 bg-green-50 rounded text-sm">
+                            <p className="font-semibold mb-1">Preventive Action:</p>
+                            <p>{item.preventiveAction}</p>
+                          </div>
+                        )}
+
+                        <div className="flex gap-2">
+                          {item.status !== "closed" && (
+                            <Button size="sm" variant="outline">
+                              Update Status
+                            </Button>
+                          )}
+                          {item.status === "verification" && item.verificationRequired && (
+                            <Button size="sm">
+                              Verify & Close
+                            </Button>
                           )}
                         </div>
-                        <p className="text-sm text-muted-foreground mb-2">{item.description}</p>
-                        <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                          <span className="flex items-center gap-1">
-                            <User className="h-3 w-3" />
-                            {item.assigneeName}
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <Calendar className="h-3 w-3" />
-                            Due: {new Date(item.slaDeadline).toLocaleDateString()}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-              {capaItems?.length === 0 && (
-                <div className="text-center py-12 text-muted-foreground">
-                  No CAPA items found
-                </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })
               )}
-            </div>
-          </ScrollArea>
+            </TabsContent>
+          </Tabs>
         </CardContent>
       </Card>
-
-      {/* Detail Dialog */}
-      <Dialog open={!!selectedCapaId} onOpenChange={(open) => !open && setSelectedCapaId(null)}>
-        <DialogContent className="max-w-3xl">
-          <DialogHeader>
-            <DialogTitle>CAPA Item Details</DialogTitle>
-          </DialogHeader>
-          {selectedCapa && (
-            <div className="space-y-4">
-              <div>
-                <h3 className="font-semibold text-lg mb-2">{selectedCapa.title}</h3>
-                <div className="flex gap-2 mb-4">
-                  <Badge variant={getSeverityColor(selectedCapa.severity)}>{selectedCapa.severity}</Badge>
-                  <Badge variant={getStatusColor(selectedCapa.status)}>{selectedCapa.status}</Badge>
-                </div>
-              </div>
-              <Separator />
-              <div>
-                <Label>Description</Label>
-                <p className="text-sm mt-1">{selectedCapa.description}</p>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label>Assignee</Label>
-                  <p className="text-sm mt-1">{selectedCapa.assigneeName}</p>
-                </div>
-                <div>
-                  <Label>Created By</Label>
-                  <p className="text-sm mt-1">{selectedCapa.creatorName}</p>
-                </div>
-                <div>
-                  <Label>SLA Deadline</Label>
-                  <p className="text-sm mt-1">{new Date(selectedCapa.slaDeadline).toLocaleString()}</p>
-                </div>
-                <div>
-                  <Label>Created At</Label>
-                  <p className="text-sm mt-1">{new Date(selectedCapa.createdAt).toLocaleString()}</p>
-                </div>
-              </div>
-              {selectedCapa.rootCause && (
-                <div>
-                  <Label>Root Cause</Label>
-                  <p className="text-sm mt-1">{selectedCapa.rootCause}</p>
-                </div>
-              )}
-              {selectedCapa.correctiveAction && (
-                <div>
-                  <Label>Corrective Action</Label>
-                  <p className="text-sm mt-1">{selectedCapa.correctiveAction}</p>
-                </div>
-              )}
-              {selectedCapa.preventiveAction && (
-                <div>
-                  <Label>Preventive Action</Label>
-                  <p className="text-sm mt-1">{selectedCapa.preventiveAction}</p>
-                </div>
-              )}
-              <Separator />
-              <div className="flex gap-2">
-                {selectedCapa.status !== "closed" && (
-                  <>
-                    <Select
-                      value={selectedCapa.status}
-                      onValueChange={(v) => handleUpdateStatus(selectedCapa._id, v)}
-                    >
-                      <SelectTrigger className="w-[200px]">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="open">Open</SelectItem>
-                        <SelectItem value="in_progress">In Progress</SelectItem>
-                        <SelectItem value="verification">Verification</SelectItem>
-                        <SelectItem value="closed">Closed</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    {selectedCapa.status === "verification" && selectedCapa.verificationRequired && (
-                      <>
-                        <Button onClick={() => handleVerify(selectedCapa._id, true)} variant="default">
-                          <CheckCircle className="h-4 w-4 mr-2" />
-                          Approve
-                        </Button>
-                        <Button onClick={() => handleVerify(selectedCapa._id, false)} variant="destructive">
-                          Reject
-                        </Button>
-                      </>
-                    )}
-                  </>
-                )}
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
