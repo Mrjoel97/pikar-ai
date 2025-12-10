@@ -13,8 +13,9 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
-import { CalendarIcon, FileText, Loader2, Clock, Mail, Paperclip, History, Plus, Trash2, Download } from "lucide-react";
+import { CalendarIcon, FileText, Loader2, Clock, Mail, Paperclip, History, Plus, Trash2, Download, CheckCircle2, AlertCircle, TrendingUp } from "lucide-react";
 import { format } from "date-fns";
 
 interface ComplianceReportGeneratorProps {
@@ -41,6 +42,7 @@ export function ComplianceReportGenerator({ businessId }: ComplianceReportGenera
   const [changeNotes, setChangeNotes] = useState<string>("");
   const [evidenceFiles, setEvidenceFiles] = useState<Id<"_storage">[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [generationProgress, setGenerationProgress] = useState(0);
 
   // Scheduling state
   const [scheduleFrequency, setScheduleFrequency] = useState<"daily" | "weekly" | "monthly">("weekly");
@@ -60,6 +62,13 @@ export function ComplianceReportGenerator({ businessId }: ComplianceReportGenera
     }
 
     setIsGenerating(true);
+    setGenerationProgress(0);
+    
+    // Simulate progress
+    const progressInterval = setInterval(() => {
+      setGenerationProgress((prev) => Math.min(prev + 10, 90));
+    }, 300);
+
     try {
       const result = await generateReport({
         businessId,
@@ -73,14 +82,21 @@ export function ComplianceReportGenerator({ businessId }: ComplianceReportGenera
         changeNotes: changeNotes || undefined,
       });
       
-      toast.success("Compliance report generated successfully");
+      setGenerationProgress(100);
+      toast.success("Compliance report generated successfully", {
+        description: `Report ID: ${result.reportId}`,
+      });
       setChangeNotes("");
       setEvidenceFiles([]);
     } catch (error) {
       toast.error("Failed to generate report");
       console.error(error);
     } finally {
-      setIsGenerating(false);
+      clearInterval(progressInterval);
+      setTimeout(() => {
+        setIsGenerating(false);
+        setGenerationProgress(0);
+      }, 500);
     }
   };
 
@@ -102,7 +118,9 @@ export function ComplianceReportGenerator({ businessId }: ComplianceReportGenera
         isActive: true,
       });
       
-      toast.success(`Report scheduled ${scheduleFrequency}`);
+      toast.success(`Report scheduled ${scheduleFrequency}`, {
+        description: `${recipients.length} recipient(s) will receive reports`,
+      });
       setScheduleRecipients("");
     } catch (error) {
       toast.error("Failed to schedule report");
@@ -154,19 +172,50 @@ export function ComplianceReportGenerator({ businessId }: ComplianceReportGenera
   };
 
   if (!templates) {
-    return <div>Loading templates...</div>;
+    return (
+      <div className="flex items-center justify-center p-8">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+      </div>
+    );
   }
+
+  // Calculate report statistics
+  const totalReports = reportHistory?.length || 0;
+  const reportsThisMonth = reportHistory?.filter((r: any) => {
+    const reportDate = new Date(r.generatedAt);
+    const now = new Date();
+    return reportDate.getMonth() === now.getMonth() && reportDate.getFullYear() === now.getFullYear();
+  }).length || 0;
+  const activeSchedules = scheduledReports?.filter((s: any) => s.isActive).length || 0;
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <FileText className="h-5 w-5" />
-          Compliance Report Generator
-        </CardTitle>
-        <CardDescription>
-          Generate, schedule, and distribute compliance reports for regulatory frameworks
-        </CardDescription>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              Compliance Report Generator
+            </CardTitle>
+            <CardDescription>
+              Generate, schedule, and distribute compliance reports for regulatory frameworks
+            </CardDescription>
+          </div>
+          <div className="flex gap-2">
+            <div className="text-center">
+              <div className="text-2xl font-bold">{totalReports}</div>
+              <div className="text-xs text-muted-foreground">Total Reports</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-green-600">{reportsThisMonth}</div>
+              <div className="text-xs text-muted-foreground">This Month</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-blue-600">{activeSchedules}</div>
+              <div className="text-xs text-muted-foreground">Active Schedules</div>
+            </div>
+          </div>
+        </div>
       </CardHeader>
       <CardContent>
         <Tabs defaultValue="generate" className="w-full">
@@ -189,7 +238,10 @@ export function ComplianceReportGenerator({ businessId }: ComplianceReportGenera
                 <SelectContent>
                   {templates.map((template: any) => (
                     <SelectItem key={template._id} value={template._id}>
-                      {template.framework} - {template.name}
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline">{template.framework}</Badge>
+                        {template.name}
+                      </div>
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -287,6 +339,17 @@ export function ComplianceReportGenerator({ businessId }: ComplianceReportGenera
               />
             </div>
 
+            {/* Generation Progress */}
+            {isGenerating && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-sm">
+                  <span>Generating report...</span>
+                  <span className="font-medium">{generationProgress}%</span>
+                </div>
+                <Progress value={generationProgress} />
+              </div>
+            )}
+
             {/* Actions */}
             <div className="flex gap-2">
               <Button onClick={handleGenerate} disabled={isGenerating} className="flex-1">
@@ -296,7 +359,10 @@ export function ComplianceReportGenerator({ businessId }: ComplianceReportGenera
                     Generating...
                   </>
                 ) : (
-                  "Generate Report"
+                  <>
+                    <FileText className="mr-2 h-4 w-4" />
+                    Generate Report
+                  </>
                 )}
               </Button>
             </div>
@@ -398,9 +464,10 @@ export function ComplianceReportGenerator({ businessId }: ComplianceReportGenera
                   </div>
                 ))}
                 {(!scheduledReports || scheduledReports.length === 0) && (
-                  <p className="text-sm text-muted-foreground text-center py-4">
-                    No scheduled reports yet
-                  </p>
+                  <div className="text-center py-8 border rounded-md">
+                    <Clock className="h-12 w-12 mx-auto mb-2 text-muted-foreground opacity-50" />
+                    <p className="text-sm text-muted-foreground">No scheduled reports yet</p>
+                  </div>
                 )}
               </div>
             </div>
@@ -412,10 +479,16 @@ export function ComplianceReportGenerator({ businessId }: ComplianceReportGenera
               {reportHistory?.map((report: any) => (
                 <div key={report._id} className="border rounded-md p-3 space-y-2">
                   <div className="flex items-start justify-between">
-                    <div className="space-y-1">
+                    <div className="space-y-1 flex-1">
                       <div className="flex items-center gap-2">
                         <span className="font-medium">{report.framework}</span>
                         <Badge variant="outline">v{report.version || 1}</Badge>
+                        {report.emailedTo && (
+                          <Badge variant="secondary" className="gap-1">
+                            <CheckCircle2 className="h-3 w-3" />
+                            Distributed
+                          </Badge>
+                        )}
                       </div>
                       <p className="text-sm text-muted-foreground">
                         {format(new Date(report.generatedAt), "PPP p")}
@@ -424,8 +497,9 @@ export function ComplianceReportGenerator({ businessId }: ComplianceReportGenera
                         <p className="text-sm">{report.changeNotes}</p>
                       )}
                       {report.emailedTo && (
-                        <p className="text-xs text-muted-foreground">
-                          Distributed to {report.emailedTo.length} recipient(s)
+                        <p className="text-xs text-muted-foreground flex items-center gap-1">
+                          <Mail className="h-3 w-3" />
+                          Sent to {report.emailedTo.length} recipient(s)
                         </p>
                       )}
                     </div>
@@ -471,9 +545,13 @@ export function ComplianceReportGenerator({ businessId }: ComplianceReportGenera
                 </div>
               ))}
               {(!reportHistory || reportHistory.length === 0) && (
-                <p className="text-sm text-muted-foreground text-center py-8">
-                  No reports generated yet
-                </p>
+                <div className="text-center py-12 border rounded-md">
+                  <History className="h-12 w-12 mx-auto mb-2 text-muted-foreground opacity-50" />
+                  <p className="text-sm text-muted-foreground">No reports generated yet</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Generate your first compliance report to get started
+                  </p>
+                </div>
               )}
             </div>
           </TabsContent>
@@ -484,12 +562,12 @@ export function ComplianceReportGenerator({ businessId }: ComplianceReportGenera
               {templates.map((template: any) => (
                 <div key={template._id} className="border rounded-md p-3 space-y-2">
                   <div className="flex items-start justify-between">
-                    <div className="space-y-1">
-                      <span className="font-medium">{template.name}</span>
+                    <div className="space-y-1 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">{template.name}</span>
+                        <Badge>{template.framework}</Badge>
+                      </div>
                       <p className="text-sm text-muted-foreground">
-                        Framework: {template.framework}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
                         {template.sections?.length || 0} section(s)
                       </p>
                     </div>
