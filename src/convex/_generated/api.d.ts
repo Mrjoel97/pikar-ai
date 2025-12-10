@@ -64,6 +64,7 @@ import type * as customerSegmentation_solopreneur from "../customerSegmentation/
 import type * as customerSegmentation from "../customerSegmentation.js";
 import type * as customerSegmentationData from "../customerSegmentationData.js";
 import type * as data_playbooksSeed from "../data/playbooksSeed.js";
+import type * as dataWarehouse_analytics from "../dataWarehouse/analytics.js";
 import type * as dataWarehouse_dataExports from "../dataWarehouse/dataExports.js";
 import type * as dataWarehouse_dataQuality from "../dataWarehouse/dataQuality.js";
 import type * as dataWarehouse_dataSources from "../dataWarehouse/dataSources.js";
@@ -306,6 +307,7 @@ declare const fullApi: ApiFromModules<{
   customerSegmentation: typeof customerSegmentation;
   customerSegmentationData: typeof customerSegmentationData;
   "data/playbooksSeed": typeof data_playbooksSeed;
+  "dataWarehouse/analytics": typeof dataWarehouse_analytics;
   "dataWarehouse/dataExports": typeof dataWarehouse_dataExports;
   "dataWarehouse/dataQuality": typeof dataWarehouse_dataQuality;
   "dataWarehouse/dataSources": typeof dataWarehouse_dataSources;

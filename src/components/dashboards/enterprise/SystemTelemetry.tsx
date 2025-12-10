@@ -1,13 +1,14 @@
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Progress } from "@/components/ui/progress";
-import { Activity, Cpu, Database, HardDrive, Zap, TrendingUp, AlertTriangle, TrendingDown } from "lucide-react";
-import { motion } from "framer-motion";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area, AreaChart } from "recharts";
+import { Activity } from "lucide-react";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
+import { SystemOverview } from "./telemetry/SystemOverview";
+import { AgentsTab } from "./telemetry/AgentsTab";
+import { PerformanceTab } from "./telemetry/PerformanceTab";
+import { AlertsTab } from "./telemetry/AlertsTab";
 
 interface SystemTelemetryProps {
   agents: Array<any>;
@@ -16,7 +17,6 @@ interface SystemTelemetryProps {
 }
 
 export default function SystemTelemetry({ agents, demoData, businessId }: SystemTelemetryProps) {
-  // Fetch real telemetry data
   const upgradeNudges = useQuery(
     api.telemetry.getUpgradeNudges,
     businessId ? { businessId } : "skip"
@@ -27,7 +27,6 @@ export default function SystemTelemetry({ agents, demoData, businessId }: System
     businessId ? { businessId, days: 7 } : "skip"
   );
 
-  // Add new predictive alerts query
   const predictiveAlerts = useQuery(
     api.telemetry.getPredictiveAlerts,
     businessId ? { businessId } : "skip"
@@ -38,7 +37,6 @@ export default function SystemTelemetry({ agents, demoData, businessId }: System
     businessId ? { businessId } : "skip"
   );
 
-  // Generate performance data with real-time variations
   const performanceData = Array.from({ length: 12 }, (_, i) => ({
     time: `${i * 2}h`,
     cpu: 45 + Math.random() * 20,
@@ -62,7 +60,6 @@ export default function SystemTelemetry({ agents, demoData, businessId }: System
     .filter((n: any) => n.type === 'urgent' || n.type === 'warning')
     .slice(0, 5);
 
-  // Calculate system health score
   const healthScore = Math.round(
     ((100 - systemMetrics.cpu) * 0.3 +
     (100 - systemMetrics.memory) * 0.3 +
@@ -103,13 +100,12 @@ export default function SystemTelemetry({ agents, demoData, businessId }: System
         </TabsList>
 
         <TabsContent value="overview" className="space-y-4">
-          {/* Add Advanced Health Metrics */}
           {advancedHealth && (
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-base">Advanced Health Metrics</CardTitle>
               </CardHeader>
-              <CardContent>
+              <div className="px-6 pb-4">
                 <div className="space-y-3">
                   {advancedHealth.metrics.map((metric: any) => (
                     <div key={metric.name} className="flex items-center justify-between">
@@ -133,336 +129,27 @@ export default function SystemTelemetry({ agents, demoData, businessId }: System
                     </ul>
                   </div>
                 )}
-              </CardContent>
+              </div>
             </Card>
           )}
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <Cpu className="h-4 w-4 text-blue-600" />
-                  <span className="text-xs text-muted-foreground">CPU Usage</span>
-                </div>
-                <div className="text-2xl font-bold">{systemMetrics.cpu}%</div>
-                <Progress value={systemMetrics.cpu} className="h-1 mt-2" />
-                <div className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
-                  {systemMetrics.cpu > 70 ? (
-                    <><TrendingUp className="h-3 w-3 text-red-500" /> High load</>
-                  ) : (
-                    <><TrendingDown className="h-3 w-3 text-green-500" /> Normal</>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <Database className="h-4 w-4 text-purple-600" />
-                  <span className="text-xs text-muted-foreground">Memory</span>
-                </div>
-                <div className="text-2xl font-bold">{systemMetrics.memory}%</div>
-                <Progress value={systemMetrics.memory} className="h-1 mt-2" />
-                <div className="text-xs text-muted-foreground mt-1">
-                  {(systemMetrics.memory * 16 / 100).toFixed(1)} GB / 16 GB
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <HardDrive className="h-4 w-4 text-green-600" />
-                  <span className="text-xs text-muted-foreground">Storage</span>
-                </div>
-                <div className="text-2xl font-bold">{systemMetrics.storage}%</div>
-                <Progress value={systemMetrics.storage} className="h-1 mt-2" />
-                <div className="text-xs text-muted-foreground mt-1">
-                  {(systemMetrics.storage * 500 / 100).toFixed(0)} GB / 500 GB
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <Zap className="h-4 w-4 text-amber-600" />
-                  <span className="text-xs text-muted-foreground">Network</span>
-                </div>
-                <div className="text-2xl font-bold">{systemMetrics.network}%</div>
-                <Progress value={systemMetrics.network} className="h-1 mt-2" />
-                <div className="text-xs text-green-600 mt-1 flex items-center gap-1">
-                  <TrendingUp className="h-3 w-3" /> Optimal
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base">System Load</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Active Processes</span>
-                  <span className="text-sm font-bold">{systemMetrics.activeProcesses}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Queued Jobs</span>
-                  <span className="text-sm font-bold">{systemMetrics.queuedJobs}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Avg Response Time</span>
-                  <span className="text-sm font-bold">{systemMetrics.avgResponseTime}ms</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Throughput</span>
-                  <div className="flex items-center gap-1">
-                    <span className="text-sm font-bold">{systemMetrics.throughput}/min</span>
-                    <TrendingUp className="h-3 w-3 text-green-600" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base">Resource Allocation</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {[
-                  { name: "AI Agents", value: 35, color: "bg-blue-500" },
-                  { name: "Workflows", value: 28, color: "bg-purple-500" },
-                  { name: "Analytics", value: 22, color: "bg-green-500" },
-                  { name: "Storage", value: 15, color: "bg-amber-500" },
-                ].map((resource) => (
-                  <div key={resource.name} className="space-y-1">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="font-medium">{resource.name}</span>
-                      <span className="text-muted-foreground">{resource.value}%</span>
-                    </div>
-                    <div className="h-2 bg-muted rounded-full overflow-hidden">
-                      <div
-                        className={`h-full ${resource.color}`}
-                        style={{ width: `${resource.value}%` }}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Team Performance Integration */}
-          {teamPerformance && teamPerformance.teamMembers.length > 0 && (
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base">Team Activity (Last 7 Days)</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  {teamPerformance.teamMembers.slice(0, 5).map((member: any) => (
-                    <div key={member.userId} className="flex items-center justify-between p-2 border rounded">
-                      <span className="text-sm font-medium">{member.userName}</span>
-                      <div className="flex items-center gap-4 text-xs">
-                        <span>{member.contributions} contributions</span>
-                        <Badge variant="outline">{member.workflowRuns} runs</Badge>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
+          <SystemOverview systemMetrics={systemMetrics} teamPerformance={teamPerformance} />
         </TabsContent>
 
         <TabsContent value="agents" className="space-y-3">
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base">Active AI Agents</CardTitle>
-              <CardDescription>Real-time agent performance monitoring</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              {agents.slice(0, 6).map((agent: any, idx: number) => (
-                <motion.div
-                  key={agent.id}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 0.3, delay: idx * 0.05 }}
-                  className="flex items-center justify-between p-3 border rounded-lg"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className={`w-2 h-2 rounded-full ${
-                      agent.status === 'active' ? 'bg-green-500 animate-pulse' : 'bg-gray-400'
-                    }`} />
-                    <div>
-                      <span className="text-sm font-medium">{agent.name}</span>
-                      <div className="text-xs text-muted-foreground">
-                        {agent.tasksCompleted || 0} tasks completed
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <div className="text-right">
-                      <div className="text-sm font-bold">{agent.efficiency}%</div>
-                      <div className="text-xs text-muted-foreground">efficiency</div>
-                    </div>
-                    <Badge variant={agent.status === 'active' ? 'default' : 'secondary'}>
-                      {agent.status}
-                    </Badge>
-                  </div>
-                </motion.div>
-              ))}
-            </CardContent>
-          </Card>
+          <AgentsTab agents={agents} />
         </TabsContent>
 
         <TabsContent value="performance" className="space-y-4">
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base">Performance Trends (24h)</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={performanceData}>
-                    <defs>
-                      <linearGradient id="colorCpu" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
-                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
-                      </linearGradient>
-                      <linearGradient id="colorMemory" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.3}/>
-                        <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0}/>
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="time" />
-                    <YAxis />
-                    <Tooltip />
-                    <Area type="monotone" dataKey="cpu" stroke="#3b82f6" fillOpacity={1} fill="url(#colorCpu)" name="CPU %" />
-                    <Area type="monotone" dataKey="memory" stroke="#8b5cf6" fillOpacity={1} fill="url(#colorMemory)" name="Memory %" />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base">Request Throughput & Response Time</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="h-48">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={performanceData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="time" />
-                    <YAxis yAxisId="left" />
-                    <YAxis yAxisId="right" orientation="right" />
-                    <Tooltip />
-                    <Line yAxisId="left" type="monotone" dataKey="requests" stroke="#10b981" strokeWidth={2} name="Requests" />
-                    <Line yAxisId="right" type="monotone" dataKey="responseTime" stroke="#f59e0b" strokeWidth={2} name="Response Time (ms)" />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            </CardContent>
-          </Card>
+          <PerformanceTab performanceData={performanceData} />
         </TabsContent>
 
         <TabsContent value="alerts" className="space-y-3">
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base">Predictive Alerts</CardTitle>
-              <CardDescription>AI-powered capacity planning and risk detection</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              {predictiveAlerts?.alerts && predictiveAlerts.alerts.length > 0 ? (
-                <>
-                  <div className="mb-4 p-3 bg-blue-50 rounded-lg">
-                    <div className="text-sm font-semibold mb-1">Risk Score: {predictiveAlerts.riskScore}/100</div>
-                    <Progress value={predictiveAlerts.riskScore} className="h-2" />
-                  </div>
-                  {predictiveAlerts.alerts.map((alert: any, idx: number) => (
-                    <div key={idx} className="flex items-start gap-3 p-3 border rounded-lg">
-                      <AlertTriangle className={`h-4 w-4 mt-0.5 ${
-                        alert.severity === "warning" ? "text-amber-600" : "text-blue-600"
-                      }`} />
-                      <div className="flex-1">
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-sm font-medium">{alert.title}</span>
-                          <Badge variant={alert.severity === "warning" ? "destructive" : "secondary"}>
-                            {alert.severity}
-                          </Badge>
-                        </div>
-                        <p className="text-sm text-muted-foreground mb-1">{alert.message}</p>
-                        <p className="text-xs text-blue-600">→ {alert.recommendation}</p>
-                      </div>
-                    </div>
-                  ))}
-                </>
-              ) : (
-                <div className="text-center py-8 text-sm text-muted-foreground">
-                  No predictive alerts. System operating within normal parameters.
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base">Critical Alerts</CardTitle>
-              <CardDescription>System warnings and notifications</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              {/* Upgrade nudges from telemetry */}
-              {upgradeNudges?.nudges && upgradeNudges.nudges.length > 0 && (
-                <div className="space-y-2 mb-4">
-                  {upgradeNudges.nudges.map((nudge: any) => (
-                    <div key={nudge.id} className="flex items-start gap-3 p-3 border rounded-lg bg-amber-50">
-                      <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5" />
-                      <div className="flex-1">
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-sm font-medium">{nudge.title}</span>
-                          <Badge variant={nudge.severity === 'warn' ? 'destructive' : 'secondary'}>
-                            {nudge.severity}
-                          </Badge>
-                        </div>
-                        <p className="text-sm text-muted-foreground">{nudge.reason}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {criticalAlerts.length > 0 ? (
-                criticalAlerts.map((notification: any) => (
-                  <div key={notification.id} className="flex items-start gap-3 p-3 border rounded-lg">
-                    <div className={`w-2 h-2 rounded-full mt-1 ${
-                      notification.type === 'urgent' ? 'bg-red-500' : 'bg-yellow-500'
-                    }`} />
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-sm font-medium">{notification.message}</span>
-                        <Badge variant={notification.type === 'urgent' ? 'destructive' : 'secondary'}>
-                          {notification.type}
-                        </Badge>
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        {new Date(notification.timestamp || Date.now()).toLocaleString()}
-                      </div>
-                    </div>
-                  </div>
-                ))
-              ) : !upgradeNudges?.nudges?.length ? (
-                <div className="text-center py-8 text-sm text-muted-foreground">
-                  No critical alerts. All systems operational.
-                </div>
-              ) : null}
-            </CardContent>
-          </Card>
+          <AlertsTab 
+            predictiveAlerts={predictiveAlerts}
+            upgradeNudges={upgradeNudges}
+            criticalAlerts={criticalAlerts}
+          />
         </TabsContent>
       </Tabs>
     </section>
