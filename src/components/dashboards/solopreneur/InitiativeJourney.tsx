@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Map, Plus, CheckCircle2, Circle, AlertCircle, Trash2 } from "lucide-react";
+import { Map, Plus, CheckCircle2, Circle, AlertCircle, Trash2, Calendar, ArrowRight, TrendingUp } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import type { Id } from "@/convex/_generated/dataModel";
@@ -22,16 +22,19 @@ interface InitiativeJourneyProps {
 export function InitiativeJourney({ businessId, initiativeId }: InitiativeJourneyProps) {
   const milestones = useQuery(api.initiativeJourney.getMilestones, { initiativeId });
   const progress = useQuery(api.initiativeJourney.getJourneyProgress, { initiativeId });
+  const prediction = useQuery(api.initiativeJourney.predictCompletion, { initiativeId });
   
   const createMilestone = useMutation(api.initiativeJourney.createMilestone);
   const updateStatus = useMutation(api.initiativeJourney.updateMilestoneStatus);
   const deleteMilestone = useMutation(api.initiativeJourney.deleteMilestone);
+  const trackDependencies = useMutation(api.initiativeJourney.trackDependencies);
 
   const [showDialog, setShowDialog] = useState(false);
   const [newMilestone, setNewMilestone] = useState({
     title: "",
     description: "",
     targetDate: "",
+    dependsOn: [] as Id<"journeyMilestones">[],
   });
 
   const handleCreateMilestone = async () => {
@@ -41,16 +44,24 @@ export function InitiativeJourney({ businessId, initiativeId }: InitiativeJourne
     }
 
     try {
-      await createMilestone({
+      const milestoneId = await createMilestone({
         businessId,
         initiativeId,
         title: newMilestone.title,
         description: newMilestone.description,
         targetDate: newMilestone.targetDate ? new Date(newMilestone.targetDate).getTime() : undefined,
       });
+
+      if (newMilestone.dependsOn.length > 0) {
+        await trackDependencies({
+          milestoneId,
+          dependsOn: newMilestone.dependsOn,
+        });
+      }
+
       toast.success("Milestone created");
       setShowDialog(false);
-      setNewMilestone({ title: "", description: "", targetDate: "" });
+      setNewMilestone({ title: "", description: "", targetDate: "", dependsOn: [] });
     } catch (error) {
       toast.error("Failed to create milestone");
     }
@@ -144,6 +155,55 @@ export function InitiativeJourney({ businessId, initiativeId }: InitiativeJourne
                     onChange={(e) => setNewMilestone({ ...newMilestone, targetDate: e.target.value })}
                   />
                 </div>
+                
+                {milestones && milestones.length > 0 && (
+                  <div>
+                    <Label>Dependencies (Optional)</Label>
+                    <Select
+                      onValueChange={(val) => {
+                        if (val && !newMilestone.dependsOn.includes(val as any)) {
+                          setNewMilestone({
+                            ...newMilestone,
+                            dependsOn: [...newMilestone.dependsOn, val as any]
+                          });
+                        }
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select dependencies..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {milestones.map((m) => (
+                          <SelectItem key={m._id} value={m._id}>
+                            {m.title}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {newMilestone.dependsOn.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-2">
+                        {newMilestone.dependsOn.map((depId) => {
+                          const dep = milestones.find(m => m._id === depId);
+                          return dep ? (
+                            <Badge key={depId} variant="secondary" className="text-xs">
+                              {dep.title}
+                              <button 
+                                className="ml-1 hover:text-destructive"
+                                onClick={() => setNewMilestone({
+                                  ...newMilestone,
+                                  dependsOn: newMilestone.dependsOn.filter(id => id !== depId)
+                                })}
+                              >
+                                ×
+                              </button>
+                            </Badge>
+                          ) : null;
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 <Button onClick={handleCreateMilestone} className="w-full">
                   Create Milestone
                 </Button>
@@ -155,18 +215,37 @@ export function InitiativeJourney({ businessId, initiativeId }: InitiativeJourne
       <CardContent className="space-y-4">
         {/* Progress Summary */}
         {progress && (
-          <div className="space-y-2">
-            <div className="flex items-center justify-between text-sm">
-              <span className="font-medium">Overall Progress</span>
-              <span className="text-muted-foreground">{progress.completionPercentage}%</span>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-sm">
+                <span className="font-medium">Overall Progress</span>
+                <span className="text-muted-foreground">{progress.completionPercentage}%</span>
+              </div>
+              <Progress value={progress.completionPercentage} className="h-2" />
+              <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                <span>✅ {progress.completed} completed</span>
+                <span>🔵 {progress.inProgress} in progress</span>
+                <span>🔴 {progress.blocked} blocked</span>
+                <span>⚪ {progress.notStarted} not started</span>
+              </div>
             </div>
-            <Progress value={progress.completionPercentage} className="h-2" />
-            <div className="flex items-center gap-4 text-xs text-muted-foreground">
-              <span>✅ {progress.completed} completed</span>
-              <span>🔵 {progress.inProgress} in progress</span>
-              <span>🔴 {progress.blocked} blocked</span>
-              <span>⚪ {progress.notStarted} not started</span>
-            </div>
+
+            {/* AI Prediction */}
+            {prediction && prediction.estimatedDaysRemaining > 0 && (
+              <div className="bg-blue-50 border border-blue-100 rounded-lg p-3 flex items-start gap-3">
+                <TrendingUp className="h-5 w-5 text-blue-600 mt-0.5" />
+                <div>
+                  <div className="text-sm font-medium text-blue-900">AI Timeline Prediction</div>
+                  <div className="text-xs text-blue-700 mt-1">
+                    Based on current velocity, you're on track to finish in <strong>{prediction.estimatedDaysRemaining} days</strong>.
+                    Estimated completion: {new Date(prediction.estimatedCompletionDate).toLocaleDateString()}
+                  </div>
+                  <div className={`text-xs font-medium mt-1 ${prediction.onTrack ? 'text-green-600' : 'text-amber-600'}`}>
+                    {prediction.onTrack ? "✅ On Track" : "⚠️ At Risk - Consider adjusting timeline"}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -196,9 +275,29 @@ export function InitiativeJourney({ businessId, initiativeId }: InitiativeJourne
                             {milestone.description}
                           </p>
                         )}
+                        
+                        {/* Dependencies */}
+                        {milestone.dependencies && milestone.dependencies.length > 0 && (
+                          <div className="flex items-center gap-1 mb-2 text-xs text-muted-foreground">
+                            <ArrowRight className="h-3 w-3" />
+                            <span>Depends on:</span>
+                            {milestone.dependencies.map((depId: any) => {
+                              const dep = milestones.find(m => m._id === depId);
+                              return dep ? (
+                                <Badge key={depId} variant="outline" className="text-[10px] px-1 py-0 h-4">
+                                  {dep.title}
+                                </Badge>
+                              ) : null;
+                            })}
+                          </div>
+                        )}
+
                         <div className="flex items-center gap-3 text-xs text-muted-foreground">
                           {milestone.targetDate && (
-                            <span>🎯 {new Date(milestone.targetDate).toLocaleDateString()}</span>
+                            <span className="flex items-center gap-1">
+                              <Calendar className="h-3 w-3" />
+                              {new Date(milestone.targetDate).toLocaleDateString()}
+                            </span>
                           )}
                           {milestone.completedAt && (
                             <span>✅ {new Date(milestone.completedAt).toLocaleDateString()}</span>

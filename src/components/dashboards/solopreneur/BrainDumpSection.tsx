@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { Mic, Play, Pause, Trash2, RefreshCw } from "lucide-react";
+import { Mic, Play, Pause, Trash2, RefreshCw, Sparkles } from "lucide-react";
 
 interface BrainDumpSectionProps {
   businessId: string;
