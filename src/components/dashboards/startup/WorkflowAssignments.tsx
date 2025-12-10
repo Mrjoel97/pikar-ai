@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Workflow, User, Clock, CheckCircle, AlertCircle } from "lucide-react";
+import { Workflow, User, Clock, CheckCircle, AlertCircle, TrendingUp, Zap } from "lucide-react";
 import { useNavigate } from "react-router";
 
 interface WorkflowAssignmentsProps {
@@ -16,13 +16,18 @@ export function WorkflowAssignments({ businessId, userId }: WorkflowAssignmentsP
   const navigate = useNavigate();
   
   const assignments = useQuery(
-    api.workflowAssignments.getMyAssignments,
+    api.workflowAssignments.getAssignedSteps,
     businessId && userId ? { businessId: businessId as any, userId: userId as any } : "skip"
   );
 
-  const workloadSummary = useQuery(
-    api.workflowAssignments.getWorkloadSummary,
-    businessId ? { businessId: businessId as any } : "skip"
+  const dueSoon = useQuery(
+    api.workflowAssignments.getStepsDueSoon,
+    businessId && userId ? { businessId: businessId as any, userId: userId as any, hours: 24 } : "skip"
+  );
+
+  const analytics = useQuery(
+    api.workflowAssignments.getAssignmentAnalytics,
+    businessId ? { businessId: businessId as any, days: 30 } : "skip"
   );
 
   if (!assignments) {
@@ -52,7 +57,7 @@ export function WorkflowAssignments({ businessId, userId }: WorkflowAssignmentsP
               <Workflow className="h-5 w-5" />
               Workflow Assignments
             </CardTitle>
-            <CardDescription>Your workflow tasks and team workload</CardDescription>
+            <CardDescription>Your workflow tasks and team workload analytics</CardDescription>
           </div>
           <Button size="sm" onClick={() => navigate("/workflows")}>
             View All
@@ -60,7 +65,7 @@ export function WorkflowAssignments({ businessId, userId }: WorkflowAssignmentsP
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Summary Stats */}
+        {/* Enhanced Summary Stats */}
         <div className="grid grid-cols-3 gap-3">
           <div className="space-y-1">
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -68,6 +73,9 @@ export function WorkflowAssignments({ businessId, userId }: WorkflowAssignmentsP
               Pending
             </div>
             <div className="text-xl font-bold text-amber-600">{pendingAssignments.length}</div>
+            {dueSoon && dueSoon.length > 0 && (
+              <p className="text-xs text-red-600">{dueSoon.length} due soon</p>
+            )}
           </div>
           <div className="space-y-1">
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -75,6 +83,11 @@ export function WorkflowAssignments({ businessId, userId }: WorkflowAssignmentsP
               In Progress
             </div>
             <div className="text-xl font-bold text-blue-600">{inProgressAssignments.length}</div>
+            {analytics && (
+              <p className="text-xs text-muted-foreground">
+                {Math.round(analytics.avgCompletionTime || 0)}h avg
+              </p>
+            )}
           </div>
           <div className="space-y-1">
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -82,17 +95,53 @@ export function WorkflowAssignments({ businessId, userId }: WorkflowAssignmentsP
               Completed
             </div>
             <div className="text-xl font-bold text-green-600">{completedAssignments.length}</div>
+            {analytics && (
+              <p className="text-xs text-muted-foreground">
+                {Math.round(analytics.completionRate || 0)}% rate
+              </p>
+            )}
           </div>
         </div>
 
+        {/* Performance Metrics */}
+        {analytics && (
+          <div className="rounded-lg bg-muted/50 p-3 space-y-2">
+            <h4 className="text-sm font-semibold flex items-center gap-2">
+              <TrendingUp className="h-4 w-4" />
+              30-Day Performance
+            </h4>
+            <div className="grid grid-cols-3 gap-3 text-sm">
+              <div>
+                <div className="text-muted-foreground">Velocity</div>
+                <div className="text-lg font-bold">{analytics.velocity || 0}</div>
+                <div className="text-xs text-muted-foreground">tasks/day</div>
+              </div>
+              <div>
+                <div className="text-muted-foreground">On-Time</div>
+                <div className="text-lg font-bold text-green-600">
+                  {Math.round(analytics.onTimeRate || 0)}%
+                </div>
+                <div className="text-xs text-muted-foreground">completion</div>
+              </div>
+              <div>
+                <div className="text-muted-foreground">Overdue</div>
+                <div className="text-lg font-bold text-red-600">
+                  {analytics.overdueCount || 0}
+                </div>
+                <div className="text-xs text-muted-foreground">tasks</div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Team Workload Summary */}
-        {workloadSummary && workloadSummary.length > 0 && (
+        {analytics && analytics.teamWorkload && analytics.teamWorkload.length > 0 && (
           <div className="space-y-2">
             <h4 className="text-sm font-semibold flex items-center gap-2">
               <User className="h-4 w-4" />
               Team Workload
             </h4>
-            {workloadSummary.slice(0, 5).map((member: any) => (
+            {analytics.teamWorkload.slice(0, 5).map((member: any) => (
               <div key={member.userId} className="space-y-1">
                 <div className="flex items-center justify-between text-sm">
                   <span className="font-medium">{member.userName}</span>
@@ -109,9 +158,12 @@ export function WorkflowAssignments({ businessId, userId }: WorkflowAssignmentsP
           </div>
         )}
 
-        {/* My Assignments */}
+        {/* My Active Tasks with Priority */}
         <div className="space-y-2">
-          <h4 className="text-sm font-semibold">My Active Tasks</h4>
+          <h4 className="text-sm font-semibold flex items-center gap-2">
+            <Zap className="h-4 w-4" />
+            My Active Tasks
+          </h4>
           {[...pendingAssignments, ...inProgressAssignments].slice(0, 5).map((assignment: any) => (
             <div
               key={assignment._id}
@@ -126,14 +178,23 @@ export function WorkflowAssignments({ businessId, userId }: WorkflowAssignmentsP
                 </div>
                 <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
                   {assignment.dueDate && (
-                    <span className={assignment.dueDate < Date.now() ? "text-red-600" : ""}>
+                    <span className={assignment.dueDate < Date.now() ? "text-red-600 font-semibold" : ""}>
                       Due {new Date(assignment.dueDate).toLocaleDateString()}
                     </span>
                   )}
                   {assignment.priority && (
-                    <Badge variant="outline" className="text-xs">
+                    <Badge 
+                      variant={assignment.priority === "urgent" || assignment.priority === "high" ? "destructive" : "outline"} 
+                      className="text-xs"
+                    >
                       {assignment.priority}
                     </Badge>
+                  )}
+                  {assignment.estimatedTime && (
+                    <span className="flex items-center gap-1">
+                      <Clock className="h-3 w-3" />
+                      {assignment.estimatedTime}h
+                    </span>
                   )}
                 </div>
               </div>
