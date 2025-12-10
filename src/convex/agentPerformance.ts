@@ -1,119 +1,77 @@
-import { v } from "convex/values";
 import { query } from "./_generated/server";
-import { Id } from "./_generated/dataModel";
-
-export const getAgentMetrics = query({
-  args: { 
-    agentId: v.id("aiAgents"),
-    businessId: v.id("businesses"),
-  },
-  handler: async (ctx, args) => {
-    const executions = await ctx.db
-      .query("agentExecutions")
-      .withIndex("by_agent", (q) => q.eq("agentId", args.agentId))
-      .collect();
-
-    const total = executions.length;
-    const successful = executions.filter(e => e.status === "success").length;
-    const avgResponseTime = executions.reduce((sum, e) => sum + (e.responseTime || 0), 0) / (total || 1);
-
-    return {
-      totalExecutions: total,
-      successRate: total > 0 ? (successful / total) * 100 : 0,
-      avgResponseTime,
-      lastExecution: executions[0]?.timestamp || null,
-    };
-  },
-});
-
-export const getBusinessAgentPerformance = query({
-  args: { businessId: v.id("businesses") },
-  handler: async (ctx, args) => {
-    const agents = await ctx.db
-      .query("aiAgents")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
-      .collect();
-
-    const performance = await Promise.all(
-      agents.map(async (agent) => {
-        const executions = await ctx.db
-          .query("agentExecutions")
-          .withIndex("by_agent", (q) => q.eq("agentId", agent._id))
-          .collect();
-
-        const total = executions.length;
-        const successful = executions.filter(e => e.status === "success").length;
-        const avgResponseTime = executions.reduce((sum, e) => sum + (e.responseTime || 0), 0) / (total || 1);
-
-        return {
-          agentId: agent._id,
-          agentName: agent.name,
-          totalExecutions: total,
-          successRate: total > 0 ? (successful / total) * 100 : 0,
-          avgResponseTime,
-          lastExecution: executions[0]?.timestamp || null,
-        };
-      })
-    );
-
-    return performance;
-  },
-});
+import { v } from "convex/values";
 
 /**
- * Get predictive agent performance insights
+ * Get predictive agent insights with trend analysis
  */
 export const getPredictiveAgentInsights = query({
-  args: { 
+  args: {
     businessId: v.id("businesses"),
-    days: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const days = args.days || 30;
-    const cutoff = Date.now() - (days * 24 * 60 * 60 * 1000);
-
     const agents = await ctx.db
       .query("aiAgents")
       .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
       .collect();
+
+    const last30Days = Date.now() - 30 * 24 * 60 * 60 * 1000;
 
     const predictions = await Promise.all(
       agents.map(async (agent) => {
+        // Get recent executions
         const executions = await ctx.db
           .query("agentExecutions")
           .withIndex("by_agent", (q) => q.eq("agentId", agent._id))
-          .filter((q) => q.gte(q.field("timestamp"), cutoff))
+          .filter((q) => q.gte(q.field("_creationTime"), last30Days))
           .collect();
 
-        const total = executions.length;
-        const successful = executions.filter(e => e.status === "success").length;
-        const avgResponseTime = executions.reduce((sum, e) => sum + (e.responseTime || 0), 0) / (total || 1);
+        const successRate = executions.length > 0
+          ? (executions.filter(e => e.status === "completed").length / executions.length) * 100
+          : 0;
 
         // Calculate trend
-        const recentExecutions = executions.slice(0, Math.floor(total / 2));
-        const olderExecutions = executions.slice(Math.floor(total / 2));
-        const recentSuccessRate = recentExecutions.length > 0 
-          ? (recentExecutions.filter(e => e.status === "success").length / recentExecutions.length) * 100 
+        const recentExecs = executions.slice(-10);
+        const olderExecs = executions.slice(0, 10);
+        const recentSuccess = recentExecs.length > 0
+          ? (recentExecs.filter(e => e.status === "completed").length / recentExecs.length) * 100
           : 0;
-        const olderSuccessRate = olderExecutions.length > 0 
-          ? (olderExecutions.filter(e => e.status === "success").length / olderExecutions.length) * 100 
+        const olderSuccess = olderExecs.length > 0
+          ? (olderExecs.filter(e => e.status === "completed").length / olderExecs.length) * 100
           : 0;
 
-        const trend = recentSuccessRate > olderSuccessRate ? "improving" : 
-                     recentSuccessRate < olderSuccessRate ? "declining" : "stable";
+        const trend = recentSuccess > olderSuccess + 5 ? "improving" :
+                     recentSuccess < olderSuccess - 5 ? "declining" : "stable";
+
+        // Predict future performance
+        const predictedPerformance = trend === "improving" ? Math.min(successRate + 10, 100) :
+                                    trend === "declining" ? Math.max(successRate - 10, 0) :
+                                    successRate;
+
+        // Risk assessment
+        const riskLevel = successRate < 70 ? "high" :
+                         successRate < 85 ? "medium" : "low";
+
+        // Generate recommendations
+        const recommendations = [];
+        if (successRate < 80) {
+          recommendations.push("Review error logs and optimize agent configuration");
+        }
+        if (trend === "declining") {
+          recommendations.push("Investigate recent changes that may have impacted performance");
+        }
+        if (executions.length < 10) {
+          recommendations.push("Increase agent usage to gather more performance data");
+        }
 
         return {
           agentId: agent._id,
           agentName: agent.name,
-          currentPerformance: total > 0 ? (successful / total) * 100 : 0,
-          predictedPerformance: recentSuccessRate,
+          currentPerformance: successRate,
+          predictedPerformance,
           trend,
-          recommendedActions: trend === "declining" 
-            ? ["Review recent failures", "Update training data", "Check resource allocation"]
-            : trend === "improving"
-            ? ["Scale up capacity", "Document best practices"]
-            : ["Maintain current configuration"],
-          riskLevel: trend === "declining" ? "high" : trend === "stable" ? "medium" : "low",
+          riskLevel,
+          executionCount: executions.length,
+          recommendedActions: recommendations,
         };
       })
     );
@@ -122,9 +80,8 @@ export const getPredictiveAgentInsights = query({
       predictions,
       summary: {
         totalAgents: agents.length,
-        improving: predictions.filter(p => p.trend === "improving").length,
-        declining: predictions.filter(p => p.trend === "declining").length,
-        stable: predictions.filter(p => p.trend === "stable").length,
+        avgPerformance: predictions.reduce((sum, p) => sum + p.currentPerformance, 0) / predictions.length,
+        highRiskAgents: predictions.filter(p => p.riskLevel === "high").length,
       },
     };
   },
@@ -134,33 +91,61 @@ export const getPredictiveAgentInsights = query({
  * Get agent cost optimization recommendations
  */
 export const getAgentCostOptimization = query({
-  args: { businessId: v.id("businesses") },
+  args: {
+    businessId: v.id("businesses"),
+  },
   handler: async (ctx, args) => {
     const agents = await ctx.db
       .query("aiAgents")
       .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
       .collect();
 
+    const last30Days = Date.now() - 30 * 24 * 60 * 60 * 1000;
+
     const recommendations = await Promise.all(
       agents.map(async (agent) => {
         const executions = await ctx.db
           .query("agentExecutions")
           .withIndex("by_agent", (q) => q.eq("agentId", agent._id))
-          .take(100);
+          .filter((q) => q.gte(q.field("_creationTime"), last30Days))
+          .collect();
 
-        const avgCost = executions.reduce((sum, e) => sum + (e.cost || 0), 0) / (executions.length || 1);
-        const totalCost = executions.reduce((sum, e) => sum + (e.cost || 0), 0);
+        // Calculate cost metrics (simulated)
+        const avgExecutionTime = executions.length > 0
+          ? executions.reduce((sum, e) => sum + (e.duration || 0), 0) / executions.length
+          : 0;
+
+        const estimatedCost = executions.length * 0.01; // $0.01 per execution
+        const efficiency = executions.length > 0
+          ? (executions.filter(e => e.status === "completed").length / executions.length) * 100
+          : 0;
+
+        // Optimization potential
+        const optimizationPotential = efficiency < 80 ? "high" :
+                                     efficiency < 90 ? "medium" : "low";
+
+        const estimatedSavings = optimizationPotential === "high" ? estimatedCost * 0.3 :
+                                optimizationPotential === "medium" ? estimatedCost * 0.15 : 0;
+
+        const recommendations = [];
+        if (avgExecutionTime > 5000) {
+          recommendations.push("Optimize agent logic to reduce execution time");
+        }
+        if (efficiency < 85) {
+          recommendations.push("Improve error handling to reduce failed executions");
+        }
+        if (executions.length > 1000) {
+          recommendations.push("Consider caching frequently accessed data");
+        }
 
         return {
           agentId: agent._id,
           agentName: agent.name,
-          currentCost: totalCost,
-          avgCostPerExecution: avgCost,
-          optimizationPotential: avgCost > 0.5 ? "high" : avgCost > 0.2 ? "medium" : "low",
-          recommendations: avgCost > 0.5 
-            ? ["Consider model optimization", "Implement caching", "Batch similar requests"]
-            : ["Current cost is optimal"],
-          estimatedSavings: avgCost > 0.5 ? totalCost * 0.3 : 0,
+          currentCost: estimatedCost,
+          estimatedSavings,
+          optimizationPotential,
+          avgExecutionTime,
+          recommendations,
         };
       })
     );

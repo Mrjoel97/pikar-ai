@@ -55,4 +55,17 @@ export const agentsSchema = {
   })
     .index("by_agent", ["agentId"])
     .index("by_business", ["businessId"]),
+
+  agentExecutions: defineTable({
+    agentId: v.id("aiAgents"),
+    businessId: v.id("businesses"),
+    status: v.union(v.literal("pending"), v.literal("running"), v.literal("completed"), v.literal("failed")),
+    duration: v.optional(v.number()),
+    startedAt: v.number(),
+    completedAt: v.optional(v.number()),
+    error: v.optional(v.string()),
+    result: v.optional(v.any()),
+  })
+    .index("by_agent", ["agentId"])
+    .index("by_business", ["businessId"]),
 };
