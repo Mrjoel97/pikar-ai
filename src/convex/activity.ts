@@ -32,40 +32,16 @@ export const getRecent = query({
 
     const notificationItems: ActivityItem[] = notifications.map((n) => ({
       kind: "notification",
-      id: String(n._id), // cast Id to string
+      id: String(n._id),
       title: n.title,
       message: n.message,
       time: n.createdAt,
-      priority: n.priority,
+      priority: n.type === "error" ? "high" : n.type === "warning" ? "medium" : "low",
     }));
 
-    // Recent workflow runs for the business
-    const runs = await ctx.db
-      .query("workflowRuns")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
-      .order("desc")
-      .take(limit);
-
-    const runItems: ActivityItem[] = runs.map((r) => {
-      const statusLabel =
-        r.status === "succeeded"
-          ? "Succeeded"
-          : r.status === "failed"
-          ? "Failed"
-          : r.status === "running"
-          ? "Running"
-          : r.status;
-      return {
-        kind: "workflow_run",
-        id: String(r._id), // cast Id to string
-        title: `Workflow Run ${statusLabel}`,
-        message: `Mode: ${r.mode}${r.errorMessage ? ` • Error: ${r.errorMessage}` : ""}`,
-        time: r.completedAt ?? r.startedAt ?? 0,
-      };
-    });
-
-    // Merge, sort by time desc, and cap to limit
-    const merged = [...notificationItems, ...runItems]
+    // For now, return only notifications since workflowRuns table doesn't exist
+    // When workflows are implemented, add workflow runs here
+    const merged = notificationItems
       .filter((i) => typeof i.time === "number" && i.time > 0)
       .sort((a, b) => b.time - a.time)
       .slice(0, limit);

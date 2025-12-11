@@ -35,66 +35,26 @@ export const getRecent = query({
       businessId = user.businessId;
     }
 
-    // Return empty array if activityFeed table doesn't exist yet
-    try {
-      let activitiesQuery;
+    // For now, return notifications as activity feed
+    // When activityFeed table is added to schema, use that instead
+    if (!businessId) return [];
 
-      if (businessId) {
-        activitiesQuery = ctx.db
-          .query("activityFeed")
-          .withIndex("by_business", (q) => q.eq("businessId", businessId));
-      } else if (args.userId) {
-        activitiesQuery = ctx.db
-          .query("activityFeed")
-          .withIndex("by_user", (q) => q.eq("userId", args.userId as Id<"users">));
-      } else {
-        activitiesQuery = ctx.db.query("activityFeed");
-      }
+    const notifications = await ctx.db
+      .query("notifications")
+      .withIndex("by_business", (q) => q.eq("businessId", businessId))
+      .order("desc")
+      .take(args.limit || 20);
 
-      const activities = await activitiesQuery
-        .order("desc")
-        .take(args.limit || 20);
-
-      return activities;
-    } catch (error) {
-      // Table might not exist yet
-      return [];
-    }
-  },
-});
-
-/**
- * Track collaboration activity (mentions, replies, reactions)
- */
-export const trackCollaboration = mutation({
-  args: {
-    businessId: v.id("businesses"),
-    userId: v.id("users"),
-    activityType: v.union(
-      v.literal("mention"),
-      v.literal("reply"),
-      v.literal("reaction"),
-      v.literal("share")
-    ),
-    entityType: v.string(),
-    entityId: v.string(),
-    metadata: v.optional(v.any()),
-  },
-  handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Unauthorized");
-
-    const activityId = await ctx.db.insert("activityFeed", {
-      businessId: args.businessId,
-      userId: args.userId,
-      activityType: args.activityType,
-      entityType: args.entityType,
-      entityId: args.entityId,
-      metadata: args.metadata,
-      timestamp: Date.now(),
-    });
-
-    return activityId;
+    return notifications.map((n) => ({
+      _id: n._id,
+      businessId: n.businessId,
+      userId: n.userId,
+      activityType: n.type || "notification",
+      entityType: "notification",
+      entityId: String(n._id),
+      metadata: { title: n.title, message: n.message },
+      timestamp: n.createdAt,
+    }));
   },
 });
 
@@ -113,20 +73,32 @@ export const getTeamActivity = query({
     const timeRange = args.timeRange ?? 7;
     const startTime = Date.now() - timeRange * 24 * 60 * 60 * 1000;
 
-    const activities = await ctx.db
-      .query("activityFeed")
+    // Use notifications as proxy for activity until activityFeed table exists
+    const notifications = await ctx.db
+      .query("notifications")
       .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
-      .filter((q) => q.gte(q.field("timestamp"), startTime))
+      .filter((q) => q.gte(q.field("createdAt"), startTime))
       .order("desc")
       .take(100);
+
+    const activities = notifications.map((n) => ({
+      _id: n._id,
+      businessId: n.businessId,
+      userId: n.userId,
+      activityType: n.type || "notification",
+      entityType: "notification",
+      entityId: String(n._id),
+      metadata: { title: n.title, message: n.message },
+      timestamp: n.createdAt,
+    }));
 
     // Calculate metrics
     const metrics = {
       totalActivities: activities.length,
-      mentions: activities.filter((a) => a.activityType === "mention").length,
-      replies: activities.filter((a) => a.activityType === "reply").length,
-      reactions: activities.filter((a) => a.activityType === "reaction").length,
-      shares: activities.filter((a) => a.activityType === "share").length,
+      mentions: 0,
+      replies: 0,
+      reactions: 0,
+      shares: 0,
     };
 
     // Enrich with user info
@@ -157,36 +129,10 @@ export const getMentions = query({
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) return [];
 
-    let mentions = await ctx.db
-      .query("activityFeed")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
-      .filter((q) => q.eq(q.field("activityType"), "mention"))
-      .order("desc")
-      .take(50);
-
-    // Filter by mentioned user in metadata
-    mentions = mentions.filter(
-      (m) => m.metadata?.mentionedUserId === args.userId
-    );
-
-    if (args.unreadOnly) {
-      mentions = mentions.filter((m) => !m.metadata?.read);
-    }
-
-    return mentions;
+    // Return empty for now - mentions require activityFeed table
+    return [];
   },
 });
-
-// Helper function to extract @mentions from text
-function extractMentions(text: string): string[] {
-  const mentionRegex = /@(\w+)/g;
-  const mentions: string[] = [];
-  let match;
-  while ((match = mentionRegex.exec(text)) !== null) {
-    mentions.push(match[1]);
-  }
-  return mentions;
-}
 
 // Query to get activity types for filtering
 export const getActivityTypes = query({
