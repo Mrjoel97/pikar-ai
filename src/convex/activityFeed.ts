@@ -1,6 +1,5 @@
-import { query, mutation } from "./_generated/server";
+import { query } from "./_generated/server";
 import { v } from "convex/values";
-import { Id } from "./_generated/dataModel";
 
 // Unified recent activity feed with comprehensive aggregation
 export const getRecent = query({
@@ -67,7 +66,7 @@ export const getTeamActivity = query({
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity) return { activities: [], metrics: {} };
+    if (!identity) return { activities: [], metrics: { totalActivities: 0, mentions: 0, replies: 0, reactions: 0, shares: 0 } };
 
     const timeRange = args.timeRange ?? 7;
     const startTime = Date.now() - timeRange * 24 * 60 * 60 * 1000;
@@ -76,11 +75,13 @@ export const getTeamActivity = query({
     const notifications = await ctx.db
       .query("notifications")
       .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
-      .filter((q) => q.gte(q.field("createdAt"), startTime))
       .order("desc")
       .take(100);
 
-    const activities = notifications.map((n) => ({
+    // Filter in memory for time range if needed, though take(100) is safe enough for now
+    const recentNotifications = notifications.filter(n => n.createdAt >= startTime);
+
+    const activities = recentNotifications.map((n) => ({
       _id: n._id,
       businessId: n.businessId,
       userId: n.userId,
