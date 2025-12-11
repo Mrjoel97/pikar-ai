@@ -1,14 +1,15 @@
 import * as React from "react";
-import { useQuery, useAction } from "convex/react";
+import { useQuery, useAction, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Twitter, Linkedin, Facebook, TrendingUp, Clock, Sparkles } from "lucide-react";
+import { Twitter, Linkedin, Facebook, TrendingUp, Clock, Sparkles, RefreshCw } from "lucide-react";
 import { Id } from "@/convex/_generated/dataModel";
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BarChart, Users, Lightbulb, Target } from "lucide-react";
+import PlatformConnector from "@/components/social/PlatformConnector";
 
 interface SocialPerformanceProps {
   businessId: Id<"businesses">;
@@ -17,11 +18,19 @@ interface SocialPerformanceProps {
 export default function SocialPerformance({ businessId }: SocialPerformanceProps) {
   const [showRecommendations, setShowRecommendations] = React.useState(false);
   const [selectedPlatform, setSelectedPlatform] = React.useState<"twitter" | "linkedin" | "facebook">("twitter");
+  const [refreshing, setRefreshing] = React.useState<string | null>(null);
   
   const metrics = useQuery(
     api.socialAnalytics.getSolopreneurSocialMetrics,
     businessId ? { businessId, days: 30 } : "skip"
   );
+
+  const connectionStatus = useQuery(
+    api.socialAnalytics.getConnectionStatus,
+    businessId ? { businessId } : "skip"
+  );
+
+  const refreshPlatform = useMutation(api.socialAnalytics.refreshPlatformData);
 
   const getRecommendations = useAction(api.socialContentAgent.optimization.recommendPostingTimes);
   const [recommendations, setRecommendations] = React.useState<any>(null);
@@ -36,6 +45,18 @@ export default function SocialPerformance({ businessId }: SocialPerformanceProps
   const [contentTopic, setContentTopic] = React.useState("");
   const [contentIdeas, setContentIdeas] = React.useState<any[]>([]);
   const getContentIdeas = useAction(api.socialAnalyticsAdvanced.getContentRecommendations);
+
+  const handleRefreshPlatform = async (platform: "twitter" | "linkedin" | "facebook") => {
+    setRefreshing(platform);
+    try {
+      await refreshPlatform({ businessId, platform });
+      toast.success(`${platform} data refreshed`);
+    } catch (error) {
+      toast.error(`Failed to refresh ${platform} data`);
+    } finally {
+      setRefreshing(null);
+    }
+  };
 
   const handleGetCompetitors = async () => {
     const data = await getCompetitors({ businessId, industry: competitorIndustry });
@@ -73,7 +94,7 @@ export default function SocialPerformance({ businessId }: SocialPerformanceProps
     facebook: Facebook,
   };
 
-  if (!metrics) {
+  if (!metrics || !connectionStatus) {
     return (
       <Card>
         <CardHeader>
@@ -91,6 +112,41 @@ export default function SocialPerformance({ businessId }: SocialPerformanceProps
 
   return (
     <div className="space-y-4">
+      {/* Connection Status Strip */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm">Platform Connections</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-wrap gap-2">
+            <PlatformConnector
+              businessId={businessId}
+              platform="twitter"
+              isConnected={connectionStatus.twitter.connected}
+            />
+            <PlatformConnector
+              businessId={businessId}
+              platform="linkedin"
+              isConnected={connectionStatus.linkedin.connected}
+            />
+            <PlatformConnector
+              businessId={businessId}
+              platform="facebook"
+              isConnected={connectionStatus.facebook.connected}
+            />
+          </div>
+          {(connectionStatus.twitter.lastSync || connectionStatus.linkedin.lastSync || connectionStatus.facebook.lastSync) && (
+            <div className="mt-3 text-xs text-muted-foreground">
+              Last synced: {new Date(Math.max(
+                connectionStatus.twitter.lastSync || 0,
+                connectionStatus.linkedin.lastSync || 0,
+                connectionStatus.facebook.lastSync || 0
+              )).toLocaleString()}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       <Tabs defaultValue="overview" className="w-full">
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
@@ -139,30 +195,46 @@ export default function SocialPerformance({ businessId }: SocialPerformanceProps
                     </Button>
                   </h4>
                   <div className="space-y-2">
-                    {metrics.platformBreakdown.map((platform: any) => {
-                      const Icon = platformIcons[platform.platform as keyof typeof platformIcons];
+                    {Object.entries(metrics.platformMetrics).map(([platform, data]: [string, any]) => {
+                      const Icon = platformIcons[platform as keyof typeof platformIcons];
+                      const status = connectionStatus[platform as keyof typeof connectionStatus];
                       return (
                         <div
-                          key={platform.platform}
+                          key={platform}
                           className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors"
                         >
                           <div className="flex items-center gap-3">
                             {Icon && <Icon className="h-5 w-5 text-muted-foreground" />}
                             <div>
-                              <div className="font-medium capitalize">{platform.platform}</div>
+                              <div className="font-medium capitalize flex items-center gap-2">
+                                {platform}
+                                {status?.connected && (
+                                  <Badge variant="secondary" className="text-xs">Connected</Badge>
+                                )}
+                              </div>
                               <div className="text-sm text-muted-foreground">
-                                {platform.posts} posts • {platform.engagement} engagement
+                                {data.posts} posts • {data.engagement} engagement
                               </div>
                             </div>
                           </div>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleGetRecommendations(platform.platform as any)}
-                            disabled={loadingRecs}
-                          >
-                            <Clock className="h-4 w-4" />
-                          </Button>
+                          <div className="flex items-center gap-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleRefreshPlatform(platform as any)}
+                              disabled={refreshing === platform || !status?.connected}
+                            >
+                              <RefreshCw className={`h-4 w-4 ${refreshing === platform ? 'animate-spin' : ''}`} />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleGetRecommendations(platform as any)}
+                              disabled={loadingRecs}
+                            >
+                              <Clock className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </div>
                       );
                     })}

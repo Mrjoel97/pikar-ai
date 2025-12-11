@@ -1,6 +1,8 @@
 import { v } from "convex/values";
-import { query } from "./_generated/server";
+import { query, action, mutation } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
+import { internalQuery, internalMutation, internal } from "./_generated/server";
+import { internal } from "./_generated/api";
 
 /**
  * Aggregate engagement metrics across all posts for a business
@@ -716,3 +718,145 @@ export const getSolopreneurSocialMetrics = query({
     };
   },
 });
+
+/**
+ * Sync real-time metrics from social platforms
+ */
+export const syncRealTimeMetrics = action({
+  args: {
+    businessId: v.id("businesses"),
+    platform: v.union(v.literal("twitter"), v.literal("linkedin"), v.literal("facebook")),
+  },
+  handler: async (ctx, args) => {
+    // Get account credentials
+    const account = await ctx.runQuery(internal.socialAnalytics.getAccountByPlatform, {
+      businessId: args.businessId,
+      platform: args.platform,
+    });
+
+    if (!account || !account.isConnected) {
+      throw new Error(`${args.platform} account not connected`);
+    }
+
+    // Fetch latest metrics from platform API
+    // Implementation depends on platform
+    const metrics = await fetchPlatformMetrics(args.platform, account.accessToken);
+
+    // Update posts with new metrics
+    await ctx.runMutation(internal.socialAnalytics.updatePostMetrics, {
+      businessId: args.businessId,
+      platform: args.platform,
+      metrics,
+    });
+
+    // Update last sync timestamp
+    await ctx.runMutation(internal.socialAnalytics.updateLastSync, {
+      accountId: account._id,
+      timestamp: Date.now(),
+    });
+
+    return { success: true, syncedAt: Date.now() };
+  },
+});
+
+/**
+ * Get connection status for all platforms
+ */
+export const getConnectionStatus = query({
+  args: {
+    businessId: v.id("businesses"),
+  },
+  handler: async (ctx, args) => {
+    const accounts = await ctx.db
+      .query("socialAccounts")
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .collect();
+
+    const status = {
+      twitter: accounts.find((a) => a.platform === "twitter"),
+      linkedin: accounts.find((a) => a.platform === "linkedin"),
+      facebook: accounts.find((a) => a.platform === "facebook"),
+    };
+
+    return {
+      twitter: {
+        connected: status.twitter?.isConnected || false,
+        username: status.twitter?.username,
+        lastSync: status.twitter?.lastSyncAt,
+      },
+      linkedin: {
+        connected: status.linkedin?.isConnected || false,
+        username: status.linkedin?.username,
+        lastSync: status.linkedin?.lastSyncAt,
+      },
+      facebook: {
+        connected: status.facebook?.isConnected || false,
+        username: status.facebook?.username,
+        lastSync: status.facebook?.lastSyncAt,
+      },
+    };
+  },
+});
+
+/**
+ * Refresh platform data manually
+ */
+export const refreshPlatformData = mutation({
+  args: {
+    businessId: v.id("businesses"),
+    platform: v.union(v.literal("twitter"), v.literal("linkedin"), v.literal("facebook")),
+  },
+  handler: async (ctx, args) => {
+    // Trigger sync action
+    await ctx.scheduler.runAfter(0, internal.socialAnalytics.syncRealTimeMetrics, args);
+    
+    return { success: true, message: "Refresh initiated" };
+  },
+});
+
+// Internal helper queries/mutations
+export const getAccountByPlatform = internalQuery({
+  args: {
+    businessId: v.id("businesses"),
+    platform: v.union(v.literal("twitter"), v.literal("linkedin"), v.literal("facebook")),
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("socialAccounts")
+      .withIndex("by_business_and_platform", (q) =>
+        q.eq("businessId", args.businessId).eq("platform", args.platform)
+      )
+      .first();
+  },
+});
+
+export const updatePostMetrics = internalMutation({
+  args: {
+    businessId: v.id("businesses"),
+    platform: v.string(),
+    metrics: v.any(),
+  },
+  handler: async (ctx, args) => {
+    // Update post metrics in database
+    // Implementation depends on metrics structure
+  },
+});
+
+export const updateLastSync = internalMutation({
+  args: {
+    accountId: v.id("socialAccounts"),
+    timestamp: v.number(),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.accountId, {
+      lastSyncAt: args.timestamp,
+    });
+  },
+});
+
+// Helper function to fetch metrics from platform APIs
+async function fetchPlatformMetrics(platform: string, accessToken: string): Promise<any> {
+  // Implement platform-specific API calls
+  // This is a placeholder
+  return {};
+}

@@ -261,4 +261,22 @@ export const coreSchema = {
   })
     .index("by_business", ["businessId"])
     .index("by_user", ["userId"]),
+
+  socialAccounts: defineTable({
+    businessId: v.id("businesses"),
+    platform: v.union(
+      v.literal("twitter"),
+      v.literal("linkedin"),
+      v.literal("facebook")
+    ),
+    accessToken: v.string(),
+    refreshToken: v.optional(v.string()),
+    expiresAt: v.number(),
+    isConnected: v.boolean(),
+    username: v.optional(v.string()),
+    profileUrl: v.optional(v.string()),
+    lastSyncAt: v.optional(v.number()),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_business_and_platform", ["businessId", "platform"]),
 };

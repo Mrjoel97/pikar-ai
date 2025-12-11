@@ -192,6 +192,8 @@ import type * as socialApiConfigs from "../socialApiConfigs.js";
 import type * as socialContentAgent_analytics from "../socialContentAgent/analytics.js";
 import type * as socialContentAgent_optimization from "../socialContentAgent/optimization.js";
 import type * as socialContentAgent from "../socialContentAgent.js";
+import type * as socialIntegrations_oauth from "../socialIntegrations/oauth.js";
+import type * as socialIntegrations_webhooks from "../socialIntegrations/webhooks.js";
 import type * as socialIntegrations from "../socialIntegrations.js";
 import type * as socialIntegrationsActions from "../socialIntegrationsActions.js";
 import type * as socialMediaDocs from "../socialMediaDocs.js";
@@ -435,6 +437,8 @@ declare const fullApi: ApiFromModules<{
   "socialContentAgent/analytics": typeof socialContentAgent_analytics;
   "socialContentAgent/optimization": typeof socialContentAgent_optimization;
   socialContentAgent: typeof socialContentAgent;
+  "socialIntegrations/oauth": typeof socialIntegrations_oauth;
+  "socialIntegrations/webhooks": typeof socialIntegrations_webhooks;
   socialIntegrations: typeof socialIntegrations;
   socialIntegrationsActions: typeof socialIntegrationsActions;
   socialMediaDocs: typeof socialMediaDocs;
