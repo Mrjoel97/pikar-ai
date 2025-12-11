@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery, useMutation } from "convex/react";
+import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -26,7 +26,6 @@ export default function ContentCapsule({ businessId }: ContentCapsuleProps) {
   const [platforms, setPlatforms] = useState<Array<"twitter" | "linkedin" | "facebook">>([]);
   const [generating, setGenerating] = useState(false);
   
-  // Mock capsule content state
   const [capsule, setCapsule] = useState({
     tweets: ["", "", ""],
     linkedinPost: "",
@@ -40,8 +39,10 @@ export default function ContentCapsule({ businessId }: ContentCapsuleProps) {
     api.contentCapsulesData.listContentCapsules,
     businessId ? { businessId } : "skip"
   );
-  const deleteCapsule = useMutation(api.contentCapsulesData.remove);
+  const deleteCapsule = useMutation(api.contentCapsulesData.deleteContentCapsule);
   const generateCapsule = useMutation(api.contentCapsulesData.generate);
+  const publishCapsule = useAction(api.contentCapsules.publishContentCapsule);
+  const sendEmail = useAction(api.contentCapsules.sendCapsuleEmail);
 
   const togglePlatform = (platform: "twitter" | "linkedin" | "facebook") => {
     setPlatforms((prev) =>
@@ -52,17 +53,20 @@ export default function ContentCapsule({ businessId }: ContentCapsuleProps) {
   };
 
   const handleGenerate = async () => {
-    if (!topic || platforms.length === 0) return;
+    if (!topic || platforms.length === 0) {
+      toast.error("Please enter a topic and select at least one platform");
+      return;
+    }
     
     setGenerating(true);
     try {
       await generateCapsule({ topic, tone });
-      toast.success("Content capsule generated!");
+      toast.success("Content capsule generation started! Check back in a moment.");
       setWizardOpen(false);
       setTopic("");
       setPlatforms([]);
-    } catch (error) {
-      toast.error("Failed to generate capsule");
+    } catch (error: any) {
+      toast.error(error.message || "Failed to generate capsule");
     } finally {
       setGenerating(false);
     }
@@ -74,6 +78,34 @@ export default function ContentCapsule({ businessId }: ContentCapsuleProps) {
       toast.success("Capsule deleted");
     } catch (error) {
       toast.error("Failed to delete capsule");
+    }
+  };
+
+  const handlePublish = async (capsuleId: Id<"contentCapsules">) => {
+    try {
+      toast.info("Publishing content capsule...");
+      const result = await publishCapsule({ capsuleId });
+      if (result.success) {
+        toast.success("Content capsule published successfully!");
+      } else {
+        toast.error("Failed to publish capsule");
+      }
+    } catch (error: any) {
+      toast.error(error.message || "Failed to publish capsule");
+    }
+  };
+
+  const handleSendEmail = async (capsuleId: Id<"contentCapsules">, email: string) => {
+    try {
+      toast.info("Sending email...");
+      const result = await sendEmail({ capsuleId, recipientEmail: email });
+      if (result.success) {
+        toast.success("Email sent successfully!");
+      } else {
+        toast.error(result.error || "Failed to send email");
+      }
+    } catch (error: any) {
+      toast.error(error.message || "Failed to send email");
     }
   };
 
@@ -152,7 +184,12 @@ export default function ContentCapsule({ businessId }: ContentCapsuleProps) {
           </TabsList>
 
           <TabsContent value="library">
-            <CapsuleLibrary capsules={capsules} onDelete={handleDelete} />
+            <CapsuleLibrary 
+              capsules={capsules} 
+              onDelete={handleDelete}
+              onPublish={handlePublish}
+              onSendEmail={handleSendEmail}
+            />
           </TabsContent>
 
           <TabsContent value="social">

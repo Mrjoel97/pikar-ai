@@ -215,3 +215,64 @@ export const deleteContentCapsule = mutation({
     return true;
   },
 });
+
+/**
+ * Generate content capsule (wrapper for action)
+ */
+export const generate = mutation({
+  args: {
+    topic: v.string(),
+    tone: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("[ERR_NOT_AUTHENTICATED] You must be signed in.");
+    }
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("email", (q) => q.eq("email", identity.email!))
+      .first();
+    if (!user || !user.businessId) {
+      throw new Error("[ERR_USER_NOT_FOUND] User or business not found.");
+    }
+
+    // Schedule the generation action
+    await ctx.scheduler.runAfter(0, internal.contentCapsules.generateContentCapsule, {
+      businessId: user.businessId,
+      topic: args.topic,
+      tone: args.tone,
+      platforms: ["twitter", "linkedin", "facebook"],
+    });
+
+    return { success: true, message: "Content generation started" };
+  },
+});
+
+/**
+ * Alias for backwards compatibility
+ */
+export const remove = deleteContentCapsule;
+
+/**
+ * Update capsule status (exposed for frontend)
+ */
+export const updateStatus = mutation({
+  args: {
+    capsuleId: v.id("contentCapsules"),
+    status: v.union(
+      v.literal("draft"),
+      v.literal("scheduled"),
+      v.literal("publishing"),
+      v.literal("published"),
+      v.literal("failed")
+    ),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.capsuleId, {
+      status: args.status,
+    });
+    return true;
+  },
+});
