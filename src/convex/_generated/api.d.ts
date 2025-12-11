@@ -43,6 +43,8 @@ import type * as brandBuilder from "../brandBuilder.js";
 import type * as branding from "../branding.js";
 import type * as brands from "../brands.js";
 import type * as businesses from "../businesses.js";
+import type * as calendar_calendarIntegrations from "../calendar/calendarIntegrations.js";
+import type * as calendar_googleCalendar from "../calendar/googleCalendar.js";
 import type * as calendar from "../calendar.js";
 import type * as capa from "../capa.js";
 import type * as chunking from "../chunking.js";
@@ -288,6 +290,8 @@ declare const fullApi: ApiFromModules<{
   branding: typeof branding;
   brands: typeof brands;
   businesses: typeof businesses;
+  "calendar/calendarIntegrations": typeof calendar_calendarIntegrations;
+  "calendar/googleCalendar": typeof calendar_googleCalendar;
   calendar: typeof calendar;
   capa: typeof capa;
   chunking: typeof chunking;

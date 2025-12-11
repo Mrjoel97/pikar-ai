@@ -1,13 +1,12 @@
 import React, { useState } from "react";
-import { useQuery, useMutation } from "convex/react";
+import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { toast } from "sonner";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
-import { Calendar, Clock, Plus, Trash2 } from "lucide-react";
+import { Calendar, Clock, RefreshCw } from "lucide-react";
+import { CalendarIntegrationButton } from "@/components/calendar/CalendarIntegrationButton";
 import type { Id } from "@/convex/_generated/dataModel";
 
 interface AvailabilityCalendarProps {
@@ -20,17 +19,50 @@ const TIME_SLOTS = [
 ];
 
 export function AvailabilityCalendar({ businessId }: AvailabilityCalendarProps) {
-  const [selectedDay, setSelectedDay] = useState(1); // Monday
+  const [selectedDay, setSelectedDay] = useState(1);
+  const [isSyncing, setIsSyncing] = useState(false);
+  
   const weeklyAvailability = useQuery(api.scheduling.availability.getWeeklyAvailability, {
     businessId,
   });
+  
   const setAvailability = useMutation(api.scheduling.availability.setAvailability);
+  const syncCalendar = useAction(api.calendar.googleCalendar.syncGoogleCalendarEvents);
+  const integrations = useQuery(api.calendar.calendarIntegrations.listCalendarIntegrations, {
+    businessId,
+  });
 
   const appointments = useQuery(api.scheduling.availability.listAppointments, {
     businessId,
     startDate: Date.now(),
-    endDate: Date.now() + 7 * 24 * 60 * 60 * 1000, // next 7 days
+    endDate: Date.now() + 7 * 24 * 60 * 60 * 1000,
   });
+
+  const handleSync = async () => {
+    const googleIntegration = integrations?.find(int => int.provider === "google");
+    if (!googleIntegration) {
+      toast.error("Google Calendar not connected");
+      return;
+    }
+
+    setIsSyncing(true);
+    try {
+      const result = await syncCalendar({
+        businessId,
+        calendarIntegrationId: googleIntegration._id,
+      });
+      
+      if (result.success) {
+        toast.success(`Synced ${result.syncedEvents} events from Google Calendar`);
+      } else {
+        toast.error("Failed to sync calendar");
+      }
+    } catch (error) {
+      toast.error("Calendar sync failed");
+    } finally {
+      setIsSyncing(false);
+    }
+  };
 
   const handleToggleAvailability = async (
     dayOfWeek: number,
@@ -64,6 +96,27 @@ export function AvailabilityCalendar({ businessId }: AvailabilityCalendarProps) 
 
   return (
     <div className="space-y-6">
+      {/* Calendar Integration */}
+      <Card className="p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold">Calendar Integration</h3>
+          <div className="flex gap-2">
+            <CalendarIntegrationButton businessId={businessId} />
+            {integrations?.some(int => int.provider === "google") && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleSync}
+                disabled={isSyncing}
+              >
+                <RefreshCw className={`h-4 w-4 mr-2 ${isSyncing ? "animate-spin" : ""}`} />
+                Sync Calendar
+              </Button>
+            )}
+          </div>
+        </div>
+      </Card>
+
       {/* Weekly Availability Grid */}
       <Card className="p-6">
         <div className="flex items-center justify-between mb-4">
