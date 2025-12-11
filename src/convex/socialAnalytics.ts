@@ -760,7 +760,7 @@ export const syncRealTimeMetrics = action({
 });
 
 /**
- * Get connection status for all platforms
+ * Get connection status for all social platforms
  */
 export const getConnectionStatus = query({
   args: {
@@ -770,36 +770,30 @@ export const getConnectionStatus = query({
     const accounts = await ctx.db
       .query("socialAccounts")
       .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .filter((q) => q.eq(q.field("isActive"), true))
       .collect();
 
     const status = {
-      twitter: accounts.find((a) => a.platform === "twitter"),
-      linkedin: accounts.find((a) => a.platform === "linkedin"),
-      facebook: accounts.find((a) => a.platform === "facebook"),
+      twitter: { connected: false, lastSync: null as number | null },
+      linkedin: { connected: false, lastSync: null as number | null },
+      facebook: { connected: false, lastSync: null as number | null },
     };
 
-    return {
-      twitter: {
-        connected: status.twitter?.isConnected || false,
-        username: status.twitter?.username,
-        lastSync: status.twitter?.lastSyncAt,
-      },
-      linkedin: {
-        connected: status.linkedin?.isConnected || false,
-        username: status.linkedin?.username,
-        lastSync: status.linkedin?.lastSyncAt,
-      },
-      facebook: {
-        connected: status.facebook?.isConnected || false,
-        username: status.facebook?.username,
-        lastSync: status.facebook?.lastSyncAt,
-      },
-    };
+    for (const account of accounts) {
+      if (account.platform in status) {
+        status[account.platform as keyof typeof status] = {
+          connected: true,
+          lastSync: account.lastUsedAt || account.connectedAt,
+        };
+      }
+    }
+
+    return status;
   },
 });
 
 /**
- * Refresh platform data manually
+ * Refresh platform data (sync latest posts and metrics)
  */
 export const refreshPlatformData = mutation({
   args: {
@@ -807,10 +801,81 @@ export const refreshPlatformData = mutation({
     platform: v.union(v.literal("twitter"), v.literal("linkedin"), v.literal("facebook")),
   },
   handler: async (ctx, args) => {
-    // Trigger sync action
-    await ctx.scheduler.runAfter(0, internal.socialAnalytics.syncRealTimeMetrics, args);
-    
-    return { success: true, message: "Refresh initiated" };
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("[ERR_NOT_AUTHENTICATED] You must be signed in.");
+    }
+
+    // Update lastUsedAt timestamp
+    const account = await ctx.db
+      .query("socialAccounts")
+      .withIndex("by_business_and_platform", (q) =>
+        q.eq("businessId", args.businessId).eq("platform", args.platform)
+      )
+      .filter((q) => q.eq(q.field("isActive"), true))
+      .first();
+
+    if (!account) {
+      throw new Error("[ERR_ACCOUNT_NOT_FOUND] Platform not connected");
+    }
+
+    await ctx.db.patch(account._id, {
+      lastUsedAt: Date.now(),
+    });
+
+    // Schedule background sync action
+    await ctx.scheduler.runAfter(0, internal.socialIntegrationsActions.syncPlatformData, {
+      businessId: args.businessId,
+      platform: args.platform,
+      accountId: account._id,
+    });
+
+    return { success: true };
+  },
+});
+
+/**
+ * Internal mutation to update engagement metrics from webhooks
+ */
+export const updateEngagementMetrics = internalMutation({
+  args: {
+    businessId: v.id("businesses"),
+    platform: v.string(),
+    postId: v.string(),
+    likes: v.optional(v.number()),
+    comments: v.optional(v.number()),
+    shares: v.optional(v.number()),
+    retweets: v.optional(v.number()),
+    replies: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    // Find the post in socialPosts table
+    const post = await ctx.db
+      .query("socialPosts")
+      .filter((q) =>
+        q.and(
+          q.eq(q.field("businessId"), args.businessId),
+          q.eq(q.field("externalId"), args.postId)
+        )
+      )
+      .first();
+
+    if (!post) {
+      // Post not found, skip update
+      return { success: false, reason: "post_not_found" };
+    }
+
+    // Update engagement metrics
+    const updates: any = {};
+    if (args.likes !== undefined) updates.likes = args.likes;
+    if (args.comments !== undefined) updates.comments = args.comments;
+    if (args.shares !== undefined) updates.shares = args.shares;
+    if (args.retweets !== undefined) updates.retweets = args.retweets;
+    if (args.replies !== undefined) updates.replies = args.replies;
+
+    await ctx.db.patch(post._id, updates);
+
+    return { success: true };
   },
 });
 

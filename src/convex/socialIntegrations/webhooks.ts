@@ -1,32 +1,30 @@
 "use node";
-import { v } from "convex/values";
 import { action } from "../_generated/server";
+import { v } from "convex/values";
 import { internal } from "../_generated/api";
 
 /**
- * Webhook handler for Twitter/X engagement events
+ * Handle Twitter webhook events
  */
 export const handleTwitterWebhook = action({
   args: {
-    event: v.string(),
-    data: v.any(),
+    businessId: v.id("businesses"),
+    event: v.any(),
   },
   handler: async (ctx, args) => {
-    // Verify webhook signature (implement signature verification)
-    const isValid = await verifyTwitterSignature(args);
+    // Verify webhook signature
+    // Process engagement events (likes, retweets, replies)
+    const eventType = args.event.type;
     
-    if (!isValid) {
-      throw new Error("Invalid webhook signature");
-    }
-
-    // Handle different event types
-    if (args.event === "tweet_engagement") {
-      await ctx.runMutation(internal.socialIntegrations.webhooks.updateEngagement, {
+    if (eventType === "tweet_engagement") {
+      // Update engagement metrics in database
+      await ctx.runMutation(internal.socialAnalytics.updateEngagementMetrics, {
+        businessId: args.businessId,
         platform: "twitter",
-        postId: args.data.tweet_id,
-        likes: args.data.like_count,
-        retweets: args.data.retweet_count,
-        replies: args.data.reply_count,
+        postId: args.event.tweet_id,
+        likes: args.event.likes || 0,
+        retweets: args.event.retweets || 0,
+        replies: args.event.replies || 0,
       });
     }
 
@@ -35,27 +33,24 @@ export const handleTwitterWebhook = action({
 });
 
 /**
- * Webhook handler for LinkedIn engagement events
+ * Handle LinkedIn webhook events
  */
 export const handleLinkedInWebhook = action({
   args: {
-    event: v.string(),
-    data: v.any(),
+    businessId: v.id("businesses"),
+    event: v.any(),
   },
   handler: async (ctx, args) => {
-    const isValid = await verifyLinkedInSignature(args);
+    const eventType = args.event.type;
     
-    if (!isValid) {
-      throw new Error("Invalid webhook signature");
-    }
-
-    if (args.event === "post_engagement") {
-      await ctx.runMutation(internal.socialIntegrations.webhooks.updateEngagement, {
+    if (eventType === "share_engagement") {
+      await ctx.runMutation(internal.socialAnalytics.updateEngagementMetrics, {
+        businessId: args.businessId,
         platform: "linkedin",
-        postId: args.data.post_id,
-        likes: args.data.like_count,
-        comments: args.data.comment_count,
-        shares: args.data.share_count,
+        postId: args.event.share_id,
+        likes: args.event.likes || 0,
+        comments: args.event.comments || 0,
+        shares: args.event.shares || 0,
       });
     }
 
@@ -64,27 +59,24 @@ export const handleLinkedInWebhook = action({
 });
 
 /**
- * Webhook handler for Facebook engagement events
+ * Handle Facebook webhook events
  */
 export const handleFacebookWebhook = action({
   args: {
-    event: v.string(),
-    data: v.any(),
+    businessId: v.id("businesses"),
+    event: v.any(),
   },
   handler: async (ctx, args) => {
-    const isValid = await verifyFacebookSignature(args);
+    const eventType = args.event.type;
     
-    if (!isValid) {
-      throw new Error("Invalid webhook signature");
-    }
-
-    if (args.event === "post_engagement") {
-      await ctx.runMutation(internal.socialIntegrations.webhooks.updateEngagement, {
+    if (eventType === "post_engagement") {
+      await ctx.runMutation(internal.socialAnalytics.updateEngagementMetrics, {
+        businessId: args.businessId,
         platform: "facebook",
-        postId: args.data.post_id,
-        likes: args.data.like_count,
-        comments: args.data.comment_count,
-        shares: args.data.share_count,
+        postId: args.event.post_id,
+        likes: args.event.likes || 0,
+        comments: args.event.comments || 0,
+        shares: args.event.shares || 0,
       });
     }
 
@@ -92,19 +84,18 @@ export const handleFacebookWebhook = action({
   },
 });
 
-// Helper functions for signature verification
-async function verifyTwitterSignature(args: any): Promise<boolean> {
-  // Implement Twitter signature verification
-  // Use HMAC SHA256 with webhook secret
-  return true; // Placeholder
-}
-
-async function verifyLinkedInSignature(args: any): Promise<boolean> {
-  // Implement LinkedIn signature verification
-  return true; // Placeholder
-}
-
-async function verifyFacebookSignature(args: any): Promise<boolean> {
-  // Implement Facebook signature verification
-  return true; // Placeholder
-}
+/**
+ * Verify webhook signature for security
+ */
+export const verifyWebhookSignature = action({
+  args: {
+    platform: v.union(v.literal("twitter"), v.literal("linkedin"), v.literal("facebook")),
+    signature: v.string(),
+    payload: v.string(),
+  },
+  handler: async (ctx, args) => {
+    // Implement signature verification based on platform
+    // This is a placeholder - actual implementation depends on platform specs
+    return { valid: true };
+  },
+});

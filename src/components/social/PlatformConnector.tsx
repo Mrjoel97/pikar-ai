@@ -31,7 +31,7 @@ export default function PlatformConnector({
       : api.socialIntegrations.oauth.initiateFacebookOAuth
   );
 
-  const disconnect = useMutation(api.socialIntegrations.disconnectPlatform);
+  const disconnect = useMutation(api.socialIntegrations.disconnectSocialAccount);
 
   const platformConfig = {
     twitter: { name: "Twitter/X", icon: Twitter, color: "text-blue-500" },
@@ -45,7 +45,7 @@ export default function PlatformConnector({
   const handleConnect = async () => {
     setIsConnecting(true);
     try {
-      const callbackUrl = `${window.location.origin}/oauth/callback/${platform}`;
+      const callbackUrl = `${window.location.origin}/auth/callback/${platform}`;
       const result = await initiateOAuth({ businessId, callbackUrl });
 
       // Open OAuth popup
@@ -92,7 +92,7 @@ export default function PlatformConnector({
 
   const handleDisconnect = async () => {
     try {
-      await disconnect({ businessId, platform });
+      await disconnect({ accountId: businessId });
       toast.success(`${config.name} disconnected`);
       onConnectionChange?.();
       setShowDialog(false);
