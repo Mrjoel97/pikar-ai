@@ -35,8 +35,7 @@ export const getRecent = query({
       businessId = user.businessId;
     }
 
-    // For now, return notifications as activity feed
-    // When activityFeed table is added to schema, use that instead
+    // Use notifications as activity feed
     if (!businessId) return [];
 
     const notifications = await ctx.db

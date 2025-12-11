@@ -39,8 +39,7 @@ export const getRecent = query({
       priority: n.type === "error" ? "high" : n.type === "warning" ? "medium" : "low",
     }));
 
-    // For now, return only notifications since workflowRuns table doesn't exist
-    // When workflows are implemented, add workflow runs here
+    // Return only notifications since workflowRuns table doesn't exist
     const merged = notificationItems
       .filter((i) => typeof i.time === "number" && i.time > 0)
       .sort((a, b) => b.time - a.time)
