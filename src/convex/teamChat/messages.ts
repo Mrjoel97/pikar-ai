@@ -8,7 +8,7 @@ export const getMessages = query({
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const limit = Math.min(args.limit || 20, 20); // Reduce to 20 messages max
+    const limit = Math.min(args.limit || 5, 5); // Reduce to 5 messages max
     
     // Get only top-level messages (no parent)
     const messages = await ctx.db
@@ -27,29 +27,26 @@ export const getMessages = query({
         const replies = await ctx.db
           .query("teamMessages")
           .withIndex("by_parent", (q) => q.eq("parentMessageId", msg._id))
-          .take(10); // Reduce reply count limit
+          .take(3); // Reduce reply count limit to 3
         
-        // Minimal attachment data - only first 3 attachments
-        const compactAttachments = (msg.attachments || []).slice(0, 3).map(att => ({
-          name: att.name.substring(0, 50), // Truncate long names
-          url: att.url,
+        // Minimal attachment data - only first 1 attachment
+        const compactAttachments = (msg.attachments || []).slice(0, 1).map(att => ({
+          name: att.name.substring(0, 20), // Truncate to 20 chars
           type: att.type,
         }));
         
-        // Limit reactions to first 10
-        const limitedReactions = (msg.reactions || []).slice(0, 10);
+        // Limit reactions to first 3
+        const limitedReactions = (msg.reactions || []).slice(0, 3);
         
         return {
           _id: msg._id,
           channelId: msg.channelId,
-          content: msg.content.substring(0, 1000), // Reduce to 1000 chars
+          content: msg.content.substring(0, 200), // Reduce to 200 chars
           attachments: compactAttachments,
           reactions: limitedReactions,
           createdAt: msg.createdAt,
-          editedAt: msg.editedAt,
           sender: sender ? { 
-            name: (sender.name || "").substring(0, 50), 
-            email: (sender.email || "").substring(0, 50) 
+            name: (sender.name || "").substring(0, 20), 
           } : null,
           replyCount: replies.length,
         };
