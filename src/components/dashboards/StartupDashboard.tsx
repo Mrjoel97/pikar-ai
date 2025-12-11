@@ -61,6 +61,10 @@ import { KpiDashboard } from "@/components/departments/KpiDashboard";
 import { TargetSetter } from "@/components/departments/TargetSetter";
 import { KpiAlerts } from "@/components/departments/KpiAlerts";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { UpgradeNudgeBanner } from "./startup/UpgradeNudgeBanner";
+import { QuickTeamActions } from "./startup/QuickTeamActions";
+import { ABTestingSummary } from "./startup/ABTestingSummary";
+import { CRMSyncCard } from "./startup/CRMSyncCard";
 
 // Static imports to prevent lazy loading errors
 import { TeamPerformance } from "./startup/TeamPerformance";
@@ -365,26 +369,35 @@ const pendingApprovals = useQuery(
     );
   }
 
+  const handleRunDiagnostics = async () => {
+    if (!business?._id) {
+      toast.error("Sign in or complete onboarding first");
+      return;
+    }
+    try {
+      await runDiagnostics({ businessId: business._id });
+      toast.success("Diagnostics started");
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to run diagnostics");
+    }
+  };
+
   return (
     <div className="space-y-6">
-      {/* System Health Strip - Startup+ */}
+      {/* System Health Strip */}
       {!isGuest && business?._id && (
         <SystemHealthStrip businessId={business._id} isGuest={isGuest} />
       )}
 
-      {/* Add: Upgrade nudge banner */}
+      {/* Upgrade Nudge Banner */}
       {!isGuest && upgradeNudges && upgradeNudges !== "skip" && upgradeNudges.showBanner && (
-        <div className="rounded-md border p-3 bg-amber-50 flex items-center gap-3">
-          <Badge variant="outline" className="border-amber-300 text-amber-700">Upgrade</Badge>
-          <div className="text-sm">
-            {upgradeNudges.nudges?.[0]?.message || "You're nearing usage limits—unlock more capacity."}
-          </div>
-          <div className="ml-auto">
-            <Button size="sm" variant="outline" onClick={onUpgrade}>See Plans</Button>
-          </div>
-        </div>
+        <UpgradeNudgeBanner
+          message={upgradeNudges.nudges?.[0]?.message || "You're nearing usage limits—unlock more capacity."}
+          onUpgrade={onUpgrade}
+        />
       )}
 
+      {/* Main Dashboard Widgets Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         <ABTestingWidget businessId={businessId} />
         <TeamOnboardingWidget businessId={businessId} />
@@ -392,6 +405,7 @@ const pendingApprovals = useQuery(
         <TeamPerformance businessId={businessId} />
       </div>
 
+      {/* Workflow Assignments */}
       <LazyLoadErrorBoundary moduleName="Workflow Assignments">
         <Suspense fallback={<div className="text-muted-foreground">Loading workflows...</div>}>
           {businessId && typeof businessId === 'string' && businessId.length > 0 ? (
@@ -402,6 +416,7 @@ const pendingApprovals = useQuery(
         </Suspense>
       </LazyLoadErrorBoundary>
 
+      {/* Customer Journey Map */}
       <LazyLoadErrorBoundary moduleName="Customer Journey Map">
         <Suspense fallback={<div className="text-muted-foreground">Loading customer journey...</div>}>
           {businessId && typeof businessId === 'string' && businessId.length > 0 ? (
@@ -412,6 +427,7 @@ const pendingApprovals = useQuery(
         </Suspense>
       </LazyLoadErrorBoundary>
 
+      {/* Revenue Attribution */}
       <LazyLoadErrorBoundary moduleName="Revenue Attribution">
         <Suspense fallback={<div className="text-muted-foreground">Loading revenue data...</div>}>
           {businessId && typeof businessId === 'string' && businessId.length > 0 ? (
@@ -422,13 +438,14 @@ const pendingApprovals = useQuery(
         </Suspense>
       </LazyLoadErrorBoundary>
 
+      {/* Growth Metrics */}
       <LazyLoadErrorBoundary moduleName="Growth Metrics">
         <Suspense fallback={<div className="text-muted-foreground">Loading growth metrics...</div>}>
-          <GrowthMetrics metrics={metrics} kpis={kpis} />
+          <GrowthMetrics businessId={businessId} />
         </Suspense>
       </LazyLoadErrorBoundary>
 
-      {/* Add: Department KPI Tracking Section - NEW */}
+      {/* Department KPI Tracking Section */}
       {!isGuest && business?._id && (
         <section className="mb-6">
           <Card>
@@ -509,22 +526,14 @@ const pendingApprovals = useQuery(
         </section>
       )}
 
+      {/* Campaign List */}
       <LazyLoadErrorBoundary moduleName="Campaign List">
         <Suspense fallback={<div className="text-muted-foreground">Loading campaigns...</div>}>
           <CampaignList campaigns={campaigns} onCreateCampaign={() => setShowComposer(true)} />
         </Suspense>
       </LazyLoadErrorBoundary>
 
-      <LazyLoadErrorBoundary moduleName="Collaboration Feed">
-        <Suspense fallback={<div className="text-muted-foreground">Loading collaboration feed...</div>}>
-          {businessId && typeof businessId === 'string' && businessId.length > 0 ? (
-            <CollaborationFeed businessId={businessId as Id<"businesses">} />
-          ) : (
-            <div className="text-muted-foreground text-center py-8">Sign in to view collaboration feed</div>
-          )}
-        </Suspense>
-      </LazyLoadErrorBoundary>
-
+      {/* Goals Dashboard */}
       <LazyLoadErrorBoundary moduleName="Goals Dashboard">
         <Suspense fallback={<div className="text-muted-foreground">Loading goals...</div>}>
           {businessId && typeof businessId === 'string' && businessId.length > 0 ? (
@@ -535,116 +544,23 @@ const pendingApprovals = useQuery(
         </Suspense>
       </LazyLoadErrorBoundary>
 
-      {/* Quick Team Actions (Right Sidebar analogue) */}
-      <section>
-        <h2 className="text-xl font-semibold mb-4">Quick Team Actions</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card>
-            <CardContent className="p-4">
-              <h3 className="font-medium mb-2">Start New Campaign</h3>
-              <p className="text-sm text-muted-foreground mb-3">
-                Assign owners, set objectives, and launch with a template.
-              </p>
-              {/* Open composer modal */}
-              <Button size="sm" onClick={() => setShowComposer(true)}>Create Campaign</Button>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4">
-              <h3 className="font-medium mb-2">Review Pending Approvals</h3>
-              <p className="text-sm text-muted-foreground mb-3">
-                Unblock initiatives awaiting review or sign-off.
-              </p>
-              <Button variant="outline" size="sm" disabled={!hasTier("sme")}>Open Approvals</Button>
-              {!hasTier("sme") && (
-                <div className="mt-3">
-                  <LockedRibbon label="Approvals panel is SME+" />
-                </div>
-              )}
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4">
-              <h3 className="font-medium mb-2">Schedule Team Meeting</h3>
-              <p className="text-sm text-muted-foreground mb-3">
-                Align on goals, blockers, and next actions.
-              </p>
-              <Button variant="outline" size="sm">Schedule</Button>
-              {!hasTier("sme") && (
-                <div className="mt-3">
-                  <LockedRibbon label="Advanced collaboration is SME+" />
-                </div>
-              )}
-            </CardContent>
-          </Card>
+      {/* Quick Team Actions */}
+      <QuickTeamActions
+        onCreateCampaign={() => setShowComposer(true)}
+        onRunDiagnostics={handleRunDiagnostics}
+        hasSMETier={hasTier("sme")}
+        businessId={business?._id}
+      />
 
-          {/* Add: Run Diagnostics action */}
-          <Card>
-            <CardContent className="p-4">
-              <h3 className="font-medium mb-2">Run Phase 0 Diagnostics</h3>
-              <p className="text-sm text-muted-foreground mb-3">
-                Generate a discovery snapshot from your onboarding profile.
-              </p>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={async () => {
-                  if (!business?._id) {
-                    toast.error("Sign in or complete onboarding first");
-                    return;
-                  }
-                  try {
-                    await runDiagnostics({ businessId: business._id });
-                    toast.success("Diagnostics started");
-                  } catch (e: any) {
-                    toast.error(e?.message || "Failed to run diagnostics");
-                  }
-                }}
-                disabled={!business?._id}
-              >
-                Run Diagnostics
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-      </section>
-
-      {/* A/B Summary cards */}
-      <section className="mb-4">
-        <h2 className="text-lg font-semibold mb-3">A/B Testing Summary</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card>
-            <CardContent className="p-4">
-              <div className="text-sm text-muted-foreground">Tests Running</div>
-              <div className="text-2xl font-bold">{testsRunning}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4">
-              <div className="text-sm text-muted-foreground">Last Uplift</div>
-              <div className="text-2xl font-bold">{lastUplift}%</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4">
-              <div className="text-sm text-muted-foreground">Winners</div>
-              <div className="text-2xl font-bold">{winnersCount}</div>
-            </CardContent>
-          </Card>
-        </div>
-        <div className="mt-4 flex gap-2">
-          {!isGuest && business?._id && (
-            <Button onClick={() => setShowExperimentCreator(true)}>
-              Create A/B Test
-            </Button>
-          )}
-          {(!campaigns || campaigns === "skip" || campaigns.length === 0) && !isGuest && (
-            <Button variant="outline" size="sm" onClick={() => navigate("/analytics")}>
-              View Analytics
-            </Button>
-          )}
-        </div>
-      </section>
+      {/* A/B Testing Summary */}
+      <ABTestingSummary
+        testsRunning={testsRunning}
+        lastUplift={lastUplift}
+        winnersCount={winnersCount}
+        onCreateTest={() => setShowExperimentCreator(true)}
+        onViewAnalytics={() => navigate("/analytics")}
+        showAnalyticsButton={!campaigns || campaigns === "skip" || campaigns.length === 0}
+      />
 
       {/* A/B Testing Experiments Dashboard */}
       {!isGuest && business?._id && (
@@ -652,11 +568,6 @@ const pendingApprovals = useQuery(
           <ExperimentDashboard businessId={business._id as Id<"businesses">} />
         </section>
       )}
-
-      {/* Email Campaigns - Now using sub-component */}
-      <Suspense fallback={<Card className="p-4"><CardContent className="text-sm text-muted-foreground">Loading campaigns…</CardContent></Card>}>
-        <CampaignList campaigns={campaigns} onCreateCampaign={() => setShowComposer(true)} />
-      </Suspense>
 
       {/* CRM Sync Status */}
       {!isGuest && business?._id && (
@@ -682,7 +593,7 @@ const pendingApprovals = useQuery(
         </section>
       )}
 
-      {/* Social Post Approval Workflow Section - NEW */}
+      {/* Social Post Approval Workflow Section */}
       {!isGuest && business?._id && (
         <section className="mb-6">
           <Card>
@@ -706,9 +617,7 @@ const pendingApprovals = useQuery(
         </section>
       )}
 
-      {/* Social Media Hub Section - NEW */}
-
-      {/* Pending Approvals */}
+      {/* Pending Approvals - Removed large section, simplified */}
       <section>
         <h2 className="text-xl font-semibold mb-4">Pending Approvals</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -779,25 +688,6 @@ const pendingApprovals = useQuery(
         </div>
       </section>
 
-      <div className="mt-6">
-        <Card className="border-dashed">
-          <CardHeader>
-            <CardTitle>Initiatives for Startups</CardTitle>
-            <CardDescription>
-              Prioritize 2–3 strategic initiatives and attach workflows to accelerate learning and growth.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="flex items-center justify-between gap-4">
-            <p className="text-sm text-muted-foreground">
-              Drive focus with clear outcomes, owners, and linked workflows that unblock execution.
-            </p>
-            <Button size="sm" variant="default" onClick={() => navigate("/initiatives")}>
-              Open Initiatives
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-
       {/* Campaign Composer Modal */}
       <Dialog open={showComposer} onOpenChange={setShowComposer}>
         <DialogContent className="max-w-2xl">
@@ -834,58 +724,7 @@ const pendingApprovals = useQuery(
         </Dialog>
       )}
 
-      {!isGuest && business?._id ? (
-        <BrainDumpSection businessId={business._id} />
-      ) : null}
-
-      {startupAgentsEnabled && Array.isArray(startupAgents) && startupAgents.length > 0 && (
-        <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
-          {startupAgents.map(a => (
-            <Button
-              key={a.agent_key}
-              variant="secondary"
-              className="justify-start"
-              onClick={() => nav(`/agents?agent=${encodeURIComponent(a.agent_key)}`)}
-              title={a.short_desc}
-            >
-              {a.display_name}
-            </Button>
-          ))}
-        </div>
-      )}
-
-      {Array.isArray(startupAgents) && startupAgents.length > 0 && (
-        <div className="mt-3 flex flex-wrap gap-2">
-          {startupAgents.map(a => (
-            <Button
-              key={`tg-${a.agent_key}`}
-              size="sm"
-              variant="outline"
-              onClick={() => nav(`/agents?agent=${encodeURIComponent(a.agent_key)}`)}
-            >
-              Use with {a.display_name}
-            </Button>
-          ))}
-        </div>
-      )}
-
-      {Array.isArray(startupAgents) && startupAgents[0] && (
-        <Card className="mt-6">
-          <CardHeader>
-            <CardTitle>Agent Insights</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="text-sm text-muted-foreground">
-              {startupAgents[0].short_desc}
-            </div>
-            <div>
-              <Button onClick={() => nav(`/agents?agent=${encodeURIComponent(startupAgents[0].agent_key)}`)}>
-                Open {startupAgents[0].display_name}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      {!isGuest && business?._id && <BrainDumpSection businessId={business._id} />}
     </div>
   );
 }
