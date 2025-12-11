@@ -182,3 +182,36 @@ export const listInvoices = query({
     return invoices;
   },
 });
+
+export const getInvoiceById = query({
+  args: { invoiceId: v.id("invoices") },
+  handler: async (ctx, args) => {
+    const user = await ctx.auth.getUserIdentity();
+    if (!user) return null;
+
+    return await ctx.db.get(args.invoiceId);
+  },
+});
+
+export const updateInvoiceStatus = mutation({
+  args: {
+    invoiceId: v.id("invoices"),
+    status: v.union(
+      v.literal("draft"),
+      v.literal("sent"),
+      v.literal("paid"),
+      v.literal("overdue")
+    ),
+  },
+  handler: async (ctx, args) => {
+    const user = await ctx.auth.getUserIdentity();
+    if (!user) throw new Error("Unauthorized");
+
+    await ctx.db.patch(args.invoiceId, {
+      status: args.status,
+      updatedAt: Date.now(),
+    } as any);
+
+    return args.invoiceId;
+  },
+});

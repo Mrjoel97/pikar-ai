@@ -15,6 +15,7 @@ export function InvoiceList({ businessId }: InvoiceListProps) {
   const invoices = useQuery(api.invoices.listInvoices, { businessId });
   const markPaid = useMutation(api.invoices.markInvoicePaid);
   const generatePdf = useAction(api.invoicesActions.generateInvoicePdf);
+  const sendEmail = useAction(api.invoicesActions.sendInvoiceEmail);
 
   const handleMarkPaid = async (invoiceId: Id<"invoices">) => {
     try {
@@ -33,6 +34,20 @@ export function InvoiceList({ businessId }: InvoiceListProps) {
       console.log("PDF URL:", result.pdfUrl);
     } catch (error) {
       toast.error("Failed to generate PDF");
+    }
+  };
+
+  const handleSendEmail = async (invoiceId: Id<"invoices">) => {
+    try {
+      toast.info("Sending invoice email...");
+      const result = await sendEmail({ invoiceId });
+      if (result.success) {
+        toast.success("Invoice sent successfully!");
+      } else {
+        toast.error(result.message || "Failed to send invoice");
+      }
+    } catch (error) {
+      toast.error("Failed to send invoice email");
     }
   };
 
@@ -92,7 +107,12 @@ export function InvoiceList({ businessId }: InvoiceListProps) {
                   <Download className="h-4 w-4 mr-1" />
                   Download
                 </Button>
-                <Button variant="outline" size="sm">
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => handleSendEmail(invoice._id)}
+                  disabled={!invoice.clientEmail}
+                >
                   <Send className="h-4 w-4 mr-1" />
                   Send
                 </Button>
