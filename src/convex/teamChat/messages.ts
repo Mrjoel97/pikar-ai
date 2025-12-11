@@ -8,7 +8,7 @@ export const getMessages = query({
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const limit = Math.min(args.limit || 3, 3); // Reduce to 3 messages max
+    const limit = Math.min(args.limit || 20, 20); // Reduce to 20 messages max to prevent payload size issues
     
     // Get only top-level messages (no parent)
     const messages = await ctx.db
@@ -33,6 +33,7 @@ export const getMessages = query({
         const compactAttachments = (msg.attachments || []).slice(0, 1).map(att => ({
           name: att.name.substring(0, 15), // Reduce to 15 chars
           type: att.type.substring(0, 10), // Truncate type too
+          url: att.url, // Keep URL
         }));
         
         // Limit reactions to first 2
@@ -65,10 +66,11 @@ export const searchMessages = query({
     channelId: v.optional(v.id("teamChannels")),
   },
   handler: async (ctx, args) => {
+    // Use take(100) instead of collect() to prevent loading too much data
     let messages = await ctx.db
       .query("teamMessages")
       .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
-      .collect();
+      .take(100);
 
     // Filter by channel if specified
     if (args.channelId) {
@@ -81,13 +83,15 @@ export const searchMessages = query({
       m.content.toLowerCase().includes(searchLower)
     );
 
-    // Get sender info
+    // Get sender info and return minimal data
     const messagesWithUsers = await Promise.all(
-      filtered.slice(0, 50).map(async (msg) => {
+      filtered.slice(0, 20).map(async (msg) => {
         const sender = await ctx.db.get(msg.senderId);
         return {
-          ...msg,
-          sender: sender ? { name: sender.name, email: sender.email } : null,
+          _id: msg._id,
+          content: msg.content.substring(0, 100), // Truncate content
+          createdAt: msg.createdAt,
+          sender: sender ? { name: sender.name } : null, // Only return name
         };
       })
     );
