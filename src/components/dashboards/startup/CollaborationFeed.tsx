@@ -3,11 +3,12 @@ import { api } from "@/convex/_generated/api";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MessageSquare, AtSign, Heart, Share2, TrendingUp, Users, Zap } from "lucide-react";
+import { MessageSquare, AtSign, Heart, Share2, TrendingUp, Users, Zap, Clock } from "lucide-react";
 import { useNavigate } from "react-router";
+import { Id } from "@/convex/_generated/dataModel";
 
 interface CollaborationFeedProps {
-  businessId: string;
+  businessId: Id<"businesses"> | string | null;
 }
 
 export function CollaborationFeed({ businessId }: CollaborationFeedProps) {
@@ -15,15 +16,15 @@ export function CollaborationFeed({ businessId }: CollaborationFeedProps) {
   
   const teamActivity = useQuery(
     api.activityFeed.getTeamActivity,
-    businessId ? { businessId: businessId as any, timeRange: 7 } : "skip"
+    businessId ? { businessId: businessId as Id<"businesses">, timeRange: 7 } : "skip"
   );
 
   const recentActivity = useQuery(
     api.activityFeed.getRecent,
-    businessId ? { businessId: businessId as any, limit: 10 } : "skip"
+    businessId ? { businessId: businessId as Id<"businesses">, limit: 10 } : "skip"
   );
 
-  if (!teamActivity) {
+  if (!teamActivity || teamActivity === "skip") {
     return (
       <Card className="neu-raised">
         <CardHeader>
@@ -31,7 +32,7 @@ export function CollaborationFeed({ businessId }: CollaborationFeedProps) {
             <MessageSquare className="h-5 w-5" />
             Collaboration Feed
           </CardTitle>
-          <CardDescription>Loading activity...</CardDescription>
+          <CardDescription>Loading team activity...</CardDescription>
         </CardHeader>
       </Card>
     );
@@ -48,9 +49,9 @@ export function CollaborationFeed({ businessId }: CollaborationFeedProps) {
               <MessageSquare className="h-5 w-5" />
               Collaboration Feed
             </CardTitle>
-            <CardDescription>Team activity with mentions, replies, and engagement tracking</CardDescription>
+            <CardDescription>Team activity over the last 7 days</CardDescription>
           </div>
-          <Button size="sm" onClick={() => navigate("/workflows")}>
+          <Button size="sm" variant="outline" onClick={() => navigate("/workflows")}>
             View All
           </Button>
         </div>
@@ -128,34 +129,46 @@ export function CollaborationFeed({ businessId }: CollaborationFeedProps) {
         {/* Recent Activity Feed */}
         <div className="space-y-2">
           <h4 className="text-sm font-semibold flex items-center gap-2">
-            <MessageSquare className="h-4 w-4" />
+            <Clock className="h-4 w-4" />
             Recent Activity
           </h4>
           <div className="space-y-2 max-h-96 overflow-y-auto">
-            {activities.slice(0, 10).map((activity: any) => (
-              <div key={activity._id} className="flex items-start gap-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors">
-                <div className="flex-shrink-0 mt-1">
-                  {activity.activityType === "mention" && <AtSign className="h-4 w-4 text-blue-600" />}
-                  {activity.activityType === "reply" && <MessageSquare className="h-4 w-4 text-green-600" />}
-                  {activity.activityType === "reaction" && <Heart className="h-4 w-4 text-pink-600" />}
-                  {activity.activityType === "share" && <Share2 className="h-4 w-4 text-purple-600" />}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium text-sm">{activity.userName}</span>
-                    <Badge variant="outline" className="text-xs">
-                      {activity.activityType}
-                    </Badge>
+            {activities.slice(0, 10).map((activity: any) => {
+              const activityType = activity.activityType || "notification";
+              const icon = activityType === "mention" ? AtSign :
+                          activityType === "reply" ? MessageSquare :
+                          activityType === "reaction" ? Heart :
+                          activityType === "share" ? Share2 : MessageSquare;
+              
+              const iconColor = activityType === "mention" ? "text-blue-600" :
+                               activityType === "reply" ? "text-green-600" :
+                               activityType === "reaction" ? "text-pink-600" :
+                               activityType === "share" ? "text-purple-600" : "text-gray-600";
+              
+              const Icon = icon;
+              
+              return (
+                <div key={activity._id} className="flex items-start gap-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors">
+                  <div className="flex-shrink-0 mt-1">
+                    <Icon className={`h-4 w-4 ${iconColor}`} />
                   </div>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {activity.entityType} • {new Date(activity.timestamp).toLocaleString()}
-                  </p>
-                  {activity.metadata?.content && (
-                    <p className="text-sm mt-2 line-clamp-2">{activity.metadata.content}</p>
-                  )}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-sm">{activity.userName || "Unknown"}</span>
+                      <Badge variant="outline" className="text-xs">
+                        {activityType}
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {activity.metadata?.title || activity.entityType} • {new Date(activity.timestamp).toLocaleString()}
+                    </p>
+                    {activity.metadata?.message && (
+                      <p className="text-sm mt-2 line-clamp-2">{activity.metadata.message}</p>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 
