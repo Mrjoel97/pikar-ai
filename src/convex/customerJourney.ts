@@ -99,6 +99,90 @@ export const trackStage = mutation({
 });
 
 /**
+ * Get journey templates
+ */
+export const getJourneyTemplates = query({
+  args: {},
+  handler: async () => {
+    return [
+      {
+        id: "saas-onboarding",
+        name: "SaaS Onboarding",
+        description: "Standard SaaS customer onboarding journey",
+        stages: [
+          { name: "Trial Signup", order: 0, color: "#3b82f6" },
+          { name: "Product Activation", order: 1, color: "#8b5cf6" },
+          { name: "Feature Adoption", order: 2, color: "#ec4899" },
+          { name: "Paid Conversion", order: 3, color: "#10b981" },
+          { name: "Active User", order: 4, color: "#f59e0b" },
+        ],
+      },
+      {
+        id: "ecommerce",
+        name: "E-commerce",
+        description: "E-commerce customer journey",
+        stages: [
+          { name: "Visitor", order: 0, color: "#3b82f6" },
+          { name: "Browser", order: 1, color: "#8b5cf6" },
+          { name: "Cart Added", order: 2, color: "#ec4899" },
+          { name: "Purchased", order: 3, color: "#10b981" },
+          { name: "Repeat Customer", order: 4, color: "#f59e0b" },
+        ],
+      },
+      {
+        id: "b2b-sales",
+        name: "B2B Sales",
+        description: "B2B sales pipeline journey",
+        stages: [
+          { name: "Lead", order: 0, color: "#3b82f6" },
+          { name: "Qualified", order: 1, color: "#8b5cf6" },
+          { name: "Demo Scheduled", order: 2, color: "#ec4899" },
+          { name: "Proposal Sent", order: 3, color: "#f59e0b" },
+          { name: "Closed Won", order: 4, color: "#10b981" },
+        ],
+      },
+    ];
+  },
+});
+
+/**
+ * Apply a journey template
+ */
+export const applyJourneyTemplate = mutation({
+  args: {
+    businessId: v.id("businesses"),
+    templateId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+
+    const templates = await ctx.runQuery("customerJourney:getJourneyTemplates" as any, {});
+    const template = templates.find((t: any) => t.id === args.templateId);
+
+    if (!template) {
+      throw new Error("Template not found");
+    }
+
+    // Create stage definitions from template
+    const stageIds = [];
+    for (const stage of template.stages) {
+      const id = await ctx.db.insert("journeyStageDefinitions", {
+        businessId: args.businessId,
+        name: stage.name,
+        order: stage.order,
+        color: stage.color,
+        automations: [],
+        createdAt: Date.now(),
+      });
+      stageIds.push(id);
+    }
+
+    return { success: true, stageIds, template: template.name };
+  },
+});
+
+/**
  * Get journey analytics for a business
  */
 export const getJourneyAnalytics = query({
