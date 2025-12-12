@@ -8,6 +8,7 @@ export const createPost = mutation({
     platforms: v.array(v.union(v.literal("twitter"), v.literal("linkedin"), v.literal("facebook"))),
     scheduledAt: v.optional(v.number()),
     mediaUrls: v.optional(v.array(v.id("_storage"))),
+    campaignId: v.optional(v.id("experiments")),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -34,6 +35,7 @@ export const createPost = mutation({
       characterCount: args.content.length,
       createdBy: user._id,
       createdAt: Date.now(),
+      campaignId: args.campaignId,
     });
 
     return postId;

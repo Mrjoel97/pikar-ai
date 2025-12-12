@@ -83,12 +83,13 @@ export const createCampaign = mutation({
     experimentId: v.optional(v.id("experiments")),
     variantId: v.optional(v.id("experimentVariants")),
     scheduledAt: v.optional(v.number()),
-    // New: A/B testing fields
     enableAbTest: v.optional(v.boolean()),
     variantB: v.optional(v.object({
       subject: v.string(),
       body: v.string(),
     })),
+    // NEW: Campaign attribution
+    campaignId: v.optional(v.id("experiments")),
   },
   handler: async (ctx: any, args) => {
     try {
@@ -101,7 +102,6 @@ export const createCampaign = mutation({
         .unique();
       if (!user) throw new Error("User not found");
 
-      // Validation
       if (!args.subject || args.subject.trim().length === 0) {
         throw new PikarError({
           code: ErrorCode.VALIDATION_REQUIRED_FIELD,
@@ -111,14 +111,12 @@ export const createCampaign = mutation({
         });
       }
 
-    // Basic size guard for direct recipients
     let recipients = args.recipients;
     if (args.audienceType === "direct" && recipients && recipients.length > 5000) {
       recipients = recipients.slice(0, 5000);
       console.warn("Recipients list capped to 5000 for direct campaign");
     }
 
-    // Entitlement check for per-campaign recipients
     if (args.audienceType === "direct" && recipients && recipients.length > 0) {
       const gate = await ctx.runQuery("entitlements:checkEntitlement" as any, {
         businessId: args.businessId,
@@ -148,13 +146,11 @@ export const createCampaign = mutation({
       }
     }
 
-    let experimentId = args.experimentId;
+    let experimentId = args.experimentId || args.campaignId;
     let variantAId: any = undefined;
     let variantBId: any = undefined;
 
-    // Create A/B test experiment if enabled
     if (args.enableAbTest && args.variantB && args.variantB.subject && args.variantB.body) {
-      // Create experiment
       experimentId = await ctx.db.insert("experiments", {
         businessId: args.businessId,
         name: `Campaign: ${args.subject}`,
@@ -172,7 +168,6 @@ export const createCampaign = mutation({
         startedAt: Date.now(),
       });
 
-      // Create Variant A (original)
       variantAId = await ctx.db.insert("experimentVariants", {
         experimentId,
         variantKey: "A",
@@ -190,7 +185,6 @@ export const createCampaign = mutation({
         },
       });
 
-      // Create Variant B
       variantBId = await ctx.db.insert("experimentVariants", {
         experimentId,
         variantKey: "B",
@@ -208,7 +202,6 @@ export const createCampaign = mutation({
         },
       });
 
-      // Audit log
       await ctx.runMutation("audit:write" as any, {
         businessId: args.businessId,
         action: "ab_test_created",
@@ -240,7 +233,7 @@ export const createCampaign = mutation({
       sendIds: [],
       createdAt: Date.now(),
       experimentId,
-      variantId: variantAId, // Default to variant A for now
+      variantId: variantAId,
     });
 
     if (!args.scheduledAt || args.scheduledAt <= Date.now() + 60000) {
