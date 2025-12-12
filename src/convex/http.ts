@@ -461,6 +461,40 @@ http.route({
   }),
 });
 
+// PayPal webhook handler
+http.route({
+  path: "/api/webhooks/paypal",
+  method: "POST",
+  handler: httpAction(async (ctx: any, req) => {
+    try {
+      const body = await req.json();
+      const eventType = body.event_type;
+
+      // Handle PayPal invoice events
+      if (eventType === "INVOICING.INVOICE.PAID") {
+        const invoiceId = body.resource?.reference;
+        if (invoiceId) {
+          await ctx.runMutation(internal.invoices.markInvoicePaid, {
+            invoiceId: invoiceId as any,
+            paidAt: Date.now(),
+          });
+        }
+      }
+
+      return new Response(JSON.stringify({ received: true }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    } catch (error: any) {
+      console.error("PayPal webhook error:", error);
+      return new Response(JSON.stringify({ error: error.message }), {
+        status: 500,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+  }),
+});
+
 /**
  * OAuth callback handler for social platforms
  */

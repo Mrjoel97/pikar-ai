@@ -160,6 +160,26 @@ export const markInvoicePaid = mutation({
   },
 });
 
+export const updateInvoicePaymentLink = mutation({
+  args: {
+    invoiceId: v.id("invoices"),
+    paymentLink: v.string(),
+    paymentMethod: v.union(v.literal("stripe"), v.literal("paypal")),
+  },
+  handler: async (ctx, args) => {
+    const user = await ctx.auth.getUserIdentity();
+    if (!user) throw new Error("Unauthorized");
+
+    await ctx.db.patch(args.invoiceId, {
+      paymentLink: args.paymentLink,
+      paymentMethod: args.paymentMethod,
+      updatedAt: Date.now(),
+    } as any);
+
+    return args.invoiceId;
+  },
+});
+
 export const listInvoices = query({
   args: {
     businessId: v.id("businesses"),

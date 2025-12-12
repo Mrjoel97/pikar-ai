@@ -264,6 +264,16 @@ export const coreSchema = {
       v.literal("overdue")
     ),
     paidAt: v.optional(v.number()),
+    paymentStatus: v.optional(v.union(
+      v.literal("pending"),
+      v.literal("paid"),
+      v.literal("failed")
+    )),
+    paymentMethod: v.optional(v.union(
+      v.literal("stripe"),
+      v.literal("paypal")
+    )),
+    paymentLink: v.optional(v.string()),
     notes: v.optional(v.string()),
     terms: v.optional(v.string()),
     createdBy: v.id("users"),

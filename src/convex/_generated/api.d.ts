@@ -148,6 +148,8 @@ import type * as openapi from "../openapi.js";
 import type * as passwordAuth from "../passwordAuth.js";
 import type * as passwordAuthActions from "../passwordAuthActions.js";
 import type * as passwordAuthData from "../passwordAuthData.js";
+import type * as payments_paypal from "../payments/paypal.js";
+import type * as payments_stripe from "../payments/stripe.js";
 import type * as playbookExecutions from "../playbookExecutions.js";
 import type * as playbookVersions from "../playbookVersions.js";
 import type * as playbooks from "../playbooks.js";
@@ -396,6 +398,8 @@ declare const fullApi: ApiFromModules<{
   passwordAuth: typeof passwordAuth;
   passwordAuthActions: typeof passwordAuthActions;
   passwordAuthData: typeof passwordAuthData;
+  "payments/paypal": typeof payments_paypal;
+  "payments/stripe": typeof payments_stripe;
   playbookExecutions: typeof playbookExecutions;
   playbookVersions: typeof playbookVersions;
   playbooks: typeof playbooks;
