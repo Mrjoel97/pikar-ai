@@ -28,13 +28,13 @@ import type * as apiSdk from "../apiSdk.js";
 import type * as apiVersions from "../apiVersions.js";
 import type * as approvalAnalytics from "../approvalAnalytics.js";
 import type * as approvals from "../approvals.js";
+import type * as audit from "../audit.js";
 import type * as audit_export from "../audit/export.js";
 import type * as audit_retention from "../audit/retention.js";
 import type * as audit_search from "../audit/search.js";
-import type * as audit from "../audit.js";
 import type * as auditActions from "../auditActions.js";
-import type * as auth_emailOtp from "../auth/emailOtp.js";
 import type * as auth from "../auth.js";
+import type * as auth_emailOtp from "../auth/emailOtp.js";
 import type * as authCleanup from "../authCleanup.js";
 import type * as billing from "../billing.js";
 import type * as billingInternal from "../billingInternal.js";
@@ -43,10 +43,10 @@ import type * as brandBuilder from "../brandBuilder.js";
 import type * as branding from "../branding.js";
 import type * as brands from "../brands.js";
 import type * as businesses from "../businesses.js";
+import type * as calendar from "../calendar.js";
 import type * as calendar_calendarIntegrations from "../calendar/calendarIntegrations.js";
 import type * as calendar_googleCalendar from "../calendar/googleCalendar.js";
 import type * as calendar_outlookCalendar from "../calendar/outlookCalendar.js";
-import type * as calendar from "../calendar.js";
 import type * as capa from "../capa.js";
 import type * as chunking from "../chunking.js";
 import type * as complianceReports from "../complianceReports.js";
@@ -58,27 +58,27 @@ import type * as crisisManagement from "../crisisManagement.js";
 import type * as crmIntegrations from "../crmIntegrations.js";
 import type * as crmSync from "../crmSync.js";
 import type * as cron from "../cron.js";
-import type * as customApis_versioning from "../customApis/versioning.js";
 import type * as customApis from "../customApis.js";
+import type * as customApis_versioning from "../customApis/versioning.js";
 import type * as customerJourney from "../customerJourney.js";
+import type * as customerSegmentation from "../customerSegmentation.js";
 import type * as customerSegmentation_actions from "../customerSegmentation/actions.js";
 import type * as customerSegmentation_rules from "../customerSegmentation/rules.js";
 import type * as customerSegmentation_solopreneur from "../customerSegmentation/solopreneur.js";
-import type * as customerSegmentation from "../customerSegmentation.js";
 import type * as customerSegmentationData from "../customerSegmentationData.js";
 import type * as data_playbooksSeed from "../data/playbooksSeed.js";
+import type * as dataWarehouse from "../dataWarehouse.js";
 import type * as dataWarehouse_analytics from "../dataWarehouse/analytics.js";
 import type * as dataWarehouse_dataExports from "../dataWarehouse/dataExports.js";
 import type * as dataWarehouse_dataQuality from "../dataWarehouse/dataQuality.js";
 import type * as dataWarehouse_dataSources from "../dataWarehouse/dataSources.js";
 import type * as dataWarehouse_etlPipelines from "../dataWarehouse/etlPipelines.js";
-import type * as dataWarehouse from "../dataWarehouse.js";
 import type * as demoVideos from "../demoVideos.js";
 import type * as departmentBudgets from "../departmentBudgets.js";
+import type * as departmentKpis from "../departmentKpis.js";
 import type * as departmentKpis_alerts from "../departmentKpis/alerts.js";
 import type * as departmentKpis_targets from "../departmentKpis/targets.js";
 import type * as departmentKpis_tracking from "../departmentKpis/tracking.js";
-import type * as departmentKpis from "../departmentKpis.js";
 import type * as diagnostics from "../diagnostics.js";
 import type * as docProcessing from "../docProcessing.js";
 import type * as docs from "../docs.js";
@@ -103,10 +103,10 @@ import type * as experiments from "../experiments.js";
 import type * as experimentsActions from "../experimentsActions.js";
 import type * as featureFlags from "../featureFlags.js";
 import type * as files from "../files.js";
+import type * as governance from "../governance.js";
 import type * as governance_autoEnforcement from "../governance/autoEnforcement.js";
 import type * as governance_remediation from "../governance/remediation.js";
 import type * as governance_violations from "../governance/violations.js";
-import type * as governance from "../governance.js";
 import type * as governanceAutomation from "../governanceAutomation.js";
 import type * as governanceRules from "../governanceRules.js";
 import type * as health from "../health.js";
@@ -154,8 +154,8 @@ import type * as playbookExecutions from "../playbookExecutions.js";
 import type * as playbookVersions from "../playbookVersions.js";
 import type * as playbooks from "../playbooks.js";
 import type * as policyManagement from "../policyManagement.js";
-import type * as portfolioManagement_analytics from "../portfolioManagement/analytics.js";
 import type * as portfolioManagement from "../portfolioManagement.js";
+import type * as portfolioManagement_analytics from "../portfolioManagement/analytics.js";
 import type * as rateLimiting from "../rateLimiting.js";
 import type * as revenueAttribution from "../revenueAttribution.js";
 import type * as risk_mitigation from "../risk/mitigation.js";
@@ -194,12 +194,12 @@ import type * as setupWizardData from "../setupWizardData.js";
 import type * as socialAnalytics from "../socialAnalytics.js";
 import type * as socialAnalyticsAdvanced from "../socialAnalyticsAdvanced.js";
 import type * as socialApiConfigs from "../socialApiConfigs.js";
+import type * as socialContentAgent from "../socialContentAgent.js";
 import type * as socialContentAgent_analytics from "../socialContentAgent/analytics.js";
 import type * as socialContentAgent_optimization from "../socialContentAgent/optimization.js";
-import type * as socialContentAgent from "../socialContentAgent.js";
+import type * as socialIntegrations from "../socialIntegrations.js";
 import type * as socialIntegrations_oauth from "../socialIntegrations/oauth.js";
 import type * as socialIntegrations_webhooks from "../socialIntegrations/webhooks.js";
-import type * as socialIntegrations from "../socialIntegrations.js";
 import type * as socialIntegrationsActions from "../socialIntegrationsActions.js";
 import type * as socialMediaDocs from "../socialMediaDocs.js";
 import type * as socialPosts from "../socialPosts.js";
@@ -210,14 +210,14 @@ import type * as support_autoResponder from "../support/autoResponder.js";
 import type * as support_triage from "../support/triage.js";
 import type * as supportTickets from "../supportTickets.js";
 import type * as tasks from "../tasks.js";
+import type * as teamChat from "../teamChat.js";
 import type * as teamChat_channels from "../teamChat/channels.js";
 import type * as teamChat_messages from "../teamChat/messages.js";
 import type * as teamChat_threads from "../teamChat/threads.js";
-import type * as teamChat from "../teamChat.js";
+import type * as teamGoals from "../teamGoals.js";
 import type * as teamGoals_alignment from "../teamGoals/alignment.js";
 import type * as teamGoals_okrs from "../teamGoals/okrs.js";
 import type * as teamGoals_progress from "../teamGoals/progress.js";
-import type * as teamGoals from "../teamGoals.js";
 import type * as teamOnboarding from "../teamOnboarding.js";
 import type * as telemetry from "../telemetry.js";
 import type * as templatePins from "../templatePins.js";
@@ -227,8 +227,8 @@ import type * as utils from "../utils.js";
 import type * as vectors from "../vectors.js";
 import type * as vendors from "../vendors.js";
 import type * as voiceNotes from "../voiceNotes.js";
-import type * as webhooks_retry from "../webhooks/retry.js";
 import type * as webhooks from "../webhooks.js";
+import type * as webhooks_retry from "../webhooks/retry.js";
 import type * as webhooksActions from "../webhooksActions.js";
 import type * as whiteLabel_branding from "../whiteLabel/branding.js";
 import type * as whiteLabel_domains from "../whiteLabel/domains.js";
@@ -249,14 +249,6 @@ import type {
   FunctionReference,
 } from "convex/server";
 
-/**
- * A utility for referencing Convex functions in your app's API.
- *
- * Usage:
- * ```js
- * const myFunctionReference = api.myModule.myFunction;
- * ```
- */
 declare const fullApi: ApiFromModules<{
   activity: typeof activity;
   activityFeed: typeof activityFeed;
@@ -278,13 +270,13 @@ declare const fullApi: ApiFromModules<{
   apiVersions: typeof apiVersions;
   approvalAnalytics: typeof approvalAnalytics;
   approvals: typeof approvals;
+  audit: typeof audit;
   "audit/export": typeof audit_export;
   "audit/retention": typeof audit_retention;
   "audit/search": typeof audit_search;
-  audit: typeof audit;
   auditActions: typeof auditActions;
-  "auth/emailOtp": typeof auth_emailOtp;
   auth: typeof auth;
+  "auth/emailOtp": typeof auth_emailOtp;
   authCleanup: typeof authCleanup;
   billing: typeof billing;
   billingInternal: typeof billingInternal;
@@ -293,10 +285,10 @@ declare const fullApi: ApiFromModules<{
   branding: typeof branding;
   brands: typeof brands;
   businesses: typeof businesses;
+  calendar: typeof calendar;
   "calendar/calendarIntegrations": typeof calendar_calendarIntegrations;
   "calendar/googleCalendar": typeof calendar_googleCalendar;
   "calendar/outlookCalendar": typeof calendar_outlookCalendar;
-  calendar: typeof calendar;
   capa: typeof capa;
   chunking: typeof chunking;
   complianceReports: typeof complianceReports;
@@ -308,27 +300,27 @@ declare const fullApi: ApiFromModules<{
   crmIntegrations: typeof crmIntegrations;
   crmSync: typeof crmSync;
   cron: typeof cron;
-  "customApis/versioning": typeof customApis_versioning;
   customApis: typeof customApis;
+  "customApis/versioning": typeof customApis_versioning;
   customerJourney: typeof customerJourney;
+  customerSegmentation: typeof customerSegmentation;
   "customerSegmentation/actions": typeof customerSegmentation_actions;
   "customerSegmentation/rules": typeof customerSegmentation_rules;
   "customerSegmentation/solopreneur": typeof customerSegmentation_solopreneur;
-  customerSegmentation: typeof customerSegmentation;
   customerSegmentationData: typeof customerSegmentationData;
   "data/playbooksSeed": typeof data_playbooksSeed;
+  dataWarehouse: typeof dataWarehouse;
   "dataWarehouse/analytics": typeof dataWarehouse_analytics;
   "dataWarehouse/dataExports": typeof dataWarehouse_dataExports;
   "dataWarehouse/dataQuality": typeof dataWarehouse_dataQuality;
   "dataWarehouse/dataSources": typeof dataWarehouse_dataSources;
   "dataWarehouse/etlPipelines": typeof dataWarehouse_etlPipelines;
-  dataWarehouse: typeof dataWarehouse;
   demoVideos: typeof demoVideos;
   departmentBudgets: typeof departmentBudgets;
+  departmentKpis: typeof departmentKpis;
   "departmentKpis/alerts": typeof departmentKpis_alerts;
   "departmentKpis/targets": typeof departmentKpis_targets;
   "departmentKpis/tracking": typeof departmentKpis_tracking;
-  departmentKpis: typeof departmentKpis;
   diagnostics: typeof diagnostics;
   docProcessing: typeof docProcessing;
   docs: typeof docs;
@@ -353,10 +345,10 @@ declare const fullApi: ApiFromModules<{
   experimentsActions: typeof experimentsActions;
   featureFlags: typeof featureFlags;
   files: typeof files;
+  governance: typeof governance;
   "governance/autoEnforcement": typeof governance_autoEnforcement;
   "governance/remediation": typeof governance_remediation;
   "governance/violations": typeof governance_violations;
-  governance: typeof governance;
   governanceAutomation: typeof governanceAutomation;
   governanceRules: typeof governanceRules;
   health: typeof health;
@@ -404,8 +396,8 @@ declare const fullApi: ApiFromModules<{
   playbookVersions: typeof playbookVersions;
   playbooks: typeof playbooks;
   policyManagement: typeof policyManagement;
-  "portfolioManagement/analytics": typeof portfolioManagement_analytics;
   portfolioManagement: typeof portfolioManagement;
+  "portfolioManagement/analytics": typeof portfolioManagement_analytics;
   rateLimiting: typeof rateLimiting;
   revenueAttribution: typeof revenueAttribution;
   "risk/mitigation": typeof risk_mitigation;
@@ -444,12 +436,12 @@ declare const fullApi: ApiFromModules<{
   socialAnalytics: typeof socialAnalytics;
   socialAnalyticsAdvanced: typeof socialAnalyticsAdvanced;
   socialApiConfigs: typeof socialApiConfigs;
+  socialContentAgent: typeof socialContentAgent;
   "socialContentAgent/analytics": typeof socialContentAgent_analytics;
   "socialContentAgent/optimization": typeof socialContentAgent_optimization;
-  socialContentAgent: typeof socialContentAgent;
+  socialIntegrations: typeof socialIntegrations;
   "socialIntegrations/oauth": typeof socialIntegrations_oauth;
   "socialIntegrations/webhooks": typeof socialIntegrations_webhooks;
-  socialIntegrations: typeof socialIntegrations;
   socialIntegrationsActions: typeof socialIntegrationsActions;
   socialMediaDocs: typeof socialMediaDocs;
   socialPosts: typeof socialPosts;
@@ -460,14 +452,14 @@ declare const fullApi: ApiFromModules<{
   "support/triage": typeof support_triage;
   supportTickets: typeof supportTickets;
   tasks: typeof tasks;
+  teamChat: typeof teamChat;
   "teamChat/channels": typeof teamChat_channels;
   "teamChat/messages": typeof teamChat_messages;
   "teamChat/threads": typeof teamChat_threads;
-  teamChat: typeof teamChat;
+  teamGoals: typeof teamGoals;
   "teamGoals/alignment": typeof teamGoals_alignment;
   "teamGoals/okrs": typeof teamGoals_okrs;
   "teamGoals/progress": typeof teamGoals_progress;
-  teamGoals: typeof teamGoals;
   teamOnboarding: typeof teamOnboarding;
   telemetry: typeof telemetry;
   templatePins: typeof templatePins;
@@ -477,8 +469,8 @@ declare const fullApi: ApiFromModules<{
   vectors: typeof vectors;
   vendors: typeof vendors;
   voiceNotes: typeof voiceNotes;
-  "webhooks/retry": typeof webhooks_retry;
   webhooks: typeof webhooks;
+  "webhooks/retry": typeof webhooks_retry;
   webhooksActions: typeof webhooksActions;
   "whiteLabel/branding": typeof whiteLabel_branding;
   "whiteLabel/domains": typeof whiteLabel_domains;
@@ -493,14 +485,30 @@ declare const fullApi: ApiFromModules<{
   "workforce/skills": typeof workforce_skills;
   workforceAnalytics: typeof workforceAnalytics;
 }>;
-declare const fullApiWithMounts: typeof fullApi;
 
+/**
+ * A utility for referencing Convex functions in your app's public API.
+ *
+ * Usage:
+ * ```js
+ * const myFunctionReference = api.myModule.myFunction;
+ * ```
+ */
 export declare const api: FilterApi<
-  typeof fullApiWithMounts,
+  typeof fullApi,
   FunctionReference<any, "public">
 >;
+
+/**
+ * A utility for referencing Convex functions in your app's internal API.
+ *
+ * Usage:
+ * ```js
+ * const myFunctionReference = internal.myModule.myFunction;
+ * ```
+ */
 export declare const internal: FilterApi<
-  typeof fullApiWithMounts,
+  typeof fullApi,
   FunctionReference<any, "internal">
 >;
 
