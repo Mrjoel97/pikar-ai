@@ -183,7 +183,7 @@ export const getPredictiveCompletion = query({
 
     // Calculate confidence based on velocity consistency
     const velocityVariance =
-      velocity.sprints.reduce((sum, s) => {
+      velocity.sprints.reduce((sum: number, s: { velocity: number }) => {
         const diff = s.velocity - velocity.averageVelocity;
         return sum + diff * diff;
       }, 0) / velocity.sprints.length;
