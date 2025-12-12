@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, BarChart, Bar } from "recharts";
-import { TrendingUp, Users, Activity, AlertTriangle, Target, DollarSign } from "lucide-react";
+import { TrendingUp, Users, Activity, AlertTriangle, Target, DollarSign, Progress } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -37,6 +37,36 @@ export function GrowthMetrics({ businessId }: GrowthMetricsProps) {
 
   const cohortLTV = useQuery(
     api.analytics.cohorts.getCohortLTV,
+    businessId ? { businessId: businessId as any } : "skip"
+  );
+
+  const ltvMetrics = useQuery(
+    api.analytics.ltv.calculateLTV,
+    businessId ? { businessId: businessId as any } : "skip"
+  );
+
+  const cacMetrics = useQuery(
+    api.analytics.ltv.calculateCAC,
+    businessId ? { businessId: businessId as any } : "skip"
+  );
+
+  const ltvCacRatio = useQuery(
+    api.analytics.ltv.getLTVCACRatio,
+    businessId ? { businessId: businessId as any } : "skip"
+  );
+
+  const funnelStages = useQuery(
+    api.analytics.funnel.getFunnelStages,
+    businessId ? { businessId: businessId as any, timeRange } : "skip"
+  );
+
+  const funnelConversion = useQuery(
+    api.analytics.funnel.getFunnelConversion,
+    businessId ? { businessId: businessId as any, timeRange } : "skip"
+  );
+
+  const optimizationSuggestions = useQuery(
+    api.analytics.funnel.getOptimizationSuggestions,
     businessId ? { businessId: businessId as any } : "skip"
   );
 
@@ -81,10 +111,11 @@ export function GrowthMetrics({ businessId }: GrowthMetricsProps) {
       </CardHeader>
       <CardContent className="space-y-6">
         <Tabs defaultValue="overview" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="cohorts">Cohorts</TabsTrigger>
-            <TabsTrigger value="ltv">LTV Analysis</TabsTrigger>
+            <TabsTrigger value="ltv">LTV/CAC</TabsTrigger>
+            <TabsTrigger value="funnel">Funnel</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="space-y-4">
@@ -275,55 +306,87 @@ export function GrowthMetrics({ businessId }: GrowthMetricsProps) {
           </TabsContent>
 
           <TabsContent value="ltv" className="space-y-4">
-            {cohortLTV && cohortLTV.length > 0 ? (
+            {ltvMetrics && cacMetrics && ltvCacRatio ? (
               <>
                 <div className="grid grid-cols-3 gap-4">
                   <div className="space-y-1">
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <DollarSign className="h-4 w-4" />
-                      Avg LTV
-                    </div>
-                    <div className="text-2xl font-bold">
-                      ${Math.round(cohortLTV.reduce((sum: number, c: any) => sum + c.averageLTV, 0) / cohortLTV.length)}
-                    </div>
+                    <div className="text-sm text-muted-foreground">LTV</div>
+                    <div className="text-2xl font-bold">${ltvMetrics.ltv}</div>
+                    <p className="text-xs text-muted-foreground">Lifetime Value</p>
                   </div>
                   <div className="space-y-1">
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Target className="h-4 w-4" />
-                      Total Revenue
-                    </div>
-                    <div className="text-2xl font-bold text-green-600">
-                      ${cohortLTV.reduce((sum: number, c: any) => sum + c.totalRevenue, 0).toLocaleString()}
-                    </div>
+                    <div className="text-sm text-muted-foreground">CAC</div>
+                    <div className="text-2xl font-bold">${cacMetrics.cac}</div>
+                    <p className="text-xs text-muted-foreground">Acquisition Cost</p>
                   </div>
                   <div className="space-y-1">
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Users className="h-4 w-4" />
-                      Total Users
-                    </div>
-                    <div className="text-2xl font-bold">
-                      {cohortLTV.reduce((sum: number, c: any) => sum + c.size, 0)}
-                    </div>
+                    <div className="text-sm text-muted-foreground">LTV:CAC</div>
+                    <div className="text-2xl font-bold">{ltvCacRatio.ratio}:1</div>
+                    <Badge variant={ltvCacRatio.health === "excellent" ? "default" : "secondary"}>
+                      {ltvCacRatio.health}
+                    </Badge>
                   </div>
                 </div>
-                <div className="h-64">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={cohortLTV}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="cohort" tick={{ fontSize: 12 }} />
-                      <YAxis tick={{ fontSize: 12 }} />
-                      <Tooltip />
-                      <Legend />
-                      <Bar dataKey="averageLTV" fill="#3b82f6" name="Avg LTV ($)" />
-                    </BarChart>
-                  </ResponsiveContainer>
+                <div className="rounded-lg bg-blue-50 dark:bg-blue-950 p-3">
+                  <h4 className="text-sm font-semibold mb-2">💡 Recommendation</h4>
+                  <p className="text-xs text-muted-foreground">{ltvCacRatio.recommendation}</p>
                 </div>
               </>
             ) : (
               <div className="text-center py-8 text-muted-foreground">
                 <DollarSign className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                <p className="text-sm">Revenue tracking not yet available</p>
-                <p className="text-xs mt-1">Add revenue data to contacts for LTV analysis</p>
+                <p className="text-sm">LTV/CAC data not yet available</p>
+                <p className="text-xs mt-1">Add revenue and cost tracking to enable this analysis</p>
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="funnel" className="space-y-4">
+            {funnelStages && funnelConversion ? (
+              <>
+                <div className="space-y-2">
+                  {funnelStages.map((stage: any, idx: number) => {
+                    const conversion = funnelConversion[idx];
+                    return (
+                      <div key={stage.name} className="space-y-1">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-medium">{stage.name}</span>
+                          <span className="text-sm text-muted-foreground">{stage.count} users</span>
+                        </div>
+                        <Progress value={(stage.count / funnelStages[0].count) * 100} className="h-2" />
+                        {conversion && (
+                          <p className="text-xs text-muted-foreground">
+                            {conversion.rate}% conversion to {conversion.to}
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {optimizationSuggestions && optimizationSuggestions.length > 0 && (
+                  <div className="rounded-lg bg-amber-50 dark:bg-amber-950 p-3 space-y-2">
+                    <h4 className="text-sm font-semibold">🎯 Optimization Suggestions</h4>
+                    {optimizationSuggestions.map((suggestion: any, idx: number) => (
+                      <div key={idx} className="text-xs space-y-1 border-t pt-2">
+                        <div className="flex items-center gap-2">
+                          <Badge variant={suggestion.severity === "critical" ? "destructive" : "default"}>
+                            {suggestion.stage}
+                          </Badge>
+                          <span className="text-muted-foreground">{suggestion.dropoffRate}% drop-off</span>
+                        </div>
+                        <p className="font-medium">{suggestion.suggestion}</p>
+                        <p className="text-muted-foreground">Action: {suggestion.action}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                <Target className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                <p className="text-sm">Funnel data not yet available</p>
+                <p className="text-xs mt-1">Add customer journey tracking to enable funnel analysis</p>
               </div>
             )}
           </TabsContent>

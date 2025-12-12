@@ -14,7 +14,7 @@ interface TeamPerformanceProps {
 }
 
 export function TeamPerformance({ businessId }: TeamPerformanceProps) {
-  const [viewMode, setViewMode] = useState<"overview" | "velocity" | "burndown">("overview");
+  const [viewMode, setViewMode] = useState<"overview" | "velocity" | "burndown" | "capacity">("overview");
 
   const teamMetrics = useQuery(api.telemetry.getTeamPerformanceMetrics, {
     businessId,
@@ -37,6 +37,22 @@ export function TeamPerformance({ businessId }: TeamPerformanceProps) {
   const teamContributions = useQuery(api.teamGoals.getTeamContributions, {
     businessId,
     days: 30,
+  });
+
+  const burnupData = useQuery(api.analytics.teamVelocity.getBurnupData, {
+    businessId,
+  });
+
+  const capacityMetrics = useQuery(api.analytics.capacity.getTeamCapacity, {
+    businessId,
+  });
+
+  const resourceAllocation = useQuery(api.analytics.capacity.getResourceAllocation, {
+    businessId,
+  });
+
+  const reallocationSuggestions = useQuery(api.analytics.capacity.suggestReallocation, {
+    businessId,
   });
 
   if (!teamMetrics) {
@@ -74,7 +90,7 @@ export function TeamPerformance({ businessId }: TeamPerformanceProps) {
             </CardDescription>
           </div>
           <div className="flex gap-2">
-            {["overview", "velocity", "burndown"].map((mode) => (
+            {["overview", "velocity", "burndown", "capacity"].map((mode) => (
               <Button
                 key={mode}
                 variant={viewMode === mode ? "default" : "outline"}
@@ -292,6 +308,77 @@ export function TeamPerformance({ businessId }: TeamPerformanceProps) {
             <div className="text-xs text-muted-foreground">
               {burndownData.daysRemaining} days remaining in current sprint
             </div>
+          </div>
+        )}
+
+        {viewMode === "capacity" && capacityMetrics && (
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div className="space-y-1">
+                <p className="text-xs text-muted-foreground">Team Size</p>
+                <p className="text-xl font-bold">{capacityMetrics.totalMembers}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-xs text-muted-foreground">Capacity Utilization</p>
+                <p className="text-xl font-bold">{capacityMetrics.capacityUtilization}%</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-xs text-muted-foreground">Work/Member</p>
+                <p className="text-xl font-bold">{capacityMetrics.workPerMember}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-xs text-muted-foreground">Est. Monthly</p>
+                <p className="text-xl font-bold">{capacityMetrics.estimatedCapacity}</p>
+              </div>
+            </div>
+
+            {resourceAllocation && resourceAllocation.length > 0 && (
+              <div className="space-y-2">
+                <h4 className="text-sm font-semibold">Resource Allocation</h4>
+                {resourceAllocation.map((member: any) => (
+                  <div key={member.userId} className="p-3 border rounded-lg">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-medium">{member.userName}</span>
+                      <Badge variant={member.utilizationRate > 80 ? "destructive" : "default"}>
+                        {member.utilizationRate}%
+                      </Badge>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2 text-xs">
+                      <div>
+                        <p className="text-muted-foreground">Goals</p>
+                        <p className="font-bold">{member.assignedGoals}</p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">Total Work</p>
+                        <p className="font-bold">{Math.round(member.totalWork)}</p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">Completed</p>
+                        <p className="font-bold">{Math.round(member.completedWork)}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {reallocationSuggestions && reallocationSuggestions.length > 0 && (
+              <div className="rounded-lg bg-amber-50 dark:bg-amber-950 p-3 space-y-2">
+                <h4 className="text-sm font-semibold">💡 Reallocation Suggestions</h4>
+                {reallocationSuggestions.map((suggestion: any, idx: number) => (
+                  <div key={idx} className="text-xs space-y-1">
+                    <div className="flex items-center gap-2">
+                      <Badge variant={suggestion.priority === "critical" ? "destructive" : "default"}>
+                        {suggestion.priority}
+                      </Badge>
+                      <span className="font-medium">{suggestion.type}</span>
+                    </div>
+                    <p className="text-muted-foreground">{suggestion.reason}</p>
+                    <p className="font-medium">{suggestion.recommendation}</p>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </CardContent>

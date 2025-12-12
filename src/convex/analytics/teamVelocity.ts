@@ -208,3 +208,69 @@ export const getPredictiveCompletion = query({
     };
   },
 });
+
+/**
+ * Get burnup data for current sprint
+ */
+export const getBurnupData = query({
+  args: {
+    businessId: v.id("businesses"),
+    goalId: v.optional(v.id("teamGoals")),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return null;
+
+    const sprintDuration = 14; // days
+    const now = Date.now();
+    const sprintStart = now - sprintDuration * 24 * 60 * 60 * 1000;
+
+    // Get active goals
+    let goals = await ctx.db
+      .query("teamGoals")
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .filter((q) => q.eq(q.field("status"), "active"))
+      .take(50);
+
+    if (args.goalId) {
+      const goal = await ctx.db.get(args.goalId);
+      goals = goal ? [goal] : [];
+    }
+
+    const totalWork = goals.reduce((sum, g) => sum + g.targetValue, 0);
+    const currentWork = goals.reduce((sum, g) => sum + g.currentValue, 0);
+
+    // Generate burnup data (completed work over time)
+    const burnupData = [];
+
+    for (let day = 0; day <= sprintDuration; day++) {
+      const date = sprintStart + day * 24 * 60 * 60 * 1000;
+
+      // Calculate work completed by this date
+      const updatesUntilDate = await ctx.db
+        .query("goalUpdates")
+        .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+        .filter((q) => q.lte(q.field("timestamp"), date))
+        .take(100);
+
+      const completedUntilDate = updatesUntilDate.reduce(
+        (sum, u) => sum + (u.newValue - u.previousValue),
+        0
+      );
+
+      burnupData.push({
+        day,
+        date,
+        completed: Math.round(completedUntilDate),
+        total: totalWork,
+      });
+    }
+
+    return {
+      totalWork,
+      currentWork,
+      burnupData,
+      daysRemaining: sprintDuration - Math.floor((now - sprintStart) / (24 * 60 * 60 * 1000)),
+    };
+  },
+});
