@@ -190,7 +190,7 @@ export const getOptimizationRecommendations = query({
     }
 
     // Add positive feedback
-    const bestConversion = conversionRates.reduce((best, curr) =>
+    const bestConversion = conversionRates.reduce((best: { rate: number }, curr: { rate: number }) =>
       curr.rate > best.rate ? curr : best
     , conversionRates[0]);
 
