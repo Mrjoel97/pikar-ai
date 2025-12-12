@@ -24,6 +24,7 @@ export function CalendarIntegrationButton({
   const [showDialog, setShowDialog] = useState(false);
 
   const initiateGoogleOAuth = useAction(api.calendar.googleCalendar.initiateGoogleCalendarOAuth);
+  const initiateOutlookOAuth = useAction(api.calendar.outlookCalendar.initiateOutlookCalendarOAuth);
   const disconnect = useMutation(api.calendar.calendarIntegrations.disconnectIntegration);
 
   const providerConfig = {
@@ -41,8 +42,10 @@ export function CalendarIntegrationButton({
       let result;
       if (provider === "google") {
         result = await initiateGoogleOAuth({ businessId, callbackUrl });
+      } else if (provider === "outlook") {
+        result = await initiateOutlookOAuth({ businessId, callbackUrl });
       } else {
-        toast.error("Outlook Calendar integration coming soon");
+        toast.error("Calendar provider not supported");
         setIsConnecting(false);
         return;
       }
