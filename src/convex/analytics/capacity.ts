@@ -120,12 +120,19 @@ export const getResourceAllocation = query({
     }
 
     // Calculate utilization rates
-    const allocations = Array.from(allocationMap.values()).map((a) => ({
+    const allocations = Array.from(allocationMap.values()).map((a: {
+      userId: string;
+      userName: string;
+      assignedGoals: number;
+      totalWork: number;
+      completedWork: number;
+      utilizationRate: number;
+    }) => ({
       ...a,
       utilizationRate: a.totalWork > 0 ? Math.round((a.completedWork / a.totalWork) * 100) : 0,
     }));
 
-    return allocations.sort((a, b) => b.totalWork - a.totalWork);
+    return allocations.sort((a: any, b: any) => b.totalWork - a.totalWork);
   },
 });
 
@@ -148,10 +155,10 @@ export const suggestReallocation = query({
 
     const suggestions = [];
 
-    // Find overloaded and underutilized members
-    const avgUtilization = allocations.reduce((sum, a) => sum + a.utilizationRate, 0) / allocations.length;
-    const overloaded = allocations.filter((a) => a.utilizationRate > avgUtilization + 20);
-    const underutilized = allocations.filter((a) => a.utilizationRate < avgUtilization - 20);
+    // Calculate confidence based on velocity consistency
+    const avgUtilization = allocations.reduce((sum: number, a: any) => sum + a.utilizationRate, 0) / allocations.length;
+    const overloaded = allocations.filter((a: any) => a.utilizationRate > avgUtilization + 20);
+    const underutilized = allocations.filter((a: any) => a.utilizationRate < avgUtilization - 20);
 
     // Generate suggestions
     for (const over of overloaded) {

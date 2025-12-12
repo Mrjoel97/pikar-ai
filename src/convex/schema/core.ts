@@ -382,4 +382,25 @@ export const coreSchema = {
   })
     .index("by_goal", ["goalId"])
     .index("by_business", ["businessId"]),
+
+  contacts: defineTable({
+    businessId: v.id("businesses"),
+    email: v.string(),
+    name: v.optional(v.string()),
+    phone: v.optional(v.string()),
+    status: v.optional(v.union(
+      v.literal("lead"),
+      v.literal("active"),
+      v.literal("customer"),
+      v.literal("churned")
+    )),
+    source: v.optional(v.string()),
+    tags: v.optional(v.array(v.string())),
+    customFields: v.optional(v.any()),
+    createdAt: v.number(),
+    updatedAt: v.optional(v.number()),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_email", ["email"])
+    .index("by_status", ["status"]),
 };
