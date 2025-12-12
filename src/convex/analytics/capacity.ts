@@ -132,7 +132,7 @@ export const getResourceAllocation = query({
       utilizationRate: a.totalWork > 0 ? Math.round((a.completedWork / a.totalWork) * 100) : 0,
     }));
 
-    return allocations.sort((a: { totalWork: number; utilizationRate: number }, b: { totalWork: number; utilizationRate: number }) => b.totalWork - a.totalWork);
+    return allocations.sort((a: { totalWork: number; utilizationRate: number; userId: string; userName: string; assignedGoals: number; completedWork: number }, b: { totalWork: number; utilizationRate: number; userId: string; userName: string; assignedGoals: number; completedWork: number }) => b.totalWork - a.totalWork);
   },
 });
 
