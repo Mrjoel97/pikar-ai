@@ -1,9 +1,12 @@
 import React, { useState } from "react";
+import { useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Calendar, Clock, Sparkles } from "lucide-react";
+import { Calendar, Clock, Sparkles, Link as LinkIcon } from "lucide-react";
 import { ScheduleAssistant as AIScheduleAssistant } from "@/components/scheduling/ScheduleAssistant";
 import { AvailabilityCalendar } from "@/components/scheduling/AvailabilityCalendar";
+import { CalendarIntegrationButton } from "@/components/scheduling/CalendarIntegrationButton";
 import type { Id } from "@/convex/_generated/dataModel";
 
 interface ScheduleAssistantWidgetProps {
@@ -13,6 +16,11 @@ interface ScheduleAssistantWidgetProps {
 export function ScheduleAssistantWidget({ businessId }: ScheduleAssistantWidgetProps) {
   const [showAssistant, setShowAssistant] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false);
+
+  const integrations = useQuery(api.calendar.calendarIntegrations.listIntegrations, { businessId });
+
+  const googleConnected = integrations?.some(i => i.provider === "google" && i.isActive) || false;
+  const outlookConnected = integrations?.some(i => i.provider === "outlook" && i.isActive) || false;
 
   return (
     <>
@@ -28,6 +36,31 @@ export function ScheduleAssistantWidget({ businessId }: ScheduleAssistantWidgetP
         <p className="text-sm text-muted-foreground mb-4">
           AI-powered scheduling to optimize your time and find the best meeting slots
         </p>
+
+        {/* Calendar Integrations */}
+        <div className="mb-4 p-3 border rounded-lg bg-muted/20">
+          <div className="flex items-center gap-2 mb-2">
+            <LinkIcon className="h-4 w-4" />
+            <span className="text-sm font-medium">Calendar Connections</span>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <CalendarIntegrationButton
+              businessId={businessId}
+              provider="google"
+              isConnected={googleConnected}
+            />
+            <CalendarIntegrationButton
+              businessId={businessId}
+              provider="outlook"
+              isConnected={outlookConnected}
+            />
+          </div>
+          {integrations && integrations.length > 0 && (
+            <div className="mt-2 text-xs text-muted-foreground">
+              Last synced: {new Date(Math.max(...integrations.map(i => i.lastSyncAt || 0))).toLocaleString()}
+            </div>
+          )}
+        </div>
 
         <div className="space-y-2">
           <Button

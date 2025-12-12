@@ -2,114 +2,58 @@ import { v } from "convex/values";
 import { mutation, query, internalQuery, internalMutation } from "../_generated/server";
 
 /**
- * Connect Google Calendar
+ * Store calendar integration
  */
-export const connectGoogleCalendar = mutation({
+export const storeIntegration = internalMutation({
   args: {
     businessId: v.id("businesses"),
+    userId: v.id("users"),
+    provider: v.union(v.literal("google"), v.literal("outlook"), v.literal("apple")),
     accessToken: v.string(),
     refreshToken: v.optional(v.string()),
     expiresAt: v.number(),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
-    }
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("email", (q) => q.eq("email", identity.email!))
-      .first();
-
-    if (!user) {
-      throw new Error("User not found");
-    }
-
     // Check if integration already exists
     const existing = await ctx.db
       .query("calendarIntegrations")
       .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
-      .filter((q) => q.eq(q.field("provider"), "google"))
+      .filter((q) =>
+        q.and(
+          q.eq(q.field("userId"), args.userId),
+          q.eq(q.field("provider"), args.provider)
+        )
+      )
       .first();
 
     if (existing) {
+      // Update existing integration
       await ctx.db.patch(existing._id, {
         accessToken: args.accessToken,
         refreshToken: args.refreshToken,
         expiresAt: args.expiresAt,
         isActive: true,
-        lastSyncAt: Date.now(),
+        connectedAt: Date.now(),
       });
       return existing._id;
+    } else {
+      // Create new integration
+      return await ctx.db.insert("calendarIntegrations", {
+        businessId: args.businessId,
+        userId: args.userId,
+        provider: args.provider,
+        accessToken: args.accessToken,
+        refreshToken: args.refreshToken,
+        expiresAt: args.expiresAt,
+        isActive: true,
+        connectedAt: Date.now(),
+      });
     }
-
-    const integrationId = await ctx.db.insert("calendarIntegrations", {
-      businessId: args.businessId,
-      userId: user._id,
-      provider: "google",
-      accessToken: args.accessToken,
-      refreshToken: args.refreshToken,
-      expiresAt: args.expiresAt,
-      isActive: true,
-      connectedAt: Date.now(),
-    });
-
-    return integrationId;
   },
 });
 
 /**
- * Disconnect calendar integration
- */
-export const disconnectCalendar = mutation({
-  args: {
-    integrationId: v.id("calendarIntegrations"),
-  },
-  handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
-    }
-
-    await ctx.db.patch(args.integrationId, {
-      isActive: false,
-    });
-
-    return true;
-  },
-});
-
-/**
- * List calendar integrations
- */
-export const listCalendarIntegrations = query({
-  args: {
-    businessId: v.optional(v.id("businesses")),
-  },
-  handler: async (ctx, args) => {
-    if (!args.businessId) {
-      return [];
-    }
-
-    const integrations = await ctx.db
-      .query("calendarIntegrations")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId!))
-      .filter((q) => q.eq(q.field("isActive"), true))
-      .collect();
-
-    return integrations.map((int) => ({
-      _id: int._id,
-      provider: int.provider,
-      connectedAt: int.connectedAt,
-      lastSyncAt: int.lastSyncAt,
-      expiresAt: int.expiresAt,
-    }));
-  },
-});
-
-/**
- * Get integration (internal)
+ * Get calendar integration
  */
 export const getIntegration = internalQuery({
   args: {
@@ -121,16 +65,89 @@ export const getIntegration = internalQuery({
 });
 
 /**
- * Update last sync timestamp (internal)
+ * List calendar integrations for a business
+ */
+export const listIntegrations = query({
+  args: {
+    businessId: v.id("businesses"),
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("calendarIntegrations")
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .collect();
+  },
+});
+
+/**
+ * Update last sync time
  */
 export const updateLastSync = internalMutation({
   args: {
     integrationId: v.id("calendarIntegrations"),
-    timestamp: v.number(),
   },
   handler: async (ctx, args) => {
     await ctx.db.patch(args.integrationId, {
-      lastSyncAt: args.timestamp,
+      lastSyncAt: Date.now(),
+    });
+  },
+});
+
+/**
+ * Create appointment from calendar sync
+ */
+export const createAppointmentFromSync = internalMutation({
+  args: {
+    businessId: v.id("businesses"),
+    title: v.string(),
+    description: v.optional(v.string()),
+    startTime: v.number(),
+    endTime: v.number(),
+    attendees: v.array(v.string()),
+    location: v.optional(v.string()),
+    type: v.string(),
+  },
+  handler: async (ctx, args) => {
+    // Check if appointment already exists (avoid duplicates)
+    const existing = await ctx.db
+      .query("appointments")
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .filter((q) =>
+        q.and(
+          q.eq(q.field("startTime"), args.startTime),
+          q.eq(q.field("title"), args.title)
+        )
+      )
+      .first();
+
+    if (existing) {
+      return existing._id;
+    }
+
+    return await ctx.db.insert("appointments", {
+      businessId: args.businessId,
+      title: args.title,
+      description: args.description,
+      startTime: args.startTime,
+      endTime: args.endTime,
+      attendees: args.attendees,
+      location: args.location,
+      type: args.type,
+      status: "scheduled",
+    });
+  },
+});
+
+/**
+ * Disconnect calendar integration
+ */
+export const disconnectIntegration = mutation({
+  args: {
+    integrationId: v.id("calendarIntegrations"),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.integrationId, {
+      isActive: false,
     });
   },
 });

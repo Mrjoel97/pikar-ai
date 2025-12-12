@@ -1,4 +1,5 @@
 "use node";
+
 import { v } from "convex/values";
 import { action } from "../_generated/server";
 import { internal } from "../_generated/api";
@@ -13,22 +14,20 @@ export const initiateGoogleCalendarOAuth = action({
   },
   handler: async (ctx, args) => {
     const clientId = process.env.GOOGLE_CLIENT_ID;
-    const redirectUri = args.callbackUrl;
-
     if (!clientId) {
-      throw new Error("Google Calendar API credentials not configured");
+      throw new Error("[ERR_GOOGLE_NOT_CONFIGURED] Google Calendar integration not configured");
     }
 
-    const scope = [
+    const scopes = [
       "https://www.googleapis.com/auth/calendar.readonly",
       "https://www.googleapis.com/auth/calendar.events",
     ].join(" ");
 
     const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
       `client_id=${clientId}&` +
-      `redirect_uri=${encodeURIComponent(redirectUri)}&` +
+      `redirect_uri=${encodeURIComponent(args.callbackUrl)}&` +
       `response_type=code&` +
-      `scope=${encodeURIComponent(scope)}&` +
+      `scope=${encodeURIComponent(scopes)}&` +
       `access_type=offline&` +
       `prompt=consent&` +
       `state=${args.businessId}`;
@@ -38,23 +37,25 @@ export const initiateGoogleCalendarOAuth = action({
 });
 
 /**
- * Exchange OAuth code for access tokens
+ * Complete Google Calendar OAuth and store tokens
  */
-export const exchangeGoogleCalendarCode = action({
+export const completeGoogleCalendarOAuth = action({
   args: {
-    code: v.string(),
     businessId: v.id("businesses"),
-    callbackUrl: v.string(),
+    userId: v.id("users"),
+    code: v.string(),
+    redirectUri: v.string(),
   },
   handler: async (ctx, args) => {
     const clientId = process.env.GOOGLE_CLIENT_ID;
     const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
 
     if (!clientId || !clientSecret) {
-      return { success: false, error: "Google Calendar API credentials not configured" };
+      throw new Error("[ERR_GOOGLE_NOT_CONFIGURED] Google Calendar credentials not configured");
     }
 
     try {
+      // Exchange code for tokens
       const tokenResponse = await fetch("https://oauth2.googleapis.com/token", {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -62,26 +63,31 @@ export const exchangeGoogleCalendarCode = action({
           code: args.code,
           client_id: clientId,
           client_secret: clientSecret,
-          redirect_uri: args.callbackUrl,
+          redirect_uri: args.redirectUri,
           grant_type: "authorization_code",
         }),
       });
 
       if (!tokenResponse.ok) {
-        const error = await tokenResponse.text();
-        return { success: false, error: `Token exchange failed: ${error}` };
+        throw new Error("Failed to exchange authorization code");
       }
 
-      const tokenData = await tokenResponse.json();
+      const tokens = await tokenResponse.json();
 
-      return {
-        success: true,
-        accessToken: tokenData.access_token,
-        refreshToken: tokenData.refresh_token,
-        expiresAt: Date.now() + (tokenData.expires_in * 1000),
-      };
+      // Store integration
+      await ctx.runMutation(internal.calendar.calendarIntegrations.storeIntegration, {
+        businessId: args.businessId,
+        userId: args.userId,
+        provider: "google",
+        accessToken: tokens.access_token,
+        refreshToken: tokens.refresh_token,
+        expiresAt: Date.now() + tokens.expires_in * 1000,
+      });
+
+      return { success: true };
     } catch (error: any) {
-      return { success: false, error: error.message };
+      console.error("[GOOGLE_CALENDAR] OAuth error:", error);
+      throw new Error(`Failed to connect Google Calendar: ${error.message}`);
     }
   },
 });
@@ -89,31 +95,25 @@ export const exchangeGoogleCalendarCode = action({
 /**
  * Sync events from Google Calendar
  */
-export const syncGoogleCalendarEvents = action({
+export const syncGoogleEvents = action({
   args: {
-    businessId: v.id("businesses"),
-    calendarIntegrationId: v.id("calendarIntegrations"),
+    integrationId: v.id("calendarIntegrations"),
   },
   handler: async (ctx, args) => {
-    // Get integration credentials
-    const integration = await ctx.runQuery(internal.calendar.googleCalendar.getIntegration, {
-      integrationId: args.calendarIntegrationId,
+    const integration = await ctx.runQuery(internal.calendar.calendarIntegrations.getIntegration, {
+      integrationId: args.integrationId,
     });
 
-    if (!integration || !integration.accessToken) {
-      throw new Error("Calendar integration not found or not connected");
+    if (!integration || integration.provider !== "google") {
+      throw new Error("[ERR_INTEGRATION_NOT_FOUND] Google Calendar integration not found");
     }
 
     try {
       // Fetch events from Google Calendar API
-      const now = new Date();
-      const timeMin = now.toISOString();
-      const timeMax = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString();
-
       const response = await fetch(
         `https://www.googleapis.com/calendar/v3/calendars/primary/events?` +
-        `timeMin=${encodeURIComponent(timeMin)}&` +
-        `timeMax=${encodeURIComponent(timeMax)}&` +
+        `timeMin=${new Date().toISOString()}&` +
+        `maxResults=100&` +
         `singleEvents=true&` +
         `orderBy=startTime`,
         {
@@ -124,44 +124,36 @@ export const syncGoogleCalendarEvents = action({
       );
 
       if (!response.ok) {
-        throw new Error(`Failed to fetch calendar events: ${response.statusText}`);
+        throw new Error("Failed to fetch Google Calendar events");
       }
 
       const data = await response.json();
-      const events = data.items || [];
 
-      // Sync events to database
-      for (const event of events) {
-        const startTime = event.start.dateTime 
-          ? new Date(event.start.dateTime).getTime()
-          : new Date(event.start.date).getTime();
-        
-        const endTime = event.end.dateTime
-          ? new Date(event.end.dateTime).getTime()
-          : new Date(event.end.date).getTime();
-
-        await ctx.runMutation(internal.scheduling.availability.createAppointment, {
-          businessId: args.businessId,
-          title: event.summary || "Untitled Event",
-          description: event.description,
-          startTime,
-          endTime,
-          location: event.location,
-          type: "google_calendar",
-          attendees: event.attendees?.map((a: any) => a.email) || [],
-        });
+      // Store events as appointments
+      for (const event of data.items || []) {
+        if (event.start?.dateTime && event.end?.dateTime) {
+          await ctx.runMutation(internal.calendar.calendarIntegrations.createAppointmentFromSync, {
+            businessId: integration.businessId,
+            title: event.summary || "Untitled Event",
+            description: event.description,
+            startTime: new Date(event.start.dateTime).getTime(),
+            endTime: new Date(event.end.dateTime).getTime(),
+            attendees: event.attendees?.map((a: any) => a.email) || [],
+            location: event.location,
+            type: "google_calendar",
+          });
+        }
       }
 
-      // Update last sync timestamp
-      await ctx.runMutation(internal.calendar.googleCalendar.updateLastSync, {
-        integrationId: args.calendarIntegrationId,
-        timestamp: Date.now(),
+      // Update last sync time
+      await ctx.runMutation(internal.calendar.calendarIntegrations.updateLastSync, {
+        integrationId: args.integrationId,
       });
 
-      return { success: true, syncedEvents: events.length };
+      return { success: true, eventCount: data.items?.length || 0 };
     } catch (error: any) {
-      console.error("Google Calendar sync error:", error);
-      return { success: false, error: error.message };
+      console.error("[GOOGLE_CALENDAR] Sync error:", error);
+      throw new Error(`Failed to sync Google Calendar: ${error.message}`);
     }
   },
 });
@@ -169,57 +161,60 @@ export const syncGoogleCalendarEvents = action({
 /**
  * Create event in Google Calendar
  */
-export const createGoogleCalendarEvent = action({
+export const createGoogleEvent = action({
   args: {
-    calendarIntegrationId: v.id("calendarIntegrations"),
+    integrationId: v.id("calendarIntegrations"),
     title: v.string(),
     description: v.optional(v.string()),
     startTime: v.number(),
     endTime: v.number(),
     attendees: v.optional(v.array(v.string())),
-    location: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const integration = await ctx.runQuery(internal.calendar.googleCalendar.getIntegration, {
-      integrationId: args.calendarIntegrationId,
+    const integration = await ctx.runQuery(internal.calendar.calendarIntegrations.getIntegration, {
+      integrationId: args.integrationId,
     });
 
-    if (!integration || !integration.accessToken) {
-      throw new Error("Calendar integration not found");
+    if (!integration || integration.provider !== "google") {
+      throw new Error("[ERR_INTEGRATION_NOT_FOUND] Google Calendar integration not found");
     }
 
-    const event = {
-      summary: args.title,
-      description: args.description,
-      location: args.location,
-      start: {
-        dateTime: new Date(args.startTime).toISOString(),
-        timeZone: "UTC",
-      },
-      end: {
-        dateTime: new Date(args.endTime).toISOString(),
-        timeZone: "UTC",
-      },
-      attendees: args.attendees?.map(email => ({ email })),
-    };
-
-    const response = await fetch(
-      "https://www.googleapis.com/calendar/v3/calendars/primary/events",
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${integration.accessToken}`,
-          "Content-Type": "application/json",
+    try {
+      const event = {
+        summary: args.title,
+        description: args.description,
+        start: {
+          dateTime: new Date(args.startTime).toISOString(),
+          timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
         },
-        body: JSON.stringify(event),
+        end: {
+          dateTime: new Date(args.endTime).toISOString(),
+          timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        },
+        attendees: args.attendees?.map(email => ({ email })),
+      };
+
+      const response = await fetch(
+        "https://www.googleapis.com/calendar/v3/calendars/primary/events",
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${integration.accessToken}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(event),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to create Google Calendar event");
       }
-    );
 
-    if (!response.ok) {
-      throw new Error(`Failed to create event: ${response.statusText}`);
+      const createdEvent = await response.json();
+      return { success: true, eventId: createdEvent.id };
+    } catch (error: any) {
+      console.error("[GOOGLE_CALENDAR] Create event error:", error);
+      throw new Error(`Failed to create Google Calendar event: ${error.message}`);
     }
-
-    const data = await response.json();
-    return { success: true, eventId: data.id };
   },
 });
