@@ -132,7 +132,16 @@ export const getResourceAllocation = query({
       utilizationRate: a.totalWork > 0 ? Math.round((a.completedWork / a.totalWork) * 100) : 0,
     }));
 
-    return allocations.sort((a: { totalWork: number; utilizationRate: number; userId: string; userName: string; assignedGoals: number; completedWork: number }, b: { totalWork: number; utilizationRate: number; userId: string; userName: string; assignedGoals: number; completedWork: number }) => b.totalWork - a.totalWork);
+    type AllocationItem = {
+      userId: string;
+      userName: string;
+      assignedGoals: number;
+      totalWork: number;
+      completedWork: number;
+      utilizationRate: number;
+    };
+    
+    return allocations.sort((a: AllocationItem, b: AllocationItem) => b.totalWork - a.totalWork);
   },
 });
 
@@ -186,14 +195,6 @@ export const suggestReallocation = query({
       });
     }
 
-    return suggestions.slice(0, 5) as Array<{
-      type: string;
-      priority: string;
-      from?: string;
-      to?: string;
-      reason: string;
-      recommendation: string;
-      impact: string;
-    }>;
+    return suggestions.slice(0, 5);
   },
 });
