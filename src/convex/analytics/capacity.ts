@@ -186,6 +186,14 @@ export const suggestReallocation = query({
       });
     }
 
-    return suggestions.slice(0, 5);
+    return suggestions.slice(0, 5) as Array<{
+      type: string;
+      priority: string;
+      from?: string;
+      to?: string;
+      reason: string;
+      recommendation: string;
+      impact: string;
+    }>;
   },
 });
