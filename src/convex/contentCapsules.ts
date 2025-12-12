@@ -1,7 +1,7 @@
 "use node";
 
 import { v } from "convex/values";
-import { action, mutation } from "./_generated/server";
+import { action, mutation, internalAction } from "./_generated/server";
 import { api, internal } from "./_generated/api";
 
 /**
@@ -220,6 +220,39 @@ What's one task you could automate this week? Share below! 👇
 #SmallBusiness #Entrepreneurship #ProductivityTips`,
   };
 }
+
+/**
+ * Process scheduled capsules (called by cron job)
+ */
+export const processScheduledCapsules = internalAction({
+  args: {},
+  handler: async (ctx) => {
+    const now = Date.now();
+    
+    // Get all scheduled capsules that are due
+    const dueCapsules = await ctx.runQuery(internal.contentCapsulesData.getScheduledCapsules, {
+      beforeTime: now,
+    });
+
+    for (const capsule of dueCapsules) {
+      try {
+        // Publish the capsule
+        await publishContentCapsule(ctx, { capsuleId: capsule._id });
+      } catch (error: any) {
+        console.error(`[CRON] Failed to publish capsule ${capsule._id}:`, error.message);
+        
+        // Update status to failed
+        await ctx.runMutation(api.contentCapsulesData.updateCapsuleStatus, {
+          capsuleId: capsule._id,
+          status: "failed",
+          errorMessage: error.message,
+        });
+      }
+    }
+
+    return { processed: dueCapsules.length };
+  },
+});
 
 /**
  * Publish content capsule to social platforms

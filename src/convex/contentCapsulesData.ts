@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { mutation, query, internalQuery } from "./_generated/server";
 import { internal } from "./_generated/api";
 
 /**
@@ -213,6 +213,26 @@ export const deleteContentCapsule = mutation({
     });
 
     return true;
+  },
+});
+
+/**
+ * Get scheduled capsules that are due for publishing (internal only)
+ */
+export const getScheduledCapsules = internalQuery({
+  args: {
+    beforeTime: v.number(),
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("contentCapsules")
+      .filter((q) =>
+        q.and(
+          q.eq(q.field("status"), "scheduled"),
+          q.lte(q.field("scheduledAt"), args.beforeTime)
+        )
+      )
+      .take(50); // Process max 50 at a time
   },
 });
 
