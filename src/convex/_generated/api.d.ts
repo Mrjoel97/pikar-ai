@@ -23,6 +23,7 @@ import type * as aiAgents from "../aiAgents.js";
 import type * as analytics_churn from "../analytics/churn.js";
 import type * as analytics_cohorts from "../analytics/cohorts.js";
 import type * as analytics_retention from "../analytics/retention.js";
+import type * as analytics_teamVelocity from "../analytics/teamVelocity.js";
 import type * as analyticsEngine from "../analyticsEngine.js";
 import type * as apiSdk from "../apiSdk.js";
 import type * as apiVersions from "../apiVersions.js";
@@ -269,6 +270,7 @@ declare const fullApi: ApiFromModules<{
   "analytics/churn": typeof analytics_churn;
   "analytics/cohorts": typeof analytics_cohorts;
   "analytics/retention": typeof analytics_retention;
+  "analytics/teamVelocity": typeof analytics_teamVelocity;
   analyticsEngine: typeof analyticsEngine;
   apiSdk: typeof apiSdk;
   apiVersions: typeof apiVersions;
