@@ -185,7 +185,7 @@ export const suggestReallocation = query({
     }
 
     // Suggest hiring if everyone is overloaded
-    if (allocations.every((a) => a.utilizationRate > 80)) {
+    if (allocations.every((a: { utilizationRate: number }) => a.utilizationRate > 80)) {
       suggestions.push({
         type: "hiring",
         priority: "critical",
@@ -195,16 +195,6 @@ export const suggestReallocation = query({
       });
     }
 
-    type SuggestionItem = {
-      type: string;
-      priority: string;
-      from?: string;
-      to?: string;
-      reason: string;
-      recommendation: string;
-      impact?: string;
-    };
-    
-    return suggestions.slice(0, 5) as Array<SuggestionItem>;
+    return suggestions.slice(0, 5);
   },
 });
