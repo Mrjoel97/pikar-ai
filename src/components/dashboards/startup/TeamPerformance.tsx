@@ -277,7 +277,7 @@ export function TeamPerformance({ businessId }: TeamPerformanceProps) {
             </div>
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={burndownData.idealBurndown.map((ideal: any, idx: number) => ({
+                <LineChart data={burndownData.idealBurndown.map((ideal: { day: number; remaining: number }, idx: number) => ({
                   day: ideal.day,
                   ideal: ideal.remaining,
                   actual: burndownData.actualBurndown[idx]?.remaining || 0,
