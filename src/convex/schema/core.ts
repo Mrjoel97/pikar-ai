@@ -348,4 +348,38 @@ export const coreSchema = {
   })
     .index("by_business", ["businessId"])
     .index("by_business_and_platform", ["businessId", "platform"]),
+
+  teamGoals: defineTable({
+    businessId: v.id("businesses"),
+    title: v.string(),
+    description: v.optional(v.string()),
+    targetValue: v.number(),
+    currentValue: v.number(),
+    unit: v.string(),
+    deadline: v.optional(v.number()),
+    assignedTo: v.optional(v.array(v.id("users"))),
+    category: v.optional(v.string()),
+    status: v.union(
+      v.literal("active"),
+      v.literal("completed"),
+      v.literal("archived")
+    ),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_status", ["status"]),
+
+  goalUpdates: defineTable({
+    goalId: v.id("teamGoals"),
+    businessId: v.id("businesses"),
+    updatedBy: v.id("users"),
+    previousValue: v.number(),
+    newValue: v.number(),
+    note: v.optional(v.string()),
+    timestamp: v.number(),
+  })
+    .index("by_goal", ["goalId"])
+    .index("by_business", ["businessId"]),
 };
