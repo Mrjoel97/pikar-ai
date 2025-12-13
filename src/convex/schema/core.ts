@@ -491,4 +491,16 @@ export const coreSchema = {
   })
     .index("by_user_and_business", ["userId", "businessId"])
     .index("by_business", ["businessId"]),
+
+  audit_logs: defineTable({
+    businessId: v.id("businesses"),
+    userId: v.optional(v.id("users")),
+    action: v.string(),
+    entityType: v.optional(v.string()),
+    entityId: v.optional(v.string()),
+    details: v.optional(v.any()),
+    createdAt: v.number(),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_business_and_date", ["businessId", "createdAt"]),
 };
