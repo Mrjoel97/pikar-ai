@@ -110,6 +110,7 @@ export const enterpriseSchema = {
     businessId: v.id("businesses"),
     name: v.string(),
     sourceType: v.string(),
+    type: v.optional(v.string()), // Added for analytics compatibility
     connectionConfig: v.any(),
     isActive: v.boolean(),
     lastSyncTime: v.optional(v.number()),
@@ -144,6 +145,7 @@ export const enterpriseSchema = {
     transformations: v.array(v.any()),
     schedule: v.optional(v.string()),
     enabled: v.boolean(),
+    status: v.optional(v.string()), // Added for compatibility
     createdAt: v.number(),
     updatedAt: v.number(),
   })
@@ -158,6 +160,7 @@ export const enterpriseSchema = {
     endTime: v.optional(v.number()),
     recordsProcessed: v.number(),
     errorMessage: v.optional(v.string()),
+    errors: v.optional(v.array(v.any())), // Added for error tracking
   })
     .index("by_business", ["businessId"])
     .index("by_pipeline", ["pipelineId"])
@@ -170,6 +173,7 @@ export const enterpriseSchema = {
     checkConfig: v.any(),
     lastRunTime: v.optional(v.number()),
     status: v.string(),
+    score: v.optional(v.number()), // Added for quality scoring
     createdAt: v.number(),
   })
     .index("by_business", ["businessId"])
@@ -180,6 +184,7 @@ export const enterpriseSchema = {
     name: v.string(),
     exportType: v.string(),
     destination: v.string(),
+    sourceId: v.optional(v.id("dataWarehouseSources")), // Added for source tracking
     schedule: v.string(),
     enabled: v.boolean(),
     lastRunTime: v.optional(v.number()),
@@ -188,4 +193,33 @@ export const enterpriseSchema = {
   })
     .index("by_business", ["businessId"])
     .index("by_next_run", ["nextRunTime"]),
+
+  exportHistory: defineTable({
+    businessId: v.id("businesses"),
+    scheduleId: v.id("exportSchedules"),
+    status: v.string(),
+    startTime: v.number(),
+    endTime: v.optional(v.number()),
+    recordCount: v.optional(v.number()),
+    fileSize: v.optional(v.number()),
+    errorMessage: v.optional(v.string()),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_schedule", ["scheduleId"]),
+
+  // Portfolio Management
+  portfolioMetrics: defineTable({
+    businessId: v.id("businesses"),
+    totalBudget: v.number(),
+    totalSpent: v.number(),
+    overallHealth: v.union(
+      v.literal("healthy"),
+      v.literal("warning"),
+      v.literal("critical"),
+      v.literal("unknown")
+    ),
+    lastUpdated: v.number(),
+  }).index("by_business", ["businessId"]),
+
+// ... keep existing code (rest of tables)
 };
