@@ -69,4 +69,68 @@ export const kpiSchema = {
     .index("by_target", ["targetId"])
     .index("by_status", ["status"])
     .index("by_department", ["businessId", "department"]),
+
+  departmentBudgets: defineTable({
+    businessId: v.id("businesses"),
+    department: v.string(),
+    fiscalYear: v.number(),
+    amount: v.number(),
+    notes: v.string(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_business_and_year", ["businessId", "fiscalYear"]),
+
+  departmentBudgetActuals: defineTable({
+    businessId: v.id("businesses"),
+    department: v.string(),
+    fiscalYear: v.number(),
+    amount: v.number(),
+    date: v.number(),
+    category: v.string(),
+    description: v.string(),
+    createdAt: v.number(),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_business_and_year", ["businessId", "fiscalYear"]),
+
+  departmentBudgetForecasts: defineTable({
+    businessId: v.id("businesses"),
+    department: v.string(),
+    fiscalYear: v.number(),
+    forecastAmount: v.number(),
+    reason: v.string(),
+    createdAt: v.number(),
+    createdBy: v.string(),
+  }).index("by_business", ["businessId"]),
+
+  resourceAllocations: defineTable({
+    businessId: v.id("businesses"),
+    resourceId: v.string(),
+    resourceName: v.string(),
+    projectId: v.optional(v.string()),
+    projectName: v.optional(v.string()),
+    allocationPercent: v.number(),
+    startDate: v.number(),
+    endDate: v.optional(v.number()),
+    status: v.union(v.literal("active"), v.literal("completed"), v.literal("planned")),
+    createdAt: v.number(),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_resource", ["resourceId"]),
+
+  resourceCapacity: defineTable({
+    businessId: v.id("businesses"),
+    resourceId: v.string(),
+    resourceName: v.string(),
+    resourceType: v.string(),
+    totalHours: v.number(),
+    availableHours: v.number(),
+    utilizationPercent: v.number(),
+    skills: v.array(v.string()),
+    updatedAt: v.number(),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_resource", ["resourceId"]),
 };

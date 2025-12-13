@@ -87,6 +87,8 @@ import type * as dataWarehouse_dataSources from "../dataWarehouse/dataSources.js
 import type * as dataWarehouse_etlPipelines from "../dataWarehouse/etlPipelines.js";
 import type * as demoVideos from "../demoVideos.js";
 import type * as departmentBudgets from "../departmentBudgets.js";
+import type * as departmentBudgets_forecasting from "../departmentBudgets/forecasting.js";
+import type * as departmentBudgets_optimization from "../departmentBudgets/optimization.js";
 import type * as departmentKpis from "../departmentKpis.js";
 import type * as departmentKpis_alerts from "../departmentKpis/alerts.js";
 import type * as departmentKpis_targets from "../departmentKpis/targets.js";
@@ -170,6 +172,8 @@ import type * as policyManagement from "../policyManagement.js";
 import type * as portfolioManagement from "../portfolioManagement.js";
 import type * as portfolioManagement_analytics from "../portfolioManagement/analytics.js";
 import type * as rateLimiting from "../rateLimiting.js";
+import type * as resources_allocation from "../resources/allocation.js";
+import type * as resources_optimization from "../resources/optimization.js";
 import type * as revenueAttribution from "../revenueAttribution.js";
 import type * as risk_mitigation from "../risk/mitigation.js";
 import type * as risk_reporting from "../risk/reporting.js";
@@ -342,6 +346,8 @@ declare const fullApi: ApiFromModules<{
   "dataWarehouse/etlPipelines": typeof dataWarehouse_etlPipelines;
   demoVideos: typeof demoVideos;
   departmentBudgets: typeof departmentBudgets;
+  "departmentBudgets/forecasting": typeof departmentBudgets_forecasting;
+  "departmentBudgets/optimization": typeof departmentBudgets_optimization;
   departmentKpis: typeof departmentKpis;
   "departmentKpis/alerts": typeof departmentKpis_alerts;
   "departmentKpis/targets": typeof departmentKpis_targets;
@@ -425,6 +431,8 @@ declare const fullApi: ApiFromModules<{
   portfolioManagement: typeof portfolioManagement;
   "portfolioManagement/analytics": typeof portfolioManagement_analytics;
   rateLimiting: typeof rateLimiting;
+  "resources/allocation": typeof resources_allocation;
+  "resources/optimization": typeof resources_optimization;
   revenueAttribution: typeof revenueAttribution;
   "risk/mitigation": typeof risk_mitigation;
   "risk/reporting": typeof risk_reporting;
