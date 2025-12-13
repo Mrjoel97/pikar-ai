@@ -255,6 +255,8 @@ import type * as workflowAssignments from "../workflowAssignments.js";
 import type * as workflowHandoffs from "../workflowHandoffs.js";
 import type * as workflowTemplates from "../workflowTemplates.js";
 import type * as workflows from "../workflows.js";
+import type * as workflows_crossDepartment from "../workflows/crossDepartment.js";
+import type * as workflows_optimization from "../workflows/optimization.js";
 import type * as workforce_capacity from "../workforce/capacity.js";
 import type * as workforce_optimization from "../workforce/optimization.js";
 import type * as workforce_skills from "../workforce/skills.js";
@@ -514,6 +516,8 @@ declare const fullApi: ApiFromModules<{
   workflowHandoffs: typeof workflowHandoffs;
   workflowTemplates: typeof workflowTemplates;
   workflows: typeof workflows;
+  "workflows/crossDepartment": typeof workflows_crossDepartment;
+  "workflows/optimization": typeof workflows_optimization;
   "workforce/capacity": typeof workforce_capacity;
   "workforce/optimization": typeof workforce_optimization;
   "workforce/skills": typeof workforce_skills;

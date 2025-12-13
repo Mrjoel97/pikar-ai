@@ -221,3 +221,84 @@ export const getHandoffHistory = query({
     return handoffs.sort((a, b) => (a.initiatedAt || 0) - (b.initiatedAt || 0));
   },
 });
+
+export const trackHandoffDuration = mutation({
+  args: {
+    handoffId: v.id("workflowHandoffs"),
+    duration: v.number(),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.handoffId, {
+      duration: args.duration,
+      completedAt: Date.now(),
+    });
+  },
+});
+
+export const checkSlaCompliance = query({
+  args: { businessId: v.id("businesses") },
+  handler: async (ctx, args) => {
+    const handoffs = await ctx.db
+      .query("workflowHandoffs")
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .collect();
+
+    const slaViolations = handoffs.filter(h => {
+      if (!h.slaDeadline || !h.completedAt) return false;
+      return h.completedAt > h.slaDeadline;
+    });
+
+    const complianceRate = handoffs.length > 0 
+      ? ((handoffs.length - slaViolations.length) / handoffs.length) * 100 
+      : 100;
+
+    return {
+      total: handoffs.length,
+      violations: slaViolations.length,
+      complianceRate,
+      violationsByDepartment: slaViolations.reduce((acc, h) => {
+        acc[h.toDepartment] = (acc[h.toDepartment] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>),
+    };
+  },
+});
+
+export const detectBottlenecks = query({
+  args: { businessId: v.id("businesses") },
+  handler: async (ctx, args) => {
+    const handoffs = await ctx.db
+      .query("workflowHandoffs")
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .collect();
+
+    const departmentMetrics = new Map<string, { total: number; count: number; pending: number }>();
+
+    handoffs.forEach(h => {
+      const dept = h.toDepartment;
+      const existing = departmentMetrics.get(dept) || { total: 0, count: 0, pending: 0 };
+      
+      if (h.completedAt && h.createdAt) {
+        existing.total += h.completedAt - h.createdAt;
+        existing.count += 1;
+      }
+      if (h.status === "pending") {
+        existing.pending += 1;
+      }
+      
+      departmentMetrics.set(dept, existing);
+    });
+
+    const bottlenecks = Array.from(departmentMetrics.entries())
+      .map(([dept, metrics]) => ({
+        department: dept,
+        avgDuration: metrics.count > 0 ? metrics.total / metrics.count : 0,
+        pendingCount: metrics.pending,
+        severity: metrics.pending > 10 ? "high" : metrics.pending > 5 ? "medium" : "low",
+      }))
+      .filter(b => b.severity !== "low")
+      .sort((a, b) => b.pendingCount - a.pendingCount);
+
+    return bottlenecks;
+  },
+});
