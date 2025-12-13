@@ -25,6 +25,8 @@ import type * as analytics_churn from "../analytics/churn.js";
 import type * as analytics_cohorts from "../analytics/cohorts.js";
 import type * as analytics_funnel from "../analytics/funnel.js";
 import type * as analytics_ltv from "../analytics/ltv.js";
+import type * as analytics_optimization from "../analytics/optimization.js";
+import type * as analytics_predictiveROI from "../analytics/predictiveROI.js";
 import type * as analytics_retention from "../analytics/retention.js";
 import type * as analytics_teamVelocity from "../analytics/teamVelocity.js";
 import type * as analyticsEngine from "../analyticsEngine.js";
@@ -278,6 +280,8 @@ declare const fullApi: ApiFromModules<{
   "analytics/cohorts": typeof analytics_cohorts;
   "analytics/funnel": typeof analytics_funnel;
   "analytics/ltv": typeof analytics_ltv;
+  "analytics/optimization": typeof analytics_optimization;
+  "analytics/predictiveROI": typeof analytics_predictiveROI;
   "analytics/retention": typeof analytics_retention;
   "analytics/teamVelocity": typeof analytics_teamVelocity;
   analyticsEngine: typeof analyticsEngine;
