@@ -18,6 +18,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import BusinessComparisonTab from "./portfolio/BusinessComparisonTab";
 import PredictiveInsightsTab from "./portfolio/PredictiveInsightsTab";
 import RiskAssessmentTab from "./portfolio/RiskAssessmentTab";
+import ScenarioPlanner from "./portfolio/ScenarioPlanner";
 
 export function PortfolioDashboard({ businessId }: { businessId?: Id<"businesses"> | null }) {
   const overview = useQuery(
@@ -38,6 +39,26 @@ export function PortfolioDashboard({ businessId }: { businessId?: Id<"businesses
   const predictiveInsights = useQuery(
     api.portfolioManagement.getPredictiveInsights,
     businessId ? { businessId } : undefined
+  );
+
+  const predictiveAnalytics = useQuery(
+    api.portfolioManagement.predictive.getPredictiveAnalytics,
+    businessId ? { businessId } : "skip"
+  );
+
+  const portfolioForecast = useQuery(
+    api.portfolioManagement.predictive.getPortfolioForecast,
+    businessId ? { businessId, months: 12 } : "skip"
+  );
+
+  const riskPredictions = useQuery(
+    api.portfolioManagement.predictive.getRiskPredictions,
+    businessId ? { businessId } : "skip"
+  );
+
+  const optimizationRecs = useQuery(
+    api.portfolioManagement.predictive.getOptimizationRecommendations,
+    businessId ? { businessId } : "skip"
   );
 
   const resourceAllocation = useQuery(
@@ -136,6 +157,9 @@ export function PortfolioDashboard({ businessId }: { businessId?: Id<"businesses
           <TabsTrigger value="benchmarks">Performance Benchmarks</TabsTrigger>
           <TabsTrigger value="predictions">Predictive Insights</TabsTrigger>
           <TabsTrigger value="risks">Risk Assessment</TabsTrigger>
+          <TabsTrigger value="forecast">Forecast</TabsTrigger>
+          <TabsTrigger value="optimization">Optimization</TabsTrigger>
+          <TabsTrigger value="scenario">Scenario Planning</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-4">
@@ -291,6 +315,95 @@ export function PortfolioDashboard({ businessId }: { businessId?: Id<"businesses
 
         <TabsContent value="risks" className="space-y-4">
           <RiskAssessmentTab riskAssessment={riskAssessment} getRiskColor={getRiskColor} />
+        </TabsContent>
+
+        <TabsContent value="forecast" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Portfolio Forecast (12 Months)</CardTitle>
+              <CardDescription>Projected performance and completion rates</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {portfolioForecast && (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-3 gap-4">
+                    <Card>
+                      <CardContent className="p-4">
+                        <div className="text-sm text-muted-foreground">Expected Completion</div>
+                        <div className="text-2xl font-bold">{portfolioForecast.summary.expectedCompletion}%</div>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardContent className="p-4">
+                        <div className="text-sm text-muted-foreground">Avg Confidence</div>
+                        <div className="text-2xl font-bold">{portfolioForecast.summary.averageConfidence}%</div>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardContent className="p-4">
+                        <div className="text-sm text-muted-foreground">Projected Budget</div>
+                        <div className="text-2xl font-bold">${(portfolioForecast.summary.projectedBudget / 1000000).toFixed(1)}M</div>
+                      </CardContent>
+                    </Card>
+                  </div>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <BarChart data={portfolioForecast.forecast}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="month" />
+                      <YAxis />
+                      <Tooltip />
+                      <Legend />
+                      <Bar dataKey="completionRate" fill="#3b82f6" name="Completion Rate %" />
+                      <Bar dataKey="confidence" fill="#94a3b8" name="Confidence %" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="optimization" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>AI-Powered Optimization Recommendations</CardTitle>
+              <CardDescription>Actionable insights to improve portfolio performance</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {optimizationRecs && (
+                <div className="space-y-4">
+                  <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                    <div className="text-sm font-medium text-green-900">Total Potential Savings</div>
+                    <div className="text-2xl font-bold text-green-700">
+                      ${optimizationRecs.totalPotentialSavings.toLocaleString()}
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    {optimizationRecs.recommendations.map((rec: any, idx: number) => (
+                      <div key={idx} className="p-4 border rounded-lg">
+                        <div className="flex items-start justify-between mb-2">
+                          <div className="font-medium">{rec.title}</div>
+                          <Badge variant={rec.priority === "high" ? "destructive" : "secondary"}>
+                            {rec.priority}
+                          </Badge>
+                        </div>
+                        <div className="text-sm text-muted-foreground mb-2">{rec.description}</div>
+                        <div className="flex items-center gap-4 text-xs">
+                          <span className="text-green-600 font-medium">Impact: {rec.impact}</span>
+                          <span className="text-muted-foreground">Effort: {rec.effort}</span>
+                          <span className="font-medium">${rec.estimatedSavings.toLocaleString()} savings</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="scenario" className="space-y-4">
+          <ScenarioPlanner businessId={businessId!} />
         </TabsContent>
       </Tabs>
     </div>

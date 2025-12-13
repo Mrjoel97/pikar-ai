@@ -86,6 +86,9 @@ import type * as dataWarehouse_dataExports from "../dataWarehouse/dataExports.js
 import type * as dataWarehouse_dataQuality from "../dataWarehouse/dataQuality.js";
 import type * as dataWarehouse_dataSources from "../dataWarehouse/dataSources.js";
 import type * as dataWarehouse_etlPipelines from "../dataWarehouse/etlPipelines.js";
+import type * as dataWarehouse_governance from "../dataWarehouse/governance.js";
+import type * as dataWarehouse_lineage from "../dataWarehouse/lineage.js";
+import type * as dataWarehouse_streaming from "../dataWarehouse/streaming.js";
 import type * as demoVideos from "../demoVideos.js";
 import type * as departmentBudgets from "../departmentBudgets.js";
 import type * as departmentBudgets_forecasting from "../departmentBudgets/forecasting.js";
@@ -172,6 +175,8 @@ import type * as playbooks from "../playbooks.js";
 import type * as policyManagement from "../policyManagement.js";
 import type * as portfolioManagement from "../portfolioManagement.js";
 import type * as portfolioManagement_analytics from "../portfolioManagement/analytics.js";
+import type * as portfolioManagement_optimization from "../portfolioManagement/optimization.js";
+import type * as portfolioManagement_predictive from "../portfolioManagement/predictive.js";
 import type * as rateLimiting from "../rateLimiting.js";
 import type * as resources_allocation from "../resources/allocation.js";
 import type * as resources_optimization from "../resources/optimization.js";
@@ -349,6 +354,9 @@ declare const fullApi: ApiFromModules<{
   "dataWarehouse/dataQuality": typeof dataWarehouse_dataQuality;
   "dataWarehouse/dataSources": typeof dataWarehouse_dataSources;
   "dataWarehouse/etlPipelines": typeof dataWarehouse_etlPipelines;
+  "dataWarehouse/governance": typeof dataWarehouse_governance;
+  "dataWarehouse/lineage": typeof dataWarehouse_lineage;
+  "dataWarehouse/streaming": typeof dataWarehouse_streaming;
   demoVideos: typeof demoVideos;
   departmentBudgets: typeof departmentBudgets;
   "departmentBudgets/forecasting": typeof departmentBudgets_forecasting;
@@ -435,6 +443,8 @@ declare const fullApi: ApiFromModules<{
   policyManagement: typeof policyManagement;
   portfolioManagement: typeof portfolioManagement;
   "portfolioManagement/analytics": typeof portfolioManagement_analytics;
+  "portfolioManagement/optimization": typeof portfolioManagement_optimization;
+  "portfolioManagement/predictive": typeof portfolioManagement_predictive;
   rateLimiting: typeof rateLimiting;
   "resources/allocation": typeof resources_allocation;
   "resources/optimization": typeof resources_optimization;
