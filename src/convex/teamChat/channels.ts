@@ -20,6 +20,8 @@ export const createChannel = mutation({
     name: v.string(),
     description: v.optional(v.string()),
     isPrivate: v.boolean(),
+    department: v.optional(v.string()),
+    isCrossDepartment: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -39,6 +41,8 @@ export const createChannel = mutation({
       isPrivate: args.isPrivate,
       createdBy: user._id,
       createdAt: Date.now(),
+      department: args.department,
+      isCrossDepartment: args.isCrossDepartment || false,
     });
 
     return channelId;

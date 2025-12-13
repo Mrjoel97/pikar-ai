@@ -489,6 +489,33 @@ export const coreSchema = {
     .index("by_business", ["businessId"])
     .index("by_business_and_date", ["businessId", "createdAt"]),
 
+  teamChannels: defineTable({
+    businessId: v.id("businesses"),
+    name: v.string(),
+    description: v.optional(v.string()),
+    isPrivate: v.boolean(),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    department: v.optional(v.string()),
+    isCrossDepartment: v.optional(v.boolean()),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_department", ["businessId", "department"]),
+
+  teamMessages: defineTable({
+    businessId: v.id("businesses"),
+    channelId: v.id("teamChannels"),
+    senderId: v.id("users"),
+    content: v.string(),
+    attachments: v.optional(v.array(v.any())),
+    parentMessageId: v.optional(v.id("teamMessages")),
+    reactions: v.optional(v.array(v.any())),
+    createdAt: v.number(),
+    editedAt: v.optional(v.number()),
+  })
+    .index("by_channel", ["channelId"])
+    .index("by_business", ["businessId"]),
+
   auditReportSchedules: defineTable({
     businessId: v.id("businesses"),
     name: v.string(),

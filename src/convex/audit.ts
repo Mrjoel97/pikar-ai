@@ -502,3 +502,118 @@ export const generateScheduledReport = mutation({
     return { success: true };
   },
 });
+
+/**
+ * Get available compliance report templates
+ */
+export const getComplianceReportTemplates = query({
+  args: {},
+  handler: async () => {
+    return [
+      {
+        id: "soc2-type2",
+        name: "SOC 2 Type II",
+        framework: "SOC2",
+        description: "Security, availability, processing integrity, confidentiality, and privacy",
+        sections: ["Access Controls", "Change Management", "Risk Assessment", "Monitoring"],
+      },
+      {
+        id: "gdpr-compliance",
+        name: "GDPR Compliance",
+        framework: "GDPR",
+        description: "Data protection and privacy for EU citizens",
+        sections: ["Data Processing", "Consent Management", "Data Subject Rights", "Breach Notification"],
+      },
+      {
+        id: "hipaa-security",
+        name: "HIPAA Security Rule",
+        framework: "HIPAA",
+        description: "Protected health information security standards",
+        sections: ["Administrative Safeguards", "Physical Safeguards", "Technical Safeguards"],
+      },
+      {
+        id: "iso27001",
+        name: "ISO 27001",
+        framework: "ISO27001",
+        description: "Information security management system",
+        sections: ["Risk Assessment", "Security Controls", "Incident Management", "Business Continuity"],
+      },
+      {
+        id: "pci-dss",
+        name: "PCI DSS",
+        framework: "PCI-DSS",
+        description: "Payment card industry data security standard",
+        sections: ["Network Security", "Cardholder Data Protection", "Access Control", "Monitoring"],
+      },
+    ];
+  },
+});
+
+/**
+ * Get scheduled compliance reports
+ */
+export const getScheduledReports = query({
+  args: { businessId: v.id("businesses") },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("auditReportSchedules")
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .filter((q) => q.eq(q.field("reportType"), "compliance"))
+      .collect();
+  },
+});
+
+/**
+ * Schedule a compliance report
+ */
+export const scheduleComplianceReport = mutation({
+  args: {
+    businessId: v.id("businesses"),
+    name: v.string(),
+    framework: v.string(),
+    frequency: v.union(
+      v.literal("weekly"),
+      v.literal("monthly"),
+      v.literal("quarterly"),
+      v.literal("annually")
+    ),
+    recipients: v.array(v.string()),
+    isActive: v.boolean(),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Unauthorized");
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("email", (q) => q.eq("email", identity.email!))
+      .first();
+    if (!user) throw new Error("User not found");
+
+    const now = Date.now();
+    const nextRun = calculateNextRun(args.frequency, now);
+
+    return await ctx.db.insert("auditReportSchedules", {
+      businessId: args.businessId,
+      name: args.name,
+      reportType: `compliance_${args.framework}`,
+      frequency: args.frequency as "daily" | "weekly" | "monthly" | "quarterly",
+      recipients: args.recipients,
+      isActive: args.isActive,
+      createdBy: user._id,
+      createdAt: now,
+      updatedAt: now,
+      nextRunAt: nextRun,
+    });
+  },
+});
+
+// Helper function for calculating next run time
+function calculateNextRun(frequency: string, from: number): number {
+  const day = 24 * 60 * 60 * 1000;
+  if (frequency === "weekly") return from + 7 * day;
+  if (frequency === "monthly") return from + 30 * day;
+  if (frequency === "quarterly") return from + 90 * day;
+  if (frequency === "annually") return from + 365 * day;
+  return from + day;
+}
