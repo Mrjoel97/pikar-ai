@@ -38,23 +38,46 @@ const STAGE_CONFIG = {
 export function CustomerJourneyMap({ businessId }: CustomerJourneyMapProps) {
   const [selectedDays, setSelectedDays] = useState(30);
   
+  // Core analytics queries
   const analytics = useQuery(api.customerJourney.getJourneyAnalytics, { 
     businessId, 
     days: selectedDays 
-  }) as any;
+  });
+  
   const touchpointAnalytics = useQuery(api.customerJourney.getTouchpointAnalytics, { 
     businessId, 
     days: selectedDays 
-  }) as any;
+  });
+  
   const funnelData = useQuery(api.customerJourney.getConversionFunnel, { 
     businessId, 
     days: selectedDays 
-  }) as any;
+  });
+  
   const dropoffAnalysis = useQuery(api.customerJourney.getDropoffAnalysis, { 
     businessId, 
     days: selectedDays 
-  }) as any;
-  const suggestions = useQuery(api.customerJourney.getOptimizationSuggestions, { businessId }) as any;
+  });
+  
+  const suggestions = useQuery(api.customerJourney.getOptimizationSuggestions, { 
+    businessId 
+  });
+
+  // New analytics queries
+  const dropoffPoints = useQuery(api.customerJourney.analytics.getDropoffPoints, {
+    businessId,
+    days: selectedDays,
+  });
+
+  const conversionRates = useQuery(api.customerJourney.analytics.getConversionRates, {
+    businessId,
+    days: selectedDays,
+  });
+
+  const optimizationRecommendations = useQuery(
+    api.customerJourney.analytics.getOptimizationRecommendations,
+    { businessId }
+  );
 
   if (!analytics || !touchpointAnalytics || !funnelData || !dropoffAnalysis || !suggestions) {
     return (
@@ -88,37 +111,38 @@ export function CustomerJourneyMap({ businessId }: CustomerJourneyMapProps) {
         </div>
       </div>
 
-      {/* Optimization Suggestions */}
-      {suggestions.length > 0 && (
+      {/* AI-Powered Optimization Recommendations */}
+      {optimizationRecommendations && optimizationRecommendations.length !== 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Zap className="h-5 w-5 text-yellow-500" />
-              Optimization Suggestions
+              AI-Powered Optimization Recommendations
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            {suggestions.map((suggestion: any, idx: number) => {
-              const Icon = suggestion.type === "warning" ? AlertTriangle : 
-                          suggestion.type === "success" ? CheckCircle : Info;
-              const colorClass = suggestion.type === "warning" ? "text-orange-500" : 
-                                suggestion.type === "success" ? "text-green-500" : "text-blue-500";
+            {optimizationRecommendations.map((rec: any, idx: number) => {
+              const Icon = rec.type === "critical" ? AlertTriangle : 
+                          rec.type === "warning" ? Info : CheckCircle;
+              const colorClass = rec.type === "critical" ? "text-red-500" : 
+                                rec.type === "warning" ? "text-orange-500" : "text-green-500";
               
               return (
                 <div key={idx} className="flex items-start gap-3 p-3 bg-muted/50 rounded-lg">
                   <Icon className={`h-5 w-5 mt-0.5 ${colorClass}`} />
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
-                      <h4 className="font-semibold">{suggestion.title}</h4>
-                      <Badge variant={suggestion.priority === "high" ? "destructive" : "secondary"}>
-                        {suggestion.priority}
+                      <h4 className="font-semibold">{rec.title}</h4>
+                      <Badge variant={rec.impact === "high" ? "destructive" : "secondary"}>
+                        {rec.impact} impact
                       </Badge>
                     </div>
-                    <p className="text-sm text-muted-foreground">{suggestion.description}</p>
+                    <p className="text-sm text-muted-foreground mb-1">{rec.description}</p>
+                    <p className="text-sm font-medium text-blue-600">{rec.suggestion}</p>
                   </div>
                 </div>
               );
-            })}
+            }))}
           </CardContent>
         </Card>
       )}
@@ -207,6 +231,38 @@ export function CustomerJourneyMap({ businessId }: CustomerJourneyMapProps) {
             </CardContent>
           </Card>
 
+          {/* Conversion Rates */}
+          {conversionRates && conversionRates.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Stage Conversion Rates</CardTitle>
+                <CardDescription>Conversion performance between stages</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {conversionRates.map((conversion: any) => (
+                  <div key={`${conversion.from}-${conversion.to}`} className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium capitalize">{conversion.from}</span>
+                        <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-sm font-medium capitalize">{conversion.to}</span>
+                      </div>
+                      <div className="text-right">
+                        <Badge variant={conversion.rate > 50 ? "default" : "secondary"}>
+                          {conversion.rate}%
+                        </Badge>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {conversion.count} / {conversion.total}
+                        </p>
+                      </div>
+                    </div>
+                    <Progress value={conversion.rate} className="h-2" />
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          )}
+
           {/* Stage Transitions */}
           <Card>
             <CardHeader>
@@ -272,7 +328,7 @@ export function CustomerJourneyMap({ businessId }: CustomerJourneyMapProps) {
                         <div>
                           <div className="font-semibold">{config.label}</div>
                           <div className="text-sm text-muted-foreground">
-                            {stage.count as number} contacts
+                            {stage.count} contacts
                           </div>
                         </div>
                       </div>
@@ -335,7 +391,7 @@ export function CustomerJourneyMap({ businessId }: CustomerJourneyMapProps) {
                         {Object.entries(channels as Record<string, number>).map(([channel, count]) => (
                           <div key={channel} className="flex items-center justify-between text-xs">
                             <span className="capitalize">{channel}</span>
-                            <Badge variant="secondary">{count as number}</Badge>
+                            <Badge variant="secondary">{count}</Badge>
                           </div>
                         ))}
                       </div>
@@ -349,6 +405,43 @@ export function CustomerJourneyMap({ businessId }: CustomerJourneyMapProps) {
 
         {/* Drop-offs Tab */}
         <TabsContent value="dropoffs" className="space-y-6">
+          {/* Drop-off Points */}
+          {dropoffPoints && dropoffPoints.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <AlertTriangle className="h-5 w-5 text-orange-500" />
+                  Critical Drop-off Points
+                </CardTitle>
+                <CardDescription>
+                  Stages with significant customer drop-off (greater than 20%)
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {dropoffPoints.map((dropoff: any, idx: number) => (
+                  <div key={idx} className="p-4 border rounded-lg space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="font-semibold">
+                        {dropoff.from} → {dropoff.to}
+                      </div>
+                      <Badge variant={
+                        dropoff.severity === "high" ? "destructive" : 
+                        dropoff.severity === "medium" ? "default" : "secondary"
+                      }>
+                        {dropoff.dropoffRate}% drop-off
+                      </Badge>
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                      {dropoff.entered} contacts entered this transition
+                    </div>
+                    <Progress value={100 - dropoff.dropoffRate} className="h-2" />
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Bottleneck Detection */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
