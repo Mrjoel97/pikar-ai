@@ -132,6 +132,59 @@ export const workflowsSchema = {
     .index("by_workflow", ["workflowId"])
     .index("by_status", ["status"]),
 
+  // Policy Management tables
+  policies: defineTable({
+    businessId: v.id("businesses"),
+    title: v.string(),
+    description: v.string(),
+    category: v.string(),
+    content: v.string(),
+    version: v.string(),
+    status: v.union(v.literal("draft"), v.literal("active"), v.literal("deprecated")),
+    severity: v.union(v.literal("low"), v.literal("medium"), v.literal("high"), v.literal("critical")),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_business_and_status", ["businessId", "status"]),
+
+  policyVersions: defineTable({
+    policyId: v.id("policies"),
+    version: v.string(),
+    content: v.string(),
+    changeNotes: v.string(),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+  }).index("by_policy", ["policyId"]),
+
+  policyApprovals: defineTable({
+    businessId: v.id("businesses"),
+    policyId: v.id("policies"),
+    requestedBy: v.id("users"),
+    approvedBy: v.optional(v.id("users")),
+    status: v.union(v.literal("pending"), v.literal("approved"), v.literal("rejected")),
+    comments: v.optional(v.string()),
+    createdAt: v.number(),
+    approvedAt: v.optional(v.number()),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_policy", ["policyId"])
+    .index("by_business_and_status", ["businessId", "status"]),
+
+  policyAcknowledgments: defineTable({
+    policyId: v.id("policies"),
+    userId: v.id("users"),
+    status: v.union(v.literal("pending"), v.literal("acknowledged")),
+    distributedAt: v.number(),
+    acknowledgedAt: v.optional(v.number()),
+    dueDate: v.optional(v.number()),
+    signature: v.optional(v.string()),
+  })
+    .index("by_policy", ["policyId"])
+    .index("by_user", ["userId"])
+    .index("by_user_and_status", ["userId", "status"]),
+
   tasks: defineTable({
     businessId: v.id("businesses"),
     title: v.string(),
