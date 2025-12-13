@@ -462,4 +462,33 @@ export const coreSchema = {
     campaignId: v.optional(v.string()),
     timestamp: v.number(),
   }).index("by_business", ["businessId"]),
+
+  revenueEvents: defineTable({
+    businessId: v.id("businesses"),
+    userId: v.id("users"),
+    amount: v.number(),
+    source: v.string(),
+    description: v.optional(v.string()),
+    metadata: v.optional(v.any()),
+    timestamp: v.number(),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_user", ["userId"])
+    .index("by_timestamp", ["timestamp"]),
+
+  agentProfiles: defineTable({
+    userId: v.id("users"),
+    businessId: v.id("businesses"),
+    preferences: v.optional(v.object({
+      hourlyRate: v.optional(v.number()),
+      automations: v.object({
+        invoicing: v.boolean(),
+        emailDrafts: v.boolean(),
+        socialPosts: v.boolean(),
+      }),
+    })),
+    lastUpdated: v.number(),
+  })
+    .index("by_user_and_business", ["userId", "businessId"])
+    .index("by_business", ["businessId"]),
 };
