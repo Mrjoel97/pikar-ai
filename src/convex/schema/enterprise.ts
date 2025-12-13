@@ -287,4 +287,138 @@ export const enterpriseSchema = {
     .index("by_business", ["businessId"])
     .index("by_initiative", ["initiativeId"]),
 
+  reportTemplates: defineTable({
+    businessId: v.id("businesses"),
+    name: v.string(),
+    description: v.optional(v.string()),
+    reportType: v.string(),
+    template: v.any(),
+    isActive: v.boolean(),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_business", ["businessId"]),
+
+  scheduledReports: defineTable({
+    businessId: v.id("businesses"),
+    templateId: v.id("reportTemplates"),
+    name: v.string(),
+    frequency: v.union(
+      v.literal("daily"),
+      v.literal("weekly"),
+      v.literal("monthly"),
+      v.literal("quarterly")
+    ),
+    recipients: v.array(v.string()),
+    isActive: v.boolean(),
+    lastRunAt: v.optional(v.number()),
+    nextRunAt: v.number(),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_next_run", ["nextRunAt"]),
+
+  generatedReports: defineTable({
+    businessId: v.id("businesses"),
+    templateId: v.id("reportTemplates"),
+    scheduledReportId: v.optional(v.id("scheduledReports")),
+    reportData: v.any(),
+    fileUrl: v.optional(v.string()),
+    status: v.union(v.literal("generating"), v.literal("completed"), v.literal("failed")),
+    generatedAt: v.number(),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_template", ["templateId"]),
+
+  crmConnections: defineTable({
+    businessId: v.id("businesses"),
+    provider: v.union(
+      v.literal("salesforce"),
+      v.literal("hubspot"),
+      v.literal("pipedrive"),
+      v.literal("zoho")
+    ),
+    accessToken: v.string(),
+    refreshToken: v.optional(v.string()),
+    expiresAt: v.number(),
+    isActive: v.boolean(),
+    lastSyncAt: v.optional(v.number()),
+    syncStatus: v.optional(v.string()),
+    metadata: v.optional(v.any()),
+    createdAt: v.number(),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_business_and_provider", ["businessId", "provider"]),
+
+  crmSyncConflicts: defineTable({
+    businessId: v.id("businesses"),
+    connectionId: v.id("crmConnections"),
+    entityType: v.string(),
+    localId: v.string(),
+    remoteId: v.string(),
+    conflictType: v.string(),
+    localData: v.any(),
+    remoteData: v.any(),
+    status: v.union(v.literal("pending"), v.literal("resolved"), v.literal("ignored")),
+    resolvedAt: v.optional(v.number()),
+    createdAt: v.number(),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_connection", ["connectionId"])
+    .index("by_status", ["status"]),
+
+  crmDeals: defineTable({
+    businessId: v.id("businesses"),
+    connectionId: v.id("crmConnections"),
+    externalId: v.string(),
+    name: v.string(),
+    amount: v.number(),
+    stage: v.string(),
+    probability: v.optional(v.number()),
+    closeDate: v.optional(v.number()),
+    contactId: v.optional(v.id("contacts")),
+    metadata: v.optional(v.any()),
+    lastSyncAt: v.number(),
+    createdAt: v.number(),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_connection", ["connectionId"]),
+
+  vendors: defineTable({
+    businessId: v.id("businesses"),
+    name: v.string(),
+    category: v.string(),
+    contactEmail: v.optional(v.string()),
+    contactPhone: v.optional(v.string()),
+    status: v.union(v.literal("active"), v.literal("inactive"), v.literal("pending")),
+    performanceScore: v.optional(v.number()),
+    contractStartDate: v.optional(v.number()),
+    contractEndDate: v.optional(v.number()),
+    metadata: v.optional(v.any()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_business", ["businessId"]),
+
+  threatDetectionAlerts: defineTable({
+    businessId: v.id("businesses"),
+    alertType: v.string(),
+    severity: v.union(v.literal("low"), v.literal("medium"), v.literal("high"), v.literal("critical")),
+    description: v.string(),
+    source: v.optional(v.string()),
+    affectedResources: v.optional(v.array(v.string())),
+    status: v.union(v.literal("active"), v.literal("investigating"), v.literal("resolved")),
+    detectedAt: v.number(),
+    resolvedAt: v.optional(v.number()),
+  }).index("by_business", ["businessId"]),
+
+  qualityChecks: defineTable({
+    businessId: v.id("businesses"),
+    dataSourceId: v.string(),
+    checkType: v.string(),
+    status: v.union(v.literal("passed"), v.literal("failed"), v.literal("warning")),
+    score: v.number(),
+    issues: v.optional(v.array(v.any())),
+    checkedAt: v.number(),
+  }).index("by_business", ["businessId"]),
 };

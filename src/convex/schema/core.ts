@@ -546,4 +546,129 @@ export const coreSchema = {
     ),
     createdAt: v.number(),
   }).index("by_email", ["email"]),
+
+  locations: defineTable({
+    businessId: v.id("businesses"),
+    name: v.string(),
+    address: v.optional(v.string()),
+    city: v.optional(v.string()),
+    state: v.optional(v.string()),
+    country: v.optional(v.string()),
+    postalCode: v.optional(v.string()),
+    timezone: v.optional(v.string()),
+    isActive: v.boolean(),
+    metadata: v.optional(v.any()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_business", ["businessId"]),
+
+  playbookExecutions: defineTable({
+    businessId: v.id("businesses"),
+    playbookId: v.id("playbooks"),
+    agentId: v.optional(v.id("aiAgents")),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("running"),
+      v.literal("completed"),
+      v.literal("failed")
+    ),
+    startedAt: v.number(),
+    completedAt: v.optional(v.number()),
+    result: v.optional(v.any()),
+    error: v.optional(v.string()),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_playbook", ["playbookId"]),
+
+  customDomains: defineTable({
+    businessId: v.id("businesses"),
+    domain: v.string(),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("verified"),
+      v.literal("active"),
+      v.literal("failed")
+    ),
+    sslEnabled: v.boolean(),
+    verificationToken: v.optional(v.string()),
+    verifiedAt: v.optional(v.number()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_domain", ["domain"]),
+
+  contactLists: defineTable({
+    businessId: v.id("businesses"),
+    name: v.string(),
+    description: v.optional(v.string()),
+    contactCount: v.number(),
+    tags: v.optional(v.array(v.string())),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_business", ["businessId"]),
+
+  emailDrafts: defineTable({
+    businessId: v.id("businesses"),
+    subject: v.string(),
+    content: v.string(),
+    recipientListId: v.optional(v.id("contactLists")),
+    status: v.union(v.literal("draft"), v.literal("scheduled"), v.literal("sent")),
+    scheduledFor: v.optional(v.number()),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_status", ["status"]),
+
+  socialPosts: defineTable({
+    businessId: v.id("businesses"),
+    platform: v.union(
+      v.literal("twitter"),
+      v.literal("linkedin"),
+      v.literal("facebook"),
+      v.literal("instagram")
+    ),
+    content: v.string(),
+    mediaUrls: v.optional(v.array(v.string())),
+    status: v.union(
+      v.literal("draft"),
+      v.literal("scheduled"),
+      v.literal("published"),
+      v.literal("failed")
+    ),
+    scheduledFor: v.optional(v.number()),
+    publishedAt: v.optional(v.number()),
+    externalId: v.optional(v.string()),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_status", ["status"]),
+
+  emails: defineTable({
+    businessId: v.id("businesses"),
+    campaignId: v.optional(v.id("emailCampaigns")),
+    recipientEmail: v.string(),
+    subject: v.string(),
+    content: v.string(),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("sent"),
+      v.literal("delivered"),
+      v.literal("opened"),
+      v.literal("clicked"),
+      v.literal("bounced"),
+      v.literal("failed")
+    ),
+    sentAt: v.optional(v.number()),
+    openedAt: v.optional(v.number()),
+    clickedAt: v.optional(v.number()),
+    createdAt: v.number(),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_campaign", ["campaignId"])
+    .index("by_status", ["status"]),
 };

@@ -199,4 +199,27 @@ export const workflowsSchema = {
   })
     .index("by_business", ["businessId"])
     .index("by_status", ["status"]),
+
+  experiments: defineTable({
+    businessId: v.id("businesses"),
+    name: v.string(),
+    description: v.optional(v.string()),
+    hypothesis: v.optional(v.string()),
+    status: v.union(
+      v.literal("draft"),
+      v.literal("running"),
+      v.literal("completed"),
+      v.literal("paused")
+    ),
+    variants: v.array(v.any()),
+    metrics: v.array(v.any()),
+    startDate: v.optional(v.number()),
+    endDate: v.optional(v.number()),
+    results: v.optional(v.any()),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_status", ["status"]),
 };

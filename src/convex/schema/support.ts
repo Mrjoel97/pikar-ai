@@ -34,4 +34,32 @@ export const supportSchema = {
   })
     .index("by_business_and_time", ["businessId", "timestamp"])
     .index("by_business", ["businessId"]),
+
+  helpTips: defineTable({
+    businessId: v.optional(v.id("businesses")),
+    category: v.string(),
+    title: v.string(),
+    content: v.string(),
+    targetPage: v.optional(v.string()),
+    priority: v.number(),
+    isActive: v.boolean(),
+    createdAt: v.number(),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_category", ["category"]),
+
+  tutorials: defineTable({
+    businessId: v.optional(v.id("businesses")),
+    title: v.string(),
+    description: v.optional(v.string()),
+    steps: v.array(v.any()),
+    category: v.string(),
+    difficulty: v.union(v.literal("beginner"), v.literal("intermediate"), v.literal("advanced")),
+    estimatedMinutes: v.number(),
+    isActive: v.boolean(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_category", ["category"]),
 };

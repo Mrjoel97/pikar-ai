@@ -55,4 +55,47 @@ export const teamSchema = {
     createdAt: v.number(),
   })
     .index("by_role", ["role"]),
+
+  objectives: defineTable({
+    businessId: v.id("businesses"),
+    title: v.string(),
+    description: v.optional(v.string()),
+    ownerId: v.id("users"),
+    parentObjectiveId: v.optional(v.id("objectives")),
+    status: v.union(
+      v.literal("not_started"),
+      v.literal("on_track"),
+      v.literal("at_risk"),
+      v.literal("completed")
+    ),
+    progress: v.number(),
+    startDate: v.number(),
+    targetDate: v.number(),
+    completedAt: v.optional(v.number()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_owner", ["ownerId"])
+    .index("by_parent", ["parentObjectiveId"]),
+
+  keyResults: defineTable({
+    objectiveId: v.id("objectives"),
+    businessId: v.id("businesses"),
+    title: v.string(),
+    description: v.optional(v.string()),
+    targetValue: v.number(),
+    currentValue: v.number(),
+    unit: v.string(),
+    status: v.union(
+      v.literal("not_started"),
+      v.literal("on_track"),
+      v.literal("at_risk"),
+      v.literal("completed")
+    ),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_objective", ["objectiveId"])
+    .index("by_business", ["businessId"]),
 };
