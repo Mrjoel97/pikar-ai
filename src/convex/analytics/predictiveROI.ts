@@ -198,15 +198,8 @@ export const getScenarioAnalysis = query({
     ),
   },
   handler: async (ctx, args) => {
-    // Get current baseline
-    const baseline = await ctx.db
-      .query("agentProfiles")
-      .withIndex("by_user_and_business", (q: any) =>
-        q.eq("userId", args.userId).eq("businessId", args.businessId)
-      )
-      .first();
-
-    const baseHourlyRate = baseline?.preferences?.hourlyRate ?? 50;
+    // Get current baseline hourly rate
+    const baseHourlyRate = 50; // Default rate - can be customized per user
 
     // Get historical data
     const historicalDays = 30;

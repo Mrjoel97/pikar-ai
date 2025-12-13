@@ -115,14 +115,8 @@ export const getROIOptimizationSuggestions = query({
     }
 
     // Suggestion 4: Hourly rate optimization
-    const agentProfile = await ctx.db
-      .query("agentProfiles")
-      .withIndex("by_user_and_business", (q: any) =>
-        q.eq("userId", args.userId).eq("businessId", args.businessId)
-      )
-      .first();
+    const hourlyRate = 50; // Default rate - can be customized per user
 
-    const hourlyRate = agentProfile?.preferences?.hourlyRate ?? 50;
     if (hourlyRate < 75) {
       suggestions.push({
         category: "Pricing",
