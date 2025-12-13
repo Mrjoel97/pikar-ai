@@ -170,7 +170,7 @@ export const optimizeResourceAllocation = mutation({
 
     // Get current allocations (indexed)
     const allocations = await ctx.db
-      .query("resourceAllocations")
+      .query("portfolioResourceAllocations")
       .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId))
       .collect();
 

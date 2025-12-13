@@ -221,5 +221,50 @@ export const enterpriseSchema = {
     lastUpdated: v.number(),
   }).index("by_business", ["businessId"]),
 
-// ... keep existing code (rest of tables)
+  initiativeDependencies: defineTable({
+    businessId: v.id("businesses"),
+    sourceInitiativeId: v.id("initiatives"),
+    targetInitiativeId: v.id("initiatives"),
+    dependencyType: v.union(
+      v.literal("blocks"),
+      v.literal("requires"),
+      v.literal("related")
+    ),
+    description: v.optional(v.string()),
+    status: v.string(),
+    createdAt: v.number(),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_source", ["sourceInitiativeId"])
+    .index("by_target", ["targetInitiativeId"]),
+
+  portfolioRisks: defineTable({
+    businessId: v.id("businesses"),
+    initiativeId: v.optional(v.id("initiatives")),
+    riskType: v.string(),
+    description: v.string(),
+    impact: v.number(),
+    probability: v.number(),
+    mitigationStrategy: v.optional(v.string()),
+    status: v.string(),
+    identifiedAt: v.number(),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_initiative", ["initiativeId"])
+    .index("by_status", ["status"]),
+
+  portfolioResourceAllocations: defineTable({
+    businessId: v.id("businesses"),
+    initiativeId: v.id("initiatives"),
+    resourceType: v.string(),
+    allocatedAmount: v.number(),
+    capacity: v.number(),
+    startDate: v.number(),
+    endDate: v.optional(v.number()),
+    status: v.string(),
+    createdAt: v.number(),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_initiative", ["initiativeId"]),
+
 };

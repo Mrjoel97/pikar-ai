@@ -13,7 +13,7 @@ export const getOptimalPortfolioMix = query({
       .collect();
 
     const allocations = await ctx.db
-      .query("resourceAllocations")
+      .query("portfolioResourceAllocations")
       .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
       .collect();
 
