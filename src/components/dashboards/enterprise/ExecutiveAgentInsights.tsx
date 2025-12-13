@@ -17,6 +17,8 @@ import {
   Target,
   Brain
 } from "lucide-react";
+import { PredictivePerformance } from "@/components/enterprise/agents/PredictivePerformance";
+import { CostForecasting } from "@/components/enterprise/agents/CostForecasting";
 
 interface ExecutiveAgentInsightsProps {
   businessId: Id<"businesses"> | undefined;
@@ -313,35 +315,11 @@ export function ExecutiveAgentInsights({ businessId }: ExecutiveAgentInsightsPro
         </TabsContent>
 
         <TabsContent value="predictive" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>ML-Based Predictive Performance</CardTitle>
-              <CardDescription>
-                Advanced machine learning predictions for agent performance
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="text-sm text-muted-foreground">
-                Loading predictive analytics...
-              </div>
-            </CardContent>
-          </Card>
+          <PredictivePerformance businessId={businessId} />
         </TabsContent>
 
         <TabsContent value="forecasting" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Cost Forecasting & ROI</CardTitle>
-              <CardDescription>
-                30/60/90 day cost forecasts and ROI projections
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="text-sm text-muted-foreground">
-                Loading cost forecasting...
-              </div>
-            </CardContent>
-          </Card>
+          <CostForecasting businessId={businessId} />
         </TabsContent>
       </Tabs>
     </div>
