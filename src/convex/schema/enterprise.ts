@@ -104,4 +104,88 @@ export const enterpriseSchema = {
   })
     .index("by_business", ["businessId"])
     .index("by_workflow", ["workflowId"]),
+
+  // Data Warehouse
+  dataWarehouseSources: defineTable({
+    businessId: v.id("businesses"),
+    name: v.string(),
+    sourceType: v.string(),
+    connectionConfig: v.any(),
+    isActive: v.boolean(),
+    lastSyncTime: v.optional(v.number()),
+    nextSyncTime: v.optional(v.number()),
+    syncFrequency: v.optional(v.string()),
+    status: v.string(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_status", ["status"]),
+
+  dataWarehouseJobs: defineTable({
+    businessId: v.id("businesses"),
+    sourceId: v.id("dataWarehouseSources"),
+    jobType: v.string(),
+    status: v.string(),
+    startedAt: v.number(),
+    completedAt: v.optional(v.number()),
+    recordsProcessed: v.optional(v.number()),
+    errorMessage: v.optional(v.string()),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_source", ["sourceId"])
+    .index("by_status", ["status"]),
+
+  etlPipelines: defineTable({
+    businessId: v.id("businesses"),
+    name: v.string(),
+    description: v.optional(v.string()),
+    sourceId: v.id("dataWarehouseSources"),
+    transformations: v.array(v.any()),
+    schedule: v.optional(v.string()),
+    enabled: v.boolean(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_source", ["sourceId"]),
+
+  pipelineExecutions: defineTable({
+    businessId: v.id("businesses"),
+    pipelineId: v.id("etlPipelines"),
+    status: v.string(),
+    startTime: v.number(),
+    endTime: v.optional(v.number()),
+    recordsProcessed: v.number(),
+    errorMessage: v.optional(v.string()),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_pipeline", ["pipelineId"])
+    .index("by_status", ["status"]),
+
+  dataQualityChecks: defineTable({
+    businessId: v.id("businesses"),
+    sourceId: v.id("dataWarehouseSources"),
+    checkType: v.string(),
+    checkConfig: v.any(),
+    lastRunTime: v.optional(v.number()),
+    status: v.string(),
+    createdAt: v.number(),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_source", ["sourceId"]),
+
+  exportSchedules: defineTable({
+    businessId: v.id("businesses"),
+    name: v.string(),
+    exportType: v.string(),
+    destination: v.string(),
+    schedule: v.string(),
+    enabled: v.boolean(),
+    lastRunTime: v.optional(v.number()),
+    nextRunTime: v.optional(v.number()),
+    createdAt: v.number(),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_next_run", ["nextRunTime"]),
 };
