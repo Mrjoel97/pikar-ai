@@ -11,6 +11,25 @@ interface BudgetOptimizerProps {
   businessId: Id<"businesses">;
 }
 
+interface OptimizationSuggestion {
+  department: string;
+  type: "reallocation" | "efficiency" | "cost_reduction" | "investment";
+  priority: "high" | "medium" | "low";
+  title: string;
+  description: string;
+  potentialSavings: number;
+  actionItems: string[];
+}
+
+interface ReallocationRecommendation {
+  type: string;
+  title: string;
+  description: string;
+  from: Array<{ department: string; amount: number }>;
+  to: Array<{ department: string; amount: number }>;
+  impact: string;
+}
+
 export function BudgetOptimizer({ businessId }: BudgetOptimizerProps) {
   const suggestions = useQuery(api.departmentBudgets.optimization.getOptimizationSuggestions, {
     businessId,
@@ -26,7 +45,7 @@ export function BudgetOptimizer({ businessId }: BudgetOptimizerProps) {
     return <div>Loading optimization suggestions...</div>;
   }
 
-  const totalPotentialSavings = suggestions.reduce((sum: number, s: any) => sum + s.potentialSavings, 0);
+  const totalPotentialSavings = suggestions.reduce((sum: number, s: OptimizationSuggestion) => sum + s.potentialSavings, 0);
 
   const priorityColors = {
     high: "destructive",
@@ -66,8 +85,8 @@ export function BudgetOptimizer({ businessId }: BudgetOptimizerProps) {
               <p className="text-sm">Your budget allocation is optimal</p>
             </div>
           ) : (
-            suggestions.map((suggestion: any, index: number) => {
-              const Icon = typeIcons[suggestion.type as keyof typeof typeIcons];
+            suggestions.map((suggestion: OptimizationSuggestion, index: number) => {
+              const Icon = typeIcons[suggestion.type];
               return (
                 <Card key={index} className="border-l-4" style={{ borderLeftColor: suggestion.priority === "high" ? "#ef4444" : suggestion.priority === "medium" ? "#f59e0b" : "#6b7280" }}>
                   <CardHeader className="pb-3">
@@ -79,7 +98,7 @@ export function BudgetOptimizer({ businessId }: BudgetOptimizerProps) {
                           <p className="text-sm text-muted-foreground capitalize">{suggestion.department}</p>
                         </div>
                       </div>
-                      <Badge variant={priorityColors[suggestion.priority as keyof typeof priorityColors]}>
+                      <Badge variant={priorityColors[suggestion.priority]}>
                         {suggestion.priority}
                       </Badge>
                     </div>
@@ -135,7 +154,7 @@ export function BudgetOptimizer({ businessId }: BudgetOptimizerProps) {
             <CardTitle className="text-base">Reallocation Recommendations</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {recommendations.map((rec: any, index: number) => (
+            {recommendations.map((rec: ReallocationRecommendation, index: number) => (
               <div key={index} className="space-y-3 p-4 bg-muted rounded-lg">
                 <div className="flex items-center justify-between">
                   <h4 className="font-semibold">{rec.title}</h4>
@@ -147,7 +166,7 @@ export function BudgetOptimizer({ businessId }: BudgetOptimizerProps) {
                   <div>
                     <p className="font-medium mb-2">From (Under-utilized):</p>
                     <ul className="space-y-1">
-                      {rec.from.map((f: any, i: number) => (
+                      {rec.from.map((f, i) => (
                         <li key={i} className="flex justify-between">
                           <span className="capitalize">{f.department}</span>
                           <span className="text-red-600">-${(f.amount / 1000).toFixed(0)}K</span>
@@ -158,7 +177,7 @@ export function BudgetOptimizer({ businessId }: BudgetOptimizerProps) {
                   <div>
                     <p className="font-medium mb-2">To (Over-utilized):</p>
                     <ul className="space-y-1">
-                      {rec.to.map((t: any, i: number) => (
+                      {rec.to.map((t, i) => (
                         <li key={i} className="flex justify-between">
                           <span className="capitalize">{t.department}</span>
                           <span className="text-green-600">+${(t.amount / 1000).toFixed(0)}K</span>
