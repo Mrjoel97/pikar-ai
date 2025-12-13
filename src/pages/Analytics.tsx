@@ -7,6 +7,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import { exportData, formatters } from "@/lib/exportUtils";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { CohortAnalysis } from "@/components/analytics/CohortAnalysis";
+import { ChurnPrediction } from "@/components/analytics/ChurnPrediction";
+import { RetentionCurves } from "@/components/analytics/RetentionCurves";
+import { FunnelChart } from "@/components/analytics/FunnelChart";
+import { CohortTable } from "@/components/analytics/CohortTable";
+import type { Id } from "@/convex/_generated/dataModel";
 
 export default function AnalyticsPage() {
   const navigate = useNavigate();
@@ -41,6 +48,17 @@ export default function AnalyticsPage() {
           paginationOpts: { numItems: 5, cursor: null },
         }
       : undefined
+  );
+
+  // Add: Fetch cohort and funnel data
+  const cohortData = useQuery(
+    api.analytics.cohorts.getCohortAnalysis,
+    firstBizId ? { businessId: firstBizId as Id<"businesses">, months: 6 } : "skip"
+  );
+
+  const funnelData = useQuery(
+    api.analytics.funnel.getConversionFunnel,
+    firstBizId ? { businessId: firstBizId as Id<"businesses"> } : "skip"
   );
 
   if (authLoading) {
@@ -125,11 +143,11 @@ export default function AnalyticsPage() {
   };
 
   return (
-    <div className="max-w-6xl mx-auto px-4 md:px-6 py-6 space-y-6">
+    <div className="max-w-7xl mx-auto px-4 md:px-6 py-6 space-y-6">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold">Analytics</h1>
-          <p className="text-sm text-muted-foreground">Overview metrics.</p>
+          <h1 className="text-2xl font-semibold">Analytics Dashboard</h1>
+          <p className="text-sm text-muted-foreground">Comprehensive business intelligence and insights</p>
         </div>
         {/* Header actions */}
         <div className="flex items-center gap-2 flex-wrap">
@@ -137,7 +155,6 @@ export default function AnalyticsPage() {
           <Button variant="outline" onClick={() => handleExport("csv")}>Export CSV</Button>
           <Button variant="outline" onClick={() => handleExport("xlsx")}>Export Excel</Button>
           <Button variant="outline" onClick={() => handleExport("pdf")}>Export PDF</Button>
-          <Button variant="outline" onClick={() => navigate("/pricing")}>View Plans</Button>
         </div>
       </div>
 
@@ -190,6 +207,73 @@ export default function AnalyticsPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Advanced Analytics Tabs */}
+      {firstBizId && (
+        <Tabs defaultValue="overview" className="space-y-4">
+          <TabsList className="grid w-full grid-cols-5">
+            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="funnel">Funnel</TabsTrigger>
+            <TabsTrigger value="cohorts">Cohorts</TabsTrigger>
+            <TabsTrigger value="churn">Churn</TabsTrigger>
+            <TabsTrigger value="retention">Retention</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="overview" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Analytics Overview</CardTitle>
+                <CardDescription>Key metrics and trends across your business</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground">
+                  Select a tab above to view detailed analytics for funnels, cohorts, churn prediction, and retention curves.
+                </p>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="funnel" className="space-y-4">
+            {funnelData && funnelData !== "skip" ? (
+              <FunnelChart 
+                stages={funnelData.stages || []}
+                optimizationSuggestions={funnelData.suggestions}
+              />
+            ) : (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Conversion Funnel</CardTitle>
+                  <CardDescription>Loading funnel data...</CardDescription>
+                </CardHeader>
+              </Card>
+            )}
+          </TabsContent>
+
+          <TabsContent value="cohorts" className="space-y-4">
+            {cohortData && cohortData !== "skip" ? (
+              <>
+                <CohortAnalysis businessId={firstBizId as Id<"businesses">} />
+                <CohortTable cohorts={cohortData.cohorts || []} maxPeriods={12} />
+              </>
+            ) : (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Cohort Analysis</CardTitle>
+                  <CardDescription>Loading cohort data...</CardDescription>
+                </CardHeader>
+              </Card>
+            )}
+          </TabsContent>
+
+          <TabsContent value="churn" className="space-y-4">
+            <ChurnPrediction businessId={firstBizId as Id<"businesses">} />
+          </TabsContent>
+
+          <TabsContent value="retention" className="space-y-4">
+            <RetentionCurves businessId={firstBizId as Id<"businesses">} />
+          </TabsContent>
+        </Tabs>
+      )}
     </div>
   );
 }
