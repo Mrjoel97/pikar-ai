@@ -157,3 +157,7 @@ export const getAgentCostOptimization = query({
     };
   },
 });
+
+// Export new modules
+export * as predictive from "./agentPerformance/predictive";
+export * as costForecasting from "./agentPerformance/costForecasting";

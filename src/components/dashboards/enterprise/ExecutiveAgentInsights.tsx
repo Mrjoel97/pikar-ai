@@ -153,9 +153,11 @@ export function ExecutiveAgentInsights({ businessId }: ExecutiveAgentInsightsPro
       )}
 
       <Tabs defaultValue="performance" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="performance">Performance Predictions</TabsTrigger>
           <TabsTrigger value="cost">Cost Optimization</TabsTrigger>
+          <TabsTrigger value="predictive">Predictive Analytics</TabsTrigger>
+          <TabsTrigger value="forecasting">Cost Forecasting</TabsTrigger>
         </TabsList>
 
         <TabsContent value="performance" className="space-y-4">
@@ -305,6 +307,38 @@ export function ExecutiveAgentInsights({ businessId }: ExecutiveAgentInsightsPro
                     )}
                   </div>
                 ))}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="predictive" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>ML-Based Predictive Performance</CardTitle>
+              <CardDescription>
+                Advanced machine learning predictions for agent performance
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="text-sm text-muted-foreground">
+                Loading predictive analytics...
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="forecasting" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Cost Forecasting & ROI</CardTitle>
+              <CardDescription>
+                30/60/90 day cost forecasts and ROI projections
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="text-sm text-muted-foreground">
+                Loading cost forecasting...
               </div>
             </CardContent>
           </Card>
