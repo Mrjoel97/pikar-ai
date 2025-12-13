@@ -26,7 +26,7 @@ export function BudgetOptimizer({ businessId }: BudgetOptimizerProps) {
     return <div>Loading optimization suggestions...</div>;
   }
 
-  const totalPotentialSavings = suggestions.reduce((sum, s) => sum + s.potentialSavings, 0);
+  const totalPotentialSavings = suggestions.reduce((sum: number, s: any) => sum + s.potentialSavings, 0);
 
   const priorityColors = {
     high: "destructive",
@@ -66,8 +66,8 @@ export function BudgetOptimizer({ businessId }: BudgetOptimizerProps) {
               <p className="text-sm">Your budget allocation is optimal</p>
             </div>
           ) : (
-            suggestions.map((suggestion, index) => {
-              const Icon = typeIcons[suggestion.type];
+            suggestions.map((suggestion: any, index: number) => {
+              const Icon = typeIcons[suggestion.type as keyof typeof typeIcons];
               return (
                 <Card key={index} className="border-l-4" style={{ borderLeftColor: suggestion.priority === "high" ? "#ef4444" : suggestion.priority === "medium" ? "#f59e0b" : "#6b7280" }}>
                   <CardHeader className="pb-3">
@@ -79,7 +79,7 @@ export function BudgetOptimizer({ businessId }: BudgetOptimizerProps) {
                           <p className="text-sm text-muted-foreground capitalize">{suggestion.department}</p>
                         </div>
                       </div>
-                      <Badge variant={priorityColors[suggestion.priority]}>
+                      <Badge variant={priorityColors[suggestion.priority as keyof typeof priorityColors]}>
                         {suggestion.priority}
                       </Badge>
                     </div>
@@ -97,7 +97,7 @@ export function BudgetOptimizer({ businessId }: BudgetOptimizerProps) {
                     <div className="space-y-1">
                       <p className="text-sm font-medium">Action Items:</p>
                       <ul className="text-sm text-muted-foreground space-y-1">
-                        {suggestion.actionItems.map((item, i) => (
+                        {suggestion.actionItems.map((item: string, i: number) => (
                           <li key={i} className="flex items-start gap-2">
                             <span className="text-primary">•</span>
                             <span>{item}</span>
