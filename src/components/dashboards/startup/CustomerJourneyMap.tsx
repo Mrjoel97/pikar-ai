@@ -1,27 +1,26 @@
-import { useQuery, useMutation } from "convex/react";
+import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
+import { Badge } from "@/components/ui/badge";
 import { 
-  ArrowRight, 
   Users, 
   TrendingUp, 
   Clock, 
   Activity,
   AlertTriangle,
   CheckCircle,
-  Info,
-  Target,
-  BarChart3,
   Filter
 } from "lucide-react";
 import type { Id } from "@/convex/_generated/dataModel";
 import { useState } from "react";
-import { toast } from "sonner";
 import { OptimizationRecommendations } from "./OptimizationRecommendations";
+import { JourneyStagesVisualization } from "./journey/JourneyStagesVisualization";
+import { ConversionRatesCard } from "./journey/ConversionRatesCard";
+import { StageTransitionsCard } from "./journey/StageTransitionsCard";
+import { DropoffPointsCard } from "./journey/DropoffPointsCard";
 
 interface CustomerJourneyMapProps {
   businessId: Id<"businesses">;
@@ -38,7 +37,6 @@ const STAGE_CONFIG = {
 export function CustomerJourneyMap({ businessId }: CustomerJourneyMapProps) {
   const [selectedDays, setSelectedDays] = useState(30);
   
-  // Core analytics queries
   const analytics = useQuery(api.customerJourney.getJourneyAnalytics, { 
     businessId, 
     days: selectedDays 
@@ -58,12 +56,7 @@ export function CustomerJourneyMap({ businessId }: CustomerJourneyMapProps) {
     businessId, 
     days: selectedDays 
   });
-  
-  const suggestions = useQuery(api.customerJourney.getOptimizationSuggestions, { 
-    businessId 
-  });
 
-  // New analytics queries
   const dropoffPoints = useQuery(api.customerJourney.analytics.getDropoffPoints, {
     businessId,
     days: selectedDays,
@@ -79,7 +72,7 @@ export function CustomerJourneyMap({ businessId }: CustomerJourneyMapProps) {
     { businessId }
   );
 
-  if (!analytics || !touchpointAnalytics || !funnelData || !dropoffAnalysis || !suggestions) {
+  if (!analytics || !touchpointAnalytics || !funnelData || !dropoffAnalysis) {
     return (
       <Card>
         <CardHeader>
@@ -113,38 +106,7 @@ export function CustomerJourneyMap({ businessId }: CustomerJourneyMapProps) {
 
       {/* AI-Powered Optimization Recommendations */}
       {optimizationRecommendations && optimizationRecommendations.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Zap className="h-5 w-5 text-yellow-500" />
-              AI-Powered Optimization Recommendations
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {optimizationRecommendations.map((rec: any, idx: number) => {
-              const Icon = rec.type === "critical" ? AlertTriangle : 
-                          rec.type === "warning" ? Info : CheckCircle;
-              const colorClass = rec.type === "critical" ? "text-red-500" : 
-                                rec.type === "warning" ? "text-orange-500" : "text-green-500";
-              
-              return (
-                <div key={idx} className="flex items-start gap-3 p-3 bg-muted/50 rounded-lg">
-                  <Icon className={`h-5 w-5 mt-0.5 ${colorClass}`} />
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <h4 className="font-semibold">{rec.title}</h4>
-                      <Badge variant={rec.impact === "high" ? "destructive" : "secondary"}>
-                        <span>{rec.impact} impact</span>
-                      </Badge>
-                    </div>
-                    <p className="text-sm text-muted-foreground mb-1">{rec.description}</p>
-                    <p className="text-sm font-medium text-blue-600">{rec.suggestion}</p>
-                  </div>
-                </div>
-              );
-            })}
-          </CardContent>
-        </Card>
+        <OptimizationRecommendations recommendations={optimizationRecommendations} />
       )}
 
       <Tabs defaultValue="overview" className="space-y-4">
@@ -193,112 +155,23 @@ export function CustomerJourneyMap({ businessId }: CustomerJourneyMapProps) {
           </div>
 
           {/* Journey Stages Visualization */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Journey Stages</CardTitle>
-              <CardDescription>Current distribution across customer journey</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center justify-between gap-2">
-                {Object.entries(STAGE_CONFIG).map(([stage, config], idx: number) => {
-                  const count = stageDistribution[stage] || 0;
-                  const percentage = totalContacts !== 0 ? Math.round((count / totalContacts) * 100) : 0;
-                  const Icon = config.icon;
-
-                  return (
-                    <div key={stage} className="flex items-center gap-2">
-                      <div className="flex-1 text-center">
-                        <div className={`${config.color} text-white rounded-lg p-4 mb-2`}>
-                          <Icon className="h-6 w-6 mx-auto mb-2" />
-                          <div className="text-2xl font-bold">{count}</div>
-                          <div className="text-xs opacity-90">{percentage}%</div>
-                        </div>
-                        <div className="text-sm font-medium">{config.label}</div>
-                        {averageDurations[stage] !== 0 && averageDurations[stage] && (
-                          <div className="text-xs text-muted-foreground mt-1">
-                            Avg: {averageDurations[stage]}d
-                          </div>
-                        )}
-                      </div>
-                      
-                      {idx < Object.keys(STAGE_CONFIG).length - 1 && (
-                        <ArrowRight className="h-5 w-5 text-muted-foreground flex-shrink-0" />
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </CardContent>
-          </Card>
+          <JourneyStagesVisualization
+            stageDistribution={stageDistribution}
+            averageDurations={averageDurations}
+            totalContacts={totalContacts}
+            stageConfig={STAGE_CONFIG}
+          />
 
           {/* Conversion Rates */}
           {conversionRates && conversionRates.length !== 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Stage Conversion Rates</CardTitle>
-                <CardDescription>Conversion performance between stages</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {conversionRates.map((conversion: any) => (
-                  <div key={`${conversion.from}-${conversion.to}`} className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium capitalize">{conversion.from}</span>
-                        <ArrowRight className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-sm font-medium capitalize">{conversion.to}</span>
-                      </div>
-                      <div className="text-right">
-                        <Badge variant={conversion.rate >= 50 ? "default" : "secondary"}>
-                          {conversion.rate}%
-                        </Badge>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {conversion.count} / {conversion.total}
-                        </p>
-                      </div>
-                    </div>
-                    <Progress value={conversion.rate} className="h-2" />
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
+            <ConversionRatesCard conversionRates={conversionRates} />
           )}
 
           {/* Stage Transitions */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Stage Transitions</CardTitle>
-              <CardDescription>Recent movement between stages</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {Object.entries(transitionFlow).map(([fromStage, toStages]) => (
-                  <div key={fromStage} className="space-y-2">
-                    {Object.entries(toStages as Record<string, number>).map(([toStage, count]) => {
-                      const fromConfig = fromStage === "none" 
-                        ? { label: "New", color: "bg-gray-500" }
-                        : STAGE_CONFIG[fromStage as keyof typeof STAGE_CONFIG];
-                      const toConfig = STAGE_CONFIG[toStage as keyof typeof STAGE_CONFIG];
-
-                      return (
-                        <div key={`${fromStage}-${toStage}`} className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
-                          <Badge className={fromConfig.color}>{fromConfig.label}</Badge>
-                          <ArrowRight className="h-4 w-4 text-muted-foreground" />
-                          <Badge className={toConfig.color}>{toConfig.label}</Badge>
-                          <span className="ml-auto text-sm font-medium">{count} contacts</span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ))}
-                
-                {Object.keys(transitionFlow).length === 0 && (
-                  <div className="text-center py-8 text-muted-foreground">
-                    No transitions recorded yet. Stage transitions will appear here as contacts move through the journey.
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
+          <StageTransitionsCard 
+            transitionFlow={transitionFlow} 
+            stageConfig={STAGE_CONFIG} 
+          />
         </TabsContent>
 
         {/* Conversion Funnel Tab */}
@@ -407,38 +280,7 @@ export function CustomerJourneyMap({ businessId }: CustomerJourneyMapProps) {
         <TabsContent value="dropoffs" className="space-y-6">
           {/* Drop-off Points */}
           {dropoffPoints && dropoffPoints.length !== 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <AlertTriangle className="h-5 w-5 text-orange-500" />
-                  Critical Drop-off Points
-                </CardTitle>
-                <CardDescription>
-                  Stages with significant customer drop-off (greater than 20%)
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {dropoffPoints.map((dropoff: any, idx: number) => (
-                  <div key={idx} className="p-4 border rounded-lg space-y-2">
-                    <div className="flex items-center justify-between">
-                      <div className="font-semibold">
-                        {dropoff.from} → {dropoff.to}
-                      </div>
-                      <Badge variant={
-                        dropoff.severity === "high" ? "destructive" : 
-                        dropoff.severity === "medium" ? "default" : "secondary"
-                      }>
-                        {dropoff.dropoffRate}% drop-off
-                      </Badge>
-                    </div>
-                    <div className="text-sm text-muted-foreground">
-                      {dropoff.entered} contacts entered this transition
-                    </div>
-                    <Progress value={100 - dropoff.dropoffRate} className="h-2" />
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
+            <DropoffPointsCard dropoffPoints={dropoffPoints} />
           )}
 
           {/* Bottleneck Detection */}
