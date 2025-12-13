@@ -112,7 +112,7 @@ export function CustomerJourneyMap({ businessId }: CustomerJourneyMapProps) {
       </div>
 
       {/* AI-Powered Optimization Recommendations */}
-      {optimizationRecommendations && optimizationRecommendations.length !== 0 && (
+      {optimizationRecommendations && optimizationRecommendations.length !== 0 ? (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -134,7 +134,7 @@ export function CustomerJourneyMap({ businessId }: CustomerJourneyMapProps) {
                     <div className="flex items-center gap-2 mb-1">
                       <h4 className="font-semibold">{rec.title}</h4>
                       <Badge variant={rec.impact === "high" ? "destructive" : "secondary"}>
-                        {rec.impact} impact
+                        {`${rec.impact} impact`}
                       </Badge>
                     </div>
                     <p className="text-sm text-muted-foreground mb-1">{rec.description}</p>
@@ -145,7 +145,7 @@ export function CustomerJourneyMap({ businessId }: CustomerJourneyMapProps) {
             }))}
           </CardContent>
         </Card>
-      )}
+      ) : null}
 
       <Tabs defaultValue="overview" className="space-y-4">
         <TabsList>
@@ -202,7 +202,7 @@ export function CustomerJourneyMap({ businessId }: CustomerJourneyMapProps) {
               <div className="flex items-center justify-between gap-2">
                 {Object.entries(STAGE_CONFIG).map(([stage, config], idx: number) => {
                   const count = stageDistribution[stage] || 0;
-                  const percentage = totalContacts > 0 ? Math.round((count / totalContacts) * 100) : 0;
+                  const percentage = totalContacts !== 0 ? Math.round((count / totalContacts) * 100) : 0;
                   const Icon = config.icon;
 
                   return (
@@ -214,7 +214,7 @@ export function CustomerJourneyMap({ businessId }: CustomerJourneyMapProps) {
                           <div className="text-xs opacity-90">{percentage}%</div>
                         </div>
                         <div className="text-sm font-medium">{config.label}</div>
-                        {averageDurations[stage] > 0 && (
+                        {averageDurations[stage] !== 0 && averageDurations[stage] && (
                           <div className="text-xs text-muted-foreground mt-1">
                             Avg: {averageDurations[stage]}d
                           </div>
@@ -232,7 +232,7 @@ export function CustomerJourneyMap({ businessId }: CustomerJourneyMapProps) {
           </Card>
 
           {/* Conversion Rates */}
-          {conversionRates && conversionRates.length > 0 && (
+          {conversionRates && conversionRates.length !== 0 && (
             <Card>
               <CardHeader>
                 <CardTitle>Stage Conversion Rates</CardTitle>
@@ -248,7 +248,7 @@ export function CustomerJourneyMap({ businessId }: CustomerJourneyMapProps) {
                         <span className="text-sm font-medium capitalize">{conversion.to}</span>
                       </div>
                       <div className="text-right">
-                        <Badge variant={conversion.rate > 50 ? "default" : "secondary"}>
+                        <Badge variant={conversion.rate >= 50 ? "default" : "secondary"}>
                           {conversion.rate}%
                         </Badge>
                         <p className="text-xs text-muted-foreground mt-1">
@@ -336,7 +336,7 @@ export function CustomerJourneyMap({ businessId }: CustomerJourneyMapProps) {
                         <div className="text-lg font-bold">
                           {stage.conversionRate.toFixed(1)}%
                         </div>
-                        {stage.dropoff > 0 && (
+                        {stage.dropoff !== 0 && (
                           <div className="text-sm text-red-500">
                             -{stage.dropoff} dropped
                           </div>
@@ -406,7 +406,7 @@ export function CustomerJourneyMap({ businessId }: CustomerJourneyMapProps) {
         {/* Drop-offs Tab */}
         <TabsContent value="dropoffs" className="space-y-6">
           {/* Drop-off Points */}
-          {dropoffPoints && dropoffPoints.length > 0 && (
+          {dropoffPoints && dropoffPoints.length !== 0 && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -453,7 +453,7 @@ export function CustomerJourneyMap({ businessId }: CustomerJourneyMapProps) {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {dropoffAnalysis.bottlenecks.length > 0 ? (
+              {dropoffAnalysis.bottlenecks.length !== 0 ? (
                 <div className="space-y-3">
                   {dropoffAnalysis.bottlenecks.map((bottleneck: any, idx: number) => (
                     <div key={idx} className="p-4 border rounded-lg space-y-2">
