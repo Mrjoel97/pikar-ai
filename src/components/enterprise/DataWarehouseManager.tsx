@@ -49,6 +49,25 @@ export function DataWarehouseManager({ businessId }: { businessId?: Id<"business
     api.dataWarehouse.getWarehouseAnalytics,
     businessId ? { businessId, timeRange: "7d" } : undefined
   );
+  
+  // New queries for advanced features
+  const streamingStatus = useQuery(
+    api.dataWarehouse.streaming.getStreamingStatus,
+    businessId ? { businessId } : undefined
+  );
+  const dataLineage = useQuery(
+    api.dataWarehouse.lineage.getLineageGraph,
+    businessId ? { businessId } : undefined
+  );
+  const governanceRules = useQuery(
+    api.dataWarehouse.governance.getDataGovernanceRules,
+    businessId ? { businessId } : undefined
+  );
+  const governanceViolations = useQuery(
+    api.dataWarehouse.governance.getGovernanceViolations,
+    businessId ? { businessId } : undefined
+  );
+  
   const triggerSync = useMutation(api.dataWarehouse.triggerSync);
 
   const [selectedSource, setSelectedSource] = useState<string | null>(null);
@@ -171,7 +190,7 @@ export function DataWarehouseManager({ businessId }: { businessId?: Id<"business
 
       {/* Main Tabs */}
       <Tabs defaultValue="sources" className="w-full">
-        <TabsList className="grid w-full grid-cols-6">
+        <TabsList className="grid w-full grid-cols-9">
           <TabsTrigger value="sources">
             <Database className="h-4 w-4 mr-2" />
             Sources
@@ -180,9 +199,21 @@ export function DataWarehouseManager({ businessId }: { businessId?: Id<"business
             <Workflow className="h-4 w-4 mr-2" />
             Pipelines
           </TabsTrigger>
+          <TabsTrigger value="streaming">
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Streaming
+          </TabsTrigger>
+          <TabsTrigger value="lineage">
+            <BarChart3 className="h-4 w-4 mr-2" />
+            Lineage
+          </TabsTrigger>
+          <TabsTrigger value="governance">
+            <Shield className="h-4 w-4 mr-2" />
+            Governance
+          </TabsTrigger>
           <TabsTrigger value="transformations">
             <RefreshCw className="h-4 w-4 mr-2" />
-            Transformations
+            Transforms
           </TabsTrigger>
           <TabsTrigger value="exports">
             <FileDown className="h-4 w-4 mr-2" />
@@ -269,6 +300,157 @@ export function DataWarehouseManager({ businessId }: { businessId?: Id<"business
 
         <TabsContent value="pipelines">
           <PipelineBuilder businessId={businessId} />
+        </TabsContent>
+
+        <TabsContent value="streaming" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Real-time Streaming Pipelines</CardTitle>
+              <CardDescription>Monitor and manage streaming data pipelines</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {streamingStatus && (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-3 gap-4">
+                    <div className="p-4 border rounded-lg">
+                      <div className="text-2xl font-bold">{streamingStatus.overall.totalThroughput.toLocaleString()}</div>
+                      <div className="text-xs text-muted-foreground">Events/sec</div>
+                    </div>
+                    <div className="p-4 border rounded-lg">
+                      <div className="text-2xl font-bold">{streamingStatus.overall.avgLatency}ms</div>
+                      <div className="text-xs text-muted-foreground">Avg Latency</div>
+                    </div>
+                    <div className="p-4 border rounded-lg">
+                      <div className="text-2xl font-bold">{(streamingStatus.overall.avgErrorRate * 100).toFixed(2)}%</div>
+                      <div className="text-xs text-muted-foreground">Error Rate</div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    {streamingStatus.pipelines.map((pipeline) => (
+                      <div key={pipeline.id} className="flex items-center justify-between p-4 border rounded-lg">
+                        <div className="flex-1">
+                          <div className="font-medium">{pipeline.name}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {pipeline.throughput.toLocaleString()} events/sec • {pipeline.latency}ms latency
+                          </div>
+                        </div>
+                        <Badge variant={pipeline.status === "active" ? "default" : "secondary"}>
+                          {pipeline.status}
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="lineage" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Data Lineage</CardTitle>
+              <CardDescription>Track data flow and transformations</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {dataLineage && (
+                <div className="space-y-4">
+                  <div className="p-6 border rounded-lg bg-muted/50">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="text-sm font-medium">Data Flow Visualization</div>
+                      <Button size="sm" variant="outline">
+                        <FileDown className="h-3 w-3 mr-1" />
+                        Export
+                      </Button>
+                    </div>
+                    <div className="space-y-3">
+                      {dataLineage.nodes.map((node, idx) => (
+                        <div key={node.id} className="flex items-center gap-3">
+                          <div className={`w-32 p-2 rounded border text-center text-sm ${
+                            node.type === "input" ? "bg-blue-50 border-blue-200" :
+                            node.type === "output" ? "bg-green-50 border-green-200" :
+                            "bg-gray-50 border-gray-200"
+                          }`}>
+                            {node.data.label}
+                          </div>
+                          {idx < dataLineage.nodes.length - 1 && (
+                            <div className="flex-1 border-t-2 border-dashed border-gray-300" />
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="governance" className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Governance Rules</CardTitle>
+                <CardDescription>Active data governance policies</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  {governanceRules?.map((rule) => (
+                    <div key={rule.id} className="p-3 border rounded-lg">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="font-medium text-sm">{rule.name}</div>
+                          <div className="text-xs text-muted-foreground mt-1">{rule.description}</div>
+                          <div className="flex gap-2 mt-2">
+                            <Badge variant="outline" className="text-xs">{rule.category}</Badge>
+                            <Badge variant={rule.severity === "critical" ? "destructive" : "secondary"} className="text-xs">
+                              {rule.severity}
+                            </Badge>
+                          </div>
+                        </div>
+                        <Badge variant={rule.status === "active" ? "default" : "secondary"}>
+                          {rule.status}
+                        </Badge>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Governance Violations</CardTitle>
+                <CardDescription>Recent policy violations</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  {governanceViolations?.map((violation) => (
+                    <div key={violation.id} className="p-3 border rounded-lg border-red-200 bg-red-50">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="font-medium text-sm">{violation.ruleName}</div>
+                          <div className="text-xs text-muted-foreground mt-1">{violation.description}</div>
+                          <div className="text-xs text-muted-foreground mt-1">
+                            {violation.affectedRecords} records affected
+                          </div>
+                        </div>
+                        <Badge variant="destructive" className="text-xs">
+                          {violation.severity}
+                        </Badge>
+                      </div>
+                    </div>
+                  ))}
+                  {(!governanceViolations || governanceViolations.length === 0) && (
+                    <div className="text-center py-8 text-sm text-muted-foreground">
+                      No violations detected
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
 
         <TabsContent value="transformations">

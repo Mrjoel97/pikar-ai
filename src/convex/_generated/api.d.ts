@@ -87,6 +87,7 @@ import type * as dataWarehouse_dataQuality from "../dataWarehouse/dataQuality.js
 import type * as dataWarehouse_dataSources from "../dataWarehouse/dataSources.js";
 import type * as dataWarehouse_etlPipelines from "../dataWarehouse/etlPipelines.js";
 import type * as dataWarehouse_governance from "../dataWarehouse/governance.js";
+import type * as dataWarehouse_index from "../dataWarehouse/index.js";
 import type * as dataWarehouse_lineage from "../dataWarehouse/lineage.js";
 import type * as dataWarehouse_streaming from "../dataWarehouse/streaming.js";
 import type * as demoVideos from "../demoVideos.js";
@@ -355,6 +356,7 @@ declare const fullApi: ApiFromModules<{
   "dataWarehouse/dataSources": typeof dataWarehouse_dataSources;
   "dataWarehouse/etlPipelines": typeof dataWarehouse_etlPipelines;
   "dataWarehouse/governance": typeof dataWarehouse_governance;
+  "dataWarehouse/index": typeof dataWarehouse_index;
   "dataWarehouse/lineage": typeof dataWarehouse_lineage;
   "dataWarehouse/streaming": typeof dataWarehouse_streaming;
   demoVideos: typeof demoVideos;
