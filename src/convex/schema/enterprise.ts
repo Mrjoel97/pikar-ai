@@ -82,6 +82,26 @@ export const enterpriseSchema = {
     .index("by_business", ["businessId"])
     .index("by_status", ["status"]),
 
+  crisisResponses: defineTable({
+    businessId: v.id("businesses"),
+    alertId: v.id("crisisAlerts"),
+    responseText: v.string(),
+    channels: v.array(v.string()),
+    status: v.union(v.literal("pending"), v.literal("sent"), v.literal("failed")),
+    createdAt: v.number(),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_alert", ["alertId"]),
+
+  responseTemplates: defineTable({
+    businessId: v.id("businesses"),
+    templateText: v.string(),
+    category: v.string(),
+    sentiment: v.string(),
+    useCount: v.number(),
+    createdAt: v.number(),
+  }).index("by_business", ["businessId"]),
+
   // Workforce Analytics
   workforceOptimizationPlans: defineTable({
     businessId: v.id("businesses"),

@@ -36,6 +36,17 @@ export default function IntegrationStatus({ businessId }: IntegrationStatusProps
     businessId ? { businessId, timeRange: "7d" } : "skip"
   );
 
+  // Add cost tracking queries
+  const integrationAnalytics = useQuery(
+    api.integrationPlatform.getIntegrationAnalytics,
+    businessId ? { businessId, timeRange: 7 * 24 * 60 * 60 * 1000 } : "skip"
+  );
+
+  const costAnalysis = useQuery(
+    api.integrationPlatform.getIntegrationCostAnalysis,
+    businessId ? { businessId, timeRange: 30 * 24 * 60 * 60 * 1000 } : "skip"
+  );
+
   const handleRefresh = () => {
     setRefreshing(true);
     setTimeout(() => setRefreshing(false), 1500);
@@ -161,10 +172,11 @@ export default function IntegrationStatus({ businessId }: IntegrationStatusProps
       </CardHeader>
       <CardContent>
         <Tabs defaultValue="status" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="status">Status</TabsTrigger>
             <TabsTrigger value="metrics">Metrics</TabsTrigger>
             <TabsTrigger value="health">Health</TabsTrigger>
+            <TabsTrigger value="costs">Costs</TabsTrigger>
           </TabsList>
 
           <TabsContent value="status" className="space-y-3 mt-4">
@@ -284,6 +296,42 @@ export default function IntegrationStatus({ businessId }: IntegrationStatusProps
                   )}
                 </div>
               )}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="costs" className="space-y-4 mt-4">
+            <div className="grid grid-cols-2 gap-3">
+              <Card>
+                <CardContent className="p-3">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-xs text-muted-foreground">Total Cost</span>
+                  </div>
+                  <div className="text-xl font-bold">${costAnalysis?.totalCost.toFixed(2) || "0.00"}</div>
+                  <div className="text-xs text-muted-foreground">Last 30 days</div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-3">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-xs text-muted-foreground">Projected</span>
+                  </div>
+                  <div className="text-xl font-bold">${costAnalysis?.projectedMonthlyCost.toFixed(2) || "0.00"}</div>
+                  <div className="text-xs text-muted-foreground">Monthly forecast</div>
+                </CardContent>
+              </Card>
+            </div>
+
+            <div className="space-y-2">
+              <div className="text-xs font-medium">Cost by Integration</div>
+              {costAnalysis?.integrations.slice(0, 5).map((integration: any) => (
+                <div key={integration.integrationId} className="space-y-1">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-medium">{integration.name}</span>
+                    <span className="text-muted-foreground">${integration.estimatedCost.toFixed(2)}</span>
+                  </div>
+                  <Progress value={(integration.estimatedCost / (costAnalysis?.totalCost || 1)) * 100} className="h-1" />
+                </div>
+              ))}
             </div>
           </TabsContent>
         </Tabs>
