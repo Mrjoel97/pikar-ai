@@ -368,8 +368,8 @@ export const searchAuditLogs = query({
         const metadataStr = JSON.stringify(l.metadata || {}).toLowerCase();
         return (
           l.action.toLowerCase().includes(term) ||
-          l.entityType.toLowerCase().includes(term) ||
-          l.entityId.toLowerCase().includes(term) ||
+          (l.entityType?.toLowerCase().includes(term) ?? false) ||
+          (l.entityId?.toLowerCase().includes(term) ?? false) ||
           metadataStr.includes(term)
         );
       });
