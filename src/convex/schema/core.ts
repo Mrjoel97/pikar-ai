@@ -487,4 +487,25 @@ export const coreSchema = {
   })
     .index("by_business", ["businessId"])
     .index("by_business_and_date", ["businessId", "createdAt"]),
+
+  auditReportSchedules: defineTable({
+    businessId: v.id("businesses"),
+    name: v.string(),
+    reportType: v.string(),
+    frequency: v.union(
+      v.literal("daily"),
+      v.literal("weekly"),
+      v.literal("monthly"),
+      v.literal("quarterly")
+    ),
+    recipients: v.array(v.string()),
+    isActive: v.boolean(),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    lastRunAt: v.optional(v.number()),
+    nextRunAt: v.number(),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_next_run", ["nextRunAt"]),
 };
