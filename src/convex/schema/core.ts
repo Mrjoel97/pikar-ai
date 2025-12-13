@@ -309,6 +309,8 @@ export const coreSchema = {
     steps: v.array(v.any()),
     createdBy: v.optional(v.id("users")),
     createdAt: v.number(),
+    tags: v.optional(v.array(v.string())),
+    tier: v.optional(v.string()),
   })
     .index("by_business", ["businessId"])
     .index("by_name", ["name"]),
@@ -671,4 +673,72 @@ export const coreSchema = {
     .index("by_business", ["businessId"])
     .index("by_campaign", ["campaignId"])
     .index("by_status", ["status"]),
+
+  voiceNotes: defineTable({
+    businessId: v.id("businesses"),
+    userId: v.id("users"),
+    storageId: v.string(),
+    transcription: v.optional(v.string()),
+    duration: v.optional(v.number()),
+    status: v.union(
+      v.literal("processing"),
+      v.literal("completed"),
+      v.literal("failed")
+    ),
+    metadata: v.optional(v.any()),
+    createdAt: v.number(),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_user", ["userId"]),
+
+  templatePins: defineTable({
+    userId: v.id("users"),
+    templateId: v.id("workflowTemplates"),
+    pinnedAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_template", ["templateId"]),
+
+  learningCourses: defineTable({
+    businessId: v.optional(v.id("businesses")),
+    title: v.string(),
+    description: v.optional(v.string()),
+    category: v.string(),
+    difficulty: v.union(
+      v.literal("beginner"),
+      v.literal("intermediate"),
+      v.literal("advanced")
+    ),
+    duration: v.number(),
+    modules: v.array(v.any()),
+    isPublished: v.boolean(),
+    createdBy: v.optional(v.id("users")),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_category", ["category"]),
+
+  trainingSessions: defineTable({
+    businessId: v.id("businesses"),
+    courseId: v.optional(v.id("learningCourses")),
+    userId: v.id("users"),
+    title: v.string(),
+    description: v.optional(v.string()),
+    scheduledAt: v.number(),
+    duration: v.number(),
+    status: v.union(
+      v.literal("scheduled"),
+      v.literal("in_progress"),
+      v.literal("completed"),
+      v.literal("cancelled")
+    ),
+    attendees: v.array(v.id("users")),
+    materials: v.optional(v.array(v.any())),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_user", ["userId"])
+    .index("by_course", ["courseId"]),
 };

@@ -244,6 +244,25 @@ export const listTemplatesWithSmartOrdering = query({
   },
 });
 
+export const listPinnedTemplates = query({
+  args: { userId: v.id("users") },
+  handler: async (ctx, args) => {
+    const pins = await ctx.db
+      .query("templatePins")
+      .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .collect();
+
+    const templates = await Promise.all(
+      pins.map(async (pin) => {
+        const template = await ctx.db.get(pin.templateId);
+        return template;
+      })
+    );
+
+    return templates.filter((t) => t !== null);
+  },
+});
+
 /**
  * Get template usage statistics
  */
