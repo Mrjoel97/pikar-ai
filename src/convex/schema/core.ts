@@ -483,6 +483,7 @@ export const coreSchema = {
     entityType: v.optional(v.string()),
     entityId: v.optional(v.string()),
     details: v.optional(v.any()),
+    metadata: v.optional(v.any()),
     createdAt: v.number(),
   })
     .index("by_business", ["businessId"])
@@ -508,4 +509,14 @@ export const coreSchema = {
   })
     .index("by_business", ["businessId"])
     .index("by_next_run", ["nextRunAt"]),
+
+  admins: defineTable({
+    email: v.string(),
+    role: v.union(
+      v.literal("admin"),
+      v.literal("super_admin"),
+      v.literal("pending_senior")
+    ),
+    createdAt: v.number(),
+  }).index("by_email", ["email"]),
 };
