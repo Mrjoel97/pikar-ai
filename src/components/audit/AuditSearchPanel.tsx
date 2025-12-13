@@ -37,6 +37,16 @@ export function AuditSearchPanel({ businessId }: AuditSearchPanelProps) {
     timeRange: 30 * 24 * 60 * 60 * 1000, // Last 30 days
   });
 
+  const timeline = useQuery(api.audit.search.getAuditTimeline, {
+    businessId,
+    days: 7,
+  });
+
+  const anomalies = useQuery(api.audit.search.detectAnomalies, {
+    businessId,
+    threshold: 2,
+  });
+
   return (
     <div className="space-y-6">
       <Card>
@@ -113,6 +123,32 @@ export function AuditSearchPanel({ businessId }: AuditSearchPanelProps) {
         </CardContent>
       </Card>
 
+      {anomalies && anomalies.anomalies.length > 0 && (
+        <Card className="border-orange-200 bg-orange-50">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <Badge variant="destructive">Alert</Badge>
+              Anomalies Detected
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {anomalies.anomalies.slice(0, 3).map((anomaly: any) => (
+                <div key={anomaly.date} className="text-sm">
+                  <span className="font-medium">{anomaly.date}:</span>{" "}
+                  <Badge variant={anomaly.type === "spike" ? "destructive" : "secondary"}>
+                    {anomaly.type === "spike" ? "↑" : "↓"} {anomaly.count} events
+                  </Badge>
+                  <span className="text-xs text-muted-foreground ml-2">
+                    ({anomaly.deviation}σ from baseline)
+                  </span>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {stats && (
         <div className="grid gap-4 md:grid-cols-4">
           <Card>
@@ -161,6 +197,31 @@ export function AuditSearchPanel({ businessId }: AuditSearchPanelProps) {
             </CardContent>
           </Card>
         </div>
+      )}
+
+      {timeline && timeline.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Activity Timeline (Last 7 Days)</CardTitle>
+            <CardDescription>Hourly audit event distribution</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="h-32 flex items-end gap-1">
+              {timeline.slice(-48).map((point: any, i: number) => {
+                const maxCount = Math.max(...timeline.map((p: any) => p.count));
+                const height = (point.count / maxCount) * 100;
+                return (
+                  <div
+                    key={i}
+                    className="flex-1 bg-primary/20 hover:bg-primary/40 transition-colors rounded-t"
+                    style={{ height: `${height}%` }}
+                    title={`${new Date(point.hour).toLocaleString()}: ${point.count} events`}
+                  />
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       <Card>

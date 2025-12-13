@@ -59,7 +59,7 @@ export const searchAuditLogs = query({
 });
 
 /**
- * Get audit log statistics
+ * Get audit log statistics with enhanced analytics
  */
 export const getAuditStats = query({
   args: {
@@ -72,7 +72,7 @@ export const getAuditStats = query({
     const logs = await ctx.db
       .query("audit_logs")
       .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
-      .filter((q) => q.gte(q.field("timestamp"), cutoff))
+      .filter((q) => q.gte(q.field("createdAt"), cutoff))
       .collect();
 
     const total = logs.length;
@@ -106,6 +106,83 @@ export const getAuditStats = query({
         .map(([userId, count]) => ({ userId, count }))
         .sort((a, b) => b.count - a.count)
         .slice(0, 10),
+    };
+  },
+});
+
+/**
+ * Get audit activity timeline (hourly breakdown)
+ */
+export const getAuditTimeline = query({
+  args: {
+    businessId: v.id("businesses"),
+    days: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const daysBack = args.days || 7;
+    const cutoff = Date.now() - daysBack * 24 * 60 * 60 * 1000;
+
+    const logs = await ctx.db
+      .query("audit_logs")
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .filter((q) => q.gte(q.field("createdAt"), cutoff))
+      .collect();
+
+    // Group by hour
+    const timeline: Record<string, number> = {};
+    logs.forEach((log) => {
+      const hour = new Date(log.createdAt).toISOString().slice(0, 13);
+      timeline[hour] = (timeline[hour] || 0) + 1;
+    });
+
+    return Object.entries(timeline)
+      .map(([hour, count]) => ({ hour, count }))
+      .sort((a, b) => a.hour.localeCompare(b.hour));
+  },
+});
+
+/**
+ * Detect anomalies in audit patterns
+ */
+export const detectAnomalies = query({
+  args: {
+    businessId: v.id("businesses"),
+    threshold: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const threshold = args.threshold || 2; // Standard deviations
+    const last7Days = Date.now() - 7 * 24 * 60 * 60 * 1000;
+
+    const logs = await ctx.db
+      .query("audit_logs")
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .filter((q) => q.gte(q.field("createdAt"), last7Days))
+      .collect();
+
+    // Calculate daily activity
+    const dailyActivity: Record<string, number> = {};
+    logs.forEach((log) => {
+      const day = new Date(log.createdAt).toISOString().slice(0, 10);
+      dailyActivity[day] = (dailyActivity[day] || 0) + 1;
+    });
+
+    const counts = Object.values(dailyActivity);
+    const mean = counts.reduce((a, b) => a + b, 0) / counts.length;
+    const variance = counts.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / counts.length;
+    const stdDev = Math.sqrt(variance);
+
+    const anomalies = Object.entries(dailyActivity)
+      .filter(([, count]) => Math.abs(count - mean) > threshold * stdDev)
+      .map(([date, count]) => ({
+        date,
+        count,
+        deviation: ((count - mean) / stdDev).toFixed(2),
+        type: count > mean ? "spike" : "drop",
+      }));
+
+    return {
+      anomalies,
+      baseline: { mean: Math.round(mean), stdDev: Math.round(stdDev) },
     };
   },
 });
