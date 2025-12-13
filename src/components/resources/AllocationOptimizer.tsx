@@ -53,7 +53,7 @@ export function AllocationOptimizer({ businessId }: AllocationOptimizerProps) {
                         {Object.entries(suggestion.currentAllocation).map(([project, percent]) => (
                           <div key={project} className="flex items-center justify-between text-sm">
                             <span className="capitalize">{project}</span>
-                            <span className="font-medium">{percent}%</span>
+                            <span className="font-medium">{percent as number}%</span>
                           </div>
                         ))}
                       </div>
@@ -67,7 +67,7 @@ export function AllocationOptimizer({ businessId }: AllocationOptimizerProps) {
                         {Object.entries(suggestion.optimalAllocation).map(([project, percent]) => (
                           <div key={project} className="flex items-center justify-between text-sm">
                             <span className="capitalize">{project}</span>
-                            <span className="font-medium text-green-600">{percent}%</span>
+                            <span className="font-medium text-green-600">{percent as number}%</span>
                           </div>
                         ))}
                       </div>

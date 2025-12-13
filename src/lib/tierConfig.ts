@@ -152,7 +152,8 @@ export const tierConfigs: Record<TierType, TierConfig> = {
       "compliance_reports",
       "risk_analytics",
       "governance_automation",
-      "department_dashboards"
+      "department_dashboards",
+      "resource_allocation"
     ],
     sidebarItems: [
       { label: "Dashboard", icon: BarChart3, to: "/dashboard" },
@@ -164,6 +165,7 @@ export const tierConfigs: Record<TierType, TierConfig> = {
       { label: "Customer Journey", icon: Map, to: "/customer-journey" },
       { label: "Vendor Management", icon: Building2, to: "/vendor-management" },
       { label: "Content Calendar", icon: Calendar, to: "/content-calendar" },
+      { label: "Resource Allocation", icon: Users, to: "/business?tab=resources", feature: "resource_allocation" },
       { label: "Approvals", icon: CheckCircle, to: "/dashboard", feature: "pending_approvals" },
       { label: "Departments", icon: Building, to: "/business", feature: "department_tabs" },
       { label: "Compliance", icon: FileText, to: "/analytics", feature: "compliance_monitoring" },
@@ -206,7 +208,8 @@ export const tierConfigs: Record<TierType, TierConfig> = {
       "global_social_command",
       "crm_integration",
       "ab_testing",
-      "roi_dashboard"
+      "roi_dashboard",
+      "resource_allocation"
     ],
     sidebarItems: [
       { label: "Command Center", icon: Globe, to: "/dashboard" },
@@ -221,6 +224,7 @@ export const tierConfigs: Record<TierType, TierConfig> = {
       { label: "Customer Journey", icon: Map, to: "/customer-journey" },
       { label: "Vendor Management", icon: Building2, to: "/vendor-management" },
       { label: "Content Calendar", icon: Calendar, to: "/content-calendar" },
+      { label: "Resource Allocation", icon: Users, to: "/business?tab=resources", feature: "resource_allocation" },
       { label: "Governance", icon: Shield, to: "/dashboard", feature: "advanced_governance" },
       { label: "Business Units", icon: Building, to: "/business" },
       { label: "Compliance", icon: FileText, to: "/analytics", feature: "global_compliance" },
