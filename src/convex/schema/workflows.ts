@@ -12,6 +12,17 @@ export const workflowsSchema = {
     createdBy: v.id("users"),
     createdAt: v.number(),
     updatedAt: v.number(),
+    // Governance fields
+    pipeline: v.optional(v.array(v.any())),
+    governanceHealth: v.optional(v.object({
+      score: v.number(),
+      issues: v.array(v.string()),
+      updatedAt: v.number(),
+    })),
+    tier: v.optional(v.string()),
+    approval: v.optional(v.object({
+      required: v.boolean(),
+    })),
   })
     .index("by_business", ["businessId"])
     .index("by_status", ["status"]),
@@ -37,6 +48,89 @@ export const workflowsSchema = {
   })
     .index("by_workflow", ["workflowId"])
     .index("by_business", ["businessId"]),
+
+  workflowHandoffs: defineTable({
+    businessId: v.id("businesses"),
+    workflowId: v.id("workflows"),
+    fromDepartment: v.string(),
+    toDepartment: v.string(),
+    status: v.union(v.literal("pending"), v.literal("accepted"), v.literal("rejected"), v.literal("completed")),
+    handoffData: v.any(),
+    initiatedAt: v.optional(v.number()),
+    resolvedAt: v.optional(v.number()),
+    resolvedBy: v.optional(v.id("users")),
+    createdAt: v.number(),
+    completedAt: v.optional(v.number()),
+    duration: v.optional(v.number()),
+    slaDeadline: v.optional(v.number()),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_workflow", ["workflowId"])
+    .index("by_status", ["status"]),
+
+  // Governance tables
+  governanceEscalations: defineTable({
+    businessId: v.id("businesses"),
+    workflowId: v.id("workflows"),
+    violationType: v.string(),
+    count: v.number(),
+    title: v.optional(v.string()),
+    description: v.optional(v.string()),
+    priority: v.optional(v.string()),
+    status: v.union(v.literal("pending"), v.literal("resolved")),
+    escalatedTo: v.string(),
+    notes: v.optional(v.string()),
+    resolution: v.optional(v.string()),
+    createdAt: v.number(),
+    resolvedAt: v.optional(v.number()),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_workflow", ["workflowId"])
+    .index("by_status", ["status"]),
+
+  governanceAutomationSettings: defineTable({
+    businessId: v.id("businesses"),
+    autoRemediate: v.object({
+      missing_approval: v.boolean(),
+      insufficient_sla: v.boolean(),
+      insufficient_approvals: v.boolean(),
+      role_diversity: v.boolean(),
+    }),
+    escalationRules: v.object({
+      threshold: v.number(),
+      escalateTo: v.string(),
+    }),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_business", ["businessId"]),
+
+  governanceRemediations: defineTable({
+    businessId: v.id("businesses"),
+    workflowId: v.id("workflows"),
+    violationType: v.string(),
+    action: v.string(),
+    originalPipeline: v.array(v.any()),
+    status: v.union(v.literal("applied"), v.literal("rolled_back")),
+    rollbackReason: v.optional(v.string()),
+    appliedAt: v.number(),
+    rolledBackAt: v.optional(v.number()),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_workflow", ["workflowId"]),
+
+  governanceViolations: defineTable({
+    businessId: v.id("businesses"),
+    workflowId: v.id("workflows"),
+    violationType: v.string(),
+    severity: v.union(v.literal("low"), v.literal("medium"), v.literal("high"), v.literal("critical")),
+    status: v.union(v.literal("open"), v.literal("resolved")),
+    description: v.string(),
+    detectedAt: v.number(),
+    resolvedAt: v.optional(v.number()),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_workflow", ["workflowId"])
+    .index("by_status", ["status"]),
 
   tasks: defineTable({
     businessId: v.id("businesses"),
