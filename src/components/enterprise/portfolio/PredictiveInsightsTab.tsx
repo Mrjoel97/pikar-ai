@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Target, Lightbulb, TrendingUp, AlertTriangle } from "lucide-react";
+import { Target, Lightbulb, TrendingUp, AlertTriangle, BarChart3 } from "lucide-react";
 
 interface PredictiveInsightsTabProps {
   predictiveInsights: any;
@@ -47,41 +47,80 @@ export default function PredictiveInsightsTab({
                 </Badge>
               </div>
             </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="p-4 border rounded-lg">
+                <div className="text-sm font-medium mb-2 flex items-center gap-2">
+                  <BarChart3 className="h-4 w-4" />
+                  Performance Trends
+                </div>
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Velocity</span>
+                    <span className="font-medium">{predictiveAnalytics.trends.velocity}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Efficiency</span>
+                    <span className="font-medium">{predictiveAnalytics.trends.efficiency}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Quality Score</span>
+                    <span className="font-medium">{predictiveAnalytics.trends.qualityScore}%</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-4 border rounded-lg">
+                <div className="text-sm font-medium mb-2">Risk Indicators</div>
+                <div className="space-y-2">
+                  {predictiveAnalytics.riskIndicators.map((indicator: any, idx: number) => (
+                    <div key={idx} className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">{indicator.type}</span>
+                      <Badge variant={indicator.level === "high" ? "destructive" : "secondary"} className="text-xs">
+                        {indicator.level}
+                      </Badge>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
           </CardContent>
         </Card>
       )}
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Target className="h-5 w-5" />
-            Initiative Completion Forecasts
-          </CardTitle>
-          <CardDescription>Predicted completion dates with confidence intervals</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-2">
-            {predictiveInsights?.predictions.map((pred: any) => (
-              <div key={pred.initiativeId} className="p-3 border rounded-lg">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="font-medium">{pred.initiativeName}</span>
-                  <Badge variant="outline" className={
-                    pred.status === "at_risk" ? "bg-red-100 text-red-700" :
-                    pred.status === "on_track" ? "bg-green-100 text-green-700" :
-                    "bg-blue-100 text-blue-700"
-                  }>
-                    {pred.status.replace("_", " ")}
-                  </Badge>
+      {predictiveInsights && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Target className="h-5 w-5" />
+              Initiative Completion Forecasts
+            </CardTitle>
+            <CardDescription>Predicted completion dates with confidence intervals</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {predictiveInsights.predictions.map((pred: any) => (
+                <div key={pred.initiativeId} className="p-3 border rounded-lg">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="font-medium">{pred.initiativeName}</span>
+                    <Badge variant="outline" className={
+                      pred.status === "at_risk" ? "bg-red-100 text-red-700" :
+                      pred.status === "on_track" ? "bg-green-100 text-green-700" :
+                      "bg-blue-100 text-blue-700"
+                    }>
+                      {pred.status.replace("_", " ")}
+                    </Badge>
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    Est. Completion: {new Date(pred.estimatedCompletionDate).toLocaleDateString()} • 
+                    Confidence: {Math.round(pred.confidence)}%
+                  </div>
                 </div>
-                <div className="text-xs text-muted-foreground">
-                  Est. Completion: {new Date(pred.estimatedCompletionDate).toLocaleDateString()} • 
-                  Confidence: {Math.round(pred.confidence)}%
-                </div>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {riskPredictions && (
         <Card>
@@ -115,35 +154,37 @@ export default function PredictiveInsightsTab({
         </Card>
       )}
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Lightbulb className="h-5 w-5" />
-            AI Optimization Recommendations
-          </CardTitle>
-          <CardDescription>Actionable insights to improve portfolio performance</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-2">
-            {predictiveInsights?.recommendations.map((rec: any, idx: number) => (
-              <div key={idx} className="p-3 border rounded-lg">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="font-medium">{rec.type.replace(/_/g, " ")}</span>
-                  <Badge variant="outline" className={
-                    rec.priority === "high" ? "bg-red-100 text-red-700" :
-                    rec.priority === "medium" ? "bg-yellow-100 text-yellow-700" :
-                    "bg-blue-100 text-blue-700"
-                  }>
-                    {rec.priority}
-                  </Badge>
+      {predictiveInsights && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Lightbulb className="h-5 w-5" />
+              AI Optimization Recommendations
+            </CardTitle>
+            <CardDescription>Actionable insights to improve portfolio performance</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {predictiveInsights.recommendations.map((rec: any, idx: number) => (
+                <div key={idx} className="p-3 border rounded-lg">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="font-medium">{rec.type.replace(/_/g, " ")}</span>
+                    <Badge variant="outline" className={
+                      rec.priority === "high" ? "bg-red-100 text-red-700" :
+                      rec.priority === "medium" ? "bg-yellow-100 text-yellow-700" :
+                      "bg-blue-100 text-blue-700"
+                    }>
+                      {rec.priority}
+                    </Badge>
+                  </div>
+                  <div className="text-sm text-muted-foreground mb-1">{rec.description}</div>
+                  <div className="text-xs font-medium text-green-600">Impact: {rec.impact}</div>
                 </div>
-                <div className="text-sm text-muted-foreground mb-1">{rec.description}</div>
-                <div className="text-xs font-medium text-green-600">Impact: {rec.impact}</div>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
