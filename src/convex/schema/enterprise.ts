@@ -92,4 +92,16 @@ export const enterpriseSchema = {
     createdAt: v.number(),
     updatedAt: v.number(),
   }).index("by_business", ["businessId"]),
+
+  remediationHistory: defineTable({
+    businessId: v.id("businesses"),
+    workflowId: v.id("workflows"),
+    violationType: v.string(),
+    action: v.string(),
+    appliedBy: v.id("users"),
+    changes: v.any(),
+    appliedAt: v.number(),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_workflow", ["workflowId"]),
 };

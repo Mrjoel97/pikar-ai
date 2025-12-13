@@ -62,12 +62,13 @@ export function EscalationQueue({ businessId }: EscalationQueueProps) {
     try {
       const result = await autoRemediate({ workflowId, violationType });
       if (result.remediated) {
-        toast.success(`Auto-remediation applied: ${result.action}`);
+        toast.success(`Auto-remediation scheduled: ${result.action}`);
       } else {
         toast.info("No automatic remediation available for this violation type");
       }
     } catch (error) {
       toast.error("Failed to apply auto-remediation");
+      console.error(error);
     }
   };
 

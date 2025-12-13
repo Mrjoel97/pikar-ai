@@ -1,4 +1,5 @@
 import { mutation, query, internalMutation } from "./_generated/server";
+import { internal } from "./_generated/api";
 import { v } from "convex/values";
 import { Id } from "./_generated/dataModel";
 
@@ -10,136 +11,34 @@ export const autoRemediateViolation = mutation({
     workflowId: v.id("workflows"),
     violationType: v.string(),
   },
-  handler: async (ctx: any, args) => {
-    const workflow = await ctx.db.get(args.workflowId);
-    if (!workflow) {
-      throw new Error("Workflow not found");
-    }
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
 
-    // Get business to determine tier
-    const business = await ctx.db.get(workflow.businessId);
-    const tier = business?.tier || "solopreneur";
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_token", (q) =>
+        q.eq("tokenIdentifier", identity.tokenIdentifier)
+      )
+      .unique();
 
-    const pipeline = workflow.pipeline || [];
-    const originalPipeline = JSON.parse(JSON.stringify(pipeline)); // Deep copy for rollback
-    let remediated = false;
-    let action = "";
-    let changes: any = {};
+    if (!user) throw new Error("User not found");
 
-    // Apply remediation based on violation type
-    if (args.violationType === "missing_approval") {
-      // Add a default approval step
-      const newStep = {
-        type: "approval",
-        title: "Auto-added Approval",
-        assigneeRole: "admin",
-        slaHours: tier === "enterprise" ? 48 : 24,
-      };
-      pipeline.push(newStep);
-      remediated = true;
-      action = "Added missing approval step";
-      changes = { addedStep: newStep, position: pipeline.length - 1 };
-    } else if (args.violationType === "insufficient_sla") {
-      // Update SLA hours for approval steps
-      const updatedSteps: any[] = [];
-      pipeline.forEach((step: any, index: number) => {
-        if (step.type === "approval") {
-          const minSLA = tier === "enterprise" ? 48 : 24;
-          if (!step.slaHours || step.slaHours < minSLA) {
-            const oldSLA = step.slaHours;
-            step.slaHours = minSLA;
-            remediated = true;
-            updatedSteps.push({ index, oldSLA, newSLA: minSLA });
-          }
-        }
-      });
-      action = "Updated SLA hours to meet minimum requirements";
-      changes = { updatedSteps };
-    } else if (args.violationType === "insufficient_approvals") {
-      // Add second approval for enterprise
-      if (tier === "enterprise" && pipeline.filter((s: any) => s.type === "approval").length < 2) {
-        const newStep = {
-          type: "approval",
-          title: "Secondary Approval",
-          assigneeRole: "senior_admin",
-          slaHours: 48,
-        };
-        pipeline.push(newStep);
-        remediated = true;
-        action = "Added second approval step for enterprise tier";
-        changes = { addedStep: newStep, position: pipeline.length - 1 };
-      }
-    } else if (args.violationType === "role_diversity") {
-      // Ensure role diversity in approvals
-      const approvalSteps = pipeline.filter((s: any) => s.type === "approval");
-      if (approvalSteps.length >= 2) {
-        const oldRoles = approvalSteps.map((s: any) => s.assigneeRole);
-        approvalSteps[0].assigneeRole = "admin";
-        approvalSteps[1].assigneeRole = "senior_admin";
-        remediated = true;
-        action = "Updated approval roles for diversity";
-        changes = { oldRoles, newRoles: ["admin", "senior_admin"] };
-      }
-    } else if (args.violationType === "missing_notification") {
-      // Add notification step
-      const newStep = {
-        type: "notification",
-        title: "Auto-added Notification",
-        recipients: ["admin"],
-        template: "workflow_status_update",
-      };
-      pipeline.push(newStep);
-      remediated = true;
-      action = "Added missing notification step";
-      changes = { addedStep: newStep, position: pipeline.length - 1 };
-    } else if (args.violationType === "missing_audit_log") {
-      // Add audit logging step
-      const newStep = {
-        type: "audit",
-        title: "Auto-added Audit Log",
-        logLevel: "info",
-        includePayload: true,
-      };
-      pipeline.push(newStep);
-      remediated = true;
-      action = "Added audit logging step";
-      changes = { addedStep: newStep, position: pipeline.length - 1 };
-    }
-
-    if (remediated) {
-      await ctx.db.patch(args.workflowId, { pipeline });
-
-      // Store remediation history for rollback support
-      const remediationId = await ctx.db.insert("governanceRemediations", {
-        businessId: workflow.businessId,
+    // Call internal mutation to apply remediation
+    const result = await ctx.scheduler.runAfter(
+      0,
+      internal.governance.remediation.applyRemediation,
+      {
         workflowId: args.workflowId,
         violationType: args.violationType,
-        action,
-        changes,
-        originalPipeline,
-        newPipeline: pipeline,
-        status: "applied",
-        appliedAt: Date.now(),
-      });
+        appliedBy: user._id,
+      }
+    );
 
-      // Log audit event
-      await ctx.db.insert("audit_logs", {
-        businessId: workflow.businessId,
-        action: "governance_auto_remediation",
-        entityType: "workflow",
-        entityId: args.workflowId,
-        details: {
-          violationType: args.violationType,
-          action,
-          remediationId,
-        },
-        createdAt: Date.now(),
-      });
-
-      return { remediated, action, remediationId };
-    }
-
-    return { remediated: false, action: "", remediationId: null };
+    return {
+      remediated: true,
+      action: "Remediation scheduled",
+    };
   },
 });
 
@@ -201,55 +100,14 @@ export const rollbackRemediation = mutation({
  */
 export const getRemediationHistory = query({
   args: {
-    businessId: v.optional(v.id("businesses")),
-    workflowId: v.optional(v.id("workflows")),
-    status: v.optional(v.union(v.literal("applied"), v.literal("rolled_back"))),
+    businessId: v.id("businesses"),
     limit: v.optional(v.number()),
   },
-  handler: async (ctx: any, args) => {
-    let remediations;
-
-    // Filter by business or workflow
-    if (args.businessId) {
-      remediations = await ctx.db
-        .query("governanceRemediations")
-        .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId!))
-        .collect();
-    } else if (args.workflowId) {
-      remediations = await ctx.db
-        .query("governanceRemediations")
-        .withIndex("by_workflow", (q: any) => q.eq("workflowId", args.workflowId!))
-        .collect();
-    } else {
-      remediations = await ctx.db.query("governanceRemediations").collect();
-    }
-
-    // Filter by status if provided
-    if (args.status) {
-      remediations = remediations.filter((r: any) => r.status === args.status);
-    }
-
-    // Sort by most recent first
-    remediations.sort((a: any, b: any) => b.appliedAt - a.appliedAt);
-
-    // Apply limit
-    if (args.limit) {
-      remediations = remediations.slice(0, args.limit);
-    }
-
-    // Enrich with workflow details
-    const enriched = await Promise.all(
-      remediations.map(async (rem: any) => {
-        const workflow = await ctx.db.get(rem.workflowId);
-        return {
-          ...rem,
-          workflowName: (workflow && "name" in workflow) ? workflow.name : "Unknown",
-          workflowStatus: (workflow && "status" in workflow) ? workflow.status : "unknown",
-        };
-      })
-    );
-
-    return enriched;
+  handler: async (ctx, args) => {
+    return await ctx.runQuery(internal.governance.remediation.getRemediationHistory, {
+      businessId: args.businessId,
+      limit: args.limit,
+    });
   },
 });
 
@@ -495,97 +353,35 @@ export const resolveEscalation = mutation({
  */
 export const getGovernanceScoreTrend = query({
   args: {
-    businessId: v.optional(v.id("businesses")),
+    businessId: v.id("businesses"),
     days: v.optional(v.number()),
   },
-  handler: async (ctx: any, args) => {
-    // Guest-safe: return defaults if no business context
-    if (!args.businessId) {
-      return {
-        currentScore: 100,
-        trend: [],
-        compliantCount: 0,
-        totalCount: 0,
-        byDepartment: {},
-        byPolicyType: {},
-      };
-    }
-    const days = args.days || 30;
+  handler: async (ctx, args) => {
+    const daysBack = args.days || 30;
     const workflows = await ctx.db
       .query("workflows")
-      .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId!))
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
       .collect();
 
-    const total = workflows.length;
-    if (total === 0) {
-      return {
-        currentScore: 100,
-        trend: [],
-        compliantCount: 0,
-        totalCount: 0,
-        byDepartment: {},
-        byPolicyType: {},
-      };
-    }
-
-    // Calculate current score
-    const compliant = workflows.filter(
-      (w: any) => !w.governanceHealth || w.governanceHealth.score >= 80
+    const compliantCount = workflows.filter(
+      (w) => w.governanceHealth && w.governanceHealth.score >= 80
     ).length;
-    const currentScore = Math.round((compliant / total) * 100);
 
-    // Generate trend data (simplified - in production, store historical snapshots)
-    const trend = [];
-    const now = Date.now();
-    for (let i = days - 1; i >= 0; i--) {
-      const date = new Date(now - i * 24 * 60 * 60 * 1000);
-      // Simulate trend with slight variation
-      const variance = Math.random() * 10 - 5;
-      trend.push({
-        date: date.toISOString().split("T")[0],
-        score: Math.max(0, Math.min(100, currentScore + variance)),
-      });
-    }
+    const avgScore =
+      workflows.reduce((sum, w) => sum + (w.governanceHealth?.score || 0), 0) /
+      (workflows.length || 1);
 
-    // Breakdown by department (using region as proxy)
-    const byDepartment: Record<string, { compliant: number; total: number }> = {};
-    workflows.forEach((w: any) => {
-      const dept = w.region || "general";
-      if (!byDepartment[dept]) {
-        byDepartment[dept] = { compliant: 0, total: 0 };
-      }
-      byDepartment[dept].total++;
-      if (!w.governanceHealth || w.governanceHealth.score >= 80) {
-        byDepartment[dept].compliant++;
-      }
-    });
-
-    // Breakdown by policy type (based on common issues)
-    const byPolicyType: Record<string, number> = {
-      missing_approval: 0,
-      insufficient_sla: 0,
-      insufficient_approvals: 0,
-      role_diversity: 0,
-    };
-
-    workflows.forEach((w: any) => {
-      if (w.governanceHealth?.issues) {
-        w.governanceHealth.issues.forEach((issue: string) => {
-          if (issue.includes("approval step")) byPolicyType.missing_approval++;
-          if (issue.includes("SLA")) byPolicyType.insufficient_sla++;
-          if (issue.includes("2 approval")) byPolicyType.insufficient_approvals++;
-          if (issue.includes("role diversity")) byPolicyType.role_diversity++;
-        });
-      }
-    });
+    // Generate trend data (simplified - in production, store historical scores)
+    const trend = Array.from({ length: Math.min(daysBack, 30) }, (_, i) => ({
+      date: new Date(Date.now() - (daysBack - i) * 24 * 60 * 60 * 1000).toLocaleDateString(),
+      score: Math.round(avgScore + (Math.random() - 0.5) * 10),
+    }));
 
     return {
-      currentScore,
+      currentScore: Math.round(avgScore),
+      compliantCount,
+      totalCount: workflows.length,
       trend,
-      compliantCount: compliant,
-      totalCount: total,
-      byDepartment,
-      byPolicyType,
     };
   },
 });

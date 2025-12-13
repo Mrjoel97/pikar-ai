@@ -1,155 +1,180 @@
-import { mutation, query } from "../_generated/server";
 import { v } from "convex/values";
+import { internalMutation, query } from "../_generated/server";
+import { Id } from "../_generated/dataModel";
 
 /**
- * Rollback a remediation action
+ * Auto-remediation strategies for different violation types
  */
-export const rollbackRemediation = mutation({
+const remediationStrategies: Record<string, (workflow: any) => any> = {
+  missing_approval: (workflow) => ({
+    action: "Add approval step",
+    changes: {
+      pipeline: [
+        ...workflow.pipeline,
+        {
+          type: "approval",
+          name: "Compliance Approval",
+          assigneeRole: "compliance_officer",
+          slaHours: 24,
+        },
+      ],
+    },
+  }),
+  insufficient_sla: (workflow) => ({
+    action: "Increase SLA to minimum requirements",
+    changes: {
+      pipeline: workflow.pipeline.map((step: any) =>
+        step.type === "approval" && step.slaHours < 24
+          ? { ...step, slaHours: 24 }
+          : step
+      ),
+    },
+  }),
+  missing_role_diversity: (workflow) => ({
+    action: "Add role diversity to approval steps",
+    changes: {
+      pipeline: workflow.pipeline.map((step: any, idx: number) =>
+        step.type === "approval"
+          ? {
+              ...step,
+              assigneeRole:
+                idx === 0 ? "manager" : idx === 1 ? "director" : step.assigneeRole,
+            }
+          : step
+      ),
+    },
+  }),
+  critical_compliance: (workflow) => ({
+    action: "Enable compliance monitoring and add audit trail",
+    changes: {
+      complianceMonitoring: true,
+      auditTrail: true,
+    },
+  }),
+};
+
+export const getRemediationStrategy = query({
   args: {
-    remediationId: v.id("governanceRemediations"),
-    reason: v.optional(v.string()),
+    workflowId: v.id("workflows"),
+    violationType: v.string(),
   },
   handler: async (ctx, args) => {
-    const remediation = await ctx.db.get(args.remediationId);
-    if (!remediation) {
-      throw new Error("Remediation not found");
+    const workflow = await ctx.db.get(args.workflowId);
+    if (!workflow) throw new Error("Workflow not found");
+
+    const strategy = remediationStrategies[args.violationType];
+    if (!strategy) {
+      return {
+        available: false,
+        message: "No automatic remediation available for this violation type",
+      };
     }
 
-    if (remediation.status === "rolled_back") {
-      throw new Error("Remediation already rolled back");
-    }
-
-    const workflow = await ctx.db.get(remediation.workflowId);
-    if (!workflow) {
-      throw new Error("Workflow not found");
-    }
-
-    await ctx.db.patch(remediation.workflowId, {
-      pipeline: remediation.originalPipeline,
-    });
-
-    await ctx.db.patch(args.remediationId, {
-      status: "rolled_back",
-      rollbackReason: args.reason,
-      rolledBackAt: Date.now(),
-    });
-
-    await ctx.db.insert("audit_logs", {
-      businessId: remediation.businessId,
-      action: "governance_remediation_rollback",
-      entityType: "workflow",
-      entityId: remediation.workflowId,
-      details: {
-        remediationId: args.remediationId,
-        reason: args.reason,
-        violationType: remediation.violationType,
+    const remediation = strategy(workflow);
+    return {
+      available: true,
+      action: remediation.action,
+      changes: remediation.changes,
+      preview: {
+        before: workflow.pipeline?.length || 0,
+        after: remediation.changes.pipeline?.length || workflow.pipeline?.length || 0,
       },
-      createdAt: Date.now(),
-    });
-
-    return { success: true, workflowId: remediation.workflowId };
+    };
   },
 });
 
-/**
- * Get remediation history for a business or workflow
- */
+export const applyRemediation = internalMutation({
+  args: {
+    workflowId: v.id("workflows"),
+    violationType: v.string(),
+    appliedBy: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    const workflow = await ctx.db.get(args.workflowId);
+    if (!workflow) throw new Error("Workflow not found");
+
+    const strategy = remediationStrategies[args.violationType];
+    if (!strategy) {
+      return { success: false, message: "No remediation strategy available" };
+    }
+
+    const remediation = strategy(workflow);
+
+    // Apply the changes
+    await ctx.db.patch(args.workflowId, remediation.changes);
+
+    // Log the remediation
+    await ctx.db.insert("remediationHistory", {
+      businessId: workflow.businessId,
+      workflowId: args.workflowId,
+      violationType: args.violationType,
+      action: remediation.action,
+      appliedBy: args.appliedBy,
+      changes: remediation.changes,
+      appliedAt: Date.now(),
+    });
+
+    // Update governance health
+    const health = await ctx.db.get(args.workflowId);
+    if (health) {
+      const newScore = Math.min(100, (health.governanceHealth?.score || 0) + 20);
+      await ctx.db.patch(args.workflowId, {
+        governanceHealth: {
+          score: newScore,
+          issues: (health.governanceHealth?.issues || []).filter(
+            (issue: string) => !issue.includes(args.violationType)
+          ),
+          updatedAt: Date.now(),
+        },
+      });
+    }
+
+    return {
+      success: true,
+      action: remediation.action,
+      newScore: (health?.governanceHealth?.score || 0) + 20,
+    };
+  },
+});
+
 export const getRemediationHistory = query({
   args: {
-    businessId: v.optional(v.id("businesses")),
-    workflowId: v.optional(v.id("workflows")),
-    status: v.optional(v.union(v.literal("applied"), v.literal("rolled_back"))),
+    businessId: v.id("businesses"),
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    let remediations;
+    const history = await ctx.db
+      .query("remediationHistory")
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .order("desc")
+      .take(args.limit || 50);
 
-    if (args.businessId) {
-      remediations = await ctx.db
-        .query("governanceRemediations")
-        .withIndex("by_business", (q) => q.eq("businessId", args.businessId!))
-        .collect();
-    } else if (args.workflowId) {
-      remediations = await ctx.db
-        .query("governanceRemediations")
-        .withIndex("by_workflow", (q) => q.eq("workflowId", args.workflowId!))
-        .collect();
-    } else {
-      remediations = await ctx.db.query("governanceRemediations").collect();
-    }
-
-    if (args.status) {
-      remediations = remediations.filter((r: any) => r.status === args.status);
-    }
-
-    remediations.sort((a: any, b: any) => b.appliedAt - a.appliedAt);
-
-    if (args.limit) {
-      remediations = remediations.slice(0, args.limit);
-    }
-
-    const enriched = await Promise.all(
-      remediations.map(async (rem: any) => {
-        const workflow = await ctx.db.get(rem.workflowId);
-        return {
-          ...rem,
-          workflowName: (workflow && "name" in workflow) ? workflow.name : "Unknown",
-          workflowStatus: (workflow && "status" in workflow) ? workflow.status : "unknown",
-        };
-      })
-    );
-
-    return enriched;
+    return history;
   },
 });
 
-/**
- * Escalate a governance violation
- */
-export const escalateViolation = mutation({
-  args: {
-    businessId: v.id("businesses"),
-    workflowId: v.id("workflows"),
-    violationType: v.string(),
-    escalatedTo: v.string(),
-    notes: v.optional(v.string()),
-  },
+export const getRemediationStats = query({
+  args: { businessId: v.id("businesses") },
   handler: async (ctx, args) => {
-    const escalationId = await ctx.db.insert("governanceEscalations", {
-      businessId: args.businessId,
-      workflowId: args.workflowId,
-      violationType: args.violationType,
-      count: 1,
-      escalatedTo: args.escalatedTo,
-      status: "pending",
-      notes: args.notes,
-      createdAt: Date.now(),
-    });
+    const history = await ctx.db
+      .query("remediationHistory")
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .collect();
 
-    await ctx.db.insert("notifications", {
-      businessId: args.businessId,
-      userId: args.escalatedTo as any,
-      type: "system_alert",
-      title: "Governance Escalation",
-      message: `Workflow governance violation requires attention: ${args.violationType}`,
-      data: { workflowId: args.workflowId, escalationId },
-      isRead: false,
-      priority: "high",
-      createdAt: Date.now(),
-    });
+    const last30Days = history.filter(
+      (h) => h.appliedAt > Date.now() - 30 * 24 * 60 * 60 * 1000
+    );
 
-    await ctx.db.insert("audit_logs", {
-      businessId: args.businessId,
-      action: "governance_escalation",
-      entityType: "workflow",
-      entityId: args.workflowId,
-      details: {
-        violationType: args.violationType,
-        escalatedTo: args.escalatedTo,
-      },
-      createdAt: Date.now(),
-    });
+    const byType = last30Days.reduce((acc, h) => {
+      acc[h.violationType] = (acc[h.violationType] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
 
-    return escalationId;
+    return {
+      total: history.length,
+      last30Days: last30Days.length,
+      byType,
+      avgPerDay: last30Days.length / 30,
+    };
   },
 });
