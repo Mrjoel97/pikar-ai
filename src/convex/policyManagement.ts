@@ -160,10 +160,102 @@ export const getPolicy = query({
 export const getPolicyVersions = query({
   args: { policyId: v.id("policies") },
   handler: async (ctx: any, args) => {
-    return await ctx.db
+    const versions = await ctx.db
+      .query("policyVersions")
+      .withIndex("by_policy", (q: any) => q.eq("policyId", args.policyId))
+      .order("desc")
+      .collect();
+
+    // Enrich with creator information
+    const enriched = await Promise.all(
+      versions.map(async (version: any) => {
+        const creator = await ctx.db.get(version.createdBy);
+        return {
+          ...version,
+          creatorName: creator?.name || creator?.email || "Unknown",
+        };
+      })
+    );
+
+    return enriched;
+  },
+});
+
+export const compareVersions = query({
+  args: {
+    policyId: v.id("policies"),
+    version1: v.string(),
+    version2: v.string(),
+  },
+  handler: async (ctx: any, args) => {
+    const versions = await ctx.db
       .query("policyVersions")
       .withIndex("by_policy", (q: any) => q.eq("policyId", args.policyId))
       .collect();
+
+    const v1 = versions.find((v: any) => v.version === args.version1);
+    const v2 = versions.find((v: any) => v.version === args.version2);
+
+    if (!v1 || !v2) {
+      throw new Error("One or both versions not found");
+    }
+
+    // Simple diff calculation (in production, use a proper diff library)
+    const changes = {
+      contentChanged: v1.content !== v2.content,
+      changeNotes: v2.changeNotes,
+      timeDiff: v2.createdAt - v1.createdAt,
+    };
+
+    return {
+      version1: { ...v1, creator: await ctx.db.get(v1.createdBy) },
+      version2: { ...v2, creator: await ctx.db.get(v2.createdBy) },
+      changes,
+    };
+  },
+});
+
+export const revertToVersion = mutation({
+  args: {
+    policyId: v.id("policies"),
+    versionId: v.id("policyVersions"),
+  },
+  handler: async (ctx: any, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Unauthenticated");
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("email", (q: any) => q.eq("email", identity.email!))
+      .unique();
+    if (!user) throw new Error("User not found");
+
+    const version = await ctx.db.get(args.versionId);
+    if (!version) throw new Error("Version not found");
+
+    const policy = await ctx.db.get(args.policyId);
+    if (!policy) throw new Error("Policy not found");
+
+    // Create new version with reverted content
+    const versionParts = policy.version.split(".");
+    const newVersion = `${versionParts[0]}.${parseInt(versionParts[1]) + 1}`;
+
+    await ctx.db.patch(args.policyId, {
+      content: version.content,
+      version: newVersion,
+      updatedAt: Date.now(),
+    });
+
+    await ctx.db.insert("policyVersions", {
+      policyId: args.policyId,
+      version: newVersion,
+      content: version.content,
+      changeNotes: `Reverted to version ${version.version}`,
+      createdBy: user._id,
+      createdAt: Date.now(),
+    });
+
+    return { success: true, newVersion };
   },
 });
 

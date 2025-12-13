@@ -12,6 +12,7 @@ import DistributionTab from "./policy/DistributionTab";
 import { AcknowledgmentsTab } from "./policy/AcknowledgmentsTab";
 import AnalyticsTab from "./policy/AnalyticsTab";
 import PolicyEditorDialog from "./policy/PolicyEditorDialog";
+import { PolicyVersionHistory } from "./policy/PolicyVersionHistory";
 
 interface PolicyManagementProps {
   businessId: Id<"businesses">;
@@ -43,8 +44,9 @@ export function PolicyManagement({ businessId }: PolicyManagementProps) {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="policies">Policies</TabsTrigger>
+          <TabsTrigger value="versions">Versions</TabsTrigger>
           <TabsTrigger value="approvals">
             Approvals
             {pendingApprovals && pendingApprovals.length > 0 && (
@@ -87,6 +89,16 @@ export function PolicyManagement({ businessId }: PolicyManagementProps) {
             effectiveness={effectiveness || []}
             trends={trends || []}
           />
+        </TabsContent>
+
+        <TabsContent value="versions" className="space-y-4">
+          {selectedPolicy ? (
+            <PolicyVersionHistory policyId={selectedPolicy} />
+          ) : (
+            <div className="text-center py-8 text-muted-foreground">
+              <p>Select a policy from the Policies tab to view its version history</p>
+            </div>
+          )}
         </TabsContent>
       </Tabs>
 
