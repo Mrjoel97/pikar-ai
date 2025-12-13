@@ -112,7 +112,7 @@ export function CustomerJourneyMap({ businessId }: CustomerJourneyMapProps) {
       </div>
 
       {/* AI-Powered Optimization Recommendations */}
-      {optimizationRecommendations && optimizationRecommendations.length !== 0 ? (
+      {optimizationRecommendations && optimizationRecommendations.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -134,7 +134,7 @@ export function CustomerJourneyMap({ businessId }: CustomerJourneyMapProps) {
                     <div className="flex items-center gap-2 mb-1">
                       <h4 className="font-semibold">{rec.title}</h4>
                       <Badge variant={rec.impact === "high" ? "destructive" : "secondary"}>
-                        {`${rec.impact} impact`}
+                        <span>{rec.impact} impact</span>
                       </Badge>
                     </div>
                     <p className="text-sm text-muted-foreground mb-1">{rec.description}</p>
@@ -142,10 +142,10 @@ export function CustomerJourneyMap({ businessId }: CustomerJourneyMapProps) {
                   </div>
                 </div>
               );
-            }))}
+            })}
           </CardContent>
         </Card>
-      ) : null}
+      )}
 
       <Tabs defaultValue="overview" className="space-y-4">
         <TabsList>
