@@ -15,13 +15,13 @@ import {
   CheckCircle,
   Info,
   Target,
-  Zap,
   BarChart3,
   Filter
 } from "lucide-react";
 import type { Id } from "@/convex/_generated/dataModel";
 import { useState } from "react";
 import { toast } from "sonner";
+import { OptimizationRecommendations } from "./OptimizationRecommendations";
 
 interface CustomerJourneyMapProps {
   businessId: Id<"businesses">;
