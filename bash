@@ -1,1 +1,2 @@
-cat src/components/help/HelpCoach.tsx
+cat src/convex/helpCoach/assistant.ts
+# No command needed, using readFilesToContextTool

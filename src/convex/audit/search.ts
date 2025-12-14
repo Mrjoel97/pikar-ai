@@ -38,18 +38,18 @@ export const searchAuditLogs = query({
     }
 
     if (args.startDate) {
-      logs = logs.filter((log) => log.timestamp >= args.startDate!);
+      logs = logs.filter((log) => (log.timestamp || log._creationTime) >= args.startDate!);
     }
 
     if (args.endDate) {
-      logs = logs.filter((log) => log.timestamp <= args.endDate!);
+      logs = logs.filter((log) => (log.timestamp || log._creationTime) <= args.endDate!);
     }
 
     if (args.searchTerm) {
       const term = args.searchTerm.toLowerCase();
       logs = logs.filter((log) =>
         log.action.toLowerCase().includes(term) ||
-        log.entityType.toLowerCase().includes(term) ||
+        (log.entityType || "").toLowerCase().includes(term) ||
         JSON.stringify(log.details).toLowerCase().includes(term)
       );
     }
@@ -82,7 +82,8 @@ export const getAuditStats = query({
     }, {} as Record<string, number>);
 
     const byEntityType = logs.reduce((acc, log) => {
-      acc[log.entityType] = (acc[log.entityType] || 0) + 1;
+      const type = log.entityType || "unknown";
+      acc[type] = (acc[type] || 0) + 1;
       return acc;
     }, {} as Record<string, number>);
 

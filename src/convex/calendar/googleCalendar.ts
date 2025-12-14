@@ -100,7 +100,7 @@ export const syncGoogleEvents = action({
     integrationId: v.id("calendarIntegrations"),
   },
   handler: async (ctx, args) => {
-    const integration = await ctx.runQuery(internal.calendar.calendarIntegrations.getIntegration, {
+    const integration: any = await ctx.runQuery(internal.calendar.calendarIntegrations.getIntegration, {
       integrationId: args.integrationId,
     });
 
@@ -110,7 +110,7 @@ export const syncGoogleEvents = action({
 
     try {
       // Fetch events from Google Calendar API
-      const response = await fetch(
+      const response: any = await fetch(
         `https://www.googleapis.com/calendar/v3/calendars/primary/events?` +
         `timeMin=${new Date().toISOString()}&` +
         `maxResults=100&` +
@@ -127,7 +127,7 @@ export const syncGoogleEvents = action({
         throw new Error("Failed to fetch Google Calendar events");
       }
 
-      const data = await response.json();
+      const data: any = await response.json();
 
       // Store events as appointments
       for (const event of data.items || []) {
@@ -171,7 +171,7 @@ export const createGoogleEvent = action({
     attendees: v.optional(v.array(v.string())),
   },
   handler: async (ctx, args) => {
-    const integration = await ctx.runQuery(internal.calendar.calendarIntegrations.getIntegration, {
+    const integration: any = await ctx.runQuery(internal.calendar.calendarIntegrations.getIntegration, {
       integrationId: args.integrationId,
     });
 
@@ -194,7 +194,7 @@ export const createGoogleEvent = action({
         attendees: args.attendees?.map(email => ({ email })),
       };
 
-      const response = await fetch(
+      const response: any = await fetch(
         "https://www.googleapis.com/calendar/v3/calendars/primary/events",
         {
           method: "POST",
@@ -210,7 +210,7 @@ export const createGoogleEvent = action({
         throw new Error("Failed to create Google Calendar event");
       }
 
-      const createdEvent = await response.json();
+      const createdEvent: any = await response.json();
       return { success: true, eventId: createdEvent.id };
     } catch (error: any) {
       console.error("[GOOGLE_CALENDAR] Create event error:", error);

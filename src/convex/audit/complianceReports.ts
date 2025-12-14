@@ -1,7 +1,7 @@
 "use node";
 import { v } from "convex/values";
 import { action, query, mutation } from "../_generated/server";
-import { internal } from "../_generated/api";
+import { internal, api } from "../_generated/api";
 
 /**
  * Generate a compliance report based on audit logs
@@ -22,7 +22,7 @@ export const generateComplianceReport = action({
   },
   handler: async (ctx, args) => {
     // Fetch audit logs for the period
-    const logs = await ctx.runQuery(internal.audit.listForBusiness, {
+    const logs: any[] = await ctx.runQuery(api.audit.listForBusiness, {
       businessId: args.businessId,
       limit: 10000,
     });

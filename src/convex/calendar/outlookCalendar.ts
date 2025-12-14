@@ -100,7 +100,7 @@ export const syncOutlookEvents = action({
     integrationId: v.id("calendarIntegrations"),
   },
   handler: async (ctx, args) => {
-    const integration = await ctx.runQuery(internal.calendar.calendarIntegrations.getIntegration, {
+    const integration: any = await ctx.runQuery(internal.calendar.calendarIntegrations.getIntegration, {
       integrationId: args.integrationId,
     });
 
@@ -113,7 +113,7 @@ export const syncOutlookEvents = action({
       const startDateTime = new Date().toISOString();
       const endDateTime = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(); // 30 days
 
-      const response = await fetch(
+      const response: any = await fetch(
         `https://graph.microsoft.com/v1.0/me/calendar/calendarView?` +
         `startDateTime=${startDateTime}&` +
         `endDateTime=${endDateTime}&` +
@@ -130,7 +130,7 @@ export const syncOutlookEvents = action({
         throw new Error("Failed to fetch Outlook Calendar events");
       }
 
-      const data = await response.json();
+      const data: any = await response.json();
 
       // Store events as appointments
       for (const event of data.value || []) {
@@ -174,7 +174,7 @@ export const createOutlookEvent = action({
     attendees: v.optional(v.array(v.string())),
   },
   handler: async (ctx, args) => {
-    const integration = await ctx.runQuery(internal.calendar.calendarIntegrations.getIntegration, {
+    const integration: any = await ctx.runQuery(internal.calendar.calendarIntegrations.getIntegration, {
       integrationId: args.integrationId,
     });
 
@@ -203,7 +203,7 @@ export const createOutlookEvent = action({
         })),
       };
 
-      const response = await fetch(
+      const response: any = await fetch(
         "https://graph.microsoft.com/v1.0/me/calendar/events",
         {
           method: "POST",
@@ -219,7 +219,7 @@ export const createOutlookEvent = action({
         throw new Error("Failed to create Outlook Calendar event");
       }
 
-      const createdEvent = await response.json();
+      const createdEvent: any = await response.json();
       return { success: true, eventId: createdEvent.id };
     } catch (error: any) {
       console.error("[OUTLOOK_CALENDAR] Create event error:", error);

@@ -13,7 +13,7 @@ export const exportAuditLogs = action({
     format: v.optional(v.union(v.literal("csv"), v.literal("json"))),
   },
   handler: async (ctx, args) => {
-    const logs = await ctx.runQuery(api.audit.search.searchAuditLogs, {
+    const logs: any[] = await ctx.runQuery(api.audit.search.searchAuditLogs, {
       businessId: args.businessId,
       startDate: args.startDate,
       endDate: args.endDate,

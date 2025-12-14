@@ -34,7 +34,7 @@ export const logActivity = mutation({
         outcome: args.outcome,
         nextSteps: args.nextSteps,
       },
-      read: false,
+      isRead: false,
       createdAt: Date.now(),
     });
 
