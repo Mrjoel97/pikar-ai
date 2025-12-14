@@ -1,1 +1,1 @@
-grep -nC 5 "initiatives" src/components/dashboards/SolopreneurDashboard.tsx
+tail -n 20 src/components/dashboards/SolopreneurDashboard.tsx | cat -n

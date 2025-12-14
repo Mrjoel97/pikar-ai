@@ -195,6 +195,118 @@ import { KpiDashboard } from "@/components/departments/KpiDashboard";
 import { TargetSetter } from "@/components/departments/TargetSetter";
 import { KpiAlerts } from "@/components/departments/KpiAlerts";
 
+// Move helper function outside component
+const tagIdea = (text: string) => {
+  const lower = text.toLowerCase();
+  const tags: string[] = [];
+  if (lower.includes("post") || lower.includes("video") || lower.includes("blog")) tags.push("content");
+  if (lower.includes("sell") || lower.includes("price") || lower.includes("launch")) tags.push("offer");
+  if (lower.includes("process") || lower.includes("system") || lower.includes("hire")) tags.push("ops");
+  return tags;
+};
+
+// Move nested component outside to prevent re-renders
+function DashboardBrainDumpSection({ businessId }: { businessId: string }) {
+  // Get or create an initiative for the business (we'll read the first one)
+  const initiatives = useQuery(
+    api.initiatives.getByBusiness as any,
+    businessId ? { businessId } : "skip",
+  );
+  const initiative = initiatives?.[0];
+  const initiativeId = initiative?._id;
+
+  const dumps = useQuery(
+    api.initiatives.listBrainDumpsByInitiative as any,
+    initiativeId ? { initiativeId, limit: 10 } : "skip",
+  );
+
+  const addDump = useMutation(api.initiatives.addBrainDump as any);
+  const addVoiceDump = useMutation(api.initiatives.addVoiceBrainDump as any);
+  const deleteDump = useMutation(api.initiatives.deleteBrainDump as any);
+  const updateTags = useMutation(api.initiatives.updateBrainDumpTags as any);
+  const softDelete = useMutation(api.initiatives.softDeleteBrainDump as any);
+  const restoreDump = useMutation(api.initiatives.restoreBrainDump as any);
+
+  const [text, setText] = React.useState("");
+  const [saving, setSaving] = React.useState(false);
+  const [transcript, setTranscript] = React.useState("");
+  const [summary, setSummary] = React.useState("");
+  // Add filter state for tag chips
+  const [activeTagFilter, setActiveTagFilter] = React.useState<
+    "" | "content" | "offer" | "ops"
+  >("");
+
+  // Add: inline save handler for typed idea
+  const handleSaveIdeaInline = async () => {
+    if (!initiativeId) {
+      toast("No initiative found. Run Phase 0 setup first.");
+      return;
+    }
+    const content = (text || summary || transcript).trim();
+    if (!content) {
+      toast("Type an idea first.");
+      return;
+    }
+    try {
+      setSaving(true);
+      const tags = tagIdea(content);
+      if (addVoiceDump) {
+        await addVoiceDump({
+          initiativeId,
+          content,
+          transcript: transcript || undefined,
+          summary: summary || undefined,
+          tags,
+        });
+      } else {
+        await addDump({ initiativeId, content });
+      }
+      setText("");
+      toast.success("Saved idea.");
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to save idea.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Search brain dumps
+  const [searchQuery, setSearchQuery] = useState("");
+  const searchArgs = useMemo(
+    () =>
+      initiative?._id
+        ? {
+            initiativeId: initiative._id,
+            q: searchQuery,
+            limit: 5,
+          }
+        : "skip",
+    [initiative?._id, searchQuery],
+  );
+  const searchResults = useQuery(api.initiatives.searchBrainDumps, searchArgs);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-2">
+        <Input
+          placeholder="Type a quick idea..."
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              handleSaveIdeaInline();
+            }
+          }}
+        />
+        <Button size="sm" onClick={handleSaveIdeaInline} disabled={saving}>
+          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 function SolopreneurDashboard({ business: businessProp }: { business?: any }) {
   // Use auth status early to guard queries when not authenticated
   const { isAuthenticated: isAuthed } = useAuth();
@@ -216,88 +328,7 @@ function SolopreneurDashboard({ business: businessProp }: { business?: any }) {
     navigate("/pricing");
   };
   
-  // Add local BrainDumpSection component
-  function BrainDumpSection({ businessId }: { businessId: string }) {
-    // Get or create an initiative for the business (we'll read the first one)
-    const initiatives = useQuery(
-      api.initiatives.getByBusiness as any,
-      businessId ? { businessId } : "skip",
-    );
-    const initiative = initiatives?.[0];
-    const initiativeId = initiative?._id;
-
-    const dumps = useQuery(
-      api.initiatives.listBrainDumpsByInitiative as any,
-      initiativeId ? { initiativeId, limit: 10 } : "skip",
-    );
-
-    const addDump = useMutation(api.initiatives.addBrainDump as any);
-    const addVoiceDump = useMutation(api.initiatives.addVoiceBrainDump as any);
-    const deleteDump = useMutation(api.initiatives.deleteBrainDump as any);
-    const updateTags = useMutation(api.initiatives.updateBrainDumpTags as any);
-    const softDelete = useMutation(api.initiatives.softDeleteBrainDump as any);
-    const restoreDump = useMutation(api.initiatives.restoreBrainDump as any);
-
-    const [text, setText] = React.useState("");
-    const [saving, setSaving] = React.useState(false);
-    const [transcript, setTranscript] = React.useState("");
-    const [summary, setSummary] = React.useState("");
-    // Add filter state for tag chips
-    const [activeTagFilter, setActiveTagFilter] = React.useState<
-      "" | "content" | "offer" | "ops"
-    >("");
-
-    // Add: inline save handler for typed idea
-    const handleSaveIdeaInline = async () => {
-      if (!initiativeId) {
-        toast("No initiative found. Run Phase 0 setup first.");
-        return;
-      }
-      const content = (text || summary || transcript).trim();
-      if (!content) {
-        toast("Type an idea first.");
-        return;
-      }
-      try {
-        setSaving(true);
-        const tags = tagIdea(content);
-        if (addVoiceDump) {
-          await addVoiceDump({
-            initiativeId,
-            content,
-            transcript: transcript || undefined,
-            summary: summary || undefined,
-            tags,
-          });
-        } else {
-          await addDump({ initiativeId, content });
-        }
-        setText("");
-        toast.success("Saved idea.");
-      } catch (e: any) {
-        toast.error(e?.message || "Failed to save idea.");
-      } finally {
-        setSaving(false);
-      }
-    };
-
-    // Add local loading state for restore
-    /* Duplicate removed — reuse the already-declared `lastDeletedItem` and `setLastDeletedItem` */
-
-    // Search brain dumps
-    const [searchQuery, setSearchQuery] = useState("");
-    const searchArgs = useMemo(
-      () =>
-        initiative?._id
-          ? {
-              initiativeId: initiative._id,
-              q: searchQuery,
-              limit: 5,
-            }
-          : "skip",
-      [initiative?._id, searchQuery],
-    );
-    const searchResults = useQuery(api.initiatives.searchBrainDumps, searchArgs);
+  // Local BrainDumpSection component removed and moved outside to prevent re-renders
 
     // Audio recording + upload + transcription
     const mediaRecorderRef = React.useRef<MediaRecorder | null>(null);
@@ -1915,23 +1946,6 @@ function SolopreneurDashboard({ business: businessProp }: { business?: any }) {
     );
   }, [galleryQuery, orderedTemplates]);
 
-  // Tag ideas by theme (simple keyword heuristic)
-  const tagIdea = (text: string): Array<"content" | "offer" | "ops"> => {
-    const t = text.toLowerCase();
-    const out: Array<"content" | "offer" | "ops"> = [];
-    if (/(post|tweet|blog|write|publish|newsletter|content)/.test(t))
-      out.push("content");
-    if (/(discount|offer|promo|sale|bundle|pricing|cta)/.test(t))
-      out.push("offer");
-    if (
-      /(ops|process|system|template|automation|schedule|cadence|tooling)/.test(
-        t,
-      )
-    )
-      out.push("ops");
-    return Array.from(new Set(out));
-  };
-
   // Adapt short copy to tone + persona
   const adaptCopy = (base: string) => {
     const { tone, persona } = agentProfile || {
@@ -3313,7 +3327,7 @@ function SolopreneurDashboard({ business: businessProp }: { business?: any }) {
       <RecentActivity notifications={notifications} isGuest={isGuest} />
 
       {/* Brain Dump */}
-      <BrainDumpSection businessId={business?._id} />
+      <DashboardBrainDumpSection businessId={business?._id} />
 
       {/* Help Coach */}
       <HelpCoach 
