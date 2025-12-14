@@ -9,23 +9,33 @@ export const agentsSchema = {
     description: v.optional(v.string()),
     status: v.union(v.literal("active"), v.literal("inactive"), v.literal("training")),
     isActive: v.optional(v.boolean()),
+    active: v.optional(v.boolean()),
     config: v.optional(v.any()),
     createdBy: v.id("users"),
+    userId: v.optional(v.id("users")),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
     .index("by_business", ["businessId"])
-    .index("by_status", ["status"]),
+    .index("by_status", ["status"])
+    .index("by_active", ["active"])
+    .index("by_user_and_business", ["userId", "businessId"]),
 
   agentProfiles: defineTable({
-    agentId: v.id("aiAgents"),
+    agentId: v.optional(v.id("aiAgents")),
     businessId: v.id("businesses"),
-    capabilities: v.array(v.string()),
+    userId: v.optional(v.id("users")),
+    capabilities: v.optional(v.array(v.string())),
     performance: v.optional(v.any()),
     metadata: v.optional(v.any()),
+    trainingNotes: v.optional(v.string()),
+    brandVoice: v.optional(v.string()),
+    lastUpdated: v.optional(v.number()),
+    preferences: v.optional(v.any()),
   })
     .index("by_agent", ["agentId"])
-    .index("by_business", ["businessId"]),
+    .index("by_business", ["businessId"])
+    .index("by_user_and_business", ["userId", "businessId"]),
 
   agentMemories: defineTable({
     agentId: v.id("aiAgents"),

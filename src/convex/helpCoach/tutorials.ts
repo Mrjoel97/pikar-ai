@@ -75,6 +75,7 @@ export const startTutorial = mutation({
   args: {
     userId: v.id("users"),
     tutorialId: v.id("tutorials"),
+    businessId: v.optional(v.id("businesses")),
   },
   handler: async (ctx, args) => {
     const existing = await ctx.db
@@ -99,6 +100,7 @@ export const startTutorial = mutation({
     return await ctx.db.insert("tutorialProgress", {
       userId: args.userId,
       tutorialId: args.tutorialId,
+      businessId: args.businessId,
       currentStep: 1,
       completedSteps: [],
       isCompleted: false,

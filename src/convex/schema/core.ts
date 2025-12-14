@@ -123,19 +123,28 @@ export const coreSchema = {
   brainDumps: defineTable({
     businessId: v.id("businesses"),
     userId: v.id("users"),
+    initiativeId: v.optional(v.id("initiatives")),
     content: v.string(),
+    title: v.optional(v.string()),
+    transcript: v.optional(v.string()),
+    summary: v.optional(v.string()),
     type: v.optional(v.union(
       v.literal("note"),
       v.literal("idea"),
       v.literal("task"),
       v.literal("voice")
     )),
+    voice: v.optional(v.boolean()),
     tags: v.optional(v.array(v.string())),
     processed: v.optional(v.boolean()),
     createdAt: v.number(),
+    updatedAt: v.optional(v.number()),
+    deletedAt: v.optional(v.number()),
+    deletedBy: v.optional(v.id("users")),
   })
     .index("by_business", ["businessId"])
-    .index("by_user", ["userId"]),
+    .index("by_user", ["userId"])
+    .index("by_initiative", ["initiativeId"]),
 
   customerSegments: defineTable({
     businessId: v.id("businesses"),
@@ -324,14 +333,28 @@ export const coreSchema = {
       v.literal("info"),
       v.literal("success"),
       v.literal("warning"),
-      v.literal("error")
+      v.literal("error"),
+      v.literal("approval"),
+      v.literal("sla_warning"),
+      v.literal("assignment"),
+      v.literal("sla_overdue"),
+      v.literal("integration_error"),
+      v.literal("workflow_completion"),
+      v.literal("system_alert")
     )),
     read: v.optional(v.boolean()),
+    isRead: v.optional(v.boolean()),
     actionUrl: v.optional(v.string()),
     createdAt: v.number(),
+    expiresAt: v.optional(v.number()),
+    snoozeUntil: v.optional(v.number()),
+    data: v.optional(v.any()),
+    readAt: v.optional(v.number()),
   })
     .index("by_business", ["businessId"])
-    .index("by_user", ["userId"]),
+    .index("by_user", ["userId"])
+    .index("by_user_and_read", ["userId", "isRead"])
+    .index("by_expires_at", ["expiresAt"]),
 
   socialAccounts: defineTable({
     businessId: v.id("businesses"),
@@ -657,17 +680,6 @@ export const coreSchema = {
     .index("by_business", ["businessId"])
     .index("by_domain", ["domain"]),
 
-  contactLists: defineTable({
-    businessId: v.id("businesses"),
-    name: v.string(),
-    description: v.optional(v.string()),
-    contactCount: v.number(),
-    tags: v.optional(v.array(v.string())),
-    createdBy: v.id("users"),
-    createdAt: v.number(),
-    updatedAt: v.number(),
-  }).index("by_business", ["businessId"]),
-
   emailDrafts: defineTable({
     businessId: v.id("businesses"),
     subject: v.string(),
@@ -678,37 +690,6 @@ export const coreSchema = {
     createdBy: v.id("users"),
     createdAt: v.number(),
     updatedAt: v.number(),
-  })
-    .index("by_business", ["businessId"])
-    .index("by_status", ["status"]),
-
-  socialPosts: defineTable({
-    businessId: v.id("businesses"),
-    platform: v.union(
-      v.literal("twitter"),
-      v.literal("linkedin"),
-      v.literal("facebook"),
-      v.literal("instagram")
-    ),
-    content: v.string(),
-    mediaUrls: v.optional(v.array(v.string())),
-    status: v.union(
-      v.literal("draft"),
-      v.literal("scheduled"),
-      v.literal("published"),
-      v.literal("failed"),
-      v.literal("posted")
-    ),
-    scheduledFor: v.optional(v.number()),
-    scheduledAt: v.optional(v.number()),
-    publishedAt: v.optional(v.number()),
-    externalId: v.optional(v.string()),
-    likes: v.optional(v.number()),
-    comments: v.optional(v.number()),
-    shares: v.optional(v.number()),
-    reach: v.optional(v.number()),
-    createdBy: v.id("users"),
-    createdAt: v.number(),
   })
     .index("by_business", ["businessId"])
     .index("by_status", ["status"]),

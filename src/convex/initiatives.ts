@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { internal } from "./_generated/api";
 
 /**
  * Create a new initiative
@@ -158,6 +159,7 @@ export const upsertForBusiness = mutation({
       },
       featureFlags: ["journey.phase0_onboarding", "journey.phase1_discovery_ai"],
       updatedAt: Date.now(),
+      createdAt: Date.now(),
     });
 
     // Audit
@@ -726,8 +728,9 @@ export const addVoiceBrainDump = mutation({
     tags: v.optional(v.array(v.string())),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("Not authenticated");
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+    const userId = identity.subject;
 
     const initiative = await ctx.db.get(args.initiativeId);
     if (!initiative) throw new Error("Initiative not found");
@@ -782,8 +785,9 @@ export const addVoiceNote = mutation({
     tags: v.optional(v.array(v.string())),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("Not authenticated");
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+    const userId = identity.subject;
 
     const dumpId = await ctx.db.insert("brainDumps", {
       businessId: args.businessId,

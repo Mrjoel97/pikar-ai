@@ -71,12 +71,14 @@ export const supportSchema = {
 
   tutorialProgress: defineTable({
     userId: v.id("users"),
-    businessId: v.id("businesses"),
+    businessId: v.optional(v.id("businesses")),
     tutorialId: v.id("tutorials"),
     currentStep: v.number(),
     completedSteps: v.array(v.number()),
     isCompleted: v.boolean(),
     lastAccessedAt: v.number(),
+    startedAt: v.optional(v.number()),
+    completedAt: v.optional(v.number()),
   })
     .index("by_user", ["userId"])
     .index("by_user_and_tutorial", ["userId", "tutorialId"]),
@@ -110,7 +112,7 @@ export const supportSchema = {
 
   helpProgress: defineTable({
     userId: v.id("users"),
-    businessId: v.id("businesses"),
+    businessId: v.optional(v.id("businesses")),
     onboardingCompleted: v.boolean(),
     tutorialsCompleted: v.number(),
     tipsDismissed: v.number(),

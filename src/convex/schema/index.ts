@@ -17,6 +17,9 @@ import { testingSchema } from "./testing";
 import { onboardingSchema } from "./onboarding";
 import { vectorsSchema } from "./vectors";
 import { activitySchema } from "./activity";
+import { contactsSchema } from "./contacts";
+import { socialSchema } from "./social";
+import { initiativesSchema } from "./initiatives";
 
 const { users: _authUsers, ...authWithoutUsers } = authTables;
 
@@ -39,4 +42,7 @@ export default defineSchema({
   ...onboardingSchema,
   ...vectorsSchema,
   ...activitySchema,
+  ...contactsSchema,
+  ...socialSchema,
+  ...initiativesSchema,
 });
