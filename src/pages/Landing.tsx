@@ -3,7 +3,8 @@ import { useNavigate } from "react-router";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
-import { Brain, BarChart3, Zap, Shield, Users } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Brain, BarChart3, Zap, Shield, Users, DollarSign } from "lucide-react";
 
 // Import sub-components
 import LandingNavbar from "@/components/landing/LandingNavbar";
