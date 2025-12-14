@@ -1,21 +1,10 @@
-// In src/convex/schema/security.ts - Add these tables:
-
-adminAuths: defineTable({
-  email: v.string(),
-  passwordHash: v.string(),
-  role: v.union(
-    v.literal("admin"),
-    v.literal("super_admin"),
-    v.literal("pending_senior")
-  ),
-  createdAt: v.number(),
-  updatedAt: v.number(),
-}).index("by_email", ["email"]),
-
-adminSessions: defineTable({
-  adminAuthId: v.id("adminAuths"),
-  token: v.string(),
-  email: v.string(),
-  expiresAt: v.number(),
-  createdAt: v.number(),
-}).index("by_token", ["token"]),
+await ctx.db.patch(profile._id, {
+  metadata: {
+    ...profile.metadata,
+    cadence: args.cadence,
+    persona: args.persona,
+    tone: args.tone,
+  }
+}).withIndex("by_user_and_business", (q) => 
+  q.eq("userId", args.userId).eq("businessId", args.businessId)
+);
