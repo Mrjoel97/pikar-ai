@@ -46,11 +46,8 @@ import VendorManagementPage from "./pages/VendorManagement";
 import ContentCalendarPage from "./pages/ContentCalendar";
 import PortfolioDashboardPage from "./pages/PortfolioDashboard";
 import DataWarehousePage from "./pages/DataWarehouse";
-import { DataWarehouseManager } from "./components/enterprise/DataWarehouseManager";
-import { SecurityDashboard } from "./components/enterprise/SecurityDashboard";
-import { PortfolioDashboard } from "./components/enterprise/PortfolioDashboard";
-import ResetPassword from "./pages/ResetPassword";
 import SecurityPage from "./pages/Security";
+import ResetPassword from "./pages/ResetPassword";
 
 console.log("Main.tsx: Module loaded");
 
@@ -182,9 +179,9 @@ function AnimatedRoutes() {
           <Route path="/api/builder" element={<ApiBuilderPage />} />
           <Route path="/support" element={<SupportPage />} />
           <Route path="/admin/test-runner" element={<TestRunnerPage />} />
-          <Route path="/enterprise/data-warehouse" element={<DataWarehouseManager />} />
+          <Route path="/enterprise/data-warehouse" element={<DataWarehousePage />} />
           <Route path="/enterprise/security" element={<SecurityPage />} />
-          <Route path="/enterprise/portfolio" element={<PortfolioDashboard />} />
+          <Route path="/enterprise/portfolio" element={<PortfolioDashboardPage />} />
           <Route path="/docs" element={<DocsPage />} />
           <Route path="/crm-integration-hub" element={<CrmIntegrationHubPage />} />
           <Route path="/customer-journey" element={<CustomerJourneyPage />} />
