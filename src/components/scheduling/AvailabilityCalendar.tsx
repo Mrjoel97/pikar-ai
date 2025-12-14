@@ -5,7 +5,9 @@ import { toast } from "sonner";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Clock, RefreshCw, Plus, Switch, Select, SelectTrigger, SelectValue, SelectContent, SelectItem, Icons } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
+import { Calendar, Clock, RefreshCw, Plus } from "lucide-react";
 import { CalendarIntegrationButton } from "@/components/calendar/CalendarIntegrationButton";
 import type { Id } from "@/convex/_generated/dataModel";
 
@@ -14,21 +16,38 @@ interface AvailabilityCalendarProps {
 }
 
 const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-const TIME_SLOTS = [
+const HOURS = [
   "09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00"
 ];
 
+interface DayAvailability {
+  enabled: boolean;
+  start: string;
+  end: string;
+}
+
+type WeeklyAvailability = Record<string, DayAvailability>;
+
 export function AvailabilityCalendar({ businessId }: AvailabilityCalendarProps) {
-  const [selectedDay, setSelectedDay] = useState(1);
+  const [availability, setAvailability] = useState<WeeklyAvailability>({
+    Monday: { enabled: true, start: "09:00", end: "17:00" },
+    Tuesday: { enabled: true, start: "09:00", end: "17:00" },
+    Wednesday: { enabled: true, start: "09:00", end: "17:00" },
+    Thursday: { enabled: true, start: "09:00", end: "17:00" },
+    Friday: { enabled: true, start: "09:00", end: "17:00" },
+    Saturday: { enabled: false, start: "09:00", end: "17:00" },
+    Sunday: { enabled: false, start: "09:00", end: "17:00" },
+  });
+  const [isSaving, setIsSaving] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   
   const weeklyAvailability = useQuery(api.scheduling.availability.getWeeklyAvailability, {
     businessId,
   });
   
-  const setAvailability = useMutation(api.scheduling.availability.setAvailability);
-  const syncCalendar = useAction(api.calendar.googleCalendar.syncGoogleCalendarEvents);
-  const integrations = useQuery(api.calendar.calendarIntegrations.listCalendarIntegrations, {
+  const setAvailabilityMutation = useMutation(api.scheduling.availability.setAvailability);
+  const syncGoogleEvents = useAction(api.calendar.googleCalendar.syncGoogleEvents);
+  const integrations = useQuery(api.calendar.calendarIntegrations.listIntegrations, {
     businessId,
   });
 
@@ -39,7 +58,7 @@ export function AvailabilityCalendar({ businessId }: AvailabilityCalendarProps) 
   });
 
   const handleSync = async () => {
-    const googleIntegration = integrations?.find(int => int.provider === "google");
+    const googleIntegration = integrations?.find((int: any) => int.provider === "google");
     if (!googleIntegration) {
       toast.error("Google Calendar not connected");
       return;
@@ -47,13 +66,12 @@ export function AvailabilityCalendar({ businessId }: AvailabilityCalendarProps) 
 
     setIsSyncing(true);
     try {
-      const result = await syncCalendar({
-        businessId,
-        calendarIntegrationId: googleIntegration._id,
+      const result = await syncGoogleEvents({
+        integrationId: googleIntegration._id,
       });
       
       if (result.success) {
-        toast.success(`Synced ${result.syncedEvents} events from Google Calendar`);
+        toast.success(`Synced ${result.eventCount} events from Google Calendar`);
       } else {
         toast.error("Failed to sync calendar");
       }
@@ -64,32 +82,28 @@ export function AvailabilityCalendar({ businessId }: AvailabilityCalendarProps) 
     }
   };
 
-  const handleToggleAvailability = async (
-    dayOfWeek: number,
-    startTime: string,
-    endTime: string,
-    currentState: boolean
-  ) => {
+  const handleSave = async () => {
+    setIsSaving(true);
     try {
-      await setAvailability({
-        businessId,
-        dayOfWeek,
-        startTime,
-        endTime,
-        isAvailable: !currentState,
-      });
-      toast.success("Availability updated");
+      // Save each day's availability
+      for (const [day, config] of Object.entries(availability)) {
+        const dayIndex = DAYS.indexOf(day);
+        if (dayIndex !== -1 && config.enabled) {
+          await setAvailabilityMutation({
+            businessId,
+            dayOfWeek: dayIndex,
+            startTime: config.start,
+            endTime: config.end,
+            isAvailable: true,
+          });
+        }
+      }
+      toast.success("Availability saved successfully");
     } catch (error) {
-      toast.error("Failed to update availability");
+      toast.error("Failed to save availability");
+    } finally {
+      setIsSaving(false);
     }
-  };
-
-  const getAvailabilityForSlot = (day: number, time: string) => {
-    if (!weeklyAvailability) return false;
-    const blocks = weeklyAvailability[day] || [];
-    return blocks.some(
-      (block: any) => block.startTime === time && block.isAvailable
-    );
   };
 
   const upcomingAppointments = appointments?.slice(0, 5) || [];
@@ -117,7 +131,7 @@ export function AvailabilityCalendar({ businessId }: AvailabilityCalendarProps) 
                 <div className="w-32 font-medium">{day}</div>
                 <Switch
                   checked={availability[day]?.enabled}
-                  onCheckedChange={(checked) => 
+                  onCheckedChange={(checked: boolean) => 
                     setAvailability(prev => ({
                       ...prev,
                       [day]: { ...prev[day], enabled: checked }
@@ -128,7 +142,7 @@ export function AvailabilityCalendar({ businessId }: AvailabilityCalendarProps) 
                   <div className="flex items-center gap-2">
                     <Select
                       value={availability[day]?.start}
-                      onValueChange={(val) => 
+                      onValueChange={(val: string) => 
                         setAvailability(prev => ({
                           ...prev,
                           [day]: { ...prev[day], start: val }
@@ -147,7 +161,7 @@ export function AvailabilityCalendar({ businessId }: AvailabilityCalendarProps) 
                     <span>to</span>
                     <Select
                       value={availability[day]?.end}
-                      onValueChange={(val) => 
+                      onValueChange={(val: string) => 
                         setAvailability(prev => ({
                           ...prev,
                           [day]: { ...prev[day], end: val }
@@ -183,8 +197,7 @@ export function AvailabilityCalendar({ businessId }: AvailabilityCalendarProps) 
             {integrations?.map((int: any) => (
               <div key={int._id} className="flex items-center justify-between p-4 border rounded-lg">
                 <div className="flex items-center gap-3">
-                  {int.provider === "google" && <Icons.google className="h-5 w-5" />}
-                  {int.provider === "outlook" && <Icons.microsoft className="h-5 w-5" />}
+                  <Calendar className="h-5 w-5" />
                   <div>
                     <div className="font-medium capitalize">{int.provider} Calendar</div>
                     <div className="text-sm text-muted-foreground">
@@ -192,8 +205,8 @@ export function AvailabilityCalendar({ businessId }: AvailabilityCalendarProps) 
                     </div>
                   </div>
                 </div>
-                <Button variant="outline" size="sm">
-                  Settings
+                <Button variant="outline" size="sm" onClick={handleSync} disabled={isSyncing}>
+                  {isSyncing ? "Syncing..." : "Sync Now"}
                 </Button>
               </div>
             ))}
