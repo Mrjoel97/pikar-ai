@@ -28,16 +28,21 @@ export const workflowsSchema = {
     .index("by_status", ["status"]),
 
   playbooks: defineTable({
-    businessId: v.id("businesses"),
+    businessId: v.optional(v.id("businesses")),
     name: v.string(),
     description: v.optional(v.string()),
     trigger: v.string(),
     steps: v.array(v.any()),
+    triggers: v.optional(v.array(v.any())),
+    input_schema: v.optional(v.any()),
+    output_schema: v.optional(v.any()),
+    metadata: v.optional(v.any()),
     isActive: v.boolean(),
     active: v.optional(v.boolean()),
     playbook_key: v.optional(v.string()),
+    display_name: v.optional(v.string()),
     version: v.optional(v.string()),
-    createdBy: v.id("users"),
+    createdBy: v.optional(v.id("users")),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
@@ -64,16 +69,12 @@ export const workflowsSchema = {
     .index("by_playbook", ["playbookId"]),
 
   playbookVersions: defineTable({
-    businessId: v.id("businesses"),
-    playbookId: v.id("playbooks"),
+    playbook_key: v.string(),
     version: v.string(),
     snapshot: v.any(),
     createdAt: v.number(),
-    createdBy: v.id("users"),
-    playbook_key: v.optional(v.string()),
   })
-    .index("by_playbook", ["playbookId"])
-    .index("by_key_and_version", ["playbook_key", "version"]),
+    .index("by_playbook_key", ["playbook_key"]),
 
   workflowAssignments: defineTable({
     workflowId: v.id("workflows"),

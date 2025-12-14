@@ -402,7 +402,10 @@ export const coreSchema = {
     channel: v.string(),
     campaignId: v.optional(v.string()),
     timestamp: v.number(),
-  }).index("by_business", ["businessId"]),
+    value: v.optional(v.number()),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_contact_and_business", ["contactId", "businessId"]),
 
   revenueEvents: defineTable({
     businessId: v.id("businesses"),

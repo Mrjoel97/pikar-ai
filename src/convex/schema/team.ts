@@ -75,7 +75,16 @@ export const teamSchema = {
     description: v.optional(v.string()),
     ownerId: v.id("users"),
     parentObjectiveId: v.optional(v.id("objectives")),
-    category: v.optional(v.string()),
+    timeframe: v.optional(v.object({
+      startDate: v.number(),
+      endDate: v.number(),
+    })),
+    category: v.union(
+      v.literal("company"),
+      v.literal("department"),
+      v.literal("team"),
+      v.literal("individual")
+    ),
     status: v.union(
       v.literal("not_started"),
       v.literal("on_track"),
@@ -83,9 +92,6 @@ export const teamSchema = {
       v.literal("completed")
     ),
     progress: v.number(),
-    startDate: v.number(),
-    targetDate: v.number(),
-    completedAt: v.optional(v.number()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
@@ -95,33 +101,36 @@ export const teamSchema = {
 
   keyResults: defineTable({
     objectiveId: v.id("objectives"),
-    businessId: v.id("businesses"),
     title: v.string(),
     description: v.optional(v.string()),
     targetValue: v.number(),
     currentValue: v.number(),
     unit: v.string(),
+    ownerId: v.id("users"),
+    measurementType: v.union(
+      v.literal("number"),
+      v.literal("percentage"),
+      v.literal("currency"),
+      v.literal("boolean")
+    ),
     status: v.union(
       v.literal("not_started"),
       v.literal("on_track"),
       v.literal("at_risk"),
       v.literal("completed")
     ),
-    progress: v.optional(v.number()),
+    progress: v.number(),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
-    .index("by_objective", ["objectiveId"])
-    .index("by_business", ["businessId"]),
+    .index("by_objective", ["objectiveId"]),
     
   keyResultUpdates: defineTable({
     keyResultId: v.id("keyResults"),
-    businessId: v.id("businesses"),
     previousValue: v.number(),
     newValue: v.number(),
     note: v.optional(v.string()),
     createdAt: v.number(),
   })
-    .index("by_key_result", ["keyResultId"])
-    .index("by_business", ["businessId"]),
+    .index("by_key_result", ["keyResultId"]),
 };
