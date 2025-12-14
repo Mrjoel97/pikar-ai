@@ -21,6 +21,8 @@ interface Invoice {
   amount?: number;
   invoiceNumber: string;
   clientName: string;
+  currency?: string;
+  clientEmail?: string;
 }
 
 export function InvoiceWidget({ businessId }: InvoiceWidgetProps) {
@@ -148,8 +150,8 @@ export function InvoiceWidget({ businessId }: InvoiceWidgetProps) {
               invoiceId={selectedInvoice._id}
               invoiceNumber={selectedInvoice.invoiceNumber}
               total={selectedInvoice.total}
-              currency={selectedInvoice.currency}
-              clientEmail={selectedInvoice.clientEmail}
+              currency={selectedInvoice.currency || "USD"}
+              clientEmail={selectedInvoice.clientEmail || ""}
             />
           )}
         </DialogContent>

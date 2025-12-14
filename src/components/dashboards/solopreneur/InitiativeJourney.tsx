@@ -20,6 +20,7 @@ interface InitiativeJourneyProps {
 }
 
 export function InitiativeJourney({ businessId, initiativeId }: InitiativeJourneyProps) {
+  const initiative = useQuery(api.initiatives.getInitiative, { initiativeId });
   const milestones = useQuery(api.initiativeJourney.getMilestones, { initiativeId });
   const progress = useQuery(api.initiativeJourney.getJourneyProgress, { initiativeId });
   const prediction = useQuery(api.initiativeJourney.predictCompletion, { initiativeId });

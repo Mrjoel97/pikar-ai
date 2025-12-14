@@ -78,6 +78,26 @@ export function WinsHistory({ businessId }: WinsHistoryProps) {
     }
   };
 
+  const getCategoryColor = (category: string) => {
+    switch (category) {
+      case "revenue": return "bg-green-100 text-green-700 border-green-200";
+      case "efficiency": return "bg-blue-100 text-blue-700 border-blue-200";
+      case "customer": return "bg-purple-100 text-purple-700 border-purple-200";
+      case "automation": return "bg-orange-100 text-orange-700 border-orange-200";
+      default: return "bg-gray-100 text-gray-700 border-gray-200";
+    }
+  };
+
+  const getCategoryIcon = (category: string) => {
+    switch (category) {
+      case "revenue": return <TrendingUp className="h-4 w-4" />;
+      case "efficiency": return <Clock className="h-4 w-4" />;
+      case "customer": return <Target className="h-4 w-4" />;
+      case "automation": return <PieChart className="h-4 w-4" />;
+      default: return <Trophy className="h-4 w-4" />;
+    }
+  };
+
   return (
     <section className="space-y-4">
       <div className="flex items-center justify-between">

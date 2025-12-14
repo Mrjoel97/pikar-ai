@@ -1093,3 +1093,12 @@ export const getBrainDumpAnalytics = query({
     };
   },
 });
+
+export const getInitiative = query({
+  args: { initiativeId: v.id("initiatives") },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return null;
+    return await ctx.db.get(args.initiativeId);
+  },
+});

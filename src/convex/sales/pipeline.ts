@@ -21,11 +21,12 @@ export const createDeal = mutation({
     const dealId = await ctx.db.insert("crmDeals", {
       businessId: args.businessId,
       connectionId: undefined as any, // Optional for manual deals
+      externalId: `manual_${Date.now()}_${Math.random().toString(36).substring(7)}`,
       name: args.name,
       value: args.value,
       stage: args.stage,
-      contactName: args.contactName,
-      contactEmail: args.contactEmail,
+      // contactName: args.contactName,
+      // contactEmail: args.contactEmail,
       closeDate: args.closeDate,
       probability: args.probability,
       createdAt: Date.now(),
@@ -39,6 +40,8 @@ export const createDeal = mutation({
       type: "deal_created",
       content: `Created deal: ${args.name}`,
       data: { dealId, value: args.value, stage: args.stage },
+      createdAt: Date.now(),
+      isRead: false,
     });
 
     return dealId;
@@ -72,6 +75,8 @@ export const updateDealStage = mutation({
       type: "deal_stage_changed",
       content: `Moved "${deal.name}" from ${oldStage} to ${args.newStage}`,
       data: { dealId: args.dealId, oldStage, newStage: args.newStage },
+      createdAt: Date.now(),
+      isRead: false,
     });
 
     return { success: true };
@@ -171,6 +176,8 @@ export const deleteDeal = mutation({
       type: "deal_deleted",
       content: `Deleted deal: ${deal.name}`,
       data: { dealName: deal.name, value: deal.value },
+      createdAt: Date.now(),
+      isRead: false,
     });
 
     return { success: true };

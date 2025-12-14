@@ -1,0 +1,31 @@
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
+        {/* Template Gallery Modal */}
+        <TemplateGallery
+          open={galleryOpen}
+          onOpenChange={setGalleryOpen}
+          templates={filteredTemplates}
+          pinnedSet={pinnedSet}
+          searchQuery={galleryQuery}
+          onSearchChange={setGalleryQuery}
+          onPinTemplate={handlePinTemplate}
+          onUseTemplate={(t) => {
+            handleUseTemplateEnhanced(t);
+            setGalleryOpen(false);
+          }}
+        />
+      </section>
+
+      {/* Today's Focus (max 3) */}
+      <section>
+        <h2 className="text-xl font-semibold mb-4">Today&apos;s Focus</h2>
+        <Card className="mt-4">
+          <CardHeader className="flex items-center justify-between gap-2 sm:flex-row">
+            <CardTitle className="text-base sm:text-lg">
+              Today's Focus
+            </CardTitle>
+            <div className="flex items-center gap-2">
+              <Badge variant="secondary">Streak: {utils.streak}d</Badge>

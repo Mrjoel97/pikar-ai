@@ -26,7 +26,7 @@ export const createMilestone = mutation({
       description: args.description,
       targetDate: args.targetDate,
       status: args.status || "not_started",
-      completedAt: null,
+      completedAt: undefined,
       createdAt: Date.now(),
     });
 

@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { query } from "../_generated/server";
 import { Id } from "../_generated/dataModel";
+import { api } from "../_generated/api";
 
 /**
  * Get predictive ROI using historical data and trend analysis
@@ -156,15 +157,15 @@ export const getROIForecast = query({
     userId: v.id("users"),
   },
   handler: async (ctx, args) => {
-    const predictiveData = await ctx.runQuery(
-      ctx.db.system.get("functions").then(() => "getPredictiveROI" as any),
+    const predictiveData: any = await ctx.runQuery(
+      api.analytics.predictiveROI.getPredictiveROI,
       { businessId: args.businessId, userId: args.userId, forecastDays: 90 }
     );
 
     // Aggregate forecasts for 30, 60, 90 days
     const periods = [30, 60, 90];
     const forecasts = periods.map((days) => {
-      const periodData = (predictiveData as any).forecast.slice(0, days);
+      const periodData = predictiveData.forecast.slice(0, days);
       const totalRevenue = periodData.reduce((sum: number, d: any) => sum + d.predictedRevenue, 0);
       const totalTimeSaved = periodData.reduce((sum: number, d: any) => sum + d.predictedTimeSaved, 0);
       const avgROI = periodData.reduce((sum: number, d: any) => sum + d.predictedROI, 0) / days;

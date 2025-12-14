@@ -1,1 +1,16 @@
-import { Database, Plus, RefreshCw, AlertCircle, CheckCircle, Clock, Workflow, FileDown, Shield, BarChart3, AlertTriangle } from "lucide-react";
+const BrainDumpSection = () => {
+  // Search brain dumps
+  const [searchQuery, setSearchQuery] = useState("");
+  const searchArgs = useMemo(
+    () =>
+      initiative?._id
+        ? {
+            initiativeId: initiative._id,
+            q: searchQuery,
+            limit: 5,
+          }
+        : "skip",
+    [initiative?._id, searchQuery],
+  );
+  const searchResults = useQuery(api.initiatives.searchBrainDumps, searchArgs);
+}

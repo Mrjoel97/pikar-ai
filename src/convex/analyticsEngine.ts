@@ -31,6 +31,8 @@ export const updateMetricValue = mutation({
   args: {
     metricId: v.id("customMetrics"),
     value: v.number(),
+    businessId: v.id("businesses"),
+    metadata: v.optional(v.any()),
   },
   handler: async (ctx, args) => {
     await ctx.db.patch(args.metricId, {
@@ -80,7 +82,7 @@ export const getBusinessAnalytics = query({
       .collect();
 
     const successfulExecutions = workflowExecutions.filter(
-      (e) => e.status === "succeeded"
+      (e) => e.status === "completed"
     ).length;
     const failedExecutions = workflowExecutions.filter(
       (e) => e.status === "failed"

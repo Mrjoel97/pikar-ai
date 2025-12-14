@@ -1,1 +1,5 @@
-{"type":"call_tool","name":"readFilesToContextTool","arguments":{"file_paths":["src/convex/schema/testing.ts","src/convex/schema/docs.ts","src/convex/schema/onboarding.ts","src/convex/schema/kms.ts","src/convex/schema/email.ts","src/convex/schema/vendors.ts"],"replace_files_in_context":false}}
+{
+  "file_paths": [
+    "src/components/dashboards/solopreneur/BrainDumpSection.tsx"
+  ]
+}

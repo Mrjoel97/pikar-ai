@@ -1,1 +1,1 @@
-tail -n 20 src/components/dashboards/SolopreneurDashboard.tsx | cat -n
+npx convex dev --once && npx tsc -b --noEmit
