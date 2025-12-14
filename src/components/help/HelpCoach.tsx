@@ -17,10 +17,11 @@ interface HelpCoachProps {
 export function HelpCoach({ userId, currentPage, tier }: HelpCoachProps) {
   const [selectedTip, setSelectedTip] = useState<any>(null);
   
+  // Pass userId only if it exists, otherwise pass undefined to make it optional
   const tips = useQuery(api.helpCoach.assistant.getContextualTips, {
-    userId: userId ?? undefined,
     currentPage,
     tier,
+    userId: userId,
   });
 
   const dismissTip = useMutation(api.helpCoach.assistant.dismissTip);
@@ -42,6 +43,7 @@ export function HelpCoach({ userId, currentPage, tier }: HelpCoachProps) {
   if (tips === undefined) {
     return <div className="h-32 animate-pulse bg-muted/20 rounded-lg" />;
   }
+=======
 
   if (tips.length === 0) {
     return (

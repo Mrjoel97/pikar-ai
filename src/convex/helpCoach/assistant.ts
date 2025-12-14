@@ -15,14 +15,13 @@ export const getContextualTips = query({
     userId: v.optional(v.id("users")),
   },
   handler: async (ctx, args) => {
-    // Get user's dismissed tips
+    // Get user's dismissed tips only if userId is provided
     let dismissedIds = new Set<string>();
     
     if (args.userId) {
-      const userId = args.userId;
       const dismissedTips = await ctx.db
         .query("dismissedTips")
-        .withIndex("by_user", (q) => q.eq("userId", userId))
+        .withIndex("by_user", (q) => q.eq("userId", args.userId!))
         .collect();
       
       dismissedIds = new Set(dismissedTips.map(d => d.tipId));
@@ -36,7 +35,7 @@ export const getContextualTips = query({
       )
       .collect();
 
-    // Filter out dismissed tips and sort by priority
+    // Filter out dismissed tips (if user is authenticated) and sort by priority
     return allTips
       .filter(tip => !dismissedIds.has(tip._id))
       .sort((a, b) => (b.priority || 0) - (a.priority || 0))
