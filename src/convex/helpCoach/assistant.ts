@@ -5,7 +5,6 @@ import { Id } from "../_generated/dataModel";
 // Query to get contextual tips based on user's current page and tier
 export const getContextualTips = query({
   args: {
-    userId: v.optional(v.id("users")),
     currentPage: v.string(),
     tier: v.union(
       v.literal("solopreneur"),
@@ -13,15 +12,17 @@ export const getContextualTips = query({
       v.literal("sme"),
       v.literal("enterprise")
     ),
+    userId: v.optional(v.id("users")),
   },
   handler: async (ctx, args) => {
     // Get user's dismissed tips
     let dismissedIds = new Set<string>();
     
     if (args.userId) {
+      const userId = args.userId;
       const dismissedTips = await ctx.db
         .query("dismissedTips")
-        .withIndex("by_user", (q) => q.eq("userId", args.userId!))
+        .withIndex("by_user", (q) => q.eq("userId", userId))
         .collect();
       
       dismissedIds = new Set(dismissedTips.map(d => d.tipId));

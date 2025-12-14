@@ -39,7 +39,11 @@ export function HelpCoach({ userId, currentPage, tier }: HelpCoachProps) {
     }
   };
 
-  if (!tips || tips.length === 0) {
+  if (tips === undefined) {
+    return <div className="h-32 animate-pulse bg-muted/20 rounded-lg" />;
+  }
+
+  if (tips.length === 0) {
     return (
       <Card className="border-dashed">
         <CardContent className="p-4 text-sm text-muted-foreground text-center">

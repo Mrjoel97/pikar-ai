@@ -1,1 +1,1 @@
-npx convex dev --once && npx tsc -b --noEmit
+cat src/components/help/HelpCoach.tsx
