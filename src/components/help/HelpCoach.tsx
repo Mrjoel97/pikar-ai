@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Lightbulb, X, BookOpen, Play } from "lucide-react";
+import { Lightbulb, X, BookOpen } from "lucide-react";
 import { Id } from "@/convex/_generated/dataModel";
 
 interface HelpCoachProps {
@@ -17,7 +17,6 @@ interface HelpCoachProps {
 export function HelpCoach({ userId, currentPage, tier }: HelpCoachProps) {
   const [selectedTip, setSelectedTip] = useState<any>(null);
   
-  // Pass userId only if it exists, otherwise pass undefined to make it optional
   const tips = useQuery(api.helpCoach.assistant.getContextualTips, {
     currentPage,
     tier,
@@ -43,7 +42,6 @@ export function HelpCoach({ userId, currentPage, tier }: HelpCoachProps) {
   if (tips === undefined) {
     return <div className="h-32 animate-pulse bg-muted/20 rounded-lg" />;
   }
-=======
 
   if (tips.length === 0) {
     return (
@@ -59,7 +57,7 @@ export function HelpCoach({ userId, currentPage, tier }: HelpCoachProps) {
   return (
     <>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {tips.map((tip: any) => (
+        {tips.map((tip: any) => (
           <Card 
             key={tip._id} 
             className="border-emerald-200 hover:shadow-md transition-shadow cursor-pointer"
@@ -98,7 +96,6 @@ export function HelpCoach({ userId, currentPage, tier }: HelpCoachProps) {
         ))}
       </div>
 
-      {/* Tip Detail Dialog */}
       <Dialog open={!!selectedTip} onOpenChange={() => setSelectedTip(null)}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
