@@ -17,11 +17,12 @@ interface HelpCoachProps {
 export function HelpCoach({ userId, currentPage, tier }: HelpCoachProps) {
   const [selectedTip, setSelectedTip] = useState<any>(null);
   
-  const tips = useQuery(api.helpCoach.assistant.getContextualTips, {
-    currentPage,
-    tier,
-    userId: userId,
-  });
+  const tips = useQuery(
+    api.helpCoach.assistant.getContextualTips,
+    userId
+      ? { currentPage, tier, userId }
+      : { currentPage, tier }
+  );
 
   const dismissTip = useMutation(api.helpCoach.assistant.dismissTip);
   const trackInteraction = useMutation(api.helpCoach.assistant.trackTipInteraction);
