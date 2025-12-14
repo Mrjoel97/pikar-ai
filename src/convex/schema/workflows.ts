@@ -247,4 +247,19 @@ export const workflowsSchema = {
   })
     .index("by_business", ["businessId"])
     .index("by_status", ["status"]),
+
+  workflowRuns: defineTable({
+    businessId: v.id("businesses"),
+    workflowId: v.id("workflows"),
+    trigger: v.string(),
+    status: v.union(v.literal("running"), v.literal("completed"), v.literal("failed")),
+    startedAt: v.number(),
+    completedAt: v.optional(v.number()),
+    duration: v.optional(v.number()),
+    error: v.optional(v.string()),
+    logs: v.optional(v.array(v.string())),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_workflow", ["workflowId"])
+    .index("by_status", ["status"]),
 };

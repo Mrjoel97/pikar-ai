@@ -30,7 +30,12 @@ export const createAdminAuth = internalMutation({
     createdAt: v.number(),
   },
   handler: async (ctx, args) => {
-    return await ctx.db.insert("adminAuths", args);
+    return await ctx.db.insert("adminAuths", {
+      ...args,
+      updatedAt: args.createdAt,
+      role: "admin",
+      isVerified: false,
+    });
   },
 });
 
@@ -42,7 +47,19 @@ export const createSession = internalMutation({
     expiresAt: v.number(),
   },
   handler: async (ctx, args) => {
-    return await ctx.db.insert("adminSessions", args);
+    const admin = await ctx.db
+      .query("adminAuths")
+      .withIndex("by_email", (q: any) => q.eq("email", args.email))
+      .unique();
+      
+    if (!admin) {
+      throw new Error("Admin not found for session creation");
+    }
+
+    return await ctx.db.insert("adminSessions", {
+      ...args,
+      adminId: admin._id,
+    });
   },
 });
 
@@ -50,7 +67,7 @@ export const ensureAdminRole = internalMutation({
   args: {
     email: v.string(),
     role: v.union(
-      v.literal("superadmin"),
+      v.literal("super_admin"),
       v.literal("senior"),
       v.literal("pending_senior"),
       v.literal("admin"),

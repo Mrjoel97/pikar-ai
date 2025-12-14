@@ -439,4 +439,25 @@ export const enterpriseSchema = {
     issues: v.optional(v.array(v.any())),
     checkedAt: v.number(),
   }).index("by_business", ["businessId"]),
+
+  capaItems: defineTable({
+    businessId: v.id("businesses"),
+    title: v.string(),
+    description: v.string(),
+    source: v.string(), // e.g., "audit", "incident", "risk"
+    sourceId: v.optional(v.string()),
+    type: v.union(v.literal("corrective"), v.literal("preventive")),
+    priority: v.union(v.literal("low"), v.literal("medium"), v.literal("high"), v.literal("critical")),
+    status: v.union(v.literal("open"), v.literal("in_progress"), v.literal("verified"), v.literal("closed")),
+    assignedTo: v.optional(v.id("users")),
+    dueDate: v.optional(v.number()),
+    completedAt: v.optional(v.number()),
+    verifiedAt: v.optional(v.number()),
+    effectivenessRating: v.optional(v.number()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_status", ["status"])
+    .index("by_assignee", ["assignedTo"]),
 };

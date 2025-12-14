@@ -41,11 +41,18 @@ export const initSolopreneurAgent = mutation({
       });
       return existing._id;
     } else {
+      const identity = await ctx.auth.getUserIdentity();
+      if (!identity) throw new Error("Unauthenticated");
+      
       return await ctx.db.insert("aiAgents", {
         name: "Executive Agent",
         type: "executive" as const,
         businessId: args.businessId,
         isActive: true,
+        status: "active",
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+        createdBy: identity._id as Id<"users">,
       });
     }
   },

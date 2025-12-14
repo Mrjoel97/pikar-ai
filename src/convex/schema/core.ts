@@ -627,6 +627,18 @@ export const coreSchema = {
     .index("by_business", ["businessId"])
     .index("by_playbook", ["playbookId"]),
 
+  playbooks: defineTable({
+    businessId: v.id("businesses"),
+    name: v.string(),
+    description: v.optional(v.string()),
+    trigger: v.string(),
+    steps: v.array(v.any()),
+    isActive: v.boolean(),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_business", ["businessId"]),
+
   customDomains: defineTable({
     businessId: v.id("businesses"),
     domain: v.string(),

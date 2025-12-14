@@ -71,4 +71,20 @@ export const integrationsSchema = {
     createdAt: v.number(),
     updatedAt: v.number(),
   }).index("by_business", ["businessId"]),
+
+  socialApiConfigs: defineTable({
+    businessId: v.id("businesses"),
+    platform: v.string(),
+    clientId: v.optional(v.string()),
+    clientSecret: v.optional(v.string()),
+    callbackUrl: v.optional(v.string()),
+    scope: v.string(),
+    isActive: v.boolean(),
+    updatedAt: v.number(),
+    createdAt: v.number(),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_platform_and_scope", ["platform", "scope"])
+    .index("by_scope", ["scope"])
+    .index("by_business_and_platform", ["businessId", "platform"]),
 };
