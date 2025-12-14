@@ -36,12 +36,18 @@ export const createLocation = mutation({
       code: args.code,
       type: args.type,
       parentLocationId: args.parentLocationId,
-      address: args.address,
+      address: typeof args.address === 'string' ? args.address : args.address.street,
+      city: args.address.city,
+      state: args.address.state,
+      country: args.address.country,
+      postalCode: args.address.postalCode,
       timezone: args.timezone,
-      manager: args.manager,
-      contactEmail: args.contactEmail,
-      contactPhone: args.contactPhone,
       isActive: true,
+      metadata: {
+        manager: args.manager,
+        contactEmail: args.contactEmail,
+        contactPhone: args.contactPhone,
+      },
       createdAt: Date.now(),
       updatedAt: Date.now(),
     });
@@ -99,8 +105,8 @@ export const getLocationHierarchy = query({
     interface LocationNode {
       _id: string;
       name: string;
-      code: string;
-      type: string;
+      code?: string;
+      type?: string;
       parentLocationId?: string;
       children: LocationNode[];
     }

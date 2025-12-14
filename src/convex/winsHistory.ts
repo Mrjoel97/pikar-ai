@@ -25,8 +25,8 @@ export const recordWin = mutation({
       title: args.title,
       description: args.description,
       impact: args.impact,
-      timeSaved: args.timeSaved || 0,
-      category: args.category || "other",
+      timeSaved: args.timeSaved,
+      category: args.category,
       date: Date.now(),
     });
 

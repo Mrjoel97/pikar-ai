@@ -41,6 +41,7 @@ export const saveContentCapsule = mutation({
       throw new Error("[ERR_USER_NOT_FOUND] User not found.");
     }
 
+    const now = Date.now();
     const capsuleId = await ctx.db.insert("contentCapsules", {
       businessId: args.businessId,
       createdBy: user._id,
@@ -49,6 +50,8 @@ export const saveContentCapsule = mutation({
       platforms: args.platforms,
       scheduledAt: args.scheduledAt,
       status: args.status || "draft",
+      createdAt: now,
+      updatedAt: now,
     });
 
     await ctx.runMutation(internal.audit.write, {

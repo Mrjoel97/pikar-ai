@@ -24,9 +24,7 @@ export const generateContentCapsule = action({
     facebookPost: string;
   }> => {
     // Get business context
-    const business = await ctx.runQuery(internal.businesses.getById as any, {
-      businessId: args.businessId,
-    });
+    const business = await ctx.runQuery(api.businesses.currentUserBusiness, {});
 
     if (!business) {
       throw new Error("[ERR_BUSINESS_NOT_FOUND] Business not found.");
@@ -237,7 +235,9 @@ export const processScheduledCapsules = internalAction({
     for (const capsule of dueCapsules) {
       try {
         // Publish the capsule
-        await publishContentCapsule(ctx, { capsuleId: capsule._id });
+        await ctx.runAction(api.contentCapsules.publishContentCapsule, { 
+          capsuleId: capsule._id 
+        });
       } catch (error: any) {
         console.error(`[CRON] Failed to publish capsule ${capsule._id}:`, error.message);
         
@@ -291,7 +291,7 @@ export const publishContentCapsule = action({
           content = capsule.content.facebookPost;
         }
 
-        const postId = await ctx.runMutation(api.socialPosts.createSocialPost, {
+        const postId = await ctx.runMutation(api.socialPosts.createPost, {
           businessId: capsule.businessId,
           platforms: [platform],
           content,

@@ -1,6 +1,5 @@
 import { v } from "convex/values";
 import { query, mutation } from "./_generated/server";
-import { Id } from "./_generated/dataModel";
 
 // Query: List CAPA items for a business
 export const listCapaItems = query({
@@ -113,14 +112,19 @@ export const createCapaItem = mutation({
       v.literal("critical")
     ),
     assigneeId: v.id("users"),
-    incidentId: v.optional(v.string()),
+    incidentId: v.optional(v.id("securityIncidents")),
     nonconformityId: v.optional(v.string()),
     slaDeadline: v.number(),
     verificationRequired: v.boolean(),
     source: v.string(),
     sourceId: v.string(),
-    type: v.string(),
-    priority: v.string(),
+    type: v.union(v.literal("corrective"), v.literal("preventive")),
+    priority: v.union(
+      v.literal("low"),
+      v.literal("medium"),
+      v.literal("high"),
+      v.literal("critical")
+    ),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -143,12 +147,17 @@ export const createCapaItem = mutation({
       description: args.description,
       source: args.source,
       sourceId: args.sourceId,
-      type: args.type as any,
-      priority: args.priority as any,
+      type: args.type,
+      priority: args.priority,
       status: "open",
+      severity: args.severity,
+      assignedTo: args.assigneeId,
+      assigneeId: args.assigneeId,
+      createdBy: user._id,
+      slaDeadline: args.slaDeadline,
+      incidentId: args.incidentId,
       createdAt: Date.now(),
       updatedAt: Date.now(),
-      incidentId: args.incidentId as any, // Cast to fix type mismatch
     });
 
     // Audit log

@@ -20,12 +20,8 @@ export const write = internalMutation({
       businessId: args.businessId,
       action: args.action,
       entityType: args.entityType,
-      entityId: args.entityId ?? "",
-      metadata: {
-        ...args.details,
-        correlationId: args.details?.correlationId,
-        businessId: args.businessId,
-      },
+      entityId: args.entityId,
+      metadata: args.details,
       createdAt: Date.now(),
     });
   },

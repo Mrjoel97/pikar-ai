@@ -75,13 +75,15 @@ export const createDataSource = mutation({
     const sourceId = await ctx.db.insert("dataWarehouseSources", {
       businessId: args.businessId,
       name: args.name,
-      type: "database" as const,
-      config: {
-        ...args.config,
+      sourceType: args.type,
+      type: args.type,
+      status: "disconnected",
+      connectionConfig: {
         connectionString: args.connectionString,
         credentials: args.credentials,
         syncSchedule: args.syncSchedule,
-        originalType: args.type,
+        type: args.type,
+        ...args.config,
       },
       isActive: false,
       createdAt: now,
@@ -93,7 +95,7 @@ export const createDataSource = mutation({
       action: "data_source_created",
       entityType: "data_warehouse_source",
       entityId: sourceId,
-      details: { name: args.name, type: args.type },
+      metadata: { name: args.name, type: args.type },
       createdAt: now,
     });
 
@@ -157,7 +159,7 @@ export const deleteDataSource = mutation({
       action: "data_source_deleted",
       entityType: "data_warehouse_source",
       entityId: args.sourceId,
-      details: { name: source.name },
+      metadata: { name: source.name },
       createdAt: Date.now(),
     });
 
@@ -269,15 +271,15 @@ export const recordJobExecution = internalMutation({
     errors: v.optional(v.array(v.string())),
   },
   handler: async (ctx, args) => {
-    const { startTime, endTime, recordsFailed, errors, ...jobData } = args;
-    
     await ctx.db.insert("dataWarehouseJobs", {
-      ...jobData,
-      startedAt: startTime,
-      completedAt: endTime,
+      businessId: args.businessId,
+      sourceId: args.sourceId,
+      jobType: args.jobType,
+      status: args.status,
+      startedAt: args.startTime,
+      completedAt: args.endTime,
       recordsProcessed: args.recordsProcessed,
-      errorMessage: errors?.join("; "),
-      createdAt: Date.now(),
+      errorMessage: args.errors?.join("; "),
     });
   },
 });

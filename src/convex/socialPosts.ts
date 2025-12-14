@@ -5,7 +5,7 @@ export const createPost = mutation({
   args: {
     businessId: v.id("businesses"),
     content: v.string(),
-    platforms: v.array(v.union(v.literal("twitter"), v.literal("linkedin"), v.literal("facebook"))),
+    platforms: v.array(v.union(v.literal("twitter"), v.literal("linkedin"), v.literal("facebook"), v.literal("instagram"))),
     scheduledAt: v.optional(v.number()),
     mediaUrls: v.optional(v.array(v.id("_storage"))),
     campaignId: v.optional(v.id("experiments")),
@@ -28,6 +28,7 @@ export const createPost = mutation({
     const postId = await ctx.db.insert("socialPosts", {
       businessId: args.businessId,
       content: args.content,
+      platform: args.platforms[0], // Use first platform as primary
       platforms: args.platforms,
       status: args.scheduledAt ? "scheduled" : "draft",
       scheduledAt: args.scheduledAt,
@@ -35,7 +36,7 @@ export const createPost = mutation({
       characterCount: args.content.length,
       createdBy: user._id,
       createdAt: Date.now(),
-      campaignId: args.campaignId as any, // Cast
+      campaignId: args.campaignId as any,
     });
 
     return postId;
@@ -112,8 +113,14 @@ export const updatePostStatus = internalMutation({
     publishedAt: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    await ctx.db.patch(args.postId, {
+    const updates: any = {
       status: args.status,
-    });
+    };
+    
+    if (args.publishedAt !== undefined) {
+      updates.publishedAt = args.publishedAt;
+    }
+    
+    await ctx.db.patch(args.postId, updates);
   },
 });

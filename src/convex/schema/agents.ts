@@ -61,12 +61,14 @@ export const agentsSchema = {
     .index("by_key", ["agent_key"]),
     
   agentDatasets: defineTable({
-    agent_key: v.string(),
-    datasetId: v.id("agentDatasets"),
+    name: v.string(),
+    description: v.optional(v.string()),
+    agent_key: v.optional(v.string()),
+    data: v.any(),
     createdAt: v.number(),
+    createdBy: v.optional(v.id("users")),
   })
-    .index("by_agent", ["agent_key"])
-    .index("by_dataset", ["datasetId"]),
+    .index("by_agent", ["agent_key"]),
 
   agentMemories: defineTable({
     agentId: v.id("aiAgents"),

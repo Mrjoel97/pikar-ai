@@ -247,21 +247,21 @@ export const addReaction = mutation({
     if (!message) throw new Error("Message not found");
 
     // Check if user already reacted with this emoji
-    const existingReaction = message.reactions.find(
+    const existingReaction = (message.reactions || []).find(
       (r) => r.userId === user._id && r.emoji === args.emoji
     );
 
     if (existingReaction) {
       // Remove reaction
       await ctx.db.patch(args.messageId, {
-        reactions: message.reactions.filter(
+        reactions: (message.reactions || []).filter(
           (r) => !(r.userId === user._id && r.emoji === args.emoji)
         ),
       });
     } else {
       // Add reaction
       await ctx.db.patch(args.messageId, {
-        reactions: [...message.reactions, { userId: user._id, emoji: args.emoji }],
+        reactions: [...(message.reactions || []), { userId: user._id, emoji: args.emoji }],
       });
     }
   },

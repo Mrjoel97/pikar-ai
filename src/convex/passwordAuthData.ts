@@ -21,7 +21,12 @@ export const setCredential = internalMutation({
     updatedAt: v.number(),
   },
   handler: async (ctx, args) => {
-    return await ctx.db.insert("userCredentials", args);
+    return await ctx.db.insert("userCredentials", {
+      email: args.email.toLowerCase(),
+      passwordHash: args.passwordHash,
+      createdAt: args.createdAt,
+      updatedAt: args.updatedAt,
+    });
   },
 });
 
@@ -75,8 +80,31 @@ export const createLoginToken = internalMutation({
     expiresAt: v.number(),
   },
   handler: async (ctx, args) => {
+    const user = await ctx.db
+      .query("users")
+      .withIndex("email", (q) => q.eq("email", args.email))
+      .first();
+    
+    if (!user) throw new Error("User not found");
+    
+    const allTokens = await ctx.db
+      .query("userLoginTokens")
+      .collect();
+    
+    const existingToken = allTokens.find(t => t.userId === user._id);
+    
+    if (existingToken) {
+      await ctx.db.patch(existingToken._id, {
+        token: args.token,
+        expiresAt: args.expiresAt,
+      });
+      return existingToken._id;
+    }
+    
     return await ctx.db.insert("userLoginTokens", {
-      ...args,
+      userId: user._id,
+      token: args.token,
+      expiresAt: args.expiresAt,
       createdAt: Date.now(),
     });
   },
@@ -86,7 +114,9 @@ export const createLoginToken = internalMutation({
 export const getCredentialByResetToken = internalQuery({
   args: { token: v.string() },
   handler: async (ctx, args) => {
-    for await (const cred of ctx.db.query("userCredentials")) {
+    const allCreds = await ctx.db.query("userCredentials").collect();
+    
+    for (const cred of allCreds) {
       if (
         cred.passwordResetToken === args.token &&
         cred.passwordResetExpires &&

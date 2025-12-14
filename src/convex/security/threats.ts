@@ -44,10 +44,15 @@ export const createThreat = mutation({
     if (!userId) throw new Error("Unauthorized");
 
     return await ctx.db.insert("securityThreats", {
-      ...args,
+      businessId: args.businessId,
+      type: args.type,
+      severity: args.severity,
+      description: args.description,
+      source: args.source,
+      ipAddress: args.ipAddress,
+      affectedResource: args.affectedResource,
       status: "active",
       detectedAt: Date.now(),
-      resolvedAt: null,
     });
   },
 });

@@ -10,6 +10,7 @@ import { internal } from "../_generated/api";
 export const createMultiChannelCampaign = action({
   args: {
     businessId: v.id("businesses"),
+    userId: v.id("users"),
     name: v.string(),
     description: v.optional(v.string()),
     channels: v.array(v.object({
@@ -25,6 +26,7 @@ export const createMultiChannelCampaign = action({
     // Create campaign record
     const campaignId: string = await ctx.runMutation(internal.campaigns.mutations.createCampaignRecord, {
       businessId: args.businessId,
+      userId: args.userId,
       name: args.name,
       description: args.description,
       startDate: args.startDate,

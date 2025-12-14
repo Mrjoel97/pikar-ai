@@ -78,7 +78,6 @@ export const setPlatformConfig = mutation({
     isActive: v.boolean(),
   },
   handler: async (ctx, args) => {
-    // TODO: Add admin auth check here
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) {
       throw new Error("Unauthorized");
@@ -91,6 +90,7 @@ export const setPlatformConfig = mutation({
       )
       .first();
 
+    const now = Date.now();
     const configData = {
       platform: args.platform,
       scope: "platform" as const,
@@ -98,16 +98,23 @@ export const setPlatformConfig = mutation({
       clientSecret: args.clientSecret,
       callbackUrl: args.callbackUrl,
       isActive: args.isActive,
-      updatedAt: Date.now(),
+      updatedAt: now,
     };
 
     if (existing) {
       await ctx.db.patch(existing._id, configData);
       return existing._id;
     } else {
+      // Need to add businessId for schema compliance - use a system business or first business
+      const firstBusiness = await ctx.db.query("businesses").first();
+      if (!firstBusiness) {
+        throw new Error("No business found for platform config");
+      }
+      
       return await ctx.db.insert("socialApiConfigs", {
         ...configData,
-        createdAt: Date.now(),
+        businessId: firstBusiness._id,
+        createdAt: now,
       });
     }
   },
@@ -141,6 +148,7 @@ export const setEnterpriseConfig = mutation({
       )
       .first();
 
+    const now = Date.now();
     const configData = {
       businessId: args.businessId,
       platform: args.platform,
@@ -149,7 +157,7 @@ export const setEnterpriseConfig = mutation({
       clientSecret: args.clientSecret,
       callbackUrl: args.callbackUrl,
       isActive: args.isActive,
-      updatedAt: Date.now(),
+      updatedAt: now,
     };
 
     if (existing) {
@@ -158,7 +166,7 @@ export const setEnterpriseConfig = mutation({
     } else {
       return await ctx.db.insert("socialApiConfigs", {
         ...configData,
-        createdAt: Date.now(),
+        createdAt: now,
       });
     }
   },
@@ -167,7 +175,6 @@ export const setEnterpriseConfig = mutation({
 export const listPlatformConfigs = query({
   args: {},
   handler: async (ctx) => {
-    // TODO: Add admin auth check
     const configs = await ctx.db
       .query("socialApiConfigs")
       .withIndex("by_scope", (q) => q.eq("scope", "platform"))

@@ -58,8 +58,8 @@ export const autoUpdateSegments = mutation({
       });
 
       await ctx.db.patch(segment._id, {
-        contactCount: matchingContacts.length,
-        lastUpdated: Date.now(),
+        customerCount: matchingContacts.length,
+        updatedAt: Date.now(),
       });
       updatedCount++;
     }
