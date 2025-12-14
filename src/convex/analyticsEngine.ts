@@ -40,8 +40,10 @@ export const updateMetricValue = mutation({
 
     await ctx.db.insert("metricHistory", {
       metricId: args.metricId,
+      businessId: args.businessId,
       value: args.value,
       timestamp: Date.now(),
+      metadata: args.metadata,
     });
 
     return { success: true };

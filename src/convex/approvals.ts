@@ -102,6 +102,10 @@ export const createApproval = mutation({
         v.literal("urgent")
       )
     ),
+    entityType: v.string(), // Added
+    entityId: v.string(), // Added
+    requestedBy: v.id("users"), // Added
+    approvers: v.array(v.id("users")), // Added
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -116,16 +120,18 @@ export const createApproval = mutation({
     const approvalId = await ctx.db.insert("approvalQueue", {
       businessId: args.businessId,
       workflowId: args.workflowId,
-      workflowRunId: args.workflowRunId,
-      stepIndex: args.stepIndex,
-      assigneeId: args.assigneeId,
-      assigneeRole: args.assigneeRole,
-      title: args.title,
-      description: args.description || "",
+      entityType: args.entityType,
+      entityId: args.entityId,
+      requestedBy: args.requestedBy,
       status: "pending",
-      priority: args.priority || "medium",
+      approvers: args.approvers,
+      priority: args.priority,
       slaDeadline,
-      createdBy: identity.subject,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      assigneeId: args.assigneeId, // Added missing field
+      stepIndex: args.stepIndex, // Added missing field
+      // title: args.title, // Removed
     });
 
     return approvalId;
@@ -200,17 +206,13 @@ export const processApproval = mutation({
     // Telemetry
     await ctx.db.insert("telemetryEvents", {
       businessId: approval.businessId,
-      userId: user._id,
-      eventName: `approval_${args.action}d`,
-      eventData: {
-        approvalId: args.approvalId,
-        workflowId: approval.workflowId,
-        stepIndex: approval.stepIndex,
-        processingTime: now - approval._creationTime,
-        comments: args.comments,
+      event: "approval_action",
+      data: {
+        action: args.action,
+        requestId: args.approvalId,
+        userId: identity.subject,
       },
-      timestamp: now,
-      source: "system",
+      timestamp: Date.now(),
     });
 
     return args.approvalId;

@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Shield, AlertTriangle } from "lucide-react";
 import type { Id } from "@/convex/_generated/dataModel";
+import { ResponsiveContainer, AreaChart, CartesianGrid, XAxis, YAxis, Tooltip, Area } from 'recharts';
 
 export function ThreatDashboard({ businessId }: { businessId: Id<"businesses"> }) {
   const threats = useQuery(api.security.threats.getThreats, { businessId, limit: 10 });
@@ -30,42 +31,66 @@ export function ThreatDashboard({ businessId }: { businessId: Id<"businesses"> }
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Shield className="h-5 w-5" />
-          Active Threats
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="space-y-3">
-          {threats?.filter(t => t.status === "active").map((threat) => (
-            <div key={threat._id} className="flex items-start justify-between p-3 border rounded-lg">
-              <div className="space-y-1 flex-1">
-                <div className="flex items-center gap-2">
-                  <AlertTriangle className="h-4 w-4 text-orange-500" />
-                  <span className="font-medium">{threat.type}</span>
-                  <Badge className={getSeverityColor(threat.severity)}>
-                    {threat.severity}
-                  </Badge>
+    <div className="space-y-4">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Shield className="h-5 w-5" />
+            Active Threats
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            {threats?.filter(t => t.status === "active").map((threat) => (
+              <div key={threat._id} className="flex items-start justify-between p-3 border rounded-lg">
+                <div className="space-y-1 flex-1">
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle className="h-4 w-4 text-orange-500" />
+                    <span className="font-medium">{threat.type}</span>
+                    <Badge className={getSeverityColor(threat.severity)}>
+                      {threat.severity}
+                    </Badge>
+                  </div>
+                  <p className="text-sm text-muted-foreground">{threat.description}</p>
+                  {threat.ipAddress && (
+                    <p className="text-xs text-muted-foreground">IP: {threat.ipAddress}</p>
+                  )}
                 </div>
-                <p className="text-sm text-muted-foreground">{threat.description}</p>
-                {threat.ipAddress && (
-                  <p className="text-xs text-muted-foreground">IP: {threat.ipAddress}</p>
-                )}
+                <Button size="sm" variant="outline" onClick={() => handleResolve(threat._id)}>
+                  Resolve
+                </Button>
               </div>
-              <Button size="sm" variant="outline" onClick={() => handleResolve(threat._id)}>
-                Resolve
-              </Button>
-            </div>
-          ))}
-          {threats?.filter(t => t.status === "active").length === 0 && (
-            <p className="text-sm text-muted-foreground text-center py-4">
-              No active threats detected
-            </p>
-          )}
-        </div>
-      </CardContent>
-    </Card>
+            ))}
+            {threats?.filter(t => t.status === "active").length === 0 && (
+              <p className="text-sm text-muted-foreground text-center py-4">
+                No active threats detected
+              </p>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Active Threats</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {activeThreats?.map((threat: any) => (
+              <div key={threat._id} className="flex items-center justify-between p-4 border rounded-lg bg-red-50/50">
+                <div className="flex items-center gap-3">
+                  <ShieldAlert className="h-5 w-5 text-red-600" />
+                  <div>
+                    <div className="font-medium">{threat.type}</div>
+                    <div className="text-sm text-muted-foreground">{threat.source}</div>
+                  </div>
+                </div>
+                <Badge variant="destructive">{threat.severity}</Badge>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
   );
 }

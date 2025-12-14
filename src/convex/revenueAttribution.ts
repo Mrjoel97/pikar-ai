@@ -49,8 +49,7 @@ export const trackTouchpoint = mutation({
       businessId: args.businessId,
       contactId: args.contactId,
       channel: args.channel,
-      campaign: args.campaignId,
-      campaignId: args.campaignId,
+      campaignId: args.campaignId, // Changed from campaign
       timestamp: Date.now(),
       value: 0,
     });
@@ -69,6 +68,9 @@ export const recordConversion = mutation({
     revenue: v.number(),
     conversionType: v.string(),
     metadata: v.optional(v.any()),
+    amount: v.optional(v.number()),
+    convertedAt: v.optional(v.number()),
+    timestamp: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -98,13 +100,14 @@ export const recordConversion = mutation({
     const conversionId = await ctx.db.insert("revenueConversions", {
       businessId: args.businessId,
       contactId: args.contactId,
-      amount: args.revenue,
+      amount: args.amount ?? args.revenue,
       revenue: args.revenue,
-      convertedAt: now,
-      timestamp: now,
+      convertedAt: args.convertedAt ?? now,
+      timestamp: args.timestamp ?? now,
       conversionType: args.conversionType,
-      attributedTouchpoints: touchpoints.map(t => t._id),
-      attributions,
+      currency: "USD", // Added default
+      source: "unknown", // Added default
+      attributions, // Added missing field
     });
 
     return conversionId;

@@ -39,43 +39,33 @@ export function IncidentManager({ businessId }: { businessId: Id<"businesses"> }
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="space-y-3">
-          {incidents?.map((incident) => (
-            <div key={incident._id} className="p-3 border rounded-lg space-y-2">
-              <div className="flex items-start justify-between">
-                <div className="space-y-1 flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium">{incident.title}</span>
-                    <Badge className={getSeverityColor(incident.severity)}>
-                      {incident.severity}
-                    </Badge>
-                  </div>
-                  <p className="text-sm text-muted-foreground">{incident.description}</p>
+        <div className="space-y-4">
+          {incidents?.map((incident: any) => (
+            <div key={incident._id} className="flex items-center justify-between p-4 border rounded-lg">
+              <div>
+                <div className="flex items-center gap-2">
+                  <h4 className="font-medium">{incident.title}</h4>
+                  <Badge variant={
+                    incident.severity === "critical" ? "destructive" :
+                    incident.severity === "high" ? "default" :
+                    "secondary"
+                  }>
+                    {incident.severity}
+                  </Badge>
+                </div>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {incident.description}
+                </p>
+                <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
+                  <span>Detected: {new Date(incident.detectedAt).toLocaleString()}</span>
+                  <span>Status: {incident.status}</span>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                <Select
-                  value={incident.status}
-                  onValueChange={(value) => handleStatusChange(incident._id, value)}
-                >
-                  <SelectTrigger className="w-40">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="open">Open</SelectItem>
-                    <SelectItem value="investigating">Investigating</SelectItem>
-                    <SelectItem value="resolved">Resolved</SelectItem>
-                    <SelectItem value="closed">Closed</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              <Button variant="outline" size="sm">
+                View Details
+              </Button>
             </div>
           ))}
-          {incidents?.length === 0 && (
-            <p className="text-sm text-muted-foreground text-center py-4">
-              No security incidents
-            </p>
-          )}
         </div>
       </CardContent>
     </Card>

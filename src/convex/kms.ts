@@ -56,12 +56,16 @@ export const saveKmsConfig = mutation({
     } else {
       const id = await ctx.db.insert("kmsConfigs", {
         businessId: args.businessId,
-        provider: args.provider === "google" ? "gcp" : args.provider,
+        provider: args.provider,
         keyId: args.keyId,
         region: args.region,
         isActive: args.active,
         createdAt: now,
         updatedAt: now,
+        status: "active",
+        createdBy: args.userId,
+        keyRotationDays: 90,
+        scope: ["all"],
       });
       
       await ctx.runMutation(api.audit.write, {

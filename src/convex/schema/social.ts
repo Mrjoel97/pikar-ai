@@ -37,6 +37,7 @@ export const socialSchema = {
     ),
     platforms: v.optional(v.array(v.string())),
     content: v.string(),
+    characterCount: v.optional(v.number()),
     mediaUrls: v.optional(v.array(v.string())),
     status: v.union(
       v.literal("draft"),
@@ -46,6 +47,7 @@ export const socialSchema = {
       v.literal("posted"),
       v.literal("posting")
     ),
+    campaignId: v.optional(v.id("emailCampaigns")),
     scheduledFor: v.optional(v.number()),
     scheduledAt: v.optional(v.number()),
     publishedAt: v.optional(v.number()),

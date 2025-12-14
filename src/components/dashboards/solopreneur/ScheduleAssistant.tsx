@@ -3,7 +3,11 @@ import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Calendar, Clock, Sparkles, Link as LinkIcon } from "lucide-react";
+import { CardHeader } from "@/components/ui/card-header";
+import { CardTitle } from "@/components/ui/card-title";
+import { CardContent } from "@/components/ui/card-content";
+import { Badge } from "@/components/ui/badge";
+import { Calendar, Clock, Sparkles, Link as LinkIcon, Video } from "lucide-react";
 import { ScheduleAssistant as AIScheduleAssistant } from "@/components/scheduling/ScheduleAssistant";
 import { AvailabilityCalendar } from "@/components/scheduling/AvailabilityCalendar";
 import { CalendarIntegrationButton } from "@/components/scheduling/CalendarIntegrationButton";
@@ -22,86 +26,82 @@ export function ScheduleAssistant({ businessId }: ScheduleAssistantWidgetProps) 
   const googleConnected = integrations?.some(i => i.provider === "google" && i.isActive) || false;
   const outlookConnected = integrations?.some(i => i.provider === "outlook" && i.isActive) || false;
 
+  const appointments = useQuery(api.appointments.listAppointments, { businessId });
+
+  const getNextMeeting = () => {
+    const now = Date.now();
+    return appointments
+      ?.filter((i: any) => i.startTime > now)
+      .sort((a: any, b: any) => a.startTime - b.startTime)[0];
+  };
+
+  const nextMeeting = getNextMeeting();
+
   return (
-    <>
-      <Card className="p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold flex items-center gap-2">
-            <Calendar className="h-5 w-5" />
-            Schedule Assistant
-          </h3>
-          <Sparkles className="h-5 w-5 text-emerald-600" />
-        </div>
-
-        <p className="text-sm text-muted-foreground mb-4">
-          AI-powered scheduling to optimize your time and find the best meeting slots
-        </p>
-
-        {/* Calendar Integrations */}
-        <div className="mb-4 p-3 border rounded-lg bg-muted/20">
-          <div className="flex items-center gap-2 mb-2">
-            <LinkIcon className="h-4 w-4" />
-            <span className="text-sm font-medium">Calendar Connections</span>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <CalendarIntegrationButton
-              businessId={businessId}
-              provider="google"
-              isConnected={googleConnected}
-            />
-            <CalendarIntegrationButton
-              businessId={businessId}
-              provider="outlook"
-              isConnected={outlookConnected}
-            />
-          </div>
-          {integrations && integrations.length > 0 && (
-            <div className="mt-2 text-xs text-muted-foreground">
-              Last synced: {new Date(Math.max(...integrations.map(i => i.lastSyncAt || 0))).toLocaleString()}
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Calendar className="h-5 w-5" />
+          Schedule Assistant
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {nextMeeting ? (
+          <div className="p-4 border rounded-lg bg-muted/50">
+            <div className="flex justify-between items-start mb-2">
+              <div>
+                <h4 className="font-medium">{nextMeeting.title}</h4>
+                <p className="text-sm text-muted-foreground">
+                  {new Date(nextMeeting.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </p>
+              </div>
+              <Badge>{nextMeeting.type}</Badge>
             </div>
-          )}
-        </div>
-
-        <div className="space-y-2">
-          <Button
-            onClick={() => setShowAssistant(true)}
-            className="w-full"
-            variant="default"
-          >
-            <Sparkles className="h-4 w-4 mr-2" />
-            Find Optimal Meeting Times
-          </Button>
-          
-          <Button
-            onClick={() => setShowCalendar(true)}
-            className="w-full"
-            variant="outline"
-          >
-            <Clock className="h-4 w-4 mr-2" />
-            Manage Availability
-          </Button>
-        </div>
-      </Card>
-
-      <AIScheduleAssistant
-        open={showAssistant}
-        onOpenChange={setShowAssistant}
-        businessId={businessId}
-      />
-
-      {showCalendar && (
-        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-background border rounded-lg shadow-lg max-w-6xl w-full max-h-[90vh] overflow-y-auto p-6">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold">Availability Calendar</h2>
-              <Button variant="ghost" onClick={() => setShowCalendar(false)}>
-                Close
+            <div className="flex gap-2 mt-4">
+              <Button size="sm" className="w-full" variant="outline">
+                Reschedule
+              </Button>
+              <Button size="sm" className="w-full">
+                Join
               </Button>
             </div>
-            <AvailabilityCalendar businessId={businessId} />
+          </div>
+        ) : (
+          <div className="text-center py-8 text-muted-foreground">
+            No upcoming meetings
+          </div>
+        )}
+
+        <div className="space-y-2">
+          <h4 className="text-sm font-medium">Quick Actions</h4>
+          <div className="grid grid-cols-2 gap-2">
+            <Button variant="outline" size="sm" className="justify-start">
+              <Clock className="mr-2 h-4 w-4" />
+              Block Time
+            </Button>
+            <Button variant="outline" size="sm" className="justify-start">
+              <Video className="mr-2 h-4 w-4" />
+              New Meeting
+            </Button>
           </div>
         </div>
-      )}
-    </>
+
+        <div className="pt-4 border-t">
+          <div className="flex justify-between items-center mb-2">
+            <h4 className="text-sm font-medium">Today's Overview</h4>
+            <span className="text-xs text-muted-foreground">
+              {appointments?.filter((i: any) => {
+                const today = new Date();
+                const date = new Date(i.startTime);
+                return date.getDate() === today.getDate() &&
+                  date.getMonth() === today.getMonth() &&
+                  date.getFullYear() === today.getFullYear();
+              }).length || 0} meetings
+            </span>
+          </div>
+          {/* Timeline visualization could go here */}
+        </div>
+      </CardContent>
+    </Card>
   );
 }

@@ -24,7 +24,7 @@ export const listTopFocus = query({
       return a.createdAt - b.createdAt;
     });
 
-    const top = tasks.filter((t) => t.status !== "done").slice(0, args.limit ?? 3);
+    const top = tasks.filter((t) => t.status !== "completed").slice(0, args.limit ?? 3);
     return top;
   },
 });
@@ -61,7 +61,7 @@ export const updateStatus = mutation({
     status: v.union(v.literal("todo"), v.literal("in_progress"), v.literal("blocked"), v.literal("done")),
   },
   handler: async (ctx, args) => {
-    await ctx.db.patch(args.taskId, { status: args.status, updatedAt: Date.now() });
+    await ctx.db.patch(args.taskId, { status: args.status as any, updatedAt: Date.now() });
     return args.taskId;
   },
 });

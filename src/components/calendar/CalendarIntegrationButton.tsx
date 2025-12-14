@@ -81,27 +81,21 @@ export function CalendarIntegrationButton({ businessId }: CalendarIntegrationBut
   };
 
   return (
-    <Button
-      variant={isConnected ? "outline" : "default"}
-      size="sm"
-      onClick={handleConnect}
-      disabled={isConnecting || isConnected}
-      className="gap-2"
-    >
-      <Calendar className="h-4 w-4" />
-      {isConnecting ? (
-        <>
-          <Loader2 className="h-4 w-4 animate-spin" />
-          Connecting...
-        </>
-      ) : isConnected ? (
-        <>
-          <CheckCircle className="h-4 w-4 text-green-600" />
-          Connected
-        </>
-      ) : (
-        "Connect Google Calendar"
-      )}
-    </Button>
+    <div className="flex flex-col gap-4">
+      <div className="flex gap-2">
+        {integrations?.map((int: any) => (
+          <Button
+            key={int._id}
+            variant={int.isActive ? "default" : "outline"}
+            onClick={() => handleConnect(int.provider)}
+            disabled={isLoading}
+          >
+            {int.provider === "google" && <Icons.google className="mr-2 h-4 w-4" />}
+            {int.provider === "outlook" && <Icons.microsoft className="mr-2 h-4 w-4" />}
+            {int.provider.charAt(0).toUpperCase() + int.provider.slice(1)}
+          </Button>
+        ))}
+      </div>
+    </div>
   );
 }

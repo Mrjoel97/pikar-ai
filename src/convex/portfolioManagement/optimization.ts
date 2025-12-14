@@ -138,16 +138,19 @@ export const getRebalancingRecommendations = query({
 
     // Identify over/under-allocated resources
     for (const alloc of allocations) {
-      const utilization = alloc.capacity > 0 ? alloc.allocatedAmount / alloc.capacity : 0;
-      const initiative = await ctx.db.get(alloc.initiativeId);
+      const capacity = alloc.capacity || 1; // Default to 1 to avoid division by zero
+      const allocatedAmount = alloc.allocatedAmount || 0;
+      const utilization = capacity > 0 ? allocatedAmount / capacity : 0;
+      
+      const initiative = alloc.initiativeId ? await ctx.db.get(alloc.initiativeId) : null;
 
       if (utilization > 0.9) {
         recommendations.push({
           type: "reduce",
           resourceType: alloc.resourceType,
           initiativeName: initiative?.name || "Unknown",
-          currentAllocation: alloc.allocatedAmount,
-          recommendedAllocation: Math.round(alloc.capacity * 0.8),
+          currentAllocation: allocatedAmount,
+          recommendedAllocation: Math.round(capacity * 0.8),
           reason: "Over-allocated - risk of burnout",
           priority: "high",
         });
@@ -156,8 +159,8 @@ export const getRebalancingRecommendations = query({
           type: "increase",
           resourceType: alloc.resourceType,
           initiativeName: initiative?.name || "Unknown",
-          currentAllocation: alloc.allocatedAmount,
-          recommendedAllocation: Math.round(alloc.capacity * 0.7),
+          currentAllocation: allocatedAmount,
+          recommendedAllocation: Math.round(capacity * 0.7),
           reason: "Under-utilized - opportunity for growth",
           priority: "medium",
         });

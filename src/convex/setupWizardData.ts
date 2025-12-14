@@ -75,7 +75,7 @@ export const completeStep = mutation({
       throw new Error("Setup not found");
     }
 
-    const updatedSteps = setup.steps.map((step: any) =>
+    const updatedSteps = (setup.steps || []).map((step: any) =>
       step.id === args.stepId ? { ...step, completed: true } : step
     );
 
@@ -98,11 +98,6 @@ export const completeStep = mutation({
     if (allCompleted) {
       await ctx.db.patch(args.setupId, {
         completedAt: Date.now(),
-      });
-
-      // Trigger onboarding completion
-      await ctx.db.patch(setup.businessId, {
-        onboardingCompleted: true,
       });
     }
 

@@ -6,82 +6,109 @@ export const agentsSchema = {
     businessId: v.id("businesses"),
     name: v.string(),
     type: v.string(),
-    description: v.optional(v.string()),
-    status: v.union(v.literal("active"), v.literal("inactive"), v.literal("training")),
-    isActive: v.optional(v.boolean()),
-    active: v.optional(v.boolean()),
+    status: v.string(),
+    isActive: v.boolean(),
+    isTemplate: v.optional(v.boolean()),
+    category: v.optional(v.string()),
+    capabilities: v.optional(v.array(v.string())),
     config: v.optional(v.any()),
     createdBy: v.id("users"),
-    userId: v.optional(v.id("users")),
     createdAt: v.number(),
     updatedAt: v.number(),
+    description: v.optional(v.string()),
+    personality: v.optional(v.string()),
   })
     .index("by_business", ["businessId"])
-    .index("by_status", ["status"])
-    .index("by_active", ["active"])
-    .index("by_user_and_business", ["userId", "businessId"]),
+    .index("by_active", ["isActive"])
+    .index("by_category", ["category"]),
 
   agentProfiles: defineTable({
-    agentId: v.optional(v.id("aiAgents")),
     businessId: v.id("businesses"),
-    userId: v.optional(v.id("users")),
-    capabilities: v.optional(v.array(v.string())),
-    performance: v.optional(v.any()),
-    metadata: v.optional(v.any()),
+    userId: v.id("users"),
     trainingNotes: v.optional(v.string()),
     brandVoice: v.optional(v.string()),
-    lastUpdated: v.optional(v.number()),
     preferences: v.optional(v.any()),
+    lastUpdated: v.number(),
+    cadence: v.optional(v.string()),
+    persona: v.optional(v.string()),
+    tone: v.optional(v.string()),
   })
-    .index("by_agent", ["agentId"])
     .index("by_business", ["businessId"])
     .index("by_user_and_business", ["userId", "businessId"]),
+
+  agentCatalog: defineTable({
+    agent_key: v.string(),
+    display_name: v.string(),
+    short_desc: v.string(),
+    long_desc: v.string(),
+    capabilities: v.array(v.string()),
+    default_model: v.string(),
+    active: v.boolean(),
+    tier_restrictions: v.optional(v.array(v.string())),
+    createdAt: v.number(),
+  })
+    .index("by_active", ["active"])
+    .index("by_key", ["agent_key"]),
+    
+  agentVersions: defineTable({
+    agent_key: v.string(),
+    version: v.string(),
+    config: v.any(),
+    createdAt: v.number(),
+    createdBy: v.optional(v.id("users")),
+    note: v.optional(v.string()),
+  })
+    .index("by_key", ["agent_key"]),
+    
+  agentDatasets: defineTable({
+    agent_key: v.string(),
+    datasetId: v.id("agentDatasets"),
+    createdAt: v.number(),
+  })
+    .index("by_agent", ["agent_key"])
+    .index("by_dataset", ["datasetId"]),
 
   agentMemories: defineTable({
     agentId: v.id("aiAgents"),
     businessId: v.id("businesses"),
+    memoryType: v.string(),
     content: v.string(),
-    context: v.optional(v.string()),
-    memoryType: v.union(
-      v.literal("conversation"),
-      v.literal("pattern"),
-      v.literal("context"),
-      v.literal("feedback")
-    ),
+    context: v.optional(v.any()),
     importance: v.number(),
-    timestamp: v.number(),
-    metadata: v.optional(v.any()),
-    createdAt: v.number(),
-    accessCount: v.number(),
     lastAccessed: v.number(),
+    accessCount: v.number(),
+    createdAt: v.number(),
+    timestamp: v.optional(v.number()),
   })
     .index("by_agent", ["agentId"])
     .index("by_business", ["businessId"]),
 
   agentCollaborations: defineTable({
     businessId: v.id("businesses"),
-    agentIds: v.array(v.id("aiAgents")),
-    taskId: v.optional(v.string()),
-    taskDescription: v.string(),
-    coordinatorAgentId: v.id("aiAgents"),
+    initiatorAgentId: v.id("aiAgents"),
+    targetAgentId: v.id("aiAgents"),
+    goal: v.string(),
     status: v.string(),
-    createdAt: v.number(),
-    startedAt: v.number(),
     messages: v.array(v.any()),
-    sharedContext: v.any(),
+    result: v.optional(v.any()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    startedAt: v.optional(v.number()),
   })
-    .index("by_business", ["businessId"]),
+    .index("by_business", ["businessId"])
+    .index("by_initiator", ["initiatorAgentId"])
+    .index("by_target", ["targetAgentId"]),
 
   agentLearningEvents: defineTable({
     agentId: v.id("aiAgents"),
     businessId: v.id("businesses"),
     eventType: v.string(),
-    context: v.string(),
-    outcome: v.string(),
-    learningPoints: v.array(v.string()),
-    data: v.any(),
-    timestamp: v.number(),
-    applied: v.boolean(),
+    description: v.string(),
+    context: v.optional(v.any()),
+    outcome: v.optional(v.any()),
+    impactScore: v.optional(v.number()),
+    createdAt: v.number(),
+    data: v.optional(v.any()),
   })
     .index("by_agent", ["agentId"])
     .index("by_business", ["businessId"]),
@@ -89,32 +116,19 @@ export const agentsSchema = {
   agentExecutions: defineTable({
     agentId: v.id("aiAgents"),
     businessId: v.id("businesses"),
-    status: v.union(v.literal("pending"), v.literal("running"), v.literal("completed"), v.literal("failed"), v.literal("success")),
+    taskId: v.optional(v.string()),
+    input: v.any(),
+    output: v.optional(v.any()),
+    status: v.string(),
     duration: v.optional(v.number()),
+    cost: v.optional(v.number()),
+    tokensUsed: v.optional(v.number()),
     startedAt: v.number(),
     completedAt: v.optional(v.number()),
     error: v.optional(v.string()),
-    result: v.optional(v.any()),
     responseTime: v.optional(v.number()),
-    timestamp: v.number(),
   })
     .index("by_agent", ["agentId"])
     .index("by_business", ["businessId"])
-    .index("by_timestamp", ["timestamp"]),
-
-  agentCatalog: defineTable({
-    name: v.string(),
-    description: v.string(),
-    category: v.string(),
-    capabilities: v.array(v.string()),
-    version: v.string(),
-    isPublic: v.boolean(),
-    price: v.optional(v.number()),
-    authorId: v.optional(v.id("users")),
-    metadata: v.optional(v.any()),
-    createdAt: v.number(),
-    updatedAt: v.number(),
-  })
-    .index("by_category", ["category"])
-    .index("by_public", ["isPublic"]),
+    .index("by_status", ["status"]),
 };

@@ -352,9 +352,8 @@ export const bulkUploadCsv = mutation({
         // Check if contact already exists in business
         const existing = await ctx.db
           .query("contacts")
-          .withIndex("by_business_and_email", (q) => 
-            q.eq("businessId", args.businessId).eq("email", contact.email)
-          )
+          .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+          .filter((q) => q.eq(q.field("name"), contact.name))
           .first();
 
         if (existing) {
@@ -538,7 +537,8 @@ export const getContactSegments = query({
     
     // Segment by status
     const byStatus = contacts.reduce((acc, c) => {
-      acc[c.status] = (acc[c.status] || 0) + 1;
+      const status = c.status || "active";
+      acc[status] = (acc[status] || 0) + 1;
       return acc;
     }, {} as Record<string, number>);
     

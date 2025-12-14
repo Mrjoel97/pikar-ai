@@ -18,6 +18,9 @@ export const riskSchema = {
     ),
     createdAt: v.number(),
     updatedAt: v.number(),
+    probability: v.optional(v.number()),
+    impact: v.optional(v.number()),
+    outcomes: v.optional(v.any()),
   })
     .index("by_business", ["businessId"])
     .index("by_status", ["status"]),
@@ -46,6 +49,9 @@ export const riskSchema = {
     progress: v.number(),
     createdAt: v.number(),
     updatedAt: v.number(),
+    effectiveness: v.optional(v.number()),
+    strategy: v.optional(v.string()),
+    scenarioId: v.optional(v.id("riskScenarios")),
   })
     .index("by_business", ["businessId"])
     .index("by_status", ["status"])
@@ -57,20 +63,15 @@ export const riskSchema = {
       v.literal("executive_summary"),
       v.literal("detailed_analysis"),
       v.literal("compliance"),
-      v.literal("trend_analysis")
+      v.literal("trend_analysis"),
+      v.literal("trend_report"),
+      v.literal("compliance_report")
     ),
     timeRange: v.object({
       start: v.number(),
       end: v.number(),
     }),
-    summary: v.object({
-      totalRisks: v.number(),
-      criticalRisks: v.number(),
-      highRisks: v.number(),
-      mediumRisks: v.number(),
-      lowRisks: v.number(),
-      avgRiskScore: v.number(),
-    }),
+    summary: v.any(),
     generatedAt: v.number(),
   })
     .index("by_business", ["businessId"])

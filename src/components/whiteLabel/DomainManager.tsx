@@ -71,45 +71,29 @@ export function DomainManager({ businessId }: { businessId: Id<"businesses"> }) 
           </Button>
         </div>
 
-        <div className="space-y-2">
-          {domains?.map((domain) => (
-            <div
-              key={domain._id}
-              className="flex items-center justify-between p-3 border rounded-lg"
-            >
-              <div className="flex items-center gap-3">
-                <span className="font-medium">{domain.domain}</span>
-                {domain.verified ? (
-                  <Badge variant="default" className="gap-1">
-                    <CheckCircle className="h-3 w-3" />
-                    Verified
-                  </Badge>
-                ) : (
-                  <Badge variant="secondary" className="gap-1">
-                    <XCircle className="h-3 w-3" />
-                    Pending
-                  </Badge>
-                )}
-                {domain.isPrimary && (
-                  <Badge variant="outline">Primary</Badge>
-                )}
+        <div className="space-y-4">
+          {domains?.map((domain: any) => (
+            <div key={domain._id} className="flex items-center justify-between p-4 border rounded-lg">
+              <div>
+                <div className="flex items-center gap-2">
+                  <Globe className="h-4 w-4 text-muted-foreground" />
+                  <span className="font-medium">{domain.domain}</span>
+                  {domain.status === "verified" && (
+                    <CheckCircle className="h-4 w-4 text-green-500" />
+                  )}
+                </div>
+                <div className="text-sm text-muted-foreground mt-1">
+                  Status: <span className="capitalize">{domain.status}</span>
+                </div>
               </div>
-              <div className="flex gap-2">
-                {!domain.verified && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleVerifyDomain(domain._id)}
-                  >
+              <div className="flex items-center gap-2">
+                {domain.status === "pending" && (
+                  <Button variant="outline" size="sm">
                     Verify
                   </Button>
                 )}
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => handleDeleteDomain(domain._id)}
-                >
-                  <Trash2 className="h-4 w-4" />
+                <Button variant="ghost" size="icon">
+                  <Trash2 className="h-4 w-4 text-destructive" />
                 </Button>
               </div>
             </div>

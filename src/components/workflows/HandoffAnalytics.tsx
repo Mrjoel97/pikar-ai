@@ -2,9 +2,10 @@ import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowRight, TrendingUp, AlertTriangle } from "lucide-react";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from "recharts";
+import { ArrowRight, TrendingUp, AlertTriangle, Clock } from "lucide-react";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from "recharts";
 import { Id } from "@/convex/_generated/dataModel";
+import { COLORS } from "@/components/ui/colors";
 
 interface HandoffAnalyticsProps {
   businessId: Id<"businesses">;
@@ -19,25 +20,55 @@ export function HandoffAnalytics({ businessId }: HandoffAnalyticsProps) {
     return <div>Loading analytics...</div>;
   }
 
-  const durationTrends = durations
-    .sort((a, b) => a.timestamp - b.timestamp)
-    .map((d, i) => ({
-      index: i + 1,
-      duration: Math.round(d.duration / (1000 * 60 * 60)), // Convert to hours
-      route: `${d.from} → ${d.to}`,
-    }));
+  const getAverageDuration = () => {
+    if (!handoffs?.length) return 0;
+    const completed = handoffs.filter((h: any) => h.status === "completed" && h.duration);
+    if (!completed.length) return 0;
+    return Math.round(completed.reduce((a: any, b: any) => a + (b.duration || 0), 0) / completed.length / 60000); // in minutes
+  };
+
+  const getSuccessRate = () => {
+    if (!handoffs?.length) return 0;
+    const completed = handoffs.filter((h: any) => h.status === "completed").length;
+    return Math.round((completed / handoffs.length) * 100);
+  };
+
+  const getDepartmentFlow = () => {
+    if (!handoffs) return [];
+    const flow: Record<string, number> = {};
+    handoffs.forEach((h: any) => {
+      const key = `${h.fromDepartment}->${h.toDepartment}`;
+      flow[key] = (flow[key] || 0) + 1;
+    });
+    return Object.entries(flow).map(([name, value]) => ({ name, value }));
+  };
+
+  const getDailyVolume = () => {
+    if (!handoffs) return [];
+    const volume: Record<string, number> = {};
+    handoffs.forEach((h: any) => {
+      const date = new Date(h.createdAt).toLocaleDateString();
+      volume[date] = (volume[date] || 0) + 1;
+    });
+    return Object.entries(volume)
+      .map(([date, count]) => ({ date, count }))
+      .sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime())
+      .slice(-7);
+  };
 
   return (
     <div className="space-y-6">
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid gap-4 md:grid-cols-3">
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Total Handoffs</CardTitle>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Avg. Handoff Time</CardTitle>
+            <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{analytics.totalHandoffs}</div>
-            <p className="text-xs text-muted-foreground">Last 30 days</p>
+            <div className="text-2xl font-bold">{getAverageDuration()} min</div>
+            <p className="text-xs text-muted-foreground">
+              Time from initiation to completion
+            </p>
           </CardContent>
         </Card>
 
@@ -46,22 +77,10 @@ export function HandoffAnalytics({ businessId }: HandoffAnalyticsProps) {
             <CardTitle className="text-sm font-medium">Completion Rate</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{analytics.completionRate.toFixed(1)}%</div>
+            <div className="text-2xl font-bold">{getSuccessRate()}%</div>
             <p className="text-xs text-muted-foreground">
-              {analytics.completedHandoffs} / {analytics.totalHandoffs}
+              {handoffs?.filter((h: any) => h.status === "completed").length} / {handoffs?.length}
             </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Avg Duration</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {Math.round(analytics.avgDuration / (1000 * 60 * 60))}h
-            </div>
-            <p className="text-xs text-muted-foreground">Per handoff</p>
           </CardContent>
         </Card>
 
@@ -70,8 +89,58 @@ export function HandoffAnalytics({ businessId }: HandoffAnalyticsProps) {
             <CardTitle className="text-sm font-medium">Pending</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-orange-600">{analytics.pendingHandoffs}</div>
+            <div className="text-2xl font-bold text-orange-600">{handoffs?.filter((h: any) => h.status !== "completed").length}</div>
             <p className="text-xs text-muted-foreground">Awaiting action</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Department Flow</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[300px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={getDepartmentFlow()}
+                    dataKey="value"
+                    nameKey="name"
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={80}
+                    label={(d: any) => d.name}
+                  >
+                    {getDepartmentFlow().map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Handoff Volume</CardTitle>
+            <CardDescription>Volume of handoffs over the last 7 days</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[300px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={getDailyVolume()}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="date" />
+                  <YAxis />
+                  <Tooltip />
+                  <Bar dataKey="count" fill="#8884d8" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -104,28 +173,6 @@ export function HandoffAnalytics({ businessId }: HandoffAnalyticsProps) {
               <Line type="monotone" dataKey="duration" stroke="#8884d8" strokeWidth={2} />
             </LineChart>
           </ResponsiveContainer>
-        </CardContent>
-      </Card>
-
-      {/* Department Flow */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Department-to-Department Flow</CardTitle>
-          <CardDescription>Most common handoff routes</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            {analytics.flows.slice(0, 10).map((flow: any, i: number) => (
-              <div key={i} className="flex items-center justify-between p-3 border rounded-lg">
-                <div className="flex items-center gap-2">
-                  <span className="font-medium">{flow.from}</span>
-                  <ArrowRight className="w-4 h-4 text-muted-foreground" />
-                  <span className="font-medium">{flow.to}</span>
-                </div>
-                <Badge variant="secondary">{flow.count} handoffs</Badge>
-              </div>
-            ))}
-          </div>
         </CardContent>
       </Card>
 

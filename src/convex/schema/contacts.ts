@@ -24,6 +24,7 @@ export const contactsSchema = {
     createdAt: v.number(),
     updatedAt: v.optional(v.number()),
     engagement: v.optional(v.string()),
+    createdBy: v.optional(v.id("users")),
   })
     .index("by_business", ["businessId"])
     .index("by_email", ["email"])
@@ -46,6 +47,7 @@ export const contactsSchema = {
     contactId: v.id("contacts"),
     listId: v.id("contactLists"),
     businessId: v.id("businesses"),
+    addedBy: v.optional(v.id("users")),
     addedAt: v.number(),
   })
     .index("by_list", ["listId"])

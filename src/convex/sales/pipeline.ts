@@ -39,8 +39,6 @@ export const createDeal = mutation({
       type: "deal_created",
       content: `Created deal: ${args.name}`,
       data: { dealId, value: args.value, stage: args.stage },
-      read: false,
-      createdAt: Date.now(),
     });
 
     return dealId;
@@ -74,8 +72,6 @@ export const updateDealStage = mutation({
       type: "deal_stage_changed",
       content: `Moved "${deal.name}" from ${oldStage} to ${args.newStage}`,
       data: { dealId: args.dealId, oldStage, newStage: args.newStage },
-      read: false,
-      createdAt: Date.now(),
     });
 
     return { success: true };
@@ -175,8 +171,6 @@ export const deleteDeal = mutation({
       type: "deal_deleted",
       content: `Deleted deal: ${deal.name}`,
       data: { dealName: deal.name, value: deal.value },
-      read: false,
-      createdAt: Date.now(),
     });
 
     return { success: true };

@@ -105,16 +105,21 @@ export const validateSession = query({
       return { valid: false };
     }
 
+    const adminAuth = await ctx.db.get(session.adminId);
+    if (!adminAuth) {
+      return { valid: false };
+    }
+
     const admin = await ctx.db
       .query("admins")
-      .withIndex("by_email", (q: any) => q.eq("email", session.email))
+      .withIndex("by_email", (q: any) => q.eq("email", adminAuth.email))
       .unique();
 
     const role = admin?.role || "admin";
 
     return {
       valid: true,
-      email: session.email,
+      email: adminAuth.email,
       role,
     };
   },
@@ -137,16 +142,21 @@ export const validateSessionInternal = internalQuery({
       return { valid: false };
     }
 
+    const adminAuth = await ctx.db.get(session.adminId);
+    if (!adminAuth) {
+      return { valid: false };
+    }
+
     const admin = await ctx.db
       .query("admins")
-      .withIndex("by_email", (q: any) => q.eq("email", session.email))
+      .withIndex("by_email", (q: any) => q.eq("email", adminAuth.email))
       .unique();
 
     const role = admin?.role || "admin";
 
     return {
       valid: true,
-      email: session.email,
+      email: adminAuth.email,
       role,
     };
   },

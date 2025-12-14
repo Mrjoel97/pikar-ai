@@ -573,10 +573,8 @@ export const createVendor = mutation({
       contractStart: args.contractStart,
       contractEnd: args.contractEnd,
       contractValue: args.contractValue,
-      performanceScore: 0,
-      riskLevel: "medium",
-      lastReviewDate: Date.now(),
       createdAt: Date.now(),
+      updatedAt: Date.now(),
     });
 
     // Audit log

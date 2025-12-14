@@ -49,6 +49,7 @@ export const initiativesSchema = {
       v.literal("completed"),
       v.literal("blocked")
     ),
+    dependencies: v.optional(v.array(v.string())),
     completedAt: v.optional(v.number()),
     createdAt: v.number(),
   })

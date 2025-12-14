@@ -30,7 +30,7 @@ export const createObjective = mutation({
       parentObjectiveId: args.parentObjectiveId,
       timeframe: args.timeframe,
       category: args.category,
-      status: "active",
+      status: "on_track", // Fixed status
       progress: 0,
       createdAt: Date.now(),
       updatedAt: Date.now(),
@@ -67,7 +67,7 @@ export const createKeyResult = mutation({
       unit: args.unit,
       ownerId: args.ownerId,
       measurementType: args.measurementType,
-      status: "active",
+      status: "on_track", // Fixed status
       progress: 0,
       createdAt: Date.now(),
       updatedAt: Date.now(),
@@ -108,7 +108,7 @@ export const updateKeyResultProgress = mutation({
       previousValue: keyResult.currentValue,
       newValue: args.currentValue,
       note: args.note,
-      updatedBy: keyResult.ownerId,
+      // updatedBy: keyResult.ownerId, // Removed
       createdAt: Date.now(),
     });
 
@@ -222,7 +222,7 @@ export const getObjectiveDetails = query({
           .order("desc")
           .take(10);
 
-        const owner = await ctx.db.get(kr.ownerId);
+        const owner = kr.ownerId ? await ctx.db.get(kr.ownerId) : null;
 
         return {
           ...kr,
@@ -263,10 +263,10 @@ export const updateObjectiveStatus = mutation({
   args: {
     objectiveId: v.id("objectives"),
     status: v.union(
-      v.literal("active"),
-      v.literal("at-risk"),
-      v.literal("completed"),
-      v.literal("cancelled")
+      v.literal("not_started"),
+      v.literal("on_track"),
+      v.literal("at_risk"),
+      v.literal("completed")
     ),
   },
   handler: async (ctx, args) => {

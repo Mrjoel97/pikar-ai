@@ -71,7 +71,7 @@ export const enterpriseSchema = {
     alertType: v.string(),
     title: v.string(),
     description: v.string(),
-    status: v.union(v.literal("active"), v.literal("monitoring"), v.literal("resolved")),
+    status: v.union(v.literal("active"), v.literal("monitoring"), v.literal("resolved"), v.literal("responding")),
     affectedSystems: v.array(v.string()),
     createdBy: v.id("users"),
     createdAt: v.number(),
@@ -139,6 +139,7 @@ export const enterpriseSchema = {
     status: v.string(),
     createdAt: v.number(),
     updatedAt: v.number(),
+    config: v.optional(v.any()),
   })
     .index("by_business", ["businessId"])
     .index("by_status", ["status"]),
@@ -168,6 +169,7 @@ export const enterpriseSchema = {
     status: v.optional(v.string()), // Added for compatibility
     createdAt: v.number(),
     updatedAt: v.number(),
+    lastRunTime: v.optional(v.number()),
   })
     .index("by_business", ["businessId"])
     .index("by_source", ["sourceId"]),
@@ -210,6 +212,7 @@ export const enterpriseSchema = {
     lastRunTime: v.optional(v.number()),
     nextRunTime: v.optional(v.number()),
     createdAt: v.number(),
+    format: v.optional(v.string()),
   })
     .index("by_business", ["businessId"])
     .index("by_next_run", ["nextRunTime"]),
@@ -331,60 +334,6 @@ export const enterpriseSchema = {
     .index("by_business", ["businessId"])
     .index("by_template", ["templateId"]),
 
-  crmConnections: defineTable({
-    businessId: v.id("businesses"),
-    provider: v.union(
-      v.literal("salesforce"),
-      v.literal("hubspot"),
-      v.literal("pipedrive"),
-      v.literal("zoho")
-    ),
-    accessToken: v.string(),
-    refreshToken: v.optional(v.string()),
-    expiresAt: v.number(),
-    isActive: v.boolean(),
-    lastSyncAt: v.optional(v.number()),
-    syncStatus: v.optional(v.string()),
-    metadata: v.optional(v.any()),
-    createdAt: v.number(),
-  })
-    .index("by_business", ["businessId"])
-    .index("by_business_and_provider", ["businessId", "provider"]),
-
-  crmSyncConflicts: defineTable({
-    businessId: v.id("businesses"),
-    connectionId: v.id("crmConnections"),
-    entityType: v.string(),
-    localId: v.string(),
-    remoteId: v.string(),
-    conflictType: v.string(),
-    localData: v.any(),
-    remoteData: v.any(),
-    status: v.union(v.literal("pending"), v.literal("resolved"), v.literal("ignored")),
-    resolvedAt: v.optional(v.number()),
-    createdAt: v.number(),
-  })
-    .index("by_business", ["businessId"])
-    .index("by_connection", ["connectionId"])
-    .index("by_status", ["status"]),
-
-  crmDeals: defineTable({
-    businessId: v.id("businesses"),
-    connectionId: v.id("crmConnections"),
-    externalId: v.string(),
-    name: v.string(),
-    amount: v.number(),
-    stage: v.string(),
-    probability: v.optional(v.number()),
-    closeDate: v.optional(v.number()),
-    contactId: v.optional(v.id("contacts")),
-    metadata: v.optional(v.any()),
-    lastSyncAt: v.number(),
-    createdAt: v.number(),
-  })
-    .index("by_business", ["businessId"])
-    .index("by_connection", ["connectionId"]),
-
   vendors: defineTable({
     businessId: v.id("businesses"),
     name: v.string(),
@@ -397,6 +346,8 @@ export const enterpriseSchema = {
     riskLevel: v.optional(v.string()),
     contractStartDate: v.optional(v.number()),
     contractEndDate: v.optional(v.number()),
+    contractStart: v.optional(v.number()),
+    contractEnd: v.optional(v.number()),
     contractValue: v.optional(v.number()),
     lastReviewDate: v.optional(v.number()),
     metadata: v.optional(v.any()),
@@ -414,6 +365,7 @@ export const enterpriseSchema = {
     costEfficiency: v.number(),
     recordedAt: v.number(),
     metadata: v.optional(v.any()),
+    metricType: v.optional(v.string()),
   })
     .index("by_business", ["businessId"])
     .index("by_vendor", ["vendorId"]),
@@ -448,16 +400,84 @@ export const enterpriseSchema = {
     sourceId: v.optional(v.string()),
     type: v.union(v.literal("corrective"), v.literal("preventive")),
     priority: v.union(v.literal("low"), v.literal("medium"), v.literal("high"), v.literal("critical")),
-    status: v.union(v.literal("open"), v.literal("in_progress"), v.literal("verified"), v.literal("closed")),
+    severity: v.optional(v.string()),
+    status: v.union(v.literal("open"), v.literal("in_progress"), v.literal("verified"), v.literal("closed"), v.literal("verification")),
     assignedTo: v.optional(v.id("users")),
+    assigneeId: v.optional(v.id("users")),
+    createdBy: v.optional(v.id("users")),
+    verifiedBy: v.optional(v.id("users")),
     dueDate: v.optional(v.number()),
+    slaDeadline: v.optional(v.number()),
     completedAt: v.optional(v.number()),
     verifiedAt: v.optional(v.number()),
     effectivenessRating: v.optional(v.number()),
     createdAt: v.number(),
     updatedAt: v.number(),
+    incidentId: v.optional(v.id("securityIncidents")),
+    closedAt: v.optional(v.number()),
   })
     .index("by_business", ["businessId"])
     .index("by_status", ["status"])
     .index("by_assignee", ["assignedTo"]),
+
+  locations: defineTable({
+    businessId: v.id("businesses"),
+    name: v.string(),
+    code: v.optional(v.string()), // Added code
+    type: v.optional(v.string()), // Added type
+    parentLocationId: v.optional(v.id("locations")), // Added parentLocationId
+    address: v.optional(v.string()),
+    city: v.optional(v.string()),
+    state: v.optional(v.string()),
+    country: v.optional(v.string()),
+    postalCode: v.optional(v.string()),
+    timezone: v.optional(v.string()),
+    isActive: v.boolean(),
+    metadata: v.optional(v.any()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_parent", ["parentLocationId"]),
+    
+  locationAudits: defineTable({
+    businessId: v.id("businesses"),
+    locationId: v.id("locations"),
+    auditorId: v.id("users"),
+    status: v.string(),
+    score: v.number(),
+    findings: v.any(),
+    conductedAt: v.number(),
+    createdAt: v.number(),
+    auditType: v.optional(v.string()),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_location", ["locationId"]),
+
+  revenueConversions: defineTable({
+    businessId: v.id("businesses"),
+    contactId: v.id("contacts"),
+    amount: v.number(),
+    currency: v.string(),
+    source: v.string(),
+    convertedAt: v.number(),
+    timestamp: v.optional(v.number()), // Added for compatibility
+    attributions: v.optional(v.any()), // Added for compatibility
+    conversionType: v.optional(v.string()), // Added for compatibility
+    revenue: v.optional(v.number()),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_contact", ["contactId"]),
+
+  telemetryEvents: defineTable({
+    businessId: v.id("businesses"),
+    userId: v.optional(v.id("users")),
+    event: v.string(),
+    data: v.any(),
+    timestamp: v.number(),
+    eventName: v.optional(v.string()),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_timestamp", ["timestamp"])
+    .index("by_business_and_event", ["businessId", "event"]),
 };

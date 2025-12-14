@@ -57,34 +57,14 @@ export const coreSchema = {
       aiAgentsEnabled: v.array(v.string()),
       complianceLevel: v.string(),
       dataIntegrations: v.array(v.string()),
+      plan: v.optional(v.string()),
+      trialStart: v.optional(v.number()),
+      trialEnd: v.optional(v.number()),
+      status: v.optional(v.string()),
     })),
   })
     .index("by_owner", ["ownerId"])
     .index("by_tier", ["tier"]),
-
-  initiatives: defineTable({
-    businessId: v.id("businesses"),
-    title: v.string(),
-    description: v.optional(v.string()),
-    status: v.optional(v.union(
-      v.literal("planning"),
-      v.literal("active"),
-      v.literal("completed"),
-      v.literal("on_hold")
-    )),
-    priority: v.optional(v.union(
-      v.literal("low"),
-      v.literal("medium"),
-      v.literal("high"),
-      v.literal("critical")
-    )),
-    startDate: v.optional(v.number()),
-    targetDate: v.optional(v.number()),
-    completedAt: v.optional(v.number()),
-    createdAt: v.number(),
-  })
-    .index("by_business", ["businessId"])
-    .index("by_status", ["status"]),
 
   wins: defineTable({
     businessId: v.id("businesses"),
@@ -101,24 +81,6 @@ export const coreSchema = {
     )),
     date: v.number(),
   }).index("by_business", ["businessId"]),
-
-  journeyMilestones: defineTable({
-    businessId: v.id("businesses"),
-    initiativeId: v.id("initiatives"),
-    title: v.string(),
-    description: v.optional(v.string()),
-    targetDate: v.optional(v.number()),
-    status: v.union(
-      v.literal("not_started"),
-      v.literal("in_progress"),
-      v.literal("completed"),
-      v.literal("blocked")
-    ),
-    completedAt: v.optional(v.number()),
-    createdAt: v.number(),
-  })
-    .index("by_initiative", ["initiativeId"])
-    .index("by_business", ["businessId"]),
 
   brainDumps: defineTable({
     businessId: v.id("businesses"),
@@ -141,6 +103,7 @@ export const coreSchema = {
     updatedAt: v.optional(v.number()),
     deletedAt: v.optional(v.number()),
     deletedBy: v.optional(v.id("users")),
+    deleted: v.optional(v.boolean()),
   })
     .index("by_business", ["businessId"])
     .index("by_user", ["userId"])
@@ -153,6 +116,7 @@ export const coreSchema = {
     criteria: v.object({
       rules: v.array(v.any()),
       operator: v.union(v.literal("AND"), v.literal("OR")),
+      engagement: v.optional(v.string()),
     }),
     customerCount: v.optional(v.number()),
     createdAt: v.number(),
@@ -182,21 +146,11 @@ export const coreSchema = {
       unsubscribed: v.number(),
     })),
     createdAt: v.number(),
+    goal: v.optional(v.string()),
+    experimentId: v.optional(v.string()),
   })
     .index("by_business", ["businessId"])
     .index("by_status", ["status"]),
-
-  scheduleSlots: defineTable({
-    businessId: v.id("businesses"),
-    userId: v.id("users"),
-    dayOfWeek: v.number(),
-    startTime: v.string(),
-    endTime: v.string(),
-    available: v.boolean(),
-    timezone: v.optional(v.string()),
-  })
-    .index("by_business", ["businessId"])
-    .index("by_user", ["userId"]),
 
   appointments: defineTable({
     businessId: v.id("businesses"),
@@ -342,6 +296,7 @@ export const coreSchema = {
       v.literal("workflow_completion"),
       v.literal("system_alert")
     )),
+    priority: v.optional(v.string()),
     read: v.optional(v.boolean()),
     isRead: v.optional(v.boolean()),
     actionUrl: v.optional(v.string()),
@@ -355,51 +310,6 @@ export const coreSchema = {
     .index("by_user", ["userId"])
     .index("by_user_and_read", ["userId", "isRead"])
     .index("by_expires_at", ["expiresAt"]),
-
-  socialAccounts: defineTable({
-    businessId: v.id("businesses"),
-    platform: v.union(
-      v.literal("twitter"),
-      v.literal("linkedin"),
-      v.literal("facebook")
-    ),
-    accessToken: v.string(),
-    refreshToken: v.optional(v.string()),
-    expiresAt: v.number(),
-    isConnected: v.boolean(),
-    username: v.optional(v.string()),
-    profileUrl: v.optional(v.string()),
-    lastSyncAt: v.optional(v.number()),
-    lastUsedAt: v.optional(v.number()),
-    connectedAt: v.optional(v.number()),
-  })
-    .index("by_business", ["businessId"])
-    .index("by_business_and_platform", ["businessId", "platform"]),
-
-  contacts: defineTable({
-    businessId: v.id("businesses"),
-    email: v.string(),
-    name: v.optional(v.string()),
-    phone: v.optional(v.string()),
-    status: v.optional(v.union(
-      v.literal("lead"),
-      v.literal("active"),
-      v.literal("customer"),
-      v.literal("churned"),
-      v.literal("subscribed"),
-      v.literal("bounced"),
-      v.literal("unsubscribed")
-    )),
-    source: v.optional(v.string()),
-    tags: v.optional(v.array(v.string())),
-    customFields: v.optional(v.any()),
-    lastEngagedAt: v.optional(v.number()),
-    createdAt: v.number(),
-    updatedAt: v.optional(v.number()),
-  })
-    .index("by_business", ["businessId"])
-    .index("by_email", ["email"])
-    .index("by_status", ["status"]),
 
   teamGoals: defineTable({
     businessId: v.id("businesses"),
@@ -516,6 +426,7 @@ export const coreSchema = {
     details: v.optional(v.any()),
     metadata: v.optional(v.any()),
     createdAt: v.number(),
+    timestamp: v.optional(v.number()),
   })
     .index("by_business", ["businessId"])
     .index("by_business_and_date", ["businessId", "createdAt"]),
@@ -545,7 +456,8 @@ export const coreSchema = {
     editedAt: v.optional(v.number()),
   })
     .index("by_channel", ["channelId"])
-    .index("by_business", ["businessId"]),
+    .index("by_business", ["businessId"])
+    .index("by_parent", ["parentMessageId"]),
 
   auditReportSchedules: defineTable({
     businessId: v.id("businesses"),
@@ -568,100 +480,6 @@ export const coreSchema = {
     .index("by_business", ["businessId"])
     .index("by_next_run", ["nextRunAt"]),
 
-  admins: defineTable({
-    email: v.string(),
-    role: v.union(
-      v.literal("admin"),
-      v.literal("super_admin"),
-      v.literal("pending_senior"),
-      v.literal("senior")
-    ),
-    createdAt: v.number(),
-  }).index("by_email", ["email"]),
-
-  adminAuths: defineTable({
-    email: v.string(),
-    passwordHash: v.string(),
-    salt: v.optional(v.string()),
-    role: v.string(),
-    isVerified: v.boolean(),
-    verificationToken: v.optional(v.string()),
-    resetToken: v.optional(v.string()),
-    resetTokenExpires: v.optional(v.number()),
-    lastLoginAt: v.optional(v.number()),
-    createdAt: v.number(),
-    updatedAt: v.number(),
-  }).index("by_email", ["email"]),
-
-  adminSessions: defineTable({
-    adminId: v.id("adminAuths"),
-    token: v.string(),
-    expiresAt: v.number(),
-    ipAddress: v.optional(v.string()),
-    userAgent: v.optional(v.string()),
-    createdAt: v.number(),
-  })
-    .index("by_token", ["token"])
-    .index("by_admin", ["adminId"]),
-
-  emailConfigs: defineTable({
-    businessId: v.id("businesses"),
-    provider: v.union(v.literal("resend"), v.literal("sendgrid"), v.literal("smtp"), v.literal("aws_ses")),
-    apiKey: v.optional(v.string()),
-    fromEmail: v.string(),
-    fromName: v.string(),
-    replyTo: v.optional(v.string()),
-    domain: v.optional(v.string()),
-    isVerified: v.boolean(),
-    createdAt: v.number(),
-    updatedAt: v.number(),
-  }).index("by_business", ["businessId"]),
-
-  locations: defineTable({
-    businessId: v.id("businesses"),
-    name: v.string(),
-    address: v.optional(v.string()),
-    city: v.optional(v.string()),
-    state: v.optional(v.string()),
-    country: v.optional(v.string()),
-    postalCode: v.optional(v.string()),
-    timezone: v.optional(v.string()),
-    isActive: v.boolean(),
-    metadata: v.optional(v.any()),
-    createdAt: v.number(),
-    updatedAt: v.number(),
-  }).index("by_business", ["businessId"]),
-
-  playbookExecutions: defineTable({
-    businessId: v.id("businesses"),
-    playbookId: v.id("playbooks"),
-    agentId: v.optional(v.id("aiAgents")),
-    status: v.union(
-      v.literal("pending"),
-      v.literal("running"),
-      v.literal("completed"),
-      v.literal("failed")
-    ),
-    startedAt: v.number(),
-    completedAt: v.optional(v.number()),
-    result: v.optional(v.any()),
-    error: v.optional(v.string()),
-  })
-    .index("by_business", ["businessId"])
-    .index("by_playbook", ["playbookId"]),
-
-  playbooks: defineTable({
-    businessId: v.id("businesses"),
-    name: v.string(),
-    description: v.optional(v.string()),
-    trigger: v.string(),
-    steps: v.array(v.any()),
-    isActive: v.boolean(),
-    createdBy: v.id("users"),
-    createdAt: v.number(),
-    updatedAt: v.number(),
-  }).index("by_business", ["businessId"]),
-
   customDomains: defineTable({
     businessId: v.id("businesses"),
     domain: v.string(),
@@ -679,44 +497,6 @@ export const coreSchema = {
   })
     .index("by_business", ["businessId"])
     .index("by_domain", ["domain"]),
-
-  emailDrafts: defineTable({
-    businessId: v.id("businesses"),
-    subject: v.string(),
-    content: v.string(),
-    recipientListId: v.optional(v.id("contactLists")),
-    status: v.union(v.literal("draft"), v.literal("scheduled"), v.literal("sent")),
-    scheduledFor: v.optional(v.number()),
-    createdBy: v.id("users"),
-    createdAt: v.number(),
-    updatedAt: v.number(),
-  })
-    .index("by_business", ["businessId"])
-    .index("by_status", ["status"]),
-
-  emails: defineTable({
-    businessId: v.id("businesses"),
-    campaignId: v.optional(v.id("emailCampaigns")),
-    recipientEmail: v.string(),
-    subject: v.string(),
-    content: v.string(),
-    status: v.union(
-      v.literal("pending"),
-      v.literal("sent"),
-      v.literal("delivered"),
-      v.literal("opened"),
-      v.literal("clicked"),
-      v.literal("bounced"),
-      v.literal("failed")
-    ),
-    sentAt: v.optional(v.number()),
-    openedAt: v.optional(v.number()),
-    clickedAt: v.optional(v.number()),
-    createdAt: v.number(),
-  })
-    .index("by_business", ["businessId"])
-    .index("by_campaign", ["campaignId"])
-    .index("by_status", ["status"]),
 
   voiceNotes: defineTable({
     businessId: v.id("businesses"),
@@ -738,7 +518,8 @@ export const coreSchema = {
     createdAt: v.number(),
   })
     .index("by_business", ["businessId"])
-    .index("by_user", ["userId"]),
+    .index("by_user", ["userId"])
+    .index("by_initiative", ["initiativeId"]),
 
   templatePins: defineTable({
     userId: v.id("users"),
@@ -746,7 +527,8 @@ export const coreSchema = {
     pinnedAt: v.number(),
   })
     .index("by_user", ["userId"])
-    .index("by_template", ["templateId"]),
+    .index("by_template", ["templateId"])
+    .index("by_user_and_template", ["userId", "templateId"]),
 
   learningCourses: defineTable({
     businessId: v.optional(v.id("businesses")),
@@ -762,6 +544,9 @@ export const coreSchema = {
     modules: v.array(v.any()),
     isPublished: v.boolean(),
     createdBy: v.optional(v.id("users")),
+    availableTiers: v.optional(v.array(v.string())),
+    totalLessons: v.optional(v.number()),
+    quizScores: v.optional(v.any()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
@@ -790,4 +575,26 @@ export const coreSchema = {
     .index("by_business", ["businessId"])
     .index("by_user", ["userId"])
     .index("by_course", ["courseId"]),
+
+  authRefreshTokens: defineTable({
+    userId: v.id("users"),
+    token: v.string(),
+    expiresAt: v.number(),
+    createdAt: v.number(),
+    ipAddress: v.optional(v.string()),
+    userAgent: v.optional(v.string()),
+  }).index("by_token", ["token"]),
+
+  featureFlags: defineTable({
+    name: v.string(),
+    description: v.optional(v.string()),
+    isEnabled: v.boolean(),
+    rules: v.optional(v.any()),
+    rolloutPercentage: v.optional(v.number()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    flagName: v.optional(v.string()),
+  })
+    .index("by_name", ["name"])
+    .index("by_flag_name", ["flagName"]),
 };

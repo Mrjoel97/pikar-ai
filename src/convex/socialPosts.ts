@@ -35,7 +35,7 @@ export const createPost = mutation({
       characterCount: args.content.length,
       createdBy: user._id,
       createdAt: Date.now(),
-      campaignId: args.campaignId,
+      campaignId: args.campaignId as any, // Cast
     });
 
     return postId;

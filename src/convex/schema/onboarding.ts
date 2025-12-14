@@ -9,5 +9,9 @@ export const onboardingSchema = {
     isCompleted: v.boolean(),
     data: v.optional(v.any()),
     updatedAt: v.number(),
+    userId: v.optional(v.id("users")),
+    steps: v.optional(v.array(v.any())),
+    completedAt: v.optional(v.number()),
+    onboardingCompleted: v.optional(v.boolean()),
   }).index("by_business", ["businessId"]),
 };

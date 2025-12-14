@@ -20,6 +20,9 @@ import { activitySchema } from "./activity";
 import { contactsSchema } from "./contacts";
 import { socialSchema } from "./social";
 import { initiativesSchema } from "./initiatives";
+import { adminSchema } from "./admin";
+import { emailSchema } from "./email";
+import { calendarSchema } from "./calendar";
 
 const { users: _authUsers, ...authWithoutUsers } = authTables;
 
@@ -45,4 +48,7 @@ export default defineSchema({
   ...contactsSchema,
   ...socialSchema,
   ...initiativesSchema,
+  ...adminSchema,
+  ...emailSchema,
+  ...calendarSchema,
 });

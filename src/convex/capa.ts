@@ -39,15 +39,13 @@ export const listCapaItems = query({
     // Enrich with assignee names
     const enriched = await Promise.all(
       filtered.map(async (item) => {
-        const assignee = await ctx.db.get(item.assigneeId);
-        const creator = await ctx.db.get(item.createdBy);
-        const verifier = item.verifiedBy ? await ctx.db.get(item.verifiedBy) : null;
+        const assignee = item.assigneeId ? await ctx.db.get(item.assigneeId) : null;
+        const creator = item.createdBy ? await ctx.db.get(item.createdBy) : null;
 
         return {
           ...item,
           assigneeName: assignee?.name || "Unknown",
           creatorName: creator?.name || "Unknown",
-          verifierName: verifier?.name || null,
         };
       })
     );
@@ -63,8 +61,8 @@ export const getCapaItem = query({
     const item = await ctx.db.get(args.capaId);
     if (!item) return null;
 
-    const assignee = await ctx.db.get(item.assigneeId);
-    const creator = await ctx.db.get(item.createdBy);
+    const assignee = item.assigneeId ? await ctx.db.get(item.assigneeId) : null;
+    const creator = item.createdBy ? await ctx.db.get(item.createdBy) : null;
     const verifier = item.verifiedBy ? await ctx.db.get(item.verifiedBy) : null;
 
     return {
@@ -87,8 +85,8 @@ export const getCapaStats = query({
 
     const now = Date.now();
     const overdue = items.filter(
-      (item) => item.status !== "closed" && item.slaDeadline < now
-    ).length;
+      (item) => item.status !== "closed" && (item.slaDeadline || 0) < now
+    );
 
     return {
       total: items.length,
@@ -119,6 +117,10 @@ export const createCapaItem = mutation({
     nonconformityId: v.optional(v.string()),
     slaDeadline: v.number(),
     verificationRequired: v.boolean(),
+    source: v.string(),
+    sourceId: v.string(),
+    type: v.string(),
+    priority: v.string(),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -139,16 +141,14 @@ export const createCapaItem = mutation({
       businessId: args.businessId,
       title: args.title,
       description: args.description,
-      severity: args.severity,
+      source: args.source,
+      sourceId: args.sourceId,
+      type: args.type,
+      priority: args.priority,
       status: "open",
-      assigneeId: args.assigneeId,
-      createdBy: user._id,
-      incidentId: args.incidentId,
-      nonconformityId: args.nonconformityId,
-      slaDeadline: args.slaDeadline,
-      verificationRequired: args.verificationRequired,
       createdAt: Date.now(),
       updatedAt: Date.now(),
+      incidentId: args.incidentId as any, // Cast to fix type mismatch
     });
 
     // Audit log

@@ -156,6 +156,10 @@ export const approveAndPublish = mutation({
       slug: proposal.slug,
       contentMarkdown: proposal.contentMarkdown,
       createdAt: Date.now(),
+      businessId: args.businessId,
+      updatedAt: Date.now(),
+      isPublished: false,
+      lastEditedBy: identity.subject as any,
     });
 
     await ctx.db.patch(args.proposalId, { status: "approved" });

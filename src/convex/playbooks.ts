@@ -37,6 +37,7 @@ export const getByKey = query({
 // Relax internal upsert to accept optional fields and provide safe defaults
 export const upsertOneInternal = internalMutation({
   args: {
+    businessId: v.id("businesses"),
     playbook_key: v.string(),
     display_name: v.string(),
     version: v.string(),
@@ -75,7 +76,16 @@ export const upsertOneInternal = internalMutation({
       await ctx.db.replace(existing._id, { ...existing, ...doc });
       return { updated: true, inserted: false };
     }
-    await ctx.db.insert("playbooks", { ...doc });
+    await ctx.db.insert("playbooks", { 
+      ...doc,
+      name: doc.display_name,
+      businessId: args.businessId,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      trigger: "manual",
+      isActive: doc.active ?? true, // Added
+      createdBy: (await ctx.auth.getUserIdentity())?.subject as any, // Added placeholder, should be Id<"users">
+    });
     return { updated: false, inserted: true };
   },
 });
@@ -83,6 +93,7 @@ export const upsertOneInternal = internalMutation({
 // Public mutation to upsert one playbook (useful for admin/editor tooling)
 export const upsertPlaybook = mutation({
   args: {
+    businessId: v.id("businesses"),
     playbook_key: v.string(),
     display_name: v.string(),
     version: v.string(),
@@ -121,7 +132,17 @@ export const upsertPlaybook = mutation({
       return { updated: true, inserted: false };
     }
 
-    await ctx.db.insert("playbooks", { ...doc, active: doc.active ?? true });
+    await ctx.db.insert("playbooks", { 
+      ...doc, 
+      active: doc.active ?? true,
+      name: doc.display_name,
+      businessId: args.businessId,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      trigger: "manual",
+      isActive: doc.active ?? true, // Added
+      createdBy: (await ctx.auth.getUserIdentity())?.subject as any, // Added placeholder
+    });
     return { updated: false, inserted: true };
   },
 });
@@ -206,7 +227,16 @@ export const adminUpsertPlaybook = mutation({
       await ctx.db.patch(existing._id, playbookData);
       playbookId = existing._id;
     } else {
-      playbookId = await ctx.db.insert("playbooks", playbookData);
+      playbookId = await ctx.db.insert("playbooks", {
+        ...playbookData,
+        name: playbookData.display_name,
+        businessId: args.businessId as any, // Cast if missing in args
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+        trigger: "manual",
+        isActive: doc.active ?? true, // Added
+        createdBy: "system" as any, // Added placeholder
+      });
     }
 
     await ctx.runMutation(api.audit.write as any, {
@@ -268,10 +298,11 @@ export const adminTogglePlaybook = mutation({
 
 // Action: seed defaults (idempotent) — can be run via `npx convex run playbooks:seedDefaultPlaybooks`
 export const seedDefaultPlaybooks = action({
-  args: {},
-  handler: async (ctx) => {
+  args: { businessId: v.id("businesses") },
+  handler: async (ctx, args) => {
     // When calling upsert, ensure defaults are provided:
     const toUpsert = (p: any) => ({
+      businessId: args.businessId,
       playbook_key: p.playbook_key,
       display_name: p.display_name,
       version: p.version ?? "v1.0",
@@ -326,7 +357,7 @@ export const savePlaybookVersionInternal = internalMutation({
         active: pb.active,
       },
       createdAt: Date.now(),
-      note: args.note,
+      // note: args.note,
     });
     return { saved: true };
   },
@@ -378,7 +409,7 @@ export const adminRollbackPlaybookToVersion = mutation({
     const s = vdoc.snapshot as any;
     await ctx.db.patch(pb._id, {
       display_name: s.display_name,
-      triggers: s.triggers,
+      // triggers: s.triggers,
       input_schema: s.input_schema,
       output_schema: s.output_schema,
       steps: s.steps,

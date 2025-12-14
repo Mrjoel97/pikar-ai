@@ -1016,7 +1016,7 @@ export const getInitiativeVoiceNoteAnalytics = query({
       .collect();
 
     const totalNotes = voiceNotes.length;
-    const totalDuration = voiceNotes.reduce((sum, note) => sum + note.duration, 0);
+    const totalDuration = voiceNotes.reduce((sum, note) => sum + (note.duration || 0), 0);
     const avgDuration = totalNotes > 0 ? totalDuration / totalNotes : 0;
 
     return {

@@ -2,10 +2,10 @@ import React, { useState } from "react";
 import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { toast } from "sonner";
-import { Card } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Clock, RefreshCw } from "lucide-react";
+import { Calendar, Clock, RefreshCw, Plus, Switch, Select, SelectTrigger, SelectValue, SelectContent, SelectItem, Icons } from "lucide-react";
 import { CalendarIntegrationButton } from "@/components/calendar/CalendarIntegrationButton";
 import type { Id } from "@/convex/_generated/dataModel";
 
@@ -96,122 +96,113 @@ export function AvailabilityCalendar({ businessId }: AvailabilityCalendarProps) 
 
   return (
     <div className="space-y-6">
-      {/* Calendar Integration */}
-      <Card className="p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold">Calendar Integration</h3>
-          <div className="flex gap-2">
-            <CalendarIntegrationButton businessId={businessId} />
-            {integrations?.some(int => int.provider === "google") && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleSync}
-                disabled={isSyncing}
-              >
-                <RefreshCw className={`h-4 w-4 mr-2 ${isSyncing ? "animate-spin" : ""}`} />
-                Sync Calendar
-              </Button>
-            )}
-          </div>
-        </div>
-      </Card>
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold">Availability</h2>
+        <Button onClick={handleSave} disabled={isSaving}>
+          {isSaving ? "Saving..." : "Save Changes"}
+        </Button>
+      </div>
 
-      {/* Weekly Availability Grid */}
-      <Card className="p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold flex items-center gap-2">
-            <Calendar className="h-5 w-5" />
-            Weekly Availability
-          </h3>
-          <Badge variant="outline">Set your regular hours</Badge>
-        </div>
-
-        <div className="grid grid-cols-8 gap-2">
-          {/* Header row */}
-          <div className="font-medium text-sm">Time</div>
-          {DAYS.map((day, idx) => (
-            <div key={day} className="font-medium text-sm text-center">
-              {day.slice(0, 3)}
-            </div>
-          ))}
-
-          {/* Time slots */}
-          {TIME_SLOTS.map((time) => (
-            <React.Fragment key={time}>
-              <div className="text-sm text-muted-foreground py-2">{time}</div>
-              {DAYS.map((_, dayIdx) => {
-                const isAvailable = getAvailabilityForSlot(dayIdx, time);
-                const nextTime = TIME_SLOTS[TIME_SLOTS.indexOf(time) + 1] || "18:00";
-                
-                return (
-                  <button
-                    key={`${dayIdx}-${time}`}
-                    onClick={() =>
-                      handleToggleAvailability(dayIdx, time, nextTime, isAvailable)
-                    }
-                    className={`
-                      p-2 rounded border transition-colors
-                      ${isAvailable
-                        ? "bg-emerald-100 dark:bg-emerald-900 border-emerald-300 dark:border-emerald-700"
-                        : "bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700"
+      <Card>
+        <CardHeader>
+          <CardTitle>Weekly Schedule</CardTitle>
+          <CardDescription>
+            Set your standard weekly availability
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-6">
+            {DAYS.map((day) => (
+              <div key={day} className="flex items-center gap-4">
+                <div className="w-32 font-medium">{day}</div>
+                <Switch
+                  checked={availability[day]?.enabled}
+                  onCheckedChange={(checked) => 
+                    setAvailability(prev => ({
+                      ...prev,
+                      [day]: { ...prev[day], enabled: checked }
+                    }))
+                  }
+                />
+                {availability[day]?.enabled && (
+                  <div className="flex items-center gap-2">
+                    <Select
+                      value={availability[day]?.start}
+                      onValueChange={(val) => 
+                        setAvailability(prev => ({
+                          ...prev,
+                          [day]: { ...prev[day], start: val }
+                        }))
                       }
-                      hover:opacity-80
-                    `}
-                  >
-                    {isAvailable ? "✓" : ""}
-                  </button>
-                );
-              })}
-            </React.Fragment>
-          ))}
-        </div>
-
-        <p className="text-xs text-muted-foreground mt-4">
-          Click on time slots to toggle availability. Green = available for meetings.
-        </p>
-      </Card>
-
-      {/* Upcoming Appointments */}
-      <Card className="p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold flex items-center gap-2">
-            <Clock className="h-5 w-5" />
-            Upcoming Appointments
-          </h3>
-          <Badge>{appointments?.length || 0} scheduled</Badge>
-        </div>
-
-        {upcomingAppointments.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground">
-            <Calendar className="h-12 w-12 mx-auto mb-2 opacity-50" />
-            <p>No upcoming appointments</p>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {upcomingAppointments.map((apt: any) => (
-              <div
-                key={apt._id}
-                className="flex items-center justify-between p-3 border rounded-lg"
-              >
-                <div className="flex-1">
-                  <div className="font-medium">{apt.title}</div>
-                  <div className="text-sm text-muted-foreground">
-                    {new Date(apt.startTime).toLocaleString()}
+                    >
+                      <SelectTrigger className="w-[120px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {HOURS.map(h => (
+                          <SelectItem key={h} value={h}>{h}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <span>to</span>
+                    <Select
+                      value={availability[day]?.end}
+                      onValueChange={(val) => 
+                        setAvailability(prev => ({
+                          ...prev,
+                          [day]: { ...prev[day], end: val }
+                        }))
+                      }
+                    >
+                      <SelectTrigger className="w-[120px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {HOURS.map(h => (
+                          <SelectItem key={h} value={h}>{h}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
-                  {apt.location && (
-                    <div className="text-xs text-muted-foreground mt-1">
-                      📍 {apt.location}
-                    </div>
-                  )}
-                </div>
-                <Badge variant={apt.status === "scheduled" ? "default" : "secondary"}>
-                  {apt.status}
-                </Badge>
+                )}
               </div>
             ))}
           </div>
-        )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Calendar Integrations</CardTitle>
+          <CardDescription>
+            Sync with your external calendars to prevent double booking
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {integrations?.map((int: any) => (
+              <div key={int._id} className="flex items-center justify-between p-4 border rounded-lg">
+                <div className="flex items-center gap-3">
+                  {int.provider === "google" && <Icons.google className="h-5 w-5" />}
+                  {int.provider === "outlook" && <Icons.microsoft className="h-5 w-5" />}
+                  <div>
+                    <div className="font-medium capitalize">{int.provider} Calendar</div>
+                    <div className="text-sm text-muted-foreground">
+                      Last synced: {new Date(int.lastSyncAt || 0).toLocaleString()}
+                    </div>
+                  </div>
+                </div>
+                <Button variant="outline" size="sm">
+                  Settings
+                </Button>
+              </div>
+            ))}
+            <Button className="w-full" variant="outline">
+              <Plus className="mr-2 h-4 w-4" />
+              Add Calendar
+            </Button>
+          </div>
+        </CardContent>
       </Card>
     </div>
   );

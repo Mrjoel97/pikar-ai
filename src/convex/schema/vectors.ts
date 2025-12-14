@@ -34,4 +34,19 @@ export const vectorsSchema = {
     .index("by_business", ["businessId"])
     .index("by_business_and_src", ["businessId", "srcNodeId"])
     .index("by_business_and_dst", ["businessId", "dstNodeId"]),
+
+  agentDatasets: defineTable({
+    businessId: v.id("businesses"),
+    name: v.string(),
+    description: v.optional(v.string()),
+    type: v.string(),
+    sourceUrl: v.optional(v.string()),
+    content: v.optional(v.string()),
+    status: v.string(),
+    vectorId: v.optional(v.string()),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_business", ["businessId"]),
 };

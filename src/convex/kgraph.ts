@@ -19,28 +19,25 @@ export const adminIngestFromDataset = mutation({
       throw new Error("Dataset not found");
     }
 
-    const businessId = dataset.businessScope;
-    const createdAt = Date.now();
+    const businessId = args.businessId; // Use arg
 
     // Create main dataset node
     const datasetNodeId = await ctx.db.insert("kgraphNodes", {
       businessId,
       type: "dataset",
-      key: dataset.title,
+      key: dataset._id, // Use ID
       attrs: {
-        sourceType: dataset.sourceType,
-        sourceUrl: dataset.sourceUrl,
-        noteText: dataset.noteText,
+        type: "dataset",
       },
-      summary: `Dataset: ${dataset.title}`,
-      createdAt,
+      summary: `Dataset: ${dataset._id}`,
+      createdAt: Date.now(),
     });
 
     let tokenNodes = [];
     let edgeCount = 0;
 
     // Extract tokens from content and create nodes/edges
-    const content = dataset.sourceUrl || dataset.noteText || "";
+    const content = dataset.content || "";
     const tokens = extractTokens(content);
     
     for (const token of tokens.slice(0, 50)) { // Limit to 50 tokens
@@ -62,9 +59,9 @@ export const adminIngestFromDataset = mutation({
           businessId,
           type: "token",
           key: token,
-          attrs: { frequency: 1 },
+          // attrs: { frequency: 1 }, // Commented out
           summary: `Token: ${token}`,
-          createdAt,
+          createdAt: Date.now(),
         });
       }
 
@@ -75,7 +72,7 @@ export const adminIngestFromDataset = mutation({
         dstNodeId: tokenNodeId,
         relation: "mentions",
         weight: 1.0,
-        createdAt,
+        createdAt: Date.now(),
       });
 
       tokenNodes.push(tokenNodeId);
@@ -91,7 +88,7 @@ export const adminIngestFromDataset = mutation({
         // Convert Id to string for audit entityId
         entityId: String(args.datasetId),
         details: {
-          datasetTitle: dataset.title,
+          // datasetTitle: dataset.title, // Commented out
           nodesCreated: tokenNodes.length + 1,
           edgesCreated: edgeCount,
         },
@@ -151,7 +148,7 @@ export const neighborhood = query({
         const outEdges = await ctx.db
           .query("kgraphEdges")
           .withIndex("by_business_and_src", (q) => 
-            q.eq("businessId", args.businessId).eq("srcNodeId", nodeId)
+            q.eq("businessId", args.businessId as any).eq("srcNodeId", nodeId)
           )
           .take(limit);
 
@@ -159,7 +156,7 @@ export const neighborhood = query({
         const inEdges = await ctx.db
           .query("kgraphEdges")
           .withIndex("by_business_and_dst", (q) => 
-            q.eq("businessId", args.businessId).eq("dstNodeId", nodeId)
+            q.eq("businessId", args.businessId as any).eq("dstNodeId", nodeId)
           )
           .take(limit);
 

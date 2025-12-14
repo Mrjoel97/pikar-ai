@@ -27,6 +27,54 @@ export const workflowsSchema = {
     .index("by_business", ["businessId"])
     .index("by_status", ["status"]),
 
+  playbooks: defineTable({
+    businessId: v.id("businesses"),
+    name: v.string(),
+    description: v.optional(v.string()),
+    trigger: v.string(),
+    steps: v.array(v.any()),
+    isActive: v.boolean(),
+    active: v.optional(v.boolean()),
+    playbook_key: v.optional(v.string()),
+    version: v.optional(v.string()),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_active", ["active"])
+    .index("by_key_and_version", ["playbook_key", "version"]),
+
+  playbookExecutions: defineTable({
+    businessId: v.id("businesses"),
+    playbookId: v.id("playbooks"),
+    agentId: v.optional(v.id("aiAgents")),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("running"),
+      v.literal("completed"),
+      v.literal("failed")
+    ),
+    startedAt: v.number(),
+    completedAt: v.optional(v.number()),
+    result: v.optional(v.any()),
+    error: v.optional(v.string()),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_playbook", ["playbookId"]),
+
+  playbookVersions: defineTable({
+    businessId: v.id("businesses"),
+    playbookId: v.id("playbooks"),
+    version: v.string(),
+    snapshot: v.any(),
+    createdAt: v.number(),
+    createdBy: v.id("users"),
+    playbook_key: v.optional(v.string()),
+  })
+    .index("by_playbook", ["playbookId"])
+    .index("by_key_and_version", ["playbook_key", "version"]),
+
   workflowAssignments: defineTable({
     workflowId: v.id("workflows"),
     businessId: v.id("businesses"),
@@ -193,6 +241,7 @@ export const workflowsSchema = {
     urgent: v.optional(v.boolean()),
     status: v.union(v.literal("todo"), v.literal("in_progress"), v.literal("completed")),
     dueDate: v.optional(v.number()),
+    initiativeId: v.optional(v.id("initiatives")),
     createdAt: v.number(),
     updatedAt: v.number(),
     metadata: v.optional(v.any()),
@@ -226,6 +275,7 @@ export const workflowsSchema = {
   approvalQueue: defineTable({
     businessId: v.id("businesses"),
     workflowId: v.optional(v.id("workflows")),
+    workflowRunId: v.optional(v.id("workflowRuns")),
     entityType: v.string(),
     entityId: v.string(),
     requestedBy: v.id("users"),
@@ -239,14 +289,18 @@ export const workflowsSchema = {
     comments: v.optional(v.string()),
     slaDeadline: v.optional(v.number()),
     assigneeId: v.optional(v.id("users")),
+    assigneeRole: v.optional(v.string()),
     reviewedAt: v.optional(v.number()),
+    reviewedBy: v.optional(v.string()),
     stepIndex: v.optional(v.number()),
     priority: v.optional(v.string()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
     .index("by_business", ["businessId"])
-    .index("by_status", ["status"]),
+    .index("by_status", ["status"])
+    .index("by_assignee", ["assigneeId"])
+    .index("by_sla_deadline", ["slaDeadline"]),
 
   workflowRuns: defineTable({
     businessId: v.id("businesses"),

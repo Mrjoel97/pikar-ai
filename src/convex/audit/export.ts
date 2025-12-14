@@ -32,8 +32,8 @@ export const exportAuditLogs = action({
 
     // CSV format
     const headers = ["Timestamp", "Action", "Entity Type", "Entity ID", "User ID", "IP Address", "Details"];
-    const rows = logs.map((log) => [
-      new Date(log.timestamp).toISOString(),
+    const rows = logs.map((log: any) => [
+      new Date(log.createdAt || log._creationTime).toISOString(),
       log.action,
       log.entityType,
       log.entityId,
@@ -44,7 +44,7 @@ export const exportAuditLogs = action({
 
     const csv = [
       headers.join(","),
-      ...rows.map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(",")),
+      ...rows.map((row: any[]) => row.map((cell: any) => `"${String(cell).replace(/\"/g, '\"\"')}\"`).join(",")),
     ].join("\n");
 
     return {

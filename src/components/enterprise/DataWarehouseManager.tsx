@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { Database, Plus, RefreshCw, AlertCircle, CheckCircle, Clock, Workflow, FileDown, Shield, BarChart3 } from "lucide-react";
+import { Database, Plus, RefreshCw, AlertCircle, CheckCircle, Clock, Workflow, FileDown, Shield, BarChart3, Play, Settings, ArrowRight, Alert, AlertTriangle, Switch } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import type { Id } from "@/convex/_generated/dataModel";
@@ -397,22 +397,12 @@ export function DataWarehouseManager({ businessId }: { businessId?: Id<"business
               <CardContent>
                 <div className="space-y-2">
                   {governanceRules?.map((rule) => (
-                    <div key={rule.id} className="p-3 border rounded-lg">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <div className="font-medium text-sm">{rule.name}</div>
-                          <div className="text-xs text-muted-foreground mt-1">{rule.description}</div>
-                          <div className="flex gap-2 mt-2">
-                            <Badge variant="outline" className="text-xs">{rule.category}</Badge>
-                            <Badge variant={rule.severity === "critical" ? "destructive" : "secondary"} className="text-xs">
-                              {rule.severity}
-                            </Badge>
-                          </div>
-                        </div>
-                        <Badge variant={rule.status === "active" ? "default" : "secondary"}>
-                          {rule.status}
-                        </Badge>
+                    <div key={rule.id} className="flex items-center justify-between p-4 border rounded-lg">
+                      <div>
+                        <h4 className="font-medium">{rule.name}</h4>
+                        <p className="text-sm text-muted-foreground">{rule.description}</p>
                       </div>
+                      <Switch checked={rule.enabled} />
                     </div>
                   ))}
                 </div>
@@ -427,20 +417,16 @@ export function DataWarehouseManager({ businessId }: { businessId?: Id<"business
               <CardContent>
                 <div className="space-y-2">
                   {governanceViolations?.map((violation) => (
-                    <div key={violation.id} className="p-3 border rounded-lg border-red-200 bg-red-50">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <div className="font-medium text-sm">{violation.ruleName}</div>
-                          <div className="text-xs text-muted-foreground mt-1">{violation.description}</div>
-                          <div className="text-xs text-muted-foreground mt-1">
-                            {violation.affectedRecords} records affected
-                          </div>
+                    <Alert key={violation.id} variant="destructive">
+                      <AlertTriangle className="h-4 w-4" />
+                      <AlertTitle>Compliance Violation</AlertTitle>
+                      <AlertDescription>
+                        {violation.description}
+                        <div className="mt-2 text-xs opacity-80">
+                          Detected: {new Date(violation.detectedAt).toLocaleString()}
                         </div>
-                        <Badge variant="destructive" className="text-xs">
-                          {violation.severity}
-                        </Badge>
-                      </div>
-                    </div>
+                      </AlertDescription>
+                    </Alert>
                   ))}
                   {(!governanceViolations || governanceViolations.length === 0) && (
                     <div className="text-center py-8 text-sm text-muted-foreground">

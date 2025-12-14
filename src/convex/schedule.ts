@@ -62,7 +62,7 @@ export const addSlotsBulk = mutation({
     for (const slot of args.slots) {
       const id = await ctx.db.insert("scheduleSlots", {
         userId,
-        businessId: business?._id,
+        businessId: business?._id as any, // Cast
         label: slot.label,
         channel: slot.channel,
         scheduledAt: slot.scheduledAt,
@@ -148,7 +148,7 @@ export const nextSlotByChannel = query({
     const filtered = rows.filter(
       (r) =>
         r.channel === args.channel &&
-        (args.businessId ? r.businessId === args.businessId : true)
+        (args.businessId as any ? r.businessId === args.businessId as any : true)
     );
 
     return filtered[0] ?? null;

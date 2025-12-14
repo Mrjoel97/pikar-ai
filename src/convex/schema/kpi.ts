@@ -116,6 +116,10 @@ export const kpiSchema = {
     endDate: v.optional(v.number()),
     status: v.union(v.literal("active"), v.literal("completed"), v.literal("planned")),
     createdAt: v.number(),
+    capacity: v.optional(v.number()),
+    allocatedAmount: v.optional(v.number()),
+    initiativeId: v.optional(v.id("initiatives")),
+    resourceType: v.optional(v.string()),
   })
     .index("by_business", ["businessId"])
     .index("by_resource", ["resourceId"]),
@@ -142,9 +146,12 @@ export const kpiSchema = {
     unit: v.string(),
     frequency: v.string(),
     target: v.optional(v.number()),
+    currentValue: v.optional(v.number()),
     ownerId: v.optional(v.id("users")),
+    metricType: v.optional(v.string()),
     createdAt: v.number(),
     updatedAt: v.number(),
+    lastCalculated: v.optional(v.number()),
   }).index("by_business", ["businessId"]),
 
   metricHistory: defineTable({
@@ -166,6 +173,9 @@ export const kpiSchema = {
     churnRate: v.optional(v.number()),
     cac: v.optional(v.number()),
     ltv: v.optional(v.number()),
+    visitors: v.optional(v.number()),
+    subscribers: v.optional(v.number()),
+    engagement: v.optional(v.number()),
     data: v.any(), // Flexible storage for other KPIs
     createdAt: v.number(),
   })

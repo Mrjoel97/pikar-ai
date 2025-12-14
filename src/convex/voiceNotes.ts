@@ -17,15 +17,15 @@ export const uploadVoiceNote = mutation({
 
     const voiceNoteId = await ctx.db.insert("voiceNotes", {
       businessId: args.businessId,
-      userId: identity.subject,
+      userId: identity.subject as any, // Cast
       storageId: args.storageId,
       duration: args.duration,
       title: args.title || "Untitled Voice Note",
       status: "processing",
-      transcription: null,
-      summary: null,
+      transcription: undefined, // Changed from null
+      summary: undefined, // Changed from null
       tags: [],
-      initiativeId: null,
+      initiativeId: undefined, // Changed from null
     });
 
     // Trigger transcription
@@ -150,7 +150,7 @@ export const searchVoiceNotes = query({
     }
 
     if (args.tag) {
-      notes = notes.filter((note) => note.tags.includes(args.tag!));
+      notes = notes.filter((note) => (note.tags || []).includes(args.tag!));
     }
 
     return notes;
@@ -264,13 +264,13 @@ export const getVoiceNoteAnalytics = query({
       .collect();
 
     const totalNotes = notes.length;
-    const totalDuration = notes.reduce((sum, note) => sum + note.duration, 0);
+    const totalDuration = notes.reduce((sum, note) => sum + (note.duration || 0), 0);
     const completedNotes = notes.filter((n) => n.status === "completed").length;
     const linkedToInitiatives = notes.filter((n) => n.initiativeId).length;
 
     const tagCounts: Record<string, number> = {};
     notes.forEach((note) => {
-      note.tags.forEach((tag) => {
+      (note.tags || []).forEach((tag) => {
         tagCounts[tag] = (tagCounts[tag] || 0) + 1;
       });
     });

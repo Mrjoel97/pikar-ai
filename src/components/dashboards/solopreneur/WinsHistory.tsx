@@ -206,38 +206,35 @@ export function WinsHistory({ businessId }: WinsHistoryProps) {
           {/* Wins List */}
           {wins && wins.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {wins.map((win) => (
-                <Card key={win._id}>
-                  <CardContent className="p-4">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <h3 className="font-medium text-sm">{win.title}</h3>
-                          {win.category && (
-                            <Badge variant="outline" className="text-xs">
-                              {win.category}
-                            </Badge>
-                          )}
-                        </div>
-                        {win.description && (
-                          <p className="text-xs text-muted-foreground mb-1">{win.description}</p>
-                        )}
-                        <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                          {win.impact && <span>💪 {win.impact}</span>}
-                          {win.timeSaved && win.timeSaved > 0 && <span>⏱️ {win.timeSaved}m saved</span>}
-                          <span>{new Date(win.date).toLocaleDateString()}</span>
-                        </div>
-                      </div>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        onClick={() => handleDeleteWin(win._id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+              {wins?.map((win: any) => (
+                <div key={win._id} className="flex items-start gap-4 p-3 rounded-lg hover:bg-muted/50 transition-colors">
+                  <div className={`p-2 rounded-full bg-background border ${getCategoryColor(win.category)}`}>
+                    {getCategoryIcon(win.category)}
+                  </div>
+                  <div className="flex-1 space-y-1">
+                    <div className="flex items-center justify-between">
+                      <h4 className="font-medium text-sm">{win.title}</h4>
+                      <span className="text-xs text-muted-foreground">
+                        {new Date(win.date).toLocaleDateString()}
+                      </span>
                     </div>
-                  </CardContent>
-                </Card>
+                    <p className="text-sm text-muted-foreground line-clamp-2">
+                      {win.description}
+                    </p>
+                    {win.impact && (
+                      <div className="flex items-center gap-2 mt-2">
+                        <Badge variant="secondary" className="text-xs">
+                          {win.impact}
+                        </Badge>
+                        {win.timeSaved && (
+                          <span className="text-xs text-muted-foreground">
+                            Saved {win.timeSaved}h
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
               ))}
             </div>
           ) : (

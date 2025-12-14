@@ -19,7 +19,7 @@ export const listCoursesByTier = query({
     }
     
     return courses.filter(course => 
-      course.availableTiers.includes(args.tier!)
+      (course.availableTiers || []).includes(args.tier!)
     );
   },
 });
@@ -77,7 +77,7 @@ export const updateProgress = mutation({
         completedLessons.delete(args.lessonId);
       }
 
-      const progressPercentage = (completedLessons.size / course.totalLessons) * 100;
+      const progressPercentage = (completedLessons.size / (course.totalLessons || 1)) * 100;
       const isCompleted = progressPercentage === 100;
 
       await ctx.db.patch(existing._id, {
@@ -96,7 +96,7 @@ export const updateProgress = mutation({
       return existing._id;
     } else {
       const completedLessons = args.completed ? [args.lessonId] : [];
-      const progressPercentage = (completedLessons.length / course.totalLessons) * 100;
+      const progressPercentage = (completedLessons.length / (course.totalLessons || 1)) * 100;
 
       return await ctx.db.insert("courseProgress", {
         userId: args.userId,

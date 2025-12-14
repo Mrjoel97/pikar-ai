@@ -85,19 +85,22 @@ export const updateMemoryAccess = mutation({
 export const createCollaboration = mutation({
   args: {
     businessId: v.id("businesses"),
-    agentIds: v.array(v.id("aiAgents")),
-    taskDescription: v.string(),
-    coordinatorAgentId: v.id("aiAgents"),
+    initiatorId: v.id("aiAgents"),
+    targetId: v.id("aiAgents"),
+    goal: v.string(),
   },
   handler: async (ctx, args) => {
     const now = Date.now();
     return await ctx.db.insert("agentCollaborations", {
-      ...args,
-      status: "active",
-      createdAt: now,
-      startedAt: now,
+      businessId: args.businessId,
+      initiatorAgentId: args.initiatorId,
+      targetAgentId: args.targetId,
+      goal: args.goal,
+      status: "in_progress",
       messages: [],
-      sharedContext: {},
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      // sharedContext: {}, // Removed as it doesn't exist in schema
     });
   },
 });
@@ -157,13 +160,22 @@ export const recordLearningEvent = mutation({
     context: v.string(),
     outcome: v.string(),
     learningPoints: v.array(v.string()),
+    description: v.string(),
+    impactScore: v.number(),
+    data: v.optional(v.any()),
   },
   handler: async (ctx, args) => {
     return await ctx.db.insert("agentLearningEvents", {
-      ...args,
-      data: {},
-      timestamp: Date.now(),
-      applied: false,
+      agentId: args.agentId,
+      businessId: args.businessId,
+      eventType: args.eventType,
+      description: args.description,
+      context: args.context,
+      outcome: args.outcome,
+      impactScore: args.impactScore,
+      createdAt: Date.now(),
+      data: args.data,
+      // timestamp: Date.now(), // Removed as it doesn't exist in schema
     });
   },
 });
@@ -207,7 +219,7 @@ export const getAgentPerformanceMetrics = query({
     const executions = await ctx.db
       .query("agentExecutions")
       .withIndex("by_agent", (q) => q.eq("agentId", args.agentId))
-      .filter((q) => q.gte(q.field("timestamp"), cutoff))
+      .filter((q) => q.gte(q.field("startedAt"), cutoff)) // Changed from timestamp to startedAt
       .collect();
 
     const totalExecutions = executions.length;

@@ -32,6 +32,19 @@ export const teamSchema = {
     .index("by_user_and_business", ["userId", "businessId"])
     .index("by_business", ["businessId"]),
 
+  milestones: defineTable({
+    keyResultId: v.id("keyResults"),
+    title: v.string(),
+    description: v.optional(v.string()),
+    targetDate: v.number(),
+    targetValue: v.number(),
+    actualValue: v.optional(v.number()),
+    completed: v.boolean(),
+    completedAt: v.optional(v.number()),
+    createdAt: v.number(),
+  })
+    .index("by_key_result", ["keyResultId"]),
+
   userRoles: defineTable({
     userId: v.id("users"),
     businessId: v.id("businesses"),
@@ -62,6 +75,7 @@ export const teamSchema = {
     description: v.optional(v.string()),
     ownerId: v.id("users"),
     parentObjectiveId: v.optional(v.id("objectives")),
+    category: v.optional(v.string()),
     status: v.union(
       v.literal("not_started"),
       v.literal("on_track"),
@@ -93,9 +107,21 @@ export const teamSchema = {
       v.literal("at_risk"),
       v.literal("completed")
     ),
+    progress: v.optional(v.number()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
     .index("by_objective", ["objectiveId"])
+    .index("by_business", ["businessId"]),
+    
+  keyResultUpdates: defineTable({
+    keyResultId: v.id("keyResults"),
+    businessId: v.id("businesses"),
+    previousValue: v.number(),
+    newValue: v.number(),
+    note: v.optional(v.string()),
+    createdAt: v.number(),
+  })
+    .index("by_key_result", ["keyResultId"])
     .index("by_business", ["businessId"]),
 };

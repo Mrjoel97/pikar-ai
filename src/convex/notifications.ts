@@ -188,8 +188,8 @@ export const createNotification = internalMutation({
         .filter((q) => q.gt(q.field("createdAt"), oneDayAgo))
         .collect();
 
-      if (recentNotifications.length >= preferences.rateLimits.maxPerHour ||
-          todayNotifications.length >= preferences.rateLimits.maxPerDay) {
+      if (recentNotifications.length >= (preferences.rateLimits?.maxPerHour || 10) ||
+          todayNotifications.length >= (preferences.rateLimits?.maxPerDay || 50)) {
         return null; // Rate limit exceeded
       }
     }
@@ -766,7 +766,8 @@ export const sendDigestEmails = internalMutation({
 
       // Group by type
       const grouped = unread.reduce((acc: any, n) => {
-        acc[n.type] = (acc[n.type] || 0) + 1;
+        const type = n.type || "info";
+        acc[type] = (acc[type] || 0) + 1;
         return acc;
       }, {});
 

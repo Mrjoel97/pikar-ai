@@ -490,6 +490,9 @@ export const getPerformanceForecasting = query({
       };
     }
 
+    const business = await ctx.db.get(args.businessId);
+    const teamSize = business?.teamMembers?.length || 0; // Defined teamSize
+
     const departmentForecasts = [
       {
         department: "Engineering",
@@ -752,6 +755,47 @@ export const getWorkforceOptimization = query({
       efficiencyGain: Math.round(
         efficiencyGains.reduce((sum, area) => sum + area.gain, 0) / efficiencyGains.length
       ),
+    };
+  },
+});
+
+/**
+ * Query: Calculate team velocity
+ */
+export const getTeamVelocity = query({
+  args: {
+    businessId: v.optional(v.id("businesses")),
+  },
+  handler: async (ctx, args) => {
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+
+    const completedTasks = await ctx.db
+      .query("tasks")
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId as any))
+      .filter((q) => 
+        q.and(
+          q.eq(q.field("status"), "completed"),
+          q.gte(q.field("updatedAt"), thirtyDaysAgo.getTime())
+        )
+      )
+      .collect();
+
+    const teamMembers = await ctx.db
+      .query("users")
+      .withIndex("by_token") // Using by_token as a proxy for listing users, or better use business teamMembers
+      .collect();
+      
+    // Filter for this business if possible, or use business.teamMembers
+    const business = await ctx.db.get(args.businessId as any);
+    const teamSize = business?.teamMembers?.length || 1;
+
+    const velocity = completedTasks.length / teamSize;
+
+    return {
+      velocity,
+      completedTasks: completedTasks.length,
+      teamSize,
+      period: "30d",
     };
   },
 });

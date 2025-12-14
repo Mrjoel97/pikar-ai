@@ -69,6 +69,8 @@ export const createCustomIntegration = mutation({
       version: "1.0.0",
       createdAt: Date.now(),
       lastModified: Date.now(),
+      updatedAt: Date.now(),
+      isActive: true,
     });
   },
 });
@@ -139,8 +141,10 @@ export const createIntegrationTest = mutation({
   handler: async (ctx, args) => {
     return await ctx.db.insert("integrationTests", {
       ...args,
-      status: "pending",
       createdAt: Date.now(),
+      name: args.testName,
+      businessId: args.businessId,
+      config: args.testConfig,
     });
   },
 });
@@ -302,7 +306,7 @@ export const publishToMarketplace = mutation({
       integrationId: args.integrationId,
       publisherId: args.publisherId,
       name: integration.name,
-      description: integration.description,
+      description: integration.description || "",
       price: args.price,
       category: args.category,
       tags: args.tags,

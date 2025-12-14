@@ -306,7 +306,7 @@ export const completeOnboarding = mutation({
         await ctx.db.insert("brands", {
           businessId: args.businessId,
           name: args.setupData.businessProfile?.name || "Default Brand",
-          tagline: args.setupData.brandIdentity.tagline || "",
+          // tagline: args.setupData.brandIdentity.tagline || "",
           description: args.setupData.brandIdentity.mission || "",
           createdAt: Date.now(),
           updatedAt: Date.now(),
@@ -340,6 +340,10 @@ export const completeOnboarding = mutation({
             tools: [],
           },
           isTemplate: false,
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+          isActive: true,
+          createdBy: args.userId,
         });
       }
     }

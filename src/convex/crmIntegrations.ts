@@ -14,16 +14,25 @@ export const connectCRM = mutation({
     tokenExpiresAt: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("email", (q) => q.eq("email", identity.email!))
+      .first();
+
+    if (!user) throw new Error("User not found");
+
     const connectionId = await ctx.db.insert("crmConnections", {
       businessId: args.businessId,
-      userId: (await ctx.auth.getUserIdentity())?._id as Id<"users">,
-      platform: args.platform,
-      accountName: args.accountName,
+      userId: user._id, // Fixed: Use user._id instead of subject string
+      provider: args.platform,
       accessToken: args.accessToken,
       refreshToken: args.refreshToken,
-      tokenExpiresAt: args.tokenExpiresAt,
+      expiresAt: args.tokenExpiresAt || 0,
       isActive: true,
-      connectedAt: Date.now(),
+      createdAt: Date.now(),
     });
 
     // Schedule webhook registration
@@ -103,11 +112,11 @@ export const syncContactFromWebhook = internalMutation({
       if (hasConflict) {
         await ctx.db.insert("crmSyncConflicts", {
           businessId: connection.businessId,
-          connectionId: args.connectionId,
-          contactEmail: email,
-          conflictType: "name_mismatch",
-          localData: { name: existingContact.name },
-          remoteData: { name: args.payload.name },
+          connectionId: connection._id,
+          entityType: "contact", // Added
+          remoteData: args.payload,
+          localData: existingContact,
+          conflictType: "data_mismatch",
           status: "pending",
           createdAt: Date.now(),
         });
@@ -155,12 +164,11 @@ export const syncDealFromWebhook = internalMutation({
       name: args.payload.name,
       value: args.payload.value,
       stage: args.payload.stage,
-      contactName: args.payload.contactName,
-      contactEmail: args.payload.contactEmail,
       closeDate: args.payload.closeDate,
       probability: args.payload.probability,
       createdAt: Date.now(),
       updatedAt: Date.now(),
+      externalId: args.payload.id || "unknown", // Added required field
     });
 
     await ctx.db.patch(args.connectionId, {
@@ -270,7 +278,7 @@ export const resolveConflict = mutation({
       const contact = await ctx.db
         .query("contacts")
         .withIndex("by_business_and_email", (q) =>
-          q.eq("businessId", conflict.businessId).eq("email", conflict.contactEmail)
+          q.eq("businessId", conflict.businessId).eq("email", conflict.contactEmail || "")
         )
         .first();
 

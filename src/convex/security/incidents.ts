@@ -45,10 +45,10 @@ export const createIncident = mutation({
     return await ctx.db.insert("securityIncidents", {
       ...args,
       status: "open",
-      assignedTo: null,
+      assignedTo: undefined,
       createdAt: Date.now(),
       updatedAt: Date.now(),
-      resolvedAt: null,
+      resolvedAt: undefined,
     });
   },
 });

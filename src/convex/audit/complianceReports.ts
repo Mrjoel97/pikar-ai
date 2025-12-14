@@ -59,13 +59,13 @@ export const generateComplianceReport = action({
 
 // Helper functions
 function analyzeComplianceFramework(framework: string, logs: any[]) {
-  const critical = logs.filter((log) => 
+  const critical = logs.filter((log: any) => 
     log.action.includes("delete") || 
     log.action.includes("security") ||
     log.entityType === "user"
   );
 
-  const violations = logs.filter((log) =>
+  const violations = logs.filter((log: any) =>
     log.action.includes("violation") || 
     log.action.includes("failed")
   );
@@ -84,15 +84,15 @@ function generateFrameworkSections(framework: string, logs: any[]) {
 
   if (framework === "SOC2") {
     sections.push(
-      { name: "Access Controls", events: logs.filter((l) => l.entityType === "user").length },
-      { name: "Change Management", events: logs.filter((l) => l.action.includes("update")).length },
+      { name: "Access Controls", events: logs.filter((l: any) => l.entityType === "user").length },
+      { name: "Change Management", events: logs.filter((l: any) => l.action.includes("update")).length },
       { name: "Monitoring", events: logs.length }
     );
   } else if (framework === "GDPR") {
     sections.push(
-      { name: "Data Processing", events: logs.filter((l) => l.entityType === "contact").length },
-      { name: "Consent Management", events: logs.filter((l) => l.action.includes("consent")).length },
-      { name: "Data Subject Rights", events: logs.filter((l) => l.action.includes("delete")).length }
+      { name: "Data Processing", events: logs.filter((l: any) => l.entityType === "contact").length },
+      { name: "Consent Management", events: logs.filter((l: any) => l.action.includes("consent")).length },
+      { name: "Data Subject Rights", events: logs.filter((l: any) => l.action.includes("delete")).length }
     );
   }
 
