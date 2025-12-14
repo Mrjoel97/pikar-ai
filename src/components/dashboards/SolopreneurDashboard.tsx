@@ -612,7 +612,7 @@ function SolopreneurDashboard({ business: businessProp }: { business?: any }) {
       }
     };
 
-    return (
+    const brainDumpSection = (
       <Card className="p-4 mt-6">
         {/* Header + quick controls */}
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -1032,7 +1032,6 @@ function SolopreneurDashboard({ business: businessProp }: { business?: any }) {
         )}
       </Card>
     );
-  }
 
   // Add helper: local usage and streaks
   function useTemplateOrderingAndStreak() {
