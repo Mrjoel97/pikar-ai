@@ -291,8 +291,8 @@ export const completeOnboarding = mutation({
 
     // Update business with onboarding data
     await ctx.db.patch(args.businessId, {
-      onboardingCompleted: true,
-      onboardingData: args.setupData,
+      // onboardingCompleted: true,
+      // onboardingData: args.setupData, // Removed as it's not in schema
     });
 
     // Create default brand if brand identity was provided

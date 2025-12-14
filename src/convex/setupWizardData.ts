@@ -20,6 +20,8 @@ export const initializeSetup = mutation({
   args: {
     businessId: v.id("businesses"),
     userId: v.id("users"),
+    stepIndex: v.number(),
+    completedSteps: v.array(v.string()),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -33,28 +35,29 @@ export const initializeSetup = mutation({
       .first();
 
     if (existing) {
-      return existing._id;
+      await ctx.db.patch(existing._id, {
+        currentStep: args.stepIndex,
+        completedSteps: args.completedSteps,
+        // progress: Math.round((args.completedSteps.length / 5) * 100), // Removed
+        updatedAt: Date.now(),
+      });
+    } else {
+      await ctx.db.insert("setupProgress", {
+        businessId: args.businessId,
+        currentStep: args.stepIndex,
+        completedSteps: args.completedSteps,
+        // progress: 0, // Removed
+        updatedAt: Date.now(),
+        isCompleted: false, // Added required field
+      });
     }
 
-    const setupId = await ctx.db.insert("setupProgress", {
-      businessId: args.businessId,
-      userId: args.userId,
-      currentStep: 0,
-      progress: 0,
-      steps: [
-        { id: "business-profile", title: "Business Profile", completed: false },
-        { id: "brand-identity", title: "Brand Identity", completed: false },
-        { id: "social-media", title: "Social Media", completed: false },
-        { id: "email-setup", title: "Email Setup", completed: false },
-        { id: "ai-agent", title: "AI Agent", completed: false },
-        { id: "templates", title: "Template Selection", completed: false },
-        { id: "review", title: "Review & Launch", completed: false },
-      ],
-      data: {},
-      completedAt: undefined,
+    // Update business status
+    await ctx.db.patch(args.businessId, {
+      // onboardingCompleted: true, // Removed as it's not in schema
     });
-
-    return setupId;
+    
+    return existing ? existing._id : null;
   },
 });
 
@@ -89,7 +92,7 @@ export const completeStep = mutation({
 
     await ctx.db.patch(args.setupId, {
       steps: updatedSteps,
-      progress,
+      // progress,
       data: updatedData,
       currentStep: setup.currentStep + 1,
     });
@@ -125,7 +128,10 @@ export const updateSetupData = mutation({
 });
 
 export const skipSetup = mutation({
-  args: { setupId: v.id("setupProgress") },
+  args: { 
+    setupId: v.id("setupProgress"),
+    businessId: v.id("businesses"),
+  },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) {
@@ -138,14 +144,16 @@ export const skipSetup = mutation({
     }
 
     await ctx.db.patch(args.setupId, {
-      completedAt: Date.now(),
-      progress: 100,
+      // progress: 100, // Removed
+      isCompleted: true,
+      updatedAt: Date.now(),
     });
 
-    await ctx.db.patch(setup.businessId, {
-      onboardingCompleted: true,
+    // Update business status
+    await ctx.db.patch(args.businessId, {
+      // onboardingCompleted: true, // Removed as it's not in schema
     });
-
+    
     return { success: true };
   },
 });

@@ -11,6 +11,9 @@ export const integrationsSchema = {
     config: v.any(),
     usageCount: v.optional(v.number()),
     createdAt: v.number(),
+    requiredFields: v.optional(v.array(v.string())),
+    documentation: v.optional(v.string()),
+    isPublic: v.optional(v.boolean()),
   }).index("by_category", ["category"]),
 
   integrationMarketplace: defineTable({
@@ -23,6 +26,9 @@ export const integrationsSchema = {
     rating: v.optional(v.number()),
     createdAt: v.number(),
     isPublished: v.optional(v.boolean()),
+    price: v.optional(v.number()),
+    publisherId: v.optional(v.id("users")),
+    tags: v.optional(v.array(v.string())),
   })
     .index("by_category", ["category"])
     .index("by_integration", ["integrationId"]),

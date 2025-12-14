@@ -121,8 +121,11 @@ export const generateFromSeed = action({
 
 // Enhance approve flow with audit logging
 export const approveAndPublish = mutation({
-  args: { proposalId: v.id("docsProposals") },
+  args: { proposalId: v.id("docsProposals"), businessId: v.id("businesses") },
   handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+
     const proposal = await ctx.db.get(args.proposalId);
     if (!proposal) {
       throw new Error("Proposal not found");

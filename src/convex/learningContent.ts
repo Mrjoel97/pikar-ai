@@ -81,32 +81,23 @@ export const updateProgress = mutation({
       const isCompleted = progressPercentage === 100;
 
       await ctx.db.patch(existing._id, {
+        lastAccessedAt: Date.now(),
         completedLessons: Array.from(completedLessons),
         progressPercentage,
-        isCompleted,
-        lastAccessedAt: Date.now(),
-        ...(args.quizScore !== undefined && {
-          quizScores: {
-            ...existing.quizScores,
-            [args.lessonId]: args.quizScore,
-          },
-        }),
+        completedAt: isCompleted ? Date.now() : undefined,
       });
-
-      return existing._id;
     } else {
       const completedLessons = args.completed ? [args.lessonId] : [];
       const progressPercentage = (completedLessons.length / (course.totalLessons || 1)) * 100;
-
-      return await ctx.db.insert("courseProgress", {
+      
+      await ctx.db.insert("courseProgress", {
         userId: args.userId,
         courseId: args.courseId,
+        lastAccessedAt: Date.now(),
         completedLessons,
         progressPercentage,
-        isCompleted: progressPercentage === 100,
-        startedAt: Date.now(),
-        lastAccessedAt: Date.now(),
-        quizScores: args.quizScore !== undefined ? { [args.lessonId]: args.quizScore } : {},
+        completedAt: progressPercentage === 100 ? Date.now() : undefined,
+        // ...existing.quizScores, // Removed as it's not in schema
       });
     }
   },
@@ -131,9 +122,7 @@ export const completeCourse = mutation({
     }
 
     await ctx.db.patch(progress._id, {
-      isCompleted: true,
       completedAt: Date.now(),
-      progressPercentage: 100,
     });
 
     return progress._id;

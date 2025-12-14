@@ -14,17 +14,17 @@ export const envStatus = query({
     // Email queue depth
     const queuedEmails = await ctx.db
       .query("emails")
-      .withIndex("by_status", (q) => q.eq("status", "queued"))
+      .withIndex("by_status", (q) => q.eq("status", "queued" as any))
       .collect();
     
     const scheduledEmails = await ctx.db
       .query("emails")
-      .withIndex("by_status", (q) => q.eq("status", "scheduled"))
+      .withIndex("by_status", (q) => q.eq("status", "scheduled" as any))
       .collect();
     
     const sendingEmails = await ctx.db
       .query("emails")
-      .withIndex("by_status", (q) => q.eq("status", "sending"))
+      .withIndex("by_status", (q) => q.eq("status", "sending" as any))
       .collect();
     
     const emailQueueDepth = queuedEmails.length + scheduledEmails.length + sendingEmails.length;

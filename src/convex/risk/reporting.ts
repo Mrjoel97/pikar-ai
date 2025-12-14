@@ -41,9 +41,9 @@ export const generateRiskReport = mutation({
       .collect();
 
     const totalRisks = scenarios.length;
-    const criticalRisks = scenarios.filter(s => s.probability * s.impact >= 16).length;
+    const criticalRisks = scenarios.filter(s => (s.probability || 0) * (s.impact || 0) >= 16).length;
     const mitigatedRisks = mitigations.filter(m => m.status === "completed").length;
-    const avgRiskScore = scenarios.reduce((sum, s) => sum + (s.probability * s.impact), 0) / totalRisks || 0;
+    const avgRiskScore = scenarios.reduce((sum, s) => sum + ((s.probability || 0) * (s.impact || 0)), 0) / totalRisks || 0;
 
     const summary = `Risk report for period ${new Date(args.period.start).toLocaleDateString()} to ${new Date(args.period.end).toLocaleDateString()}`;
     
@@ -64,6 +64,7 @@ export const generateRiskReport = mutation({
       title: args.title,
       reportType: args.reportType,
       period: args.period,
+      timeRange: args.period,
       summary,
       keyFindings,
       recommendations,

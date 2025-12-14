@@ -1,1 +1,1 @@
-cat src/convex/schema/index.ts src/convex/schema/contacts.ts src/convex/schema/email.ts src/convex/schema/testing.ts
+grep -r "wins" src/convex/schema

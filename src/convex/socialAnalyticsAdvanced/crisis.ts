@@ -91,6 +91,21 @@ export const createCrisisResponse = mutation({
       updatedAt: Date.now(),
     });
 
+    // Create crisis events for response sent
+    if (args.channels && args.channels.length > 0) {
+      await ctx.db.insert("crisisEvents", {
+        businessId: args.businessId,
+        type: "response_sent",
+        severity: "medium", // Default severity
+        title: "Crisis Response Sent", // Default title
+        description: `Response sent to ${args.channels.join(", ")}`,
+        status: "active",
+        detectedAt: Date.now(),
+        updatedAt: Date.now(),
+        metadata: { channels: args.channels, status: "sent" }, // Move to metadata
+      });
+    }
+
     return responseId;
   },
 });

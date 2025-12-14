@@ -10,8 +10,12 @@ export const createScenario = mutation({
     probability: v.number(),
     impact: v.number(),
     timeframe: v.string(),
-    assumptions: v.array(v.string()),
-    createdBy: v.id("users"),
+    assumptions: v.array(v.object({
+      factor: v.string(),
+      value: v.string(),
+      impact: v.string(),
+    })),
+    // createdBy: v.id("users"),
   },
   handler: async (ctx, args) => {
     const scenarioId = await ctx.db.insert("riskScenarios", {
@@ -25,7 +29,7 @@ export const createScenario = mutation({
       assumptions: args.assumptions,
       outcomes: [],
       status: "draft",
-      createdBy: args.createdBy,
+      // createdBy: args.createdBy,
       createdAt: Date.now(),
       updatedAt: Date.now(),
     });

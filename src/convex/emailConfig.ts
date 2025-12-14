@@ -112,7 +112,16 @@ export const saveForBusiness = mutation({
     }
 
     if (existing) {
-      await ctx.db.patch(existing._id, patch);
+      await ctx.db.patch(existing._id, {
+        provider: patch.provider,
+        apiKey: patch.apiKey,
+        fromEmail: patch.fromEmail,
+        fromName: patch.fromName,
+        replyTo: patch.replyTo,
+        domain: patch.domain,
+        // resendApiKey: patch.resendApiKey, // Removed as it's not in schema
+        updatedAt: Date.now(),
+      });
       return existing._id;
     } else {
       // Explicitly include updatedAt to satisfy table schema typing

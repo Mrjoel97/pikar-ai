@@ -87,20 +87,19 @@ export const recordComplianceAudit = mutation({
     if (!location) throw new Error("Location not found");
 
     const auditId = await ctx.db.insert("locationAudits", {
-      businessId: location.businessId,
+      businessId: args.businessId,
       locationId: args.locationId,
-      auditType: args.auditType,
-      auditor: args.auditor,
-      findings: args.findings,
-      overallScore: args.overallScore,
-      notes: args.notes,
+      auditorId: args.auditor as Id<"users">,
       status: "completed",
-      auditDate: Date.now(),
+      score: args.overallScore,
+      findings: args.findings,
+      conductedAt: Date.now(),
       createdAt: Date.now(),
+      auditType: args.auditType,
     });
 
     await ctx.db.insert("audit_logs", {
-      businessId: location.businessId,
+      businessId: args.businessId,
       action: "compliance_audit_completed",
       entityType: "location",
       entityId: args.locationId,

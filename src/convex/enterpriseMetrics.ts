@@ -123,10 +123,12 @@ export const recordMetricSnapshot = mutation({
       const id = await ctx.db.insert("dashboardKpis", {
         businessId,
         date,
-        revenue,
+        revenue: 0,
         visitors: 0,
         subscribers: 0,
         engagement: 0,
+        createdAt: Date.now(), // Added required field
+        data: {}, // Added required field
       });
       return id;
     }

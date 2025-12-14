@@ -20,20 +20,18 @@ export const createExportSchedule = mutation({
     if (!identity) throw new Error("Unauthorized");
 
     const now = Date.now();
-    const scheduleId = await ctx.db.insert("exportSchedules", {
+    const exportId = await ctx.db.insert("dataWarehouseExports", {
       businessId: args.businessId,
-      sourceId: args.sourceId,
       name: args.name,
-      format: args.format,
+      format: args.format || "csv",
       destination: args.destination,
-      schedule: args.schedule,
-      filters: args.filters,
-      enabled: args.enabled,
-      createdAt: now,
-      updatedAt: now,
+      status: "pending",
+      // filters: args.filters, // Removed as it's not in schema
+      createdAt: Date.now(),
+      createdBy: identity.subject as string,
     });
 
-    return scheduleId;
+    return exportId;
   },
 });
 

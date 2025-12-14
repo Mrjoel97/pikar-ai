@@ -815,16 +815,17 @@ export const requestPushPermission = mutation({
     if (existing) {
       await ctx.db.patch(existing._id, {
         subscription: args.subscription,
-        updatedAt: Date.now(),
+        // updatedAt: Date.now(),
       });
       return existing._id;
     }
 
     return await ctx.db.insert("pushSubscriptions", {
+      businessId: args.businessId, // Added required field
       userId: user._id,
       subscription: args.subscription,
       createdAt: Date.now(),
-      updatedAt: Date.now(),
+      // updatedAt: Date.now(),
     });
   },
 });

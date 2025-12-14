@@ -165,7 +165,11 @@ export const getOptimizationRecommendations = query({
     const recommendations = [];
 
     // Resource optimization
-    const overAllocated = allocations.filter((a) => a.allocatedAmount > a.capacity * 0.9);
+    const overAllocated = allocations.filter((a) => {
+      const allocated = a.allocatedAmount || 0;
+      const capacity = a.capacity || 0;
+      return capacity > 0 && allocated > capacity * 0.9;
+    });
     if (overAllocated.length > 0) {
       recommendations.push({
         category: "resource_optimization",

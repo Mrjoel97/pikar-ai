@@ -21,6 +21,7 @@ export const riskSchema = {
     probability: v.optional(v.number()),
     impact: v.optional(v.number()),
     outcomes: v.optional(v.any()),
+    createdBy: v.optional(v.id("users")),
   })
     .index("by_business", ["businessId"])
     .index("by_status", ["status"]),
@@ -29,7 +30,7 @@ export const riskSchema = {
     businessId: v.id("businesses"),
     title: v.string(),
     description: v.string(),
-    category: v.string(),
+    category: v.optional(v.string()),
     priority: v.union(
       v.literal("critical"),
       v.literal("high"),
@@ -44,14 +45,17 @@ export const riskSchema = {
     ),
     targetDate: v.number(),
     estimatedCost: v.optional(v.number()),
-    expectedReduction: v.number(),
-    actualReduction: v.number(),
-    progress: v.number(),
+    expectedReduction: v.optional(v.number()),
+    actualReduction: v.optional(v.number()),
+    progress: v.optional(v.number()),
     createdAt: v.number(),
     updatedAt: v.number(),
     effectiveness: v.optional(v.number()),
     strategy: v.optional(v.string()),
     scenarioId: v.optional(v.id("riskScenarios")),
+    riskId: v.optional(v.string()),
+    ownerId: v.optional(v.id("users")),
+    actualCost: v.optional(v.number()),
   })
     .index("by_business", ["businessId"])
     .index("by_status", ["status"])
@@ -67,13 +71,32 @@ export const riskSchema = {
       v.literal("trend_report"),
       v.literal("compliance_report")
     ),
-    timeRange: v.object({
+    timeRange: v.optional(v.object({
       start: v.number(),
       end: v.number(),
-    }),
+    })),
+    period: v.optional(v.object({
+      start: v.number(),
+      end: v.number(),
+    })),
     summary: v.any(),
     generatedAt: v.number(),
+    title: v.optional(v.string()),
+    keyFindings: v.optional(v.array(v.string())),
+    recommendations: v.optional(v.array(v.string())),
+    metrics: v.optional(v.any()),
+    generatedBy: v.optional(v.id("users")),
   })
     .index("by_business", ["businessId"])
     .index("by_type", ["reportType"]),
+
+  wins: defineTable({
+    businessId: v.id("businesses"),
+    title: v.string(),
+    description: v.optional(v.string()),
+    impact: v.optional(v.string()),
+    timeSaved: v.optional(v.number()),
+    category: v.optional(v.string()),
+    date: v.number(),
+  }).index("by_business", ["businessId"]),
 };

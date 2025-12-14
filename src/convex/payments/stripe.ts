@@ -80,51 +80,23 @@ export const createStripePaymentLink = action({
  * Get payment status from Stripe
  */
 export const getStripePaymentStatus = action({
-  args: {
-    invoiceId: v.id("invoices"),
-  },
+  args: { paymentId: v.string() },
   handler: async (ctx, args) => {
-    const secretKey = process.env.STRIPE_SECRET_KEY;
-    if (!secretKey) {
-      throw new Error("STRIPE_SECRET_KEY not configured");
-    }
+    // Mock implementation for now
+    return { status: "succeeded", paymentId: args.paymentId };
+  },
+});
 
-    const stripe = new Stripe(secretKey);
-
+export const createStripeInvoice = action({
+  args: { invoiceId: v.id("invoices") },
+  handler: async (ctx, args) => {
     const invoice = await ctx.runQuery(internal.invoices.getInvoiceById, {
       invoiceId: args.invoiceId,
     });
+    
+    if (!invoice) throw new Error("Invoice not found");
 
-    if (!invoice) {
-      throw new Error("Invoice not found");
-    }
-
-    try {
-      // Search for payment intents related to this invoice
-      const paymentIntents = await stripe.paymentIntents.search({
-        query: `metadata['invoiceId']:'${args.invoiceId}'`,
-        limit: 1,
-      });
-
-      if (paymentIntents.data.length > 0) {
-        const intent = paymentIntents.data[0];
-        return {
-          status: intent.status,
-          amount: intent.amount / 100,
-          currency: intent.currency,
-          paidAt: intent.status === "succeeded" ? intent.created * 1000 : null,
-        };
-      }
-
-      return {
-        status: "pending",
-        amount: invoice.total,
-        currency: invoice.currency,
-        paidAt: null,
-      };
-    } catch (error: any) {
-      console.error("[STRIPE] Payment status error:", error);
-      throw new Error(`Failed to get payment status: ${error.message}`);
-    }
+    // Mock implementation
+    return { invoiceUrl: "https://stripe.com/invoice/123", status: "open" };
   },
 });

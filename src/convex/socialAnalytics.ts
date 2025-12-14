@@ -621,6 +621,27 @@ export const getCrossPlatformSummary = query({
       .filter((q: any) => q.eq(q.field("isActive"), true))
       .collect();
 
+    const platformStatus: Record<string, { connected: boolean; lastSync: number | null }> = {
+      twitter: { connected: false, lastSync: null },
+      linkedin: { connected: false, lastSync: null },
+      facebook: { connected: false, lastSync: null },
+    };
+
+    for (const platform of Object.keys(platformStatus)) {
+      const account = accounts.find((a) => a.platform === platform);
+      if (account) {
+        platformStatus[platform] = {
+          connected: true,
+          lastSync: (account.lastUsedAt || account.connectedAt || null) as number | null, // Ensure type compatibility
+        };
+      } else {
+        platformStatus[platform] = {
+          connected: false,
+          lastSync: null,
+        };
+      }
+    }
+
     const platformSummary: any = {
       twitter: { connected: false, posts: 0, engagement: 0 },
       linkedin: { connected: false, posts: 0, engagement: 0 },

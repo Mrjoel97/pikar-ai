@@ -84,9 +84,7 @@ export const autoRemediateViolation = mutation({
         workflowId: args.workflowId,
         violationType: args.violationType,
         action,
-        changes,
         originalPipeline,
-        newPipeline: pipeline,
         status: "applied",
         appliedAt: Date.now(),
       });

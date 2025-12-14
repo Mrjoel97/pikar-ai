@@ -11,15 +11,16 @@ export const createProposal = internalMutation({
     diffPreview: v.string(),
   },
   handler: async (ctx, args) => {
-    const id = await ctx.db.insert("docsProposals", {
+    const docId = await ctx.db.insert("docs", {
+      businessId: args.businessId,
       title: args.title,
       slug: args.slug,
       contentMarkdown: args.contentMarkdown,
-      diffPreview: args.diffPreview,
-      source: args.source,
+      // diffPreview: args.diffPreview, // Removed as it's not in schema
       status: "pending",
       createdAt: Date.now(),
+      createdBy: args.userId,
     });
-    return id;
+    return docId;
   },
 });

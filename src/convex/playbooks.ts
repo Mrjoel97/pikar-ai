@@ -228,14 +228,20 @@ export const adminUpsertPlaybook = mutation({
       playbookId = existing._id;
     } else {
       playbookId = await ctx.db.insert("playbooks", {
-        ...playbookData,
-        name: playbookData.display_name,
-        businessId: args.businessId as any, // Cast if missing in args
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-        trigger: "manual",
-        isActive: doc.active ?? true, // Added
-        createdBy: "system" as any, // Added placeholder
+        // businessId: args.businessId as any, // Removed as it's not in schema
+        playbook_key: args.key,
+        display_name: args.name,
+        description: args.description,
+        version: "1.0.0",
+        active: true,
+        triggers: [],
+        steps: [],
+        input_schema: {},
+        output_schema: {},
+        metadata: {
+            category: args.category,
+            author: identity.email,
+        },
       });
     }
 

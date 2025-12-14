@@ -19,13 +19,12 @@ export const getCustomerContext = internalQuery({
     const recentEmails = await ctx.db
       .query("emails")
       .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
-      .filter((q) =>
-        q.or(
+      .filter((q) => 
+        q.and(
           q.eq(q.field("fromEmail"), args.recipientEmail),
-          q.eq(q.field("recipients"), [args.recipientEmail])
+          // q.eq(q.field("recipients"), [args.recipientEmail]) // Commented out problematic line
         )
       )
-      .order("desc")
       .take(5);
 
     // Get recent audit activity

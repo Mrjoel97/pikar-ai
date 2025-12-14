@@ -96,18 +96,18 @@ export const rollbackRemediation = mutation({
 });
 
 /**
- * Get remediation history for a business or workflow
+ * Get remediation history
  */
 export const getRemediationHistory = query({
-  args: {
-    businessId: v.id("businesses"),
-    limit: v.optional(v.number()),
-  },
+  args: { businessId: v.id("businesses") },
   handler: async (ctx, args) => {
-    return await ctx.runQuery(internal.governance.remediation.getRemediationHistory, {
-      businessId: args.businessId,
-      limit: args.limit,
-    });
+    const history = await ctx.db
+      .query("governanceRemediations")
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .order("desc")
+      .take(50);
+
+    return history;
   },
 });
 

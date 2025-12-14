@@ -47,7 +47,7 @@ export const createPayPalInvoice = action({
         throw new Error("Failed to authenticate with PayPal");
       }
 
-      const { access_token } = await authResponse.json();
+      const { access_token } = await authResponse.json() as { access_token: string };
 
       // Create PayPal invoice
       const invoiceUrl = environment === "production"
@@ -78,7 +78,7 @@ export const createPayPalInvoice = action({
             },
           },
         ],
-        items: invoice.items.map((item) => ({
+        items: invoice.items.map((item: any) => ({
           name: item.description,
           quantity: item.quantity.toString(),
           unit_amount: {
@@ -118,7 +118,7 @@ export const createPayPalInvoice = action({
         throw new Error(`PayPal invoice creation failed: ${error}`);
       }
 
-      const created = await createResponse.json();
+      const created = await createResponse.json() as { id: string; href: string };
 
       // Send the invoice
       const sendResponse = await fetch(
@@ -146,7 +146,7 @@ export const createPayPalInvoice = action({
         },
       });
 
-      const details = await detailsResponse.json();
+      const details = await detailsResponse.json() as { href: string };
 
       // Update invoice with PayPal link
       await ctx.runMutation(internal.invoices.updateInvoicePaymentLink, {

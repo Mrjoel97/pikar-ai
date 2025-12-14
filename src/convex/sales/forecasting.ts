@@ -9,7 +9,7 @@ export const getSalesForecast = query({
   },
   handler: async (ctx, args) => {
     const forecastMonths = args.months || 3;
-    const deals = await ctx.db
+    const pipeline = await ctx.db
       .query("crmDeals")
       .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
       .collect();
@@ -24,10 +24,14 @@ export const getSalesForecast = query({
       const monthEnd = monthStart + monthMs;
 
       // Deals expected to close in this month
-      const monthDeals = deals.filter(d => {
-        if (!d.closeDate) return false;
-        return d.closeDate >= monthStart && d.closeDate < monthEnd;
+      const monthDeals = pipeline.filter(d => {
+        if (!d.updatedAt) return false;
+        return d.updatedAt >= monthStart && d.updatedAt < monthEnd;
       });
+
+      const wonAmount = monthDeals
+        .filter(d => d.stage === "closed_won")
+        .reduce((sum, d) => sum + (d.value || 0), 0);
 
       const activeDeals = monthDeals.filter(d => 
         d.stage !== "Closed Won" && d.stage !== "Closed Lost"
@@ -54,12 +58,16 @@ export const getSalesForecast = query({
 
     // Historical performance (last 3 months)
     const threeMonthsAgo = now - (3 * monthMs);
-    const historicalDeals = deals.filter(d => 
-      d.stage === "Closed Won" && 
-      d.updatedAt >= threeMonthsAgo
+    const recentDeals = pipeline.filter(d => 
+      d.updatedAt && d.updatedAt >= threeMonthsAgo
     );
 
-    const historicalRevenue = historicalDeals.reduce((sum, d) => sum + (d.value || 0), 0);
+    // Calculate win rate
+    const wonDeals = recentDeals.filter(d => d.stage === "closed_won");
+    const totalDeals = recentDeals.length;
+    const winRate = totalDeals > 0 ? (wonDeals.length / totalDeals) * 100 : 0;
+
+    const historicalRevenue = wonDeals.reduce((sum, d) => sum + (d.value || 0), 0);
     const avgMonthlyRevenue = historicalRevenue / 3;
 
     return {
@@ -67,7 +75,8 @@ export const getSalesForecast = query({
       historical: {
         last3MonthsRevenue: historicalRevenue,
         avgMonthlyRevenue,
-        dealsWon: historicalDeals.length,
+        dealsWon: wonDeals.length,
+        winRate,
       },
       summary: {
         totalBestCase: forecast.reduce((sum, f) => sum + f.bestCase, 0),
@@ -92,10 +101,10 @@ export const getForecastAccuracy = query({
 
     // Deals that were forecasted to close last month
     const lastMonthDeals = deals.filter(d => 
-      d.closeDate && d.closeDate >= lastMonthStart && d.closeDate < now
+      (d.closeDate || d.updatedAt || 0) >= lastMonthStart && (d.closeDate || d.updatedAt || 0) < now
     );
 
-    const actualWon = lastMonthDeals.filter(d => d.stage === "Closed Won");
+    const actualWon = lastMonthDeals.filter(d => d.stage === "closed_won");
     const actualRevenue = actualWon.reduce((sum, d) => sum + (d.value || 0), 0);
     
     const forecastedRevenue = lastMonthDeals.reduce((sum, d) => 
@@ -131,7 +140,7 @@ export const getRevenueTrends = query({
     const deals = await ctx.db
       .query("crmDeals")
       .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
-      .filter((q) => q.eq(q.field("stage"), "Closed Won"))
+      .filter((q) => q.eq(q.field("stage"), "closed_won"))
       .collect();
 
     const now = Date.now();
@@ -143,7 +152,7 @@ export const getRevenueTrends = query({
       const monthEnd = now - (i * monthMs);
 
       const monthDeals = deals.filter(d => 
-        d.updatedAt >= monthStart && d.updatedAt < monthEnd
+        (d.updatedAt || 0) >= monthStart && (d.updatedAt || 0) < monthEnd
       );
 
       const revenue = monthDeals.reduce((sum, d) => sum + (d.value || 0), 0);

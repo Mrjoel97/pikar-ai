@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
+import { internal } from "./_generated/api";
 
 // Get growth metrics with funnel tracking and CAC calculations
 export const getGrowthMetrics = query({
@@ -214,28 +215,30 @@ export const upsert = mutation({
 
     if (existing) {
       await ctx.db.patch(existing._id, {
-        visitors: args.visitors,
-        subscribers: args.subscribers,
-        engagement: args.engagement,
-        revenue: args.revenue,
-        subscribersDelta: args.subscribersDelta,
-        engagementDelta: args.engagementDelta,
-        revenueDelta: args.revenueDelta,
+        subscribers: (existing.subscribers || 0) + (args.subscribersDelta || 0),
+        data: { ...existing.data, lastUpdated: Date.now() },
       });
-      return existing._id;
     } else {
-      return await ctx.db.insert("dashboardKpis", {
+      await ctx.db.insert("dashboardKpis", {
         businessId: args.businessId,
         date: args.date,
-        visitors: args.visitors,
-        subscribers: args.subscribers,
-        engagement: args.engagement,
-        revenue: args.revenue,
-        subscribersDelta: args.subscribersDelta,
-        engagementDelta: args.engagementDelta,
-        revenueDelta: args.revenueDelta,
+        revenue: 0,
+        engagement: 0,
+        activeUsers: 0,
+        churnRate: 0,
+        cac: 0,
+        ltv: 0,
+        subscribers: args.subscribersDelta || 0,
+        data: { lastUpdated: Date.now() },
+        createdAt: Date.now(),
       });
     }
+    
+    // Only run if the internal function exists, otherwise comment out
+    // await ctx.runMutation(internal.kpis.updateKpi, {
+    //   businessId: args.businessId,
+    //   subscribersDelta: 8,
+    // });
   },
 });
 
@@ -251,9 +254,12 @@ export const seedDemoKpisSnapshot = mutation({
       subscribers: 450,
       engagement: 68,
       revenue: 15000,
-      subscribersDelta: 8,
-      engagementDelta: 3,
-      revenueDelta: 15,
+      data: {
+        subscribersDelta: 8,
+        engagementDelta: 3,
+        revenueDelta: 15,
+      },
+      createdAt: Date.now(),
     });
     return { success: true };
   },

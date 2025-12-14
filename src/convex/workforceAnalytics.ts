@@ -177,7 +177,7 @@ export const getAttritionPredictions = query({
     }
 
     const business = await ctx.db.get(args.businessId);
-    const teamSize = business?.teamMembers?.length || 0;
+    const teamSize = (business as any)?.teamMembers?.length || 0; // Cast to any to access teamMembers if not in type
 
     // Simulate attrition predictions based on historical patterns
     const overallAttritionRate = 12.5; // 12.5% annual attrition
@@ -413,7 +413,7 @@ export const getCapacityPlanning = query({
     }
 
     const business = await ctx.db.get(args.businessId);
-    const currentHeadcount = business?.teamMembers?.length || 0;
+    const currentHeadcount = (business as any)?.teamMembers?.length || 0; // Cast to any to access teamMembers if not in type
 
     const projectedDemand = [
       { quarter: "Q1 2025", demand: currentHeadcount * 1.1, projects: 12, workload: 85 },
@@ -491,7 +491,7 @@ export const getPerformanceForecasting = query({
     }
 
     const business = await ctx.db.get(args.businessId);
-    const teamSize = business?.teamMembers?.length || 0; // Defined teamSize
+    const teamSize = (business as any)?.teamMembers?.length || 0; // Cast to any to access teamMembers if not in type
 
     const departmentForecasts = [
       {
@@ -787,7 +787,7 @@ export const getTeamVelocity = query({
       
     // Filter for this business if possible, or use business.teamMembers
     const business = await ctx.db.get(args.businessId as any);
-    const teamSize = business?.teamMembers?.length || 1;
+    const teamSize = (business as any)?.teamMembers?.length || 1; // Cast to any to access teamMembers if not in type
 
     const velocity = completedTasks.length / teamSize;
 

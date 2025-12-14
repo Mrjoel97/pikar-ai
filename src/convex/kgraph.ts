@@ -5,7 +5,7 @@ import { internal } from "./_generated/api";
 
 // Admin-gated mutation to ingest nodes/edges from a dataset
 export const adminIngestFromDataset = mutation({
-  args: { datasetId: v.id("agentDatasets") },
+  args: { datasetId: v.id("agentDatasets"), businessId: v.id("businesses") },
   handler: async (ctx, args) => {
     // RBAC check
     const isAdmin = await ctx.runQuery(api.admin.getIsAdmin, {});
@@ -26,10 +26,10 @@ export const adminIngestFromDataset = mutation({
       businessId,
       type: "dataset",
       key: dataset._id, // Use ID
-      attrs: {
+      data: {
         type: "dataset",
+        summary: `Dataset: ${dataset._id}`,
       },
-      summary: `Dataset: ${dataset._id}`,
       createdAt: Date.now(),
     });
 
@@ -59,8 +59,9 @@ export const adminIngestFromDataset = mutation({
           businessId,
           type: "token",
           key: token,
-          // attrs: { frequency: 1 }, // Commented out
-          summary: `Token: ${token}`,
+          data: {
+             summary: `Token: ${token}`,
+          },
           createdAt: Date.now(),
         });
       }

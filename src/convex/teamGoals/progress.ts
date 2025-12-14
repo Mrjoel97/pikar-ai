@@ -149,11 +149,11 @@ export const getBusinessProgressTrends = query({
     const startDate = now - timeframeMs;
 
     const objectives = await ctx.db
-      .query("objectives")
+      .query("okrObjectives")
       .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
       .collect();
 
-    const activeObjectives = objectives.filter((obj) => obj.status === "active");
+    const activeObjectives = objectives.filter((obj) => obj.status === "on_track" || obj.status === "at_risk");
 
     // Get all key results for active objectives
     const allKeyResults = await Promise.all(

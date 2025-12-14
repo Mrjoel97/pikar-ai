@@ -106,7 +106,7 @@ export const globalSearch = query({
         const campaigns = await ctx.db
           .query("emailCampaigns")
           // Fix: use valid index name
-          .withIndex("by_business_and_status", (q) => q.eq("businessId", bizId))
+          .withIndex("by_business", (q) => q.eq("businessId", bizId))
           .collect();
 
         campaigns
@@ -192,6 +192,7 @@ export const saveSearch = mutation({
     query: v.string(),
     entityTypes: v.optional(v.array(v.string())),
     filters: v.optional(v.any()),
+    businessId: v.id("businesses"),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -205,9 +206,10 @@ export const saveSearch = mutation({
 
     return await ctx.db.insert("savedSearches", {
       userId: user._id,
+      businessId: args.businessId,
       name: args.name,
       query: args.query,
-      entityTypes: args.entityTypes,
+      // entityTypes: args.entityTypes, // Removed as it's not in schema
       filters: args.filters,
       createdAt: Date.now(),
     });
@@ -264,6 +266,7 @@ export const trackSearch = mutation({
     query: v.string(),
     entityTypes: v.optional(v.array(v.string())),
     resultCount: v.number(),
+    businessId: v.id("businesses"),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -277,10 +280,11 @@ export const trackSearch = mutation({
 
     return await ctx.db.insert("searchHistory", {
       userId: user._id,
+      businessId: args.businessId,
       query: args.query,
-      entityTypes: args.entityTypes,
-      resultCount: args.resultCount,
-      searchedAt: Date.now(),
+      // entityTypes: args.entityTypes, // Removed as it's not in schema
+      // resultCount: args.resultCount,
+      timestamp: Date.now(),
     });
   },
 });

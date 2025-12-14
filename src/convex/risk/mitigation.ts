@@ -5,7 +5,6 @@ export const createMitigationStrategy = mutation({
   args: {
     businessId: v.id("businesses"),
     scenarioId: v.optional(v.id("riskScenarios")),
-    riskId: v.optional(v.id("risks")),
     title: v.string(),
     description: v.string(),
     strategy: v.union(
@@ -29,16 +28,17 @@ export const createMitigationStrategy = mutation({
     const mitigationId = await ctx.db.insert("riskMitigations", {
       businessId: args.businessId,
       scenarioId: args.scenarioId,
-      riskId: args.riskId,
       title: args.title,
       description: args.description,
       strategy: args.strategy,
       status: "planned",
       priority: args.priority,
       ownerId: args.ownerId,
-      dueDate: args.targetDate,
+      targetDate: args.targetDate,
       estimatedCost: args.estimatedCost,
-      actualCost: 0,
+      expectedReduction: args.expectedImpactReduction,
+      actualReduction: 0,
+      progress: 0,
       effectiveness: 0,
       createdAt: Date.now(),
       updatedAt: Date.now(),
@@ -106,11 +106,12 @@ export const getMitigationEffectiveness = query({
       totalMitigations: mitigations.length,
       averageEffectiveness: Math.round(avgEffectiveness),
       byStrategy: mitigations.reduce((acc: any, m) => {
-        if (!acc[m.strategy]) {
-          acc[m.strategy] = { effectiveness: 0, count: 0 };
+        const strategy = m.strategy || "unknown";
+        if (!acc[strategy]) {
+          acc[strategy] = { effectiveness: 0, count: 0 };
         }
-        acc[m.strategy].effectiveness += (m.effectiveness || 0);
-        acc[m.strategy].count += 1;
+        acc[strategy].effectiveness += (m.effectiveness || 0);
+        acc[strategy].count += 1;
         return acc;
       }, {}),
     };

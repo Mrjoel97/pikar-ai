@@ -152,9 +152,7 @@ export const scheduleKeyRotation = mutation({
     const rotationId = await ctx.db.insert("kmsKeyRotations", {
       businessId: args.businessId,
       configId: args.configId,
-      oldKeyId: config.keyId,
-      newKeyId: config.keyId, // Will be updated on rotation
-      rotatedAt: Date.now(),
+      scheduledAt: Date.now(),
       status: "scheduled",
       nextRotationDate: nextRotation,
       autoRotate: args.autoRotate,
@@ -206,13 +204,14 @@ export const createEncryptionPolicy = mutation({
       name: args.name,
       description: args.description,
       algorithm: "AES-256",
-      keySize: 256,
-      rotationPeriod: 90,
       isActive: true,
-      targetTables: args.targetTables,
       encryptionLevel: args.encryptionLevel,
       mandatory: args.mandatory,
       createdAt: Date.now(),
+      updatedAt: Date.now(),
+      createdBy: identity.subject as any,
+      keyRotationDays: 90,
+      scope: ["all"],
     });
 
     await ctx.runMutation(api.audit.write, {

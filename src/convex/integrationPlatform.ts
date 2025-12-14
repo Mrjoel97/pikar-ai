@@ -25,6 +25,7 @@ export const createIntegrationTemplate = mutation({
     name: v.string(),
     description: v.string(),
     category: v.string(),
+    provider: v.string(),
     config: v.any(),
     requiredFields: v.array(v.string()),
     documentation: v.string(),
@@ -35,7 +36,6 @@ export const createIntegrationTemplate = mutation({
       ...args,
       createdAt: Date.now(),
       usageCount: 0,
-      rating: 0,
     });
   },
 });
@@ -128,6 +128,7 @@ export const listCustomIntegrations = query({
 // Integration Testing
 export const createIntegrationTest = mutation({
   args: {
+    businessId: v.id("businesses"),
     integrationId: v.id("customIntegrations"),
     testName: v.string(),
     testType: v.union(
@@ -145,6 +146,7 @@ export const createIntegrationTest = mutation({
       name: args.testName,
       businessId: args.businessId,
       config: args.testConfig,
+      status: "pending",
     });
   },
 });
@@ -172,9 +174,9 @@ export const runIntegrationTest = mutation({
       testId: args.testId,
       integrationId: test.integrationId,
       status: success ? "passed" : "failed",
-      executionTime,
-      result: success ? { success: true } : { error: "Test failed" },
-      timestamp: Date.now(),
+      output: success ? { success: true } : { error: "Test failed" },
+      duration: executionTime,
+      createdAt: Date.now(),
     });
 
     // Update test status
@@ -293,28 +295,34 @@ export const getIntegrationHealth = query({
 export const publishToMarketplace = mutation({
   args: {
     integrationId: v.id("customIntegrations"),
-    publisherId: v.id("users"),
-    price: v.number(),
+    name: v.string(),
+    description: v.string(),
     category: v.string(),
+    provider: v.string(),
+    price: v.number(),
     tags: v.array(v.string()),
+    isPublished: v.boolean(),
   },
   handler: async (ctx, args) => {
     const integration = await ctx.db.get(args.integrationId);
     if (!integration) throw new Error("Integration not found");
 
-    return await ctx.db.insert("integrationMarketplace", {
+    const id = await ctx.db.insert("integrationMarketplace", {
       integrationId: args.integrationId,
-      publisherId: args.publisherId,
-      name: integration.name,
-      description: integration.description || "",
-      price: args.price,
+      name: args.name,
+      description: args.description,
       category: args.category,
-      tags: args.tags,
-      rating: 0,
+      provider: args.provider,
+      // publisherId: args.publisherId, // Removed as it's not in schema
+      price: args.price,
       downloads: 0,
-      isPublished: true,
-      publishedAt: Date.now(),
+      rating: 0,
+      createdAt: Date.now(),
+      isPublished: args.isPublished,
+      tags: args.tags,
     });
+
+    return id;
   },
 });
 
@@ -358,8 +366,11 @@ export const installMarketplaceIntegration = mutation({
     if (!integration) throw new Error("Integration not found");
 
     // Create a copy for the business
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { _id, _creationTime, ...integrationData } = integration;
+    
     const installedId = await ctx.db.insert("customIntegrations", {
-      ...integration,
+      ...integrationData,
       businessId: args.businessId,
       status: "active",
       installedFrom: args.listingId,
