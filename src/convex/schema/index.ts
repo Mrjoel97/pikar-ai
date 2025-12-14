@@ -11,6 +11,12 @@ import { contentSchema } from "./content";
 import { whiteLabelSchema } from "./whiteLabel";
 import { securitySchema } from "./security";
 import { enterpriseSchema } from "./enterprise";
+import { integrationsSchema } from "./integrations";
+import { docsSchema } from "./docs";
+import { testingSchema } from "./testing";
+import { onboardingSchema } from "./onboarding";
+import { vectorsSchema } from "./vectors";
+import { activitySchema } from "./activity";
 
 const { users: _authUsers, ...authWithoutUsers } = authTables;
 
@@ -27,5 +33,10 @@ export default defineSchema({
   ...whiteLabelSchema,
   ...securitySchema,
   ...enterpriseSchema,
-  // Note: Additional tables (CRM, social, governance, analytics, etc.) can be added as needed
+  ...integrationsSchema,
+  ...docsSchema,
+  ...testingSchema,
+  ...onboardingSchema,
+  ...vectorsSchema,
+  ...activitySchema,
 });

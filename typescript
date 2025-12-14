@@ -1,10 +1,10 @@
-await ctx.db.patch(profile._id, {
-  metadata: {
-    ...profile.metadata,
-    cadence: args.cadence,
-    persona: args.persona,
-    tone: args.tone,
-  }
-}).withIndex("by_user_and_business", (q) => 
-  q.eq("userId", args.userId).eq("businessId", args.businessId)
-);
+<FILE_CONTENT_FOR_PATH_"src/convex/schema/security.ts">
+import { defineTable, defineIndex } from "convex/server";
+import { securitySchema } from "./security";
+
+export const securitySchema = {
+  kmsConfigs: defineTable({
+    // ...
+  }),
+  // ... other tables
+};

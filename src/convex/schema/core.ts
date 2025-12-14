@@ -347,6 +347,8 @@ export const coreSchema = {
     username: v.optional(v.string()),
     profileUrl: v.optional(v.string()),
     lastSyncAt: v.optional(v.number()),
+    lastUsedAt: v.optional(v.number()),
+    connectedAt: v.optional(v.number()),
   })
     .index("by_business", ["businessId"])
     .index("by_business_and_platform", ["businessId", "platform"]),
@@ -360,11 +362,15 @@ export const coreSchema = {
       v.literal("lead"),
       v.literal("active"),
       v.literal("customer"),
-      v.literal("churned")
+      v.literal("churned"),
+      v.literal("subscribed"),
+      v.literal("bounced"),
+      v.literal("unsubscribed")
     )),
     source: v.optional(v.string()),
     tags: v.optional(v.array(v.string())),
     customFields: v.optional(v.any()),
+    lastEngagedAt: v.optional(v.number()),
     createdAt: v.number(),
     updatedAt: v.optional(v.number()),
   })
@@ -544,10 +550,49 @@ export const coreSchema = {
     role: v.union(
       v.literal("admin"),
       v.literal("super_admin"),
-      v.literal("pending_senior")
+      v.literal("pending_senior"),
+      v.literal("senior")
     ),
     createdAt: v.number(),
   }).index("by_email", ["email"]),
+
+  adminAuths: defineTable({
+    email: v.string(),
+    passwordHash: v.string(),
+    salt: v.optional(v.string()),
+    role: v.string(),
+    isVerified: v.boolean(),
+    verificationToken: v.optional(v.string()),
+    resetToken: v.optional(v.string()),
+    resetTokenExpires: v.optional(v.number()),
+    lastLoginAt: v.optional(v.number()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_email", ["email"]),
+
+  adminSessions: defineTable({
+    adminId: v.id("adminAuths"),
+    token: v.string(),
+    expiresAt: v.number(),
+    ipAddress: v.optional(v.string()),
+    userAgent: v.optional(v.string()),
+    createdAt: v.number(),
+  })
+    .index("by_token", ["token"])
+    .index("by_admin", ["adminId"]),
+
+  emailConfigs: defineTable({
+    businessId: v.id("businesses"),
+    provider: v.union(v.literal("resend"), v.literal("sendgrid"), v.literal("smtp"), v.literal("aws_ses")),
+    apiKey: v.optional(v.string()),
+    fromEmail: v.string(),
+    fromName: v.string(),
+    replyTo: v.optional(v.string()),
+    domain: v.optional(v.string()),
+    isVerified: v.boolean(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_business", ["businessId"]),
 
   locations: defineTable({
     businessId: v.id("businesses"),
@@ -639,11 +684,17 @@ export const coreSchema = {
       v.literal("draft"),
       v.literal("scheduled"),
       v.literal("published"),
-      v.literal("failed")
+      v.literal("failed"),
+      v.literal("posted")
     ),
     scheduledFor: v.optional(v.number()),
+    scheduledAt: v.optional(v.number()),
     publishedAt: v.optional(v.number()),
     externalId: v.optional(v.string()),
+    likes: v.optional(v.number()),
+    comments: v.optional(v.number()),
+    shares: v.optional(v.number()),
+    reach: v.optional(v.number()),
     createdBy: v.id("users"),
     createdAt: v.number(),
   })
@@ -679,12 +730,17 @@ export const coreSchema = {
     userId: v.id("users"),
     storageId: v.string(),
     transcription: v.optional(v.string()),
+    summary: v.optional(v.string()),
+    title: v.optional(v.string()),
     duration: v.optional(v.number()),
     status: v.union(
       v.literal("processing"),
       v.literal("completed"),
-      v.literal("failed")
+      v.literal("failed"),
+      v.literal("transcribed")
     ),
+    tags: v.optional(v.array(v.string())),
+    initiativeId: v.optional(v.id("initiatives")),
     metadata: v.optional(v.any()),
     createdAt: v.number(),
   })

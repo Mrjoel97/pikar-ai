@@ -133,4 +133,42 @@ export const kpiSchema = {
   })
     .index("by_business", ["businessId"])
     .index("by_resource", ["resourceId"]),
+
+  customMetrics: defineTable({
+    businessId: v.id("businesses"),
+    name: v.string(),
+    description: v.optional(v.string()),
+    category: v.optional(v.string()),
+    unit: v.string(),
+    frequency: v.string(),
+    target: v.optional(v.number()),
+    ownerId: v.optional(v.id("users")),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_business", ["businessId"]),
+
+  metricHistory: defineTable({
+    metricId: v.id("customMetrics"),
+    businessId: v.id("businesses"),
+    value: v.number(),
+    timestamp: v.number(),
+    metadata: v.optional(v.any()),
+  })
+    .index("by_metric", ["metricId"])
+    .index("by_business", ["businessId"])
+    .index("by_metric_and_time", ["metricId", "timestamp"]),
+
+  dashboardKpis: defineTable({
+    businessId: v.id("businesses"),
+    date: v.string(), // YYYY-MM-DD
+    revenue: v.optional(v.number()),
+    activeUsers: v.optional(v.number()),
+    churnRate: v.optional(v.number()),
+    cac: v.optional(v.number()),
+    ltv: v.optional(v.number()),
+    data: v.any(), // Flexible storage for other KPIs
+    createdAt: v.number(),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_business_and_date", ["businessId", "date"]),
 };

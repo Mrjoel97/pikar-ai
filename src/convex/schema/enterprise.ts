@@ -390,15 +390,33 @@ export const enterpriseSchema = {
     name: v.string(),
     category: v.string(),
     contactEmail: v.optional(v.string()),
+    contactName: v.optional(v.string()),
     contactPhone: v.optional(v.string()),
     status: v.union(v.literal("active"), v.literal("inactive"), v.literal("pending")),
     performanceScore: v.optional(v.number()),
+    riskLevel: v.optional(v.string()),
     contractStartDate: v.optional(v.number()),
     contractEndDate: v.optional(v.number()),
+    contractValue: v.optional(v.number()),
+    lastReviewDate: v.optional(v.number()),
     metadata: v.optional(v.any()),
     createdAt: v.number(),
     updatedAt: v.number(),
   }).index("by_business", ["businessId"]),
+
+  vendorPerformanceMetrics: defineTable({
+    vendorId: v.id("vendors"),
+    businessId: v.id("businesses"),
+    overallScore: v.number(),
+    onTimeDelivery: v.number(),
+    qualityScore: v.number(),
+    responsiveness: v.number(),
+    costEfficiency: v.number(),
+    recordedAt: v.number(),
+    metadata: v.optional(v.any()),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_vendor", ["vendorId"]),
 
   threatDetectionAlerts: defineTable({
     businessId: v.id("businesses"),

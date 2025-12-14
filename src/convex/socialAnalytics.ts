@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 import { query, action, mutation } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
-import { internalQuery, internalMutation, internal } from "./_generated/server";
+import { internalQuery, internalMutation } from "./_generated/server";
 import { internal } from "./_generated/api";
 
 /**

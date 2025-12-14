@@ -8,6 +8,7 @@ export const agentsSchema = {
     type: v.string(),
     description: v.optional(v.string()),
     status: v.union(v.literal("active"), v.literal("inactive"), v.literal("training")),
+    isActive: v.optional(v.boolean()),
     config: v.optional(v.any()),
     createdBy: v.id("users"),
     createdAt: v.number(),
@@ -90,4 +91,20 @@ export const agentsSchema = {
     .index("by_agent", ["agentId"])
     .index("by_business", ["businessId"])
     .index("by_timestamp", ["timestamp"]),
+
+  agentCatalog: defineTable({
+    name: v.string(),
+    description: v.string(),
+    category: v.string(),
+    capabilities: v.array(v.string()),
+    version: v.string(),
+    isPublic: v.boolean(),
+    price: v.optional(v.number()),
+    authorId: v.optional(v.id("users")),
+    metadata: v.optional(v.any()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_category", ["category"])
+    .index("by_public", ["isPublic"]),
 };

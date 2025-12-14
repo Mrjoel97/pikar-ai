@@ -237,6 +237,11 @@ export const workflowsSchema = {
     approvers: v.array(v.id("users")),
     approvedBy: v.optional(v.array(v.id("users"))),
     comments: v.optional(v.string()),
+    slaDeadline: v.optional(v.number()),
+    assigneeId: v.optional(v.id("users")),
+    reviewedAt: v.optional(v.number()),
+    stepIndex: v.optional(v.number()),
+    priority: v.optional(v.string()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })

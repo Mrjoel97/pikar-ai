@@ -72,28 +72,65 @@ export const securitySchema = {
     createdAt: v.number(),
   }).index("by_business", ["businessId"]),
 
+  kmsConfigs: defineTable({
+    businessId: v.id("businesses"),
+    keyId: v.string(),
+    provider: v.union(v.literal("aws"), v.literal("gcp"), v.literal("azure"), v.literal("internal")),
+    region: v.optional(v.string()),
+    description: v.optional(v.string()),
+    status: v.union(v.literal("active"), v.literal("rotating"), v.literal("disabled")),
+    isActive: v.boolean(),
+    keyRotationDays: v.number(),
+    lastRotatedAt: v.optional(v.number()),
+    nextRotationAt: v.optional(v.number()),
+    scope: v.array(v.string()),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    metadata: v.optional(v.any()),
+  }).index("by_business", ["businessId"]),
+
+  kmsKeyRotations: defineTable({
+    businessId: v.id("businesses"),
+    configId: v.id("kmsConfigs"),
+    status: v.union(v.literal("scheduled"), v.literal("in_progress"), v.literal("completed"), v.literal("failed")),
+    scheduledAt: v.number(),
+    startedAt: v.optional(v.number()),
+    completedAt: v.optional(v.number()),
+    nextRotationDate: v.optional(v.number()),
+    autoRotate: v.boolean(),
+    logs: v.optional(v.array(v.string())),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_config", ["configId"]),
+
+  kmsUsageLogs: defineTable({
+    businessId: v.id("businesses"),
+    configId: v.id("kmsConfigs"),
+    operation: v.string(), // "encrypt", "decrypt"
+    keyId: v.string(),
+    userId: v.optional(v.id("users")),
+    success: v.boolean(),
+    error: v.optional(v.string()),
+    dataType: v.optional(v.string()),
+    dataSize: v.optional(v.number()),
+    timestamp: v.number(),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_config", ["configId"])
+    .index("by_timestamp", ["timestamp"]),
+
   kmsEncryptionPolicies: defineTable({
     businessId: v.id("businesses"),
     name: v.string(),
     description: v.optional(v.string()),
+    scope: v.array(v.string()), // e.g., ["pii", "financial"]
     algorithm: v.string(),
     keyRotationDays: v.number(),
-    scope: v.array(v.string()),
+    encryptionLevel: v.string(), // "standard", "high", "critical"
+    mandatory: v.boolean(),
     isActive: v.boolean(),
     createdBy: v.id("users"),
-    createdAt: v.number(),
-    updatedAt: v.number(),
-  }).index("by_business", ["businessId"]),
-
-  kmsConfigs: defineTable({
-    businessId: v.id("businesses"),
-    provider: v.union(v.literal("aws"), v.literal("azure"), v.literal("gcp"), v.literal("internal")),
-    keyId: v.string(),
-    region: v.optional(v.string()),
-    status: v.union(v.literal("active"), v.literal("rotating"), v.literal("disabled")),
-    lastRotatedAt: v.optional(v.number()),
-    nextRotationAt: v.optional(v.number()),
-    metadata: v.optional(v.any()),
     createdAt: v.number(),
     updatedAt: v.number(),
   }).index("by_business", ["businessId"]),

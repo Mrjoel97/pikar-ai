@@ -29,7 +29,7 @@ export const getIsAdmin = query({
       .unique();
 
     const role = admin?.role;
-    return role === "superadmin" || role === "senior" || role === "admin";
+    return role === "super_admin" || role === "pending_senior" || role === "admin" || role === "senior";
   },
 });
 
@@ -62,7 +62,7 @@ export const ensureAdminSelf = mutation({
 
     return await ctx.db.insert("admins", {
       email,
-      role: "superadmin",
+      role: "super_admin",
       createdAt: Date.now(),
     });
   },
@@ -95,7 +95,7 @@ export const listAdmins = query({
         .withIndex("by_email", (q) => q.eq("email", email))
         .unique();
       const role = admin?.role;
-      isAdmin = role === "superadmin" || role === "senior" || role === "admin";
+      isAdmin = role === "super_admin" || role === "pending_senior" || role === "admin" || role === "senior";
     }
 
     // Not an admin? Return an empty list (guest-safe)
@@ -123,7 +123,7 @@ async function isSuperAdmin(ctx: any): Promise<boolean> {
     .query("admins")
     .withIndex("by_email", (q: any) => q.eq("email", email))
     .unique();
-  return admin?.role === "superadmin";
+  return admin?.role === "super_admin";
 }
 
 // Add helper to check platform admin (allowlist or admins table, excluding 'pending_senior')
@@ -143,7 +143,7 @@ async function isPlatformAdmin(ctx: any): Promise<boolean> {
     .withIndex("by_email", (q: any) => q.eq("email", email))
     .unique();
   const role = admin?.role;
-  return role === "superadmin" || role === "senior" || role === "admin";
+  return role === "super_admin" || role === "senior" || role === "admin";
 }
 
 // Request Senior Admin: create a pending request
@@ -329,7 +329,7 @@ export const listTenantUsers = query({
     const role = adminRecord?.role;
     const hasAdminAccess =
       isAllowlisted ||
-      role === "superadmin" ||
+      role === "super_admin" ||
       role === "senior" ||
       role === "admin";
 
@@ -520,14 +520,21 @@ export const validateAdminSession = query({
     if (!session || session.expiresAt < Date.now()) {
       return { valid: false };
     }
+    
+    // Fix: session does not have email, fetch from adminAuths
+    const adminAuth = await ctx.db.get(session.adminId);
+    if (!adminAuth) {
+        return { valid: false };
+    }
+
     const admin = await ctx.db
       .query("admins")
-      .withIndex("by_email", (q: any) => q.eq("email", session.email))
+      .withIndex("by_email", (q: any) => q.eq("email", adminAuth.email))
       .unique();
     const role = admin?.role || "admin";
     return {
       valid: true,
-      email: session.email,
+      email: adminAuth.email,
       role,
     };
   },
