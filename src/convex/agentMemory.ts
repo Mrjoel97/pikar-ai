@@ -15,14 +15,16 @@ export const storeMemory = mutation({
     ),
     content: v.string(),
     metadata: v.optional(v.any()),
-    importance: v.number(), // 0-1 scale
+    importance: v.number(),
   },
   handler: async (ctx, args) => {
+    const now = Date.now();
     return await ctx.db.insert("agentMemories", {
       ...args,
-      createdAt: Date.now(),
+      timestamp: now,
+      createdAt: now,
       accessCount: 0,
-      lastAccessed: Date.now(),
+      lastAccessed: now,
     });
   },
 });
@@ -88,10 +90,12 @@ export const createCollaboration = mutation({
     coordinatorAgentId: v.id("aiAgents"),
   },
   handler: async (ctx, args) => {
+    const now = Date.now();
     return await ctx.db.insert("agentCollaborations", {
       ...args,
       status: "active",
-      startedAt: Date.now(),
+      createdAt: now,
+      startedAt: now,
       messages: [],
       sharedContext: {},
     });
@@ -157,6 +161,7 @@ export const recordLearningEvent = mutation({
   handler: async (ctx, args) => {
     return await ctx.db.insert("agentLearningEvents", {
       ...args,
+      data: {},
       timestamp: Date.now(),
       applied: false,
     });

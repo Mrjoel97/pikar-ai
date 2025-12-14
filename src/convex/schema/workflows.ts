@@ -222,4 +222,24 @@ export const workflowsSchema = {
   })
     .index("by_business", ["businessId"])
     .index("by_status", ["status"]),
+
+  approvalQueue: defineTable({
+    businessId: v.id("businesses"),
+    workflowId: v.optional(v.id("workflows")),
+    entityType: v.string(),
+    entityId: v.string(),
+    requestedBy: v.id("users"),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("approved"),
+      v.literal("rejected")
+    ),
+    approvers: v.array(v.id("users")),
+    approvedBy: v.optional(v.array(v.id("users"))),
+    comments: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_status", ["status"]),
 };
