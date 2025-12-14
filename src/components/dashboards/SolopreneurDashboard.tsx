@@ -1174,15 +1174,15 @@ function SolopreneurDashboard({ business: businessProp }: { business?: any }) {
   const seedTemplates = useMutation(api.solopreneur.seedOneClickTemplates);
 
   // Add: Top-level initiative + brain dump data for Today's Focus suggestions
-  const initiativesTop =
+  const initiatives =
     !isGuest && business?._id
       ? (useQuery as any)(api.initiatives.getByBusiness, {
           businessId: business?._id,
         })
       : undefined;
   const currentInitiative =
-    Array.isArray(initiativesTop) && initiativesTop.length > 0
-      ? initiativesTop[0]
+    Array.isArray(initiatives) && initiatives.length > 0
+      ? initiatives[0]
       : undefined;
   const brainDumps = currentInitiative?._id
     ? (useQuery as any)(api.initiatives.listBrainDumpsByInitiative, {
