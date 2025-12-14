@@ -1,2 +1,1 @@
-cat src/convex/helpCoach/assistant.ts
-# No command needed, using readFilesToContextTool
+cat src/convex/schema/index.ts src/convex/schema/contacts.ts src/convex/schema/email.ts src/convex/schema/testing.ts

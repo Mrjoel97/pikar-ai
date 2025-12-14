@@ -3,7 +3,7 @@ import { useAction, useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
-import { Calendar, CheckCircle, Loader2 } from "lucide-react";
+import { Calendar, CheckCircle, Loader2, Mail } from "lucide-react";
 import { toast } from "sonner";
 
 interface CalendarIntegrationButtonProps {
@@ -21,12 +21,12 @@ export function CalendarIntegrationButton({ businessId }: CalendarIntegrationBut
   const connectCalendar = useMutation(api.calendar.calendarIntegrations.connectGoogleCalendar);
   const exchangeCode = useAction(api.calendar.googleCalendar.exchangeGoogleCalendarCode);
 
-  const isConnected = integrations?.some(int => int.provider === "google");
+  const isConnected = integrations?.some((int: any) => int.provider === "google");
 
-  const handleConnect = async () => {
+  const handleConnect = async (provider: string) => {
     setIsConnecting(true);
     try {
-      const callbackUrl = `${window.location.origin}/auth/callback/google-calendar`;
+      const callbackUrl = `${window.location.origin}/auth/callback/${provider}-calendar`;
       const result = await initiateOAuth({ businessId, callbackUrl });
 
       const width = 600;
@@ -41,7 +41,7 @@ export function CalendarIntegrationButton({ businessId }: CalendarIntegrationBut
       );
 
       const handleMessage = async (event: MessageEvent) => {
-        if (event.data.type === "oauth_success" && event.data.provider === "google-calendar") {
+        if (event.data.type === "oauth_success" && event.data.provider === `${provider}-calendar`) {
           const tokenResult = await exchangeCode({
             code: event.data.code,
             businessId,
@@ -55,9 +55,9 @@ export function CalendarIntegrationButton({ businessId }: CalendarIntegrationBut
               refreshToken: tokenResult.refreshToken,
               expiresAt: tokenResult.expiresAt!,
             });
-            toast.success("Google Calendar connected successfully!");
+            toast.success(`${provider === 'google' ? 'Google' : 'Outlook'} Calendar connected successfully!`);
           } else {
-            toast.error("Failed to connect Google Calendar");
+            toast.error(`Failed to connect ${provider === 'google' ? 'Google' : 'Outlook'} Calendar`);
           }
           window.removeEventListener("message", handleMessage);
         }
@@ -73,7 +73,7 @@ export function CalendarIntegrationButton({ businessId }: CalendarIntegrationBut
         }
       }, 1000);
     } catch (error) {
-      toast.error("Failed to initiate Google Calendar connection");
+      toast.error(`Failed to initiate ${provider === 'google' ? 'Google' : 'Outlook'} Calendar connection`);
       console.error(error);
     } finally {
       setIsConnecting(false);
@@ -88,10 +88,10 @@ export function CalendarIntegrationButton({ businessId }: CalendarIntegrationBut
             key={int._id}
             variant={int.isActive ? "default" : "outline"}
             onClick={() => handleConnect(int.provider)}
-            disabled={isLoading}
+            disabled={isConnecting}
           >
-            {int.provider === "google" && <Icons.google className="mr-2 h-4 w-4" />}
-            {int.provider === "outlook" && <Icons.microsoft className="mr-2 h-4 w-4" />}
+            {int.provider === "google" && <Calendar className="mr-2 h-4 w-4" />}
+            {int.provider === "outlook" && <Mail className="mr-2 h-4 w-4" />}
             {int.provider.charAt(0).toUpperCase() + int.provider.slice(1)}
           </Button>
         ))}

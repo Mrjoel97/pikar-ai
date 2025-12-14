@@ -1,5 +1,3 @@
 {
-  "file_paths": [
-    "src/components/dashboards/solopreneur/BrainDumpSection.tsx"
-  ]
+  "plan": "1. Analyze schema files to identify correct index names and fields.\n2. Fix `src/convex/contacts.ts` (index names, missing fields).\n3. Fix `src/convex/campaigns/mutations.ts` (remove invalid fields).\n4. Fix `src/convex/analytics/predictiveROI.ts` (simplify types).\n5. Run type checker."
 }

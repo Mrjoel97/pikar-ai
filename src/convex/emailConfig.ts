@@ -120,6 +120,7 @@ export const saveForBusiness = mutation({
         businessId: args.businessId,
         ...patch,
         createdAt: Date.now(),
+        updatedAt: Date.now(),
         provider: "resend",
         fromName: "Default",
         fromEmail: "default@example.com",
