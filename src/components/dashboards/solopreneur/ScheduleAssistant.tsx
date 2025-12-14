@@ -13,7 +13,7 @@ interface ScheduleAssistantWidgetProps {
   businessId: Id<"businesses">;
 }
 
-export function ScheduleAssistantWidget({ businessId }: ScheduleAssistantWidgetProps) {
+export function ScheduleAssistant({ businessId }: ScheduleAssistantWidgetProps) {
   const [showAssistant, setShowAssistant] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false);
 
