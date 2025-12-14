@@ -205,6 +205,139 @@ const tagIdea = (text: string) => {
   return tags;
 };
 
+// ADDED: Move myTemplates outside
+const myTemplates: Array<{
+  key: string;
+  name: string;
+  description: string;
+  tag: string;
+}> = [
+  {
+    name: "Solopreneur — Launch Post",
+    description: "Announce a new offering with a friendly, concise tone.",
+    tag: "social",
+    key: "solopreneur_launch_post",
+  },
+  {
+    name: "Solopreneur — Weekly Newsletter",
+    description: "Lightweight weekly update to nurture your audience.",
+    tag: "email",
+    key: "solopreneur_weekly_newsletter",
+  },
+  {
+    name: "Solopreneur — Product Highlight",
+    description: "Quick product spotlight with clear CTA.",
+    tag: "cta",
+    key: "solopreneur_product_highlight",
+  },
+];
+
+// ADDED: Move hook outside
+function useTemplateOrderingAndStreak() {
+  const [streak, setStreak] = React.useState<number>(0);
+  const [timeSavedTotal, setTimeSavedTotal] = React.useState<number>(0);
+  // New: local wins history
+  const [history, setHistory] = React.useState<
+    Array<{
+      at: string;
+      type: string;
+      minutes: number;
+      meta?: Record<string, any>;
+    }>
+  >([]);
+
+  React.useEffect(() => {
+    const rawDates = localStorage.getItem("pikar.winDates");
+    const dates: string[] = rawDates ? JSON.parse(rawDates) : [];
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    let s = 0;
+    for (;;) {
+      const d = new Date(today);
+      d.setDate(today.getDate() - s);
+      const key = d.toISOString().slice(0, 10);
+      if (dates.includes(key)) s += 1;
+      else break;
+    }
+    setStreak(s);
+
+    const ts = Number(localStorage.getItem("pikar.timeSavedTotal") || "0");
+    setTimeSavedTotal(ts);
+
+    const rawHist = localStorage.getItem("pikar.winHistory");
+    const hist: Array<{
+      at: string;
+      type: string;
+      minutes: number;
+      meta?: Record<string, any>;
+    }> = rawHist ? JSON.parse(rawHist) : [];
+    setHistory(hist);
+  }, []);
+
+  const recordLocalWin = (
+    minutes: number,
+    type: string = "generic",
+    meta?: Record<string, any>,
+  ) => {
+    const nowIso = new Date().toISOString();
+    const todayKey = nowIso.slice(0, 10);
+    const rawDates = localStorage.getItem("pikar.winDates");
+    const dates: string[] = rawDates ? JSON.parse(rawDates) : [];
+    if (!dates.includes(todayKey)) dates.push(todayKey);
+    localStorage.setItem("pikar.winDates", JSON.stringify(dates));
+    const ts =
+      Number(localStorage.getItem("pikar.timeSavedTotal") || "0") + minutes;
+    localStorage.setItem("pikar.timeSavedTotal", String(ts));
+    setTimeSavedTotal(ts);
+
+    const rawHist = localStorage.getItem("pikar.winHistory");
+    const hist: Array<{
+      at: string;
+      type: string;
+      minutes: number;
+      meta?: Record<string, any>;
+    }> = rawHist ? JSON.parse(rawHist) : [];
+    hist.unshift({ at: nowIso, type, minutes, meta });
+    localStorage.setItem(
+      "pikar.winHistory",
+      JSON.stringify(hist.slice(0, 100)),
+    );
+    setHistory(hist.slice(0, 100));
+  };
+
+  const clearLocalWins = () => {
+    localStorage.removeItem("pikar.winDates");
+    localStorage.removeItem("pikar.timeSavedTotal");
+    localStorage.removeItem("pikar.winHistory");
+    setStreak(0);
+    setTimeSavedTotal(0);
+    setHistory([]);
+  };
+
+  const bumpTemplateUsage = (key: string) => {
+    const raw = localStorage.getItem("pikar.templateUsageCounts");
+    const map: Record<string, number> = raw ? JSON.parse(raw) : {};
+    map[key] = (map[key] || 0) + 1;
+    localStorage.setItem("pikar.templateUsageCounts", JSON.stringify(map));
+  };
+
+  const orderTemplates = <T extends { key: string }>(list: T[]): T[] => {
+    const raw = localStorage.getItem("pikar.templateUsageCounts");
+    const map: Record<string, number> = raw ? JSON.parse(raw) : {};
+    return [...list].sort((a, b) => (map[b.key] || 0) - (map[a.key] || 0));
+  };
+
+  return {
+    streak,
+    timeSavedTotal,
+    history,
+    recordLocalWin,
+    clearLocalWins,
+    bumpTemplateUsage,
+    orderTemplates,
+  };
+}
+
 function SolopreneurDashboard({ business: businessProp }: { business?: any }) {
   // Use auth status early to guard queries when not authenticated
   const { isAuthenticated: isAuthed } = useAuth();
@@ -509,116 +642,18 @@ function SolopreneurDashboard({ business: businessProp }: { business?: any }) {
 
     const brainDumpSection = <DashboardBrainDumpSection businessId={business?._id} />;
 
-  // Add helper: local usage and streaks
-  function useTemplateOrderingAndStreak() {
-    const [streak, setStreak] = React.useState<number>(0);
-    const [timeSavedTotal, setTimeSavedTotal] = React.useState<number>(0);
-    // New: local wins history
-    const [history, setHistory] = React.useState<
-      Array<{
-        at: string;
-        type: string;
-        minutes: number;
-        meta?: Record<string, any>;
-      }>
-    >([]);
-
-    React.useEffect(() => {
-      const rawDates = localStorage.getItem("pikar.winDates");
-      const dates: string[] = rawDates ? JSON.parse(rawDates) : [];
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      let s = 0;
-      for (;;) {
-        const d = new Date(today);
-        d.setDate(today.getDate() - s);
-        const key = d.toISOString().slice(0, 10);
-        if (dates.includes(key)) s += 1;
-        else break;
-      }
-      setStreak(s);
-
-      const ts = Number(localStorage.getItem("pikar.timeSavedTotal") || "0");
-      setTimeSavedTotal(ts);
-
-      const rawHist = localStorage.getItem("pikar.winHistory");
-      const hist: Array<{
-        at: string;
-        type: string;
-        minutes: number;
-        meta?: Record<string, any>;
-      }> = rawHist ? JSON.parse(rawHist) : [];
-      setHistory(hist);
-    }, []);
-
-    const recordLocalWin = (
-      minutes: number,
-      type: string = "generic",
-      meta?: Record<string, any>,
-    ) => {
-      const nowIso = new Date().toISOString();
-      const todayKey = nowIso.slice(0, 10);
-      const rawDates = localStorage.getItem("pikar.winDates");
-      const dates: string[] = rawDates ? JSON.parse(rawDates) : [];
-      if (!dates.includes(todayKey)) dates.push(todayKey);
-      localStorage.setItem("pikar.winDates", JSON.stringify(dates));
-      const ts =
-        Number(localStorage.getItem("pikar.timeSavedTotal") || "0") + minutes;
-      localStorage.setItem("pikar.timeSavedTotal", String(ts));
-      setTimeSavedTotal(ts);
-
-      const rawHist = localStorage.getItem("pikar.winHistory");
-      const hist: Array<{
-        at: string;
-        type: string;
-        minutes: number;
-        meta?: Record<string, any>;
-      }> = rawHist ? JSON.parse(rawHist) : [];
-      hist.unshift({ at: nowIso, type, minutes, meta });
-      localStorage.setItem(
-        "pikar.winHistory",
-        JSON.stringify(hist.slice(0, 100)),
-      );
-      setHistory(hist.slice(0, 100));
-    };
-
-    const clearLocalWins = () => {
-      localStorage.removeItem("pikar.winDates");
-      localStorage.removeItem("pikar.timeSavedTotal");
-      localStorage.removeItem("pikar.winHistory");
-      setStreak(0);
-      setTimeSavedTotal(0);
-      setHistory([]);
-    };
-
-    const bumpTemplateUsage = (key: string) => {
-      const raw = localStorage.getItem("pikar.templateUsageCounts");
-      const map: Record<string, number> = raw ? JSON.parse(raw) : {};
-      map[key] = (map[key] || 0) + 1;
-      localStorage.setItem("pikar.templateUsageCounts", JSON.stringify(map));
-    };
-
-    const orderTemplates = <T extends { key: string }>(list: T[]): T[] => {
-      const raw = localStorage.getItem("pikar.templateUsageCounts");
-      const map: Record<string, number> = raw ? JSON.parse(raw) : {};
-      return [...list].sort((a, b) => (map[b.key] || 0) - (map[a.key] || 0));
-    };
-
-    return {
-      streak,
-      timeSavedTotal,
-      history,
-      recordLocalWin,
-      clearLocalWins,
-      bumpTemplateUsage,
-      orderTemplates,
-    };
-  }
+  // Smart ordering for "My Templates" and local streak/time saved view
+  const utils = useTemplateOrderingAndStreak();
+  // If you already have myTemplates defined, wrap it:
+  const orderedTemplates = React.useMemo(
+    () => utils.orderTemplates(myTemplates),
+    [utils],
+  );
 
   // Use Convex KPI snapshot when authenticated; fallback to demo data for guests
   const kpiDoc = useQuery(
     api.kpis.getSnapshot,
-    !isGuest && businessId ? { businessId: businessId } : undefined
+    !isGuest && businessProp?._id ? { businessId: businessProp._id } : "skip"
   );
 
   // Use demo data when in guest mode
@@ -630,12 +665,14 @@ function SolopreneurDashboard({ business: businessProp }: { business?: any }) {
   // removed duplicate kpis declaration; using kpiDoc fallback above
 
   // Add: Quick Analytics (Convex) with safe fallback for guests/no business
-  const quickAnalytics =
+  const quickAnalyticsQuery = useQuery(
+    api.solopreneur.runQuickAnalytics,
     !isGuest && business?._id
-      ? (useQuery as any)(api.solopreneur.runQuickAnalytics, {
-          businessId: business?._id,
-        })
-      : {
+      ? { businessId: business._id }
+      : "skip"
+  );
+  
+  const quickAnalytics = quickAnalyticsQuery || {
           revenue90d: 0,
           churnAlert: false,
           topProducts: [] as Array<{ name: string }>,
@@ -680,22 +717,26 @@ function SolopreneurDashboard({ business: businessProp }: { business?: any }) {
   const seedTemplates = useMutation(api.solopreneur.seedOneClickTemplates);
 
   // Add: Top-level initiative + brain dump data for Today's Focus suggestions
-  const initiatives =
+  const initiativesQuery = useQuery(
+    api.initiatives.getByBusiness,
     !isGuest && business?._id
-      ? (useQuery as any)(api.initiatives.getByBusiness, {
-          businessId: business?._id,
-        })
-      : undefined;
+      ? { businessId: business._id }
+      : "skip"
+  );
+  const initiatives = initiativesQuery || undefined;
+
   const currentInitiative =
     Array.isArray(initiatives) && initiatives.length > 0
       ? initiatives[0]
       : undefined;
-  const brainDumps = currentInitiative?._id
-    ? (useQuery as any)(api.initiatives.listBrainDumpsByInitiative, {
-        initiativeId: currentInitiative?._id,
-        limit: 10,
-      })
-    : [];
+
+  const brainDumpsQuery = useQuery(
+    api.initiatives.listBrainDumpsByInitiative,
+    currentInitiative?._id
+      ? { initiativeId: currentInitiative._id, limit: 10 }
+      : "skip"
+  );
+  const brainDumps = brainDumpsQuery || [];
 
   // Add: actions/mutations and local state for Support Triage + Privacy controls
   const suggest = useAction(api.solopreneur.supportTriageSuggest);
@@ -717,33 +758,6 @@ function SolopreneurDashboard({ business: businessProp }: { business?: any }) {
 
   // Local loading state
   const [settingUp, setSettingUp] = useState(false);
-
-  // Templates strip (client-side, mirrors the seeded presets)
-  const myTemplates: Array<{
-    key: string;
-    name: string;
-    description: string;
-    tag: string;
-  }> = [
-    {
-      name: "Solopreneur — Launch Post",
-      description: "Announce a new offering with a friendly, concise tone.",
-      tag: "social",
-      key: "solopreneur_launch_post",
-    },
-    {
-      name: "Solopreneur — Weekly Newsletter",
-      description: "Lightweight weekly update to nurture your audience.",
-      tag: "email",
-      key: "solopreneur_weekly_newsletter",
-    },
-    {
-      name: "Solopreneur — Product Highlight",
-      description: "Quick product spotlight with clear CTA.",
-      tag: "cta",
-      key: "solopreneur_product_highlight",
-    },
-  ];
 
   const handleUseTemplate = (t: { name: string }) => {
     if (isGuest) {
@@ -946,10 +960,6 @@ function SolopreneurDashboard({ business: businessProp }: { business?: any }) {
     }
   };
 
-  // Add helper: local usage and streaks
-  const createFromIdea = useMutation(api.workflows.createQuickFromIdea);
-  const logWin = useMutation(api.audit.logWin);
-
   // Example state you likely already have: businessId, initiativeId, brain dumps, myTemplates, navigate, etc.
   // We'll add new handlers:
 
@@ -987,7 +997,7 @@ function SolopreneurDashboard({ business: businessProp }: { business?: any }) {
   // If you already have myTemplates defined, wrap it:
   const orderedTemplates = React.useMemo(
     () => utils.orderTemplates(myTemplates),
-    [myTemplates],
+    [utils],
   );
 
   // NEW: Template pinning persistence
@@ -1236,10 +1246,14 @@ function SolopreneurDashboard({ business: businessProp }: { business?: any }) {
   };
 
   // Schedule slots persistence
-  const listSlots =
+  const listSlotsQuery = useQuery(
+    api.schedule.listSlots,
     !isGuest && business?._id
-      ? (useQuery as any)(api.schedule.listSlots, { businessId: business?._id })
-      : [];
+      ? { businessId: business._id }
+      : "skip"
+  );
+  const listSlots = listSlotsQuery || [];
+  
   const deleteSlot = useMutation(api.schedule.deleteSlot as any);
 
   // Handler to accept a suggested slot

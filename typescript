@@ -1,24 +1,5 @@
-  integrationMarketplace: defineTable({
-    name: v.string(),
-    description: v.string(),
-    category: v.string(),
-    provider: v.string(),
-    integrationId: v.id("customIntegrations"),
-    downloads: v.number(),
-    rating: v.optional(v.number()),
-    createdAt: v.number(),
-    isPublished: v.optional(v.boolean()),
-    price: v.optional(v.number()),
-    publisherId: v.optional(v.id("users")),
-  })
-
-  assumptions: v.array(
-    v.object({
-      factor: v.string(),
-      value: v.string(),
-      impact: v.string(),
-    })
-  ),
-
-  return insights;
-};
+  const business = useQuery(
+    api.businesses.currentUserBusiness,
+    // Use "skip" to avoid type mismatch when skipping
+    guestMode || !isAuthenticated ? undefined : {}
+  );

@@ -39,7 +39,7 @@ export default function Dashboard() {
   const business = useQuery(
     api.businesses.currentUserBusiness,
     // Use "skip" to avoid type mismatch when skipping
-    guestMode || !isAuthenticated ? undefined : {}
+    guestMode || !isAuthenticated ? "skip" : {}
   );
   
   // Determine which tier to use
@@ -57,7 +57,7 @@ export default function Dashboard() {
   const businessId = !isGuestFromUrl ? business?._id : null;
   const upgradeNudges = useQuery(
     api.telemetry.getUpgradeNudges,
-    guestMode || !business?._id ? undefined : { businessId: business._id }
+    guestMode || !business?._id ? "skip" : { businessId: business._id }
   );
 
   // Add seeding handler and mutation
@@ -74,7 +74,7 @@ export default function Dashboard() {
   // Add: SLA summary for display
   const slaSummary = useQuery(
     api.health.envStatus,
-    guestMode || !business?._id ? undefined : {}
+    guestMode || !business?._id ? "skip" : {}
   );
 
   // Helper to emit lightweight telemetry without backend coupling
