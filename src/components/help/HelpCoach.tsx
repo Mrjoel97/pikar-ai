@@ -18,7 +18,7 @@ export function HelpCoach({ userId, currentPage, tier }: HelpCoachProps) {
   const [selectedTip, setSelectedTip] = useState<any>(null);
   
   const tips = useQuery(api.helpCoach.assistant.getContextualTips, {
-    userId,
+    userId: userId ?? undefined,
     currentPage,
     tier,
   });

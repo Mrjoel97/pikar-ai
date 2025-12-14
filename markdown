@@ -1,1 +1,4 @@
-I will fix the `ArgumentValidationError` by updating `src/components/dashboards/solopreneur/CustomerSegmentation.tsx` to skip the `getContactSegments` query when `businessId` is not provided.
+SEARCH
+helpTips
+readFilesToContextTool
+

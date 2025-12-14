@@ -70,6 +70,7 @@ export const dismissTip = mutation({
   args: {
     userId: v.id("users"),
     tipId: v.id("helpTips"),
+    businessId: v.optional(v.id("businesses")),
   },
   handler: async (ctx, args) => {
     // Check if already dismissed
@@ -88,6 +89,7 @@ export const dismissTip = mutation({
     return await ctx.db.insert("dismissedTips", {
       userId: args.userId,
       tipId: args.tipId,
+      businessId: args.businessId,
       dismissedAt: Date.now(),
     });
   },
@@ -99,12 +101,14 @@ export const trackTipInteraction = mutation({
     userId: v.id("users"),
     tipId: v.id("helpTips"),
     action: v.union(v.literal("viewed"), v.literal("clicked"), v.literal("dismissed")),
+    businessId: v.optional(v.id("businesses")),
   },
   handler: async (ctx, args) => {
     return await ctx.db.insert("tipInteractions", {
       userId: args.userId,
       tipId: args.tipId,
       action: args.action,
+      businessId: args.businessId,
       timestamp: Date.now(),
     });
   },

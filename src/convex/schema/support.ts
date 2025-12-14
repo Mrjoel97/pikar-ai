@@ -40,13 +40,16 @@ export const supportSchema = {
     category: v.string(),
     title: v.string(),
     content: v.string(),
+    page: v.string(),
+    tier: v.union(v.literal("solopreneur"), v.literal("startup"), v.literal("sme"), v.literal("enterprise")),
     targetPage: v.optional(v.string()),
     priority: v.number(),
     isActive: v.boolean(),
     createdAt: v.number(),
   })
     .index("by_business", ["businessId"])
-    .index("by_category", ["category"]),
+    .index("by_category", ["category"])
+    .index("by_page_and_tier", ["page", "tier"]),
 
   tutorials: defineTable({
     businessId: v.optional(v.id("businesses")),
@@ -88,7 +91,7 @@ export const supportSchema = {
 
   dismissedTips: defineTable({
     userId: v.id("users"),
-    businessId: v.id("businesses"),
+    businessId: v.optional(v.id("businesses")),
     tipId: v.id("helpTips"),
     dismissedAt: v.number(),
   })
@@ -97,7 +100,7 @@ export const supportSchema = {
 
   tipInteractions: defineTable({
     userId: v.id("users"),
-    businessId: v.id("businesses"),
+    businessId: v.optional(v.id("businesses")),
     tipId: v.id("helpTips"),
     action: v.string(), // "viewed", "clicked", "dismissed"
     timestamp: v.number(),
