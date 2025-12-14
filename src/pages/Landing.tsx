@@ -264,7 +264,7 @@ export default function Landing() {
         viewport={{ once: true }}
       >
         <div className="max-w-6xl mx-auto">
-          <div className="bg-gradient-to-br from-primary/10 via-accent/5 to-primary/5 border-2 border-primary/20 rounded-2xl p-8 sm:p-12 shadow-xl">
+          <div className="bg-gradient-to-br from-primary/5 via-accent/3 to-background border border-primary/15 rounded-2xl p-8 sm:p-12 shadow-lg">
             <div className="text-center mb-8">
               <motion.div
                 initial={{ scale: 0.9, opacity: 0 }}
