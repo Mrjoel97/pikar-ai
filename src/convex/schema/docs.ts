@@ -37,18 +37,21 @@ export const docsSchema = {
     updatedAt: v.number(),
   })
     .index("by_business", ["businessId"])
-    .index("by_published", ["isPublished"]),
+    .index("by_published", ["businessId", "isPublished"]),
 
   docsVideos: defineTable({
     businessId: v.id("businesses"),
     title: v.string(),
     description: v.optional(v.string()),
-    url: v.string(),
-    thumbnailUrl: v.optional(v.string()),
-    duration: v.optional(v.number()),
+    videoUrl: v.string(),
+    thumbnail: v.optional(v.string()),
+    duration: v.optional(v.string()),
+    category: v.string(),
+    order: v.number(),
     isPublished: v.boolean(),
     createdAt: v.number(),
+    updatedAt: v.number(),
   })
     .index("by_business", ["businessId"])
-    .index("by_published", ["isPublished"]),
+    .index("by_published", ["businessId", "isPublished"]),
 };

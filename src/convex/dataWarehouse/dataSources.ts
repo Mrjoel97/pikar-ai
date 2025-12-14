@@ -85,6 +85,7 @@ export const createDataSource = mutation({
       },
       isActive: false,
       createdAt: now,
+      updatedAt: now,
     });
 
     await ctx.db.insert("audit_logs", {
@@ -124,9 +125,9 @@ export const updateDataSource = mutation({
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Unauthorized");
 
-    const { sourceId, name, connectionString, credentials, syncSchedule, status, config } = args;
+    const { sourceId, name, status, config } = args;
     
-    const updateData: any = {};
+    const updateData: any = { updatedAt: Date.now() };
     if (config !== undefined) updateData.config = config;
     if (name !== undefined) updateData.name = name;
     if (status !== undefined) updateData.isActive = status === "connected";
@@ -276,6 +277,7 @@ export const recordJobExecution = internalMutation({
       completedAt: endTime,
       recordsProcessed: args.recordsProcessed,
       errorMessage: errors?.join("; "),
+      createdAt: Date.now(),
     });
   },
 });

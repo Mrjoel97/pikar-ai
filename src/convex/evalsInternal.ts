@@ -28,7 +28,11 @@ export const recordRun = internalMutation({
     ),
   },
   handler: async (ctx, args) => {
+    const set = await ctx.db.get(args.setId);
+    if (!set) throw new Error("Eval set not found");
+    
     const id = await ctx.db.insert("evalRuns", {
+      businessId: set.businessId,
       setId: args.setId,
       startedAt: args.startedAt,
       finishedAt: args.finishedAt,

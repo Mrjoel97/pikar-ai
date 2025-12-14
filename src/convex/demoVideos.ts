@@ -16,18 +16,23 @@ export const addDemoVideo = mutation({
     url: v.string(),
     thumbnailUrl: v.optional(v.string()),
     duration: v.optional(v.number()),
+    category: v.string(),
+    order: v.number(),
   },
   handler: async (ctx, args) => {
+    const now = Date.now();
     return await ctx.db.insert("docsVideos", {
       businessId: args.businessId,
       title: args.title,
       description: args.description,
-      url: args.url,
-      thumbnailUrl: args.thumbnailUrl,
-      duration: args.duration,
+      videoUrl: args.url,
+      thumbnail: args.thumbnailUrl,
+      duration: args.duration?.toString(),
+      category: args.category,
+      order: args.order,
       isPublished: true,
-      createdAt: Date.now(),
-      // category: args.category, // Removed
+      createdAt: now,
+      updatedAt: now,
     });
   },
 });
@@ -37,9 +42,8 @@ export const incrementViews = mutation({
   handler: async (ctx, args) => {
     const video = await ctx.db.get(args.videoId);
     if (video) {
-      // await ctx.db.patch(args.videoId, {
-      //   views: (video.views || 0) + 1, // Removed
-      // });
+      // Views tracking removed from schema
+      return;
     }
   },
 });

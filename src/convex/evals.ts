@@ -3,7 +3,7 @@ import { v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
 
 const evalTestValidator = v.object({
-  tool: v.string(), // "health" | "flags" | "alerts"
+  tool: v.string(),
   input: v.optional(v.string()),
   expectedContains: v.optional(v.string()),
 });
@@ -16,15 +16,30 @@ export const createSet = mutation({
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
-    const createdBy = identity?.tokenIdentifier
-      ? undefined
-      : undefined; // We keep createdBy optional to be guest-safe
+    if (!identity) throw new Error("Not authenticated");
+    
+    const user = await ctx.db
+      .query("users")
+      .withIndex("email", (q) => q.eq("email", identity.email!))
+      .first();
+    
+    if (!user) throw new Error("User not found");
+    
+    // Get business from user context
+    const business = await ctx.db
+      .query("businesses")
+      .filter((q) => q.eq(q.field("teamMembers"), [user._id]))
+      .first();
+    
+    if (!business) throw new Error("No business found");
 
     const id = await ctx.db.insert("evalSets", {
+      businessId: business._id,
       name: args.name,
       description: args.description,
       createdAt: Date.now(),
-      createdBy,
+      updatedAt: Date.now(),
+      createdBy: user._id,
       tests: args.tests,
     });
     return { setId: id };
@@ -77,7 +92,6 @@ export const runSet: any = action({
       try {
         let data: any = null;
 
-        // Execute read-only tools (queries) — sandboxed by nature
         if (t.tool === "health") {
           const { api } = await import("./_generated/api");
           data = await ctx.runQuery((api as any).health.envStatus, {});
@@ -88,14 +102,12 @@ export const runSet: any = action({
           const { api } = await import("./_generated/api");
           data = await ctx.runQuery((api as any).admin.listAlerts, {});
         } else if (t.tool === "retrieval") {
-          // New retrieval tool for vector search testing
           const { api } = await import("./_generated/api");
           data = await ctx.runQuery((api as any).vectors.retrieve, {
             query: t.input || "test query",
             topK: 3,
           });
         } else if (t.tool === "kgraph") {
-          // New knowledge graph tool for testing
           const { api } = await import("./_generated/api");
           data = await ctx.runQuery((api as any).kgraph.neighborhood, {
             type: "dataset",

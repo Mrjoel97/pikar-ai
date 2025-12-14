@@ -15,7 +15,7 @@ import { api } from "./_generated/api";
 export const saveKmsConfig = mutation({
   args: {
     businessId: v.id("businesses"),
-    provider: v.union(v.literal("aws"), v.literal("azure"), v.literal("google")),
+    provider: v.union(v.literal("aws"), v.literal("azure"), v.literal("gcp")),
     keyId: v.string(),
     region: v.optional(v.string()),
     keyVaultUrl: v.optional(v.string()),
@@ -54,6 +54,13 @@ export const saveKmsConfig = mutation({
       
       return existing._id;
     } else {
+      const identity = await ctx.auth.getUserIdentity();
+      const email = identity?.email?.toLowerCase();
+      const user = email ? await ctx.db
+        .query("users")
+        .withIndex("email", (q) => q.eq("email", email))
+        .unique() : null;
+      
       const id = await ctx.db.insert("kmsConfigs", {
         businessId: args.businessId,
         provider: args.provider,
@@ -63,7 +70,7 @@ export const saveKmsConfig = mutation({
         createdAt: now,
         updatedAt: now,
         status: "active",
-        createdBy: args.userId,
+        createdBy: user?._id || ("" as any),
         keyRotationDays: 90,
         scope: ["all"],
       });

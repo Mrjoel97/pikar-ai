@@ -15,14 +15,18 @@ export const addSlot = mutation({
 
     if (args.scheduledAt <= 0) throw new Error("scheduledAt must be > 0");
 
-    const _id = await ctx.db.insert("scheduleSlots", {
+    const insertData: any = {
       userId,
-      businessId: args.businessId,
       label: args.label,
       channel: args.channel,
       scheduledAt: args.scheduledAt,
+      status: "pending",
       createdAt: Date.now(),
-    });
+    };
+    if (args.businessId) {
+      insertData.businessId = args.businessId;
+    }
+    const _id = await ctx.db.insert("scheduleSlots", insertData);
     return { ok: true as const, _id };
   },
 });
@@ -60,14 +64,18 @@ export const addSlotsBulk = mutation({
     const insertedIds = [];
 
     for (const slot of args.slots) {
-      const id = await ctx.db.insert("scheduleSlots", {
+      const insertData: any = {
         userId,
-        businessId: business?._id as any, // Cast
         label: slot.label,
         channel: slot.channel,
         scheduledAt: slot.scheduledAt,
+        status: "pending",
         createdAt: now,
-      });
+      };
+      if (business?._id) {
+        insertData.businessId = business._id;
+      }
+      const id = await ctx.db.insert("scheduleSlots", insertData);
       insertedIds.push(id);
     }
 

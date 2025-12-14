@@ -17,15 +17,16 @@ export const uploadVoiceNote = mutation({
 
     const voiceNoteId = await ctx.db.insert("voiceNotes", {
       businessId: args.businessId,
-      userId: identity.subject as any, // Cast
+      userId: identity.subject as Id<"users">,
       storageId: args.storageId,
       duration: args.duration,
       title: args.title || "Untitled Voice Note",
       status: "processing",
-      transcription: undefined, // Changed from null
-      summary: undefined, // Changed from null
+      transcription: undefined,
+      summary: undefined,
       tags: [],
-      initiativeId: undefined, // Changed from null
+      initiativeId: undefined,
+      createdAt: Date.now(),
     });
 
     // Trigger transcription

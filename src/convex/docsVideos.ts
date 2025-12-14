@@ -2,24 +2,33 @@ import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 
 export const list = query({
-  args: {},
-  handler: async (ctx) => {
+  args: { businessId: v.optional(v.id("businesses")) },
+  handler: async (ctx, args) => {
+    if (!args.businessId) return [];
+    
     return await ctx.db
       .query("docsVideos")
-      .withIndex("by_published", (q) => q.eq("isPublished", true))
+      .withIndex("by_published", (q) => 
+        q.eq("businessId", args.businessId!).eq("isPublished", true)
+      )
       .collect();
   },
 });
 
 export const listAll = query({
-  args: {},
-  handler: async (ctx) => {
-    return await ctx.db.query("docsVideos").order("desc").collect();
+  args: { businessId: v.id("businesses") },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("docsVideos")
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .order("desc")
+      .collect();
   },
 });
 
 export const upsert = mutation({
   args: {
+    businessId: v.id("businesses"),
     id: v.optional(v.id("docsVideos")),
     title: v.string(),
     description: v.optional(v.string()),
@@ -31,6 +40,8 @@ export const upsert = mutation({
     isPublished: v.boolean(),
   },
   handler: async (ctx, args) => {
+    const now = Date.now();
+    
     if (args.id) {
       await ctx.db.patch(args.id, {
         title: args.title,
@@ -41,11 +52,12 @@ export const upsert = mutation({
         category: args.category,
         order: args.order,
         isPublished: args.isPublished,
-        updatedAt: Date.now(),
+        updatedAt: now,
       });
       return args.id;
     } else {
       return await ctx.db.insert("docsVideos", {
+        businessId: args.businessId,
         title: args.title,
         description: args.description,
         videoUrl: args.videoUrl,
@@ -54,8 +66,8 @@ export const upsert = mutation({
         category: args.category,
         order: args.order,
         isPublished: args.isPublished,
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
+        createdAt: now,
+        updatedAt: now,
       });
     }
   },
