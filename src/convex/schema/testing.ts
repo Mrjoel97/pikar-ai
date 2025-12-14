@@ -2,6 +2,26 @@ import { defineTable } from "convex/server";
 import { v } from "convex/values";
 
 export const testingSchema = {
+  experiments: defineTable({
+    businessId: v.id("businesses"),
+    name: v.string(),
+    hypothesis: v.string(),
+    goal: v.string(),
+    status: v.union(
+      v.literal("draft"),
+      v.literal("running"),
+      v.literal("paused"),
+      v.literal("completed"),
+      v.literal("archived")
+    ),
+    createdBy: v.id("users"),
+    configuration: v.any(),
+    createdAt: v.number(),
+    updatedAt: v.optional(v.number()),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_status", ["status"]),
+
   evalSets: defineTable({
     businessId: v.id("businesses"),
     name: v.string(),

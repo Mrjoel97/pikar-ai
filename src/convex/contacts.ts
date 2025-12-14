@@ -150,6 +150,7 @@ export const createList = mutation({
       createdBy: user._id,
       tags: Array.isArray(args.tags) ? args.tags : [],
       createdAt: Date.now(),
+      contactCount: 0, // Initialize count
     });
   }, { operation: "createList", module: "contacts" }),
 });
@@ -363,7 +364,7 @@ export const bulkUploadCsv = mutation({
 
         await ctx.db.insert("contacts", {
           businessId: args.businessId,
-          listId,
+          // listId removed as it is not in schema
           email: contact.email,
           name: contact.name || contact.email.split("@")[0],
           tags: contact.tags || [],

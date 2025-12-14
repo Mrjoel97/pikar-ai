@@ -118,13 +118,16 @@ export const saveForBusiness = mutation({
       // Explicitly include updatedAt to satisfy table schema typing
       return await ctx.db.insert("emailConfigs", {
         businessId: args.businessId,
-        ...patch,
+        provider: "resend",
+        fromName: patch.fromName || "Default",
+        fromEmail: patch.fromEmail || "default@example.com",
+        isVerified: false,
         createdAt: Date.now(),
         updatedAt: Date.now(),
-        provider: "resend",
-        fromName: "Default",
-        fromEmail: "default@example.com",
-        isVerified: false,
+        resendApiKey: patch.resendApiKey,
+        salesInbox: patch.salesInbox,
+        publicBaseUrl: patch.publicBaseUrl,
+        replyTo: patch.replyTo,
       });
     }
   },

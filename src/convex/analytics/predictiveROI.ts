@@ -12,7 +12,27 @@ export const getPredictiveROI = query({
     userId: v.id("users"),
     forecastDays: v.optional(v.number()), // Default 90 days
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<{
+    historical: Array<{
+      date: number;
+      revenue: number;
+      timeSaved: number;
+      roi: number;
+    }>;
+    forecast: Array<{
+      date: number;
+      predictedRevenue: number;
+      predictedTimeSaved: number;
+      predictedROI: number;
+      confidenceLower: number;
+      confidenceUpper: number;
+    }>;
+    trends: {
+      revenueGrowthRate: number;
+      timeSavedGrowthRate: number;
+      averageROI: number;
+    };
+  }> => {
     const forecastDays = args.forecastDays ?? 90;
     const historicalDays = 180; // 6 months of historical data
     const startTime = Date.now() - historicalDays * 24 * 60 * 60 * 1000;

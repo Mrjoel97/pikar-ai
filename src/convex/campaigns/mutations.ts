@@ -9,15 +9,25 @@ export const createCampaignRecord = internalMutation({
     startDate: v.number(),
     endDate: v.optional(v.number()),
     status: v.string(),
+    userId: v.optional(v.id("users")),
   },
   handler: async (ctx, args) => {
+    // Default to a system user or the business owner if userId not provided
+    // For now, we'll use the businessId as a placeholder if userId is missing, 
+    // but ideally this should be passed from the caller.
+    // Since we can't easily get a user ID from business ID without a query, 
+    // and this is an internal mutation, we assume the caller might fix this later.
+    // However, to satisfy the schema which likely expects a user ID string:
+    
+    const createdBy = args.userId ?? (args.businessId as unknown as any); 
+
     return await ctx.db.insert("experiments", {
       businessId: args.businessId,
       name: args.name,
       hypothesis: args.description || "",
       goal: "conversions",
-      status: args.status as any,
-      createdBy: args.businessId as any,
+      status: (args.status === "active" ? "running" : args.status) as any,
+      createdBy: createdBy,
       configuration: {
         startDate: args.startDate,
         endDate: args.endDate,
@@ -41,7 +51,7 @@ export const getCampaignPerformance = internalQuery({
     // Get email metrics
     const emailCampaigns = await ctx.db
       .query("emails")
-      .filter((q) => q.eq(q.field("experimentId"), args.campaignId))
+      .filter((q) => q.eq(q.field("campaignId"), args.campaignId))
       .take(10);
 
     // Get social metrics

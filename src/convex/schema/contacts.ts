@@ -36,12 +36,14 @@ export const contactsSchema = {
     businessId: v.id("businesses"),
     name: v.string(),
     description: v.optional(v.string()),
-    contactCount: v.number(),
+    contactCount: v.optional(v.number()),
     tags: v.optional(v.array(v.string())),
     createdBy: v.id("users"),
     createdAt: v.number(),
-    updatedAt: v.number(),
-  }).index("by_business", ["businessId"]),
+    updatedAt: v.optional(v.number()),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_business_and_name", ["businessId", "name"]),
   
   contactListMembers: defineTable({
     contactId: v.id("contacts"),
