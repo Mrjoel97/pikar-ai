@@ -2094,63 +2094,6 @@ function SolopreneurDashboard({ business: businessProp }: { business?: any }) {
   const [detectedTags, setDetectedTags] = React.useState<
     Array<"content" | "offer" | "ops">
   >([]);
-  const recognitionRef = React.useRef<any>(null);
-
-  // Start voice capture via Web Speech API if available, else guide user
-  const startVoice = async () => {
-    try {
-      const SpeechRecognition =
-        (window as any).webkitSpeechRecognition ||
-        (window as any).SpeechRecognition ||
-        null;
-      if (!SpeechRecognition) {
-        toast("Voice recognition not supported in this browser");
-        return;
-      }
-      const rec = new SpeechRecognition();
-      rec.lang = "en-US";
-      rec.continuous = false;
-      rec.interimResults = true;
-      rec.onresult = (e: any) => {
-        let text = "";
-        for (let i = 0; i < e.results.length; i++) {
-          text += e.results[i][0].transcript;
-        }
-        setTranscript(text);
-      };
-      rec.onend = () => {
-        setIsRecording(false);
-        // Simple auto-summarize: take first sentence or 20 words
-        const clean = transcript.trim();
-        const s =
-          clean.split(/[.!?]/)[0] || clean.split(" ").slice(0, 20).join(" ");
-        setSummary(s);
-        setDetectedTags(tagIdea(clean));
-      };
-      recognitionRef.current = rec;
-      setTranscript("");
-      setSummary("");
-      setDetectedTags([]);
-      setIsRecording(true);
-      rec.start();
-    } catch (e: any) {
-      setIsRecording(false);
-      toast.error(e?.message ?? "Failed to start recording");
-    }
-  };
-
-  const stopVoice = () => {
-    try {
-      const rec = recognitionRef.current;
-      if (rec) rec.stop();
-    } catch {}
-  };
-
-  // Save from voice summary into Brain Dump (delegated to BrainDumpSection-local handler)
-  const handleSaveVoiceIdea = async () => {
-    toast("Open the Brain Dump to save the voice note.");
-  };
-
   // Business context for composer and SLA
   const currentBusiness = useQuery(
     api.businesses.currentUserBusiness as any,
