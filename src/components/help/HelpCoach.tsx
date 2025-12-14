@@ -9,7 +9,7 @@ import { Lightbulb, X, BookOpen, Play } from "lucide-react";
 import { Id } from "@/convex/_generated/dataModel";
 
 interface HelpCoachProps {
-  userId: Id<"users">;
+  userId?: Id<"users">;
   currentPage: string;
   tier: "solopreneur" | "startup" | "sme" | "enterprise";
 }
@@ -27,13 +27,16 @@ export function HelpCoach({ userId, currentPage, tier }: HelpCoachProps) {
   const trackInteraction = useMutation(api.helpCoach.assistant.trackTipInteraction);
 
   const handleDismiss = async (tipId: Id<"helpTips">) => {
+    if (!userId) return;
     await dismissTip({ userId, tipId });
     await trackInteraction({ userId, tipId, action: "dismissed" });
   };
 
   const handleTipClick = async (tip: any) => {
     setSelectedTip(tip);
-    await trackInteraction({ userId, tipId: tip._id, action: "clicked" });
+    if (userId) {
+      await trackInteraction({ userId, tipId: tip._id, action: "clicked" });
+    }
   };
 
   if (!tips || tips.length === 0) {
