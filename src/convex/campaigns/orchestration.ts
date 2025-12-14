@@ -21,9 +21,9 @@ export const createMultiChannelCampaign = action({
     startDate: v.number(),
     endDate: v.optional(v.number()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<{ campaignId: string; success: boolean }> => {
     // Create campaign record
-    const campaignId = await ctx.runMutation(internal.campaigns.mutations.createCampaignRecord, {
+    const campaignId: string = await ctx.runMutation(internal.campaigns.mutations.createCampaignRecord, {
       businessId: args.businessId,
       name: args.name,
       description: args.description,

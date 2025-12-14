@@ -226,11 +226,11 @@ What's one task you could automate this week? Share below! 👇
  */
 export const processScheduledCapsules = internalAction({
   args: {},
-  handler: async (ctx) => {
+  handler: async (ctx): Promise<{ processed: number }> => {
     const now = Date.now();
     
     // Get all scheduled capsules that are due
-    const dueCapsules = await ctx.runQuery(internal.contentCapsulesData.getScheduledCapsules, {
+    const dueCapsules: any[] = await ctx.runQuery(internal.contentCapsulesData.getScheduledCapsules, {
       beforeTime: now,
     });
 

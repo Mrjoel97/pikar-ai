@@ -5,12 +5,17 @@ export const contentSchema = {
   contentCapsules: defineTable({
     businessId: v.id("businesses"),
     title: v.string(),
-    content: v.string(),
-    type: v.string(),
+    content: v.any(),
+    type: v.optional(v.string()),
     status: v.string(),
     createdBy: v.id("users"),
     createdAt: v.number(),
-    updatedAt: v.number(),
+    updatedAt: v.optional(v.number()),
+    platforms: v.optional(v.array(v.string())),
+    scheduledAt: v.optional(v.number()),
+    postIds: v.optional(v.any()),
+    publishedAt: v.optional(v.number()),
+    errorMessage: v.optional(v.string()),
   })
     .index("by_business", ["businessId"]),
 

@@ -51,7 +51,7 @@ export const getCampaignPerformance = internalQuery({
     // Get email metrics
     const emailCampaigns = await ctx.db
       .query("emails")
-      .filter((q) => q.eq(q.field("campaignId"), args.campaignId))
+      .filter((q) => q.eq(q.field("campaignId"), args.campaignId as any))
       .take(10);
 
     // Get social metrics
