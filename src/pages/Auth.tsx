@@ -39,7 +39,7 @@ function Auth({ redirectAfterAuth = "/dashboard" }: AuthProps) {
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4 py-10">
-      <div className="w-full max-w-md space-y-4 md:space-y-6">
+      <div className="w-full max-w-[58rem] space-y-4 md:space-y-6">
         {/* Header */}
         <div className="text-center">
           <h2 className="text-2xl font-semibold tracking-tight">
