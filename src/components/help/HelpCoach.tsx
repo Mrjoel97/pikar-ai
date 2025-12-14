@@ -17,12 +17,18 @@ interface HelpCoachProps {
 export function HelpCoach({ userId, currentPage, tier }: HelpCoachProps) {
   const [selectedTip, setSelectedTip] = useState<any>(null);
   
-  const tips = useQuery(
+  // Temporary fix: skip query if userId is missing to prevent crash with stale backend
+  // The backend update to make userId optional is blocked by compilation errors
+  const tipsData = useQuery(
     api.helpCoach.assistant.getContextualTips,
     userId
       ? { currentPage, tier, userId }
-      : { currentPage, tier }
+      : "skip"
   );
+
+  // If userId is missing, we default to empty tips for now to avoid "loading" state
+  // Once backend deploys, we can revert to fetching for guests too
+  const tips = userId ? tipsData : [];
 
   const dismissTip = useMutation(api.helpCoach.assistant.dismissTip);
   const trackInteraction = useMutation(api.helpCoach.assistant.trackTipInteraction);
