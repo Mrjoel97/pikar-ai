@@ -23,6 +23,7 @@ import { initiativesSchema } from "./initiatives";
 import { adminSchema } from "./admin";
 import { emailSchema } from "./email";
 import { calendarSchema } from "./calendar";
+import { winsSchema } from "./wins";
 
 const { users: _authUsers, ...authWithoutUsers } = authTables;
 
@@ -51,4 +52,5 @@ export default defineSchema({
   ...adminSchema,
   ...emailSchema,
   ...calendarSchema,
+  ...winsSchema,
 });

@@ -1,5 +1,29 @@
-  const business = useQuery(
-    api.businesses.currentUserBusiness,
-    // Use "skip" to avoid type mismatch when skipping
-    guestMode || !isAuthenticated ? undefined : {}
-  );
+import { defineSchema, defineTable } from "convex/server";
+import { v } from "convex/values";
+import { emailSchema } from "./email";
+import { calendarSchema } from "./calendar";
+import { winsSchema } from "./wins";
+import { useQuery, useMutation } from "convex/react";
+import { api } from "@/convex/_generated/api";
+import { Id } from "@/convex/_generated/dataModel";
+
+const { users: _authUsers, ...authWithoutUsers } = authTables;
+
+// Merge all schema modules
+export default defineSchema({
+  ...emailSchema,
+  ...calendarSchema,
+  ...winsSchema,
+});
+
+export function WinsHistory({ businessId }: { businessId: Id<"businesses"> }) {
+  const shouldSkip = !businessId;
+  const wins = useQuery(api.winsHistory.getWins, shouldSkip ? "skip" : { businessId, limit: 20 });
+  const streak = useQuery(api.winsHistory.getWinStreak, shouldSkip ? "skip" : { businessId });
+  const timeSaved = useQuery(api.winsHistory.getTotalTimeSaved, shouldSkip ? "skip" : { businessId });
+  const categories = useQuery(api.winsHistory.getWinsByCategory, shouldSkip ? "skip" : { businessId });
+  const trends = useQuery(api.winsHistory.getWinsTrend, shouldSkip ? "skip" : { businessId, days: 30 });
+  const alignment = useQuery(api.winsHistory.trackGoalAlignment, shouldSkip ? "skip" : { businessId });
+
+  const recordWin = useMutation(api.winsHistory.recordWin);
+}

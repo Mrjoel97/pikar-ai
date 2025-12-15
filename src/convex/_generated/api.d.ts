@@ -222,6 +222,7 @@ import type * as schema_team from "../schema/team.js";
 import type * as schema_testing from "../schema/testing.js";
 import type * as schema_vectors from "../schema/vectors.js";
 import type * as schema_whiteLabel from "../schema/whiteLabel.js";
+import type * as schema_wins from "../schema/wins.js";
 import type * as schema_workflows from "../schema/workflows.js";
 import type * as scim from "../scim.js";
 import type * as search from "../search.js";
@@ -510,6 +511,7 @@ declare const fullApi: ApiFromModules<{
   "schema/testing": typeof schema_testing;
   "schema/vectors": typeof schema_vectors;
   "schema/whiteLabel": typeof schema_whiteLabel;
+  "schema/wins": typeof schema_wins;
   "schema/workflows": typeof schema_workflows;
   scim: typeof scim;
   search: typeof search;

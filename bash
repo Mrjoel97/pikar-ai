@@ -1,1 +1,1 @@
-grep -r "wins" src/convex/schema
+npx convex dev --once && npx tsc -b --noEmit

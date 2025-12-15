@@ -1,36 +1,39 @@
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Trophy, Plus, Trash2, Clock, TrendingUp, PieChart, Target, BarChart2 } from "lucide-react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Id } from "@/convex/_generated/dataModel";
 import { useState } from "react";
 import { toast } from "sonner";
-import type { Id } from "@/convex/_generated/dataModel";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
+import { TrendingUp, Clock, Target, PieChart, Trophy, Plus, BarChart2 } from "lucide-react";
 
 interface WinsHistoryProps {
   businessId: Id<"businesses">;
 }
 
-export function WinsHistory({ businessId }: WinsHistoryProps) {
-  const wins = useQuery(api.winsHistory.getWins, { businessId, limit: 20 });
-  const streak = useQuery(api.winsHistory.getWinStreak, { businessId });
-  const timeSaved = useQuery(api.winsHistory.getTotalTimeSaved, { businessId });
-  const categories = useQuery(api.winsHistory.getWinsByCategory, { businessId });
-  const trends = useQuery(api.winsHistory.getWinsTrend, { businessId, days: 30 });
-  const alignment = useQuery(api.winsHistory.trackGoalAlignment, { businessId });
+export function WinsHistory({ businessId }: { businessId: Id<"businesses"> }) {
+  // Use conditional skipping if businessId is missing to prevent errors
+  const shouldSkip = !businessId;
+  
+  const wins = useQuery(api.winsHistory.getWins, shouldSkip ? "skip" : { businessId, limit: 20 });
+  const streak = useQuery(api.winsHistory.getWinStreak, shouldSkip ? "skip" : { businessId });
+  const timeSaved = useQuery(api.winsHistory.getTotalTimeSaved, shouldSkip ? "skip" : { businessId });
+  const categories = useQuery(api.winsHistory.getWinsByCategory, shouldSkip ? "skip" : { businessId });
+  const trends = useQuery(api.winsHistory.getWinsTrend, shouldSkip ? "skip" : { businessId, days: 30 });
+  const alignment = useQuery(api.winsHistory.trackGoalAlignment, shouldSkip ? "skip" : { businessId });
   
   const recordWin = useMutation(api.winsHistory.recordWin);
   const deleteWin = useMutation(api.winsHistory.deleteWin);
   const clearAllWins = useMutation(api.winsHistory.clearAllWins);
 
-  const [showDialog, setShowDialog] = useState(false);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [newWin, setNewWin] = useState({
     title: "",
     description: "",
@@ -51,7 +54,7 @@ export function WinsHistory({ businessId }: WinsHistoryProps) {
         ...newWin,
       });
       toast.success("Win recorded! 🎉");
-      setShowDialog(false);
+      setIsDialogOpen(false);
       setNewWin({ title: "", description: "", impact: "", timeSaved: 0, category: "other" });
     } catch (error) {
       toast.error("Failed to record win");
@@ -108,7 +111,7 @@ export function WinsHistory({ businessId }: WinsHistoryProps) {
         <div className="flex items-center gap-2">
           {streak && <Badge variant="secondary">🔥 {streak.streak}d streak</Badge>}
           {timeSaved && <Badge variant="outline">⏱️ {timeSaved.totalHours}h saved</Badge>}
-          <Dialog open={showDialog} onOpenChange={setShowDialog}>
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
               <Button size="sm">
                 <Plus className="h-4 w-4 mr-1" />
@@ -264,7 +267,7 @@ export function WinsHistory({ businessId }: WinsHistoryProps) {
                 <p className="text-sm text-muted-foreground mb-3">
                   No wins recorded yet. Start celebrating your achievements!
                 </p>
-                <Button onClick={() => setShowDialog(true)}>
+                <Button onClick={() => setIsDialogOpen(true)}>
                   <Plus className="h-4 w-4 mr-1" />
                   Record Your First Win
                 </Button>
