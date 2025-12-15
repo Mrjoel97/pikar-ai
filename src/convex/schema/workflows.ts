@@ -327,7 +327,7 @@ export const workflowsSchema = {
     steps: v.array(v.any()),
     businessId: v.optional(v.id("businesses")),
     createdBy: v.optional(v.id("users")),
-    createdAt: v.optional(v.number()),
+    createdAt: v.optional(v.float64()),
     isPublic: v.optional(v.boolean()),
   })
     .index("by_business", ["businessId"])
