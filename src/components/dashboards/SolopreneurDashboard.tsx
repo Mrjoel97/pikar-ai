@@ -642,13 +642,7 @@ function SolopreneurDashboard({ business: businessProp }: { business?: any }) {
 
     const brainDumpSection = <DashboardBrainDumpSection businessId={business?._id} />;
 
-  // Smart ordering for "My Templates" and local streak/time saved view
-  const utils = useTemplateOrderingAndStreak();
-  // If you already have myTemplates defined, wrap it:
-  const orderedTemplates = React.useMemo(
-    () => utils.orderTemplates(myTemplates),
-    [utils],
-  );
+  // orderedTemplates already defined earlier in the component
 
   // Use Convex KPI snapshot when authenticated; fallback to demo data for guests
   const kpiDoc = useQuery(
