@@ -3,7 +3,7 @@ import { coreSchema } from "./core";
 import { teamSchema } from "./team";
 import { docsSchema } from "./docs";
 import { winsSchema } from "./wins";
-import { calendarIntegrations, appointments } from "./calendar";
+import { calendarIntegrations, appointments, availabilityBlocks } from "./calendar";
 
 export default defineSchema({
   ...coreSchema,
@@ -12,4 +12,5 @@ export default defineSchema({
   ...winsSchema,
   calendarIntegrations,
   appointments,
+  availabilityBlocks,
 });
