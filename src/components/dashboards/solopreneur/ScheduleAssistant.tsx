@@ -25,7 +25,9 @@ export function ScheduleAssistant({ businessId }: ScheduleAssistantWidgetProps) 
   const [showAssistant, setShowAssistant] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false);
 
-  const integrations = useQuery(api.calendar.calendarIntegrations.listIntegrations, { businessId });
+  const integrations = useQuery(api.calendar.calendarIntegrations.listIntegrations, 
+    businessId ? { businessId } : "skip"
+  );
 
   const googleConnected = integrations?.some((i: any) => i.provider === "google" && i.isActive) || false;
   const outlookConnected = integrations?.some((i: any) => i.provider === "outlook" && i.isActive) || false;

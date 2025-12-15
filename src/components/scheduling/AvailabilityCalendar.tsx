@@ -47,9 +47,9 @@ export function AvailabilityCalendar({ businessId }: AvailabilityCalendarProps) 
   
   const setAvailabilityMutation = useMutation(api.scheduling.availability.setAvailability);
   const syncGoogleEvents = useAction(api.calendar.googleCalendar.syncGoogleEvents);
-  const integrations = useQuery(api.calendar.calendarIntegrations.listIntegrations, {
-    businessId,
-  });
+  const integrations = useQuery(api.calendar.calendarIntegrations.listIntegrations, 
+    businessId ? { businessId } : "skip"
+  );
 
   const appointments = useQuery(api.scheduling.availability.listAppointments, {
     businessId,
