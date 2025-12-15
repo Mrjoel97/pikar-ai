@@ -182,10 +182,10 @@ export function StartupDashboard() {
     api.activityFeed.getRecent,
     isGuest || !businessId ? "skip" : { businessId, limit: 10 }
   );
-const pendingApprovals = useQuery(
-  api.approvals.getApprovalQueue,
-  isGuest || !businessId ? "skip" : { businessId, status: "pending" as const }
-);
+  const pendingApprovals = useQuery(
+    api.approvals.getApprovalQueue,
+    isGuest || !businessId ? "skip" : { businessId, status: "pending" as const }
+  );
 
   // Fallback counters
   const approvalsCompleted7d =  isGuest ? 7 : 0; // adjust if backend exposes completed; placeholder for now
@@ -221,121 +221,6 @@ const pendingApprovals = useQuery(
 
   // Add: composer modal state
   const [showComposer, setShowComposer] = useState(false);
->>>>>>> REPLACE
-<<<<<<< SEARCH
-  const upcomingPosts = useQuery(
-    api.socialPosts.getUpcomingPosts,
-    isGuest || !businessId ? "skip" : { businessId, limit: 5 }
-  );
-
-  function BrainDumpSection({ businessId }: { businessId: string }) {
-    const initiatives = useQuery(
-      api.initiatives.getByBusiness as any,
-      businessId ? { businessId } : undefined
-    );
-    const initiativeId =
-      initiatives && initiatives.length > 0 ? initiatives[0]._id : null;
-
-    const dumps = useQuery(
-      api.initiatives.listBrainDumpsByInitiative as any,
-      initiativeId ? { initiativeId, limit: 10 } : undefined
-    );
-    const addDump = useMutation(api.initiatives.addBrainDump as any);
-
-    const [text, setText] = useState("");
-    const [saving, setSaving] = useState(false);
-
-    const handleSave = async () => {
-      if (!initiativeId) {
-        toast?.("No initiative found. Run Phase 0 diagnostics first.");
-        return;
-      }
-      const content = text.trim();
-      if (!content) {
-        toast?.("Please enter your idea first.");
-        return;
-      }
-      try {
-        setSaving(true);
-        await addDump({ initiativeId, content });
-        setText("");
-        toast?.("Saved to Brain Dump");
-      } catch (e: any) {
-        toast?.(e?.message || "Failed to save brain dump");
-      } finally {
-        setSaving(false);
-      }
-    };
-
-    return (
-      <section className="mt-6 border rounded-md p-4">
-        <div className="flex items-center justify-between">
-          <h3 className="text-lg font-semibold">Brain Dump</h3>
-          <span className="text-xs text-gray-500">Capture rough ideas quickly</span>
-        </div>
-        <div className="my-3 h-px bg-gray-200" />
-        <div className="space-y-3">
-          <textarea
-            placeholder="Write freely here... (e.g., experiment idea, positioning, offer notes)"
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            className="min-h-24 w-full rounded-md border p-2 text-sm"
-          />
-          <div className="flex justify-end">
-            <button
-              onClick={handleSave}
-              disabled={saving || !initiativeId}
-              className="px-3 py-1.5 rounded-md text-white bg-emerald-600 disabled:opacity-50"
-            >
-              {saving ? "Saving..." : "Save Idea"}
-            </button>
-          </div>
-        </div>
-        <div className="my-4 h-px bg-gray-200" />
-        <div className="space-y-2">
-          <div className="text-sm font-medium">Recent ideas</div>
-          <div className="space-y-2">
-            {Array.isArray(dumps) && dumps.length > 0 ? (
-              dumps.map((d: any) => (
-                <div key={d._id?.toString() || `dump-${Math.random()}`} className="rounded-md border p-3 text-sm">
-                  <div className="text-gray-500 text-xs mb-1">
-                    {new Date(d.createdAt).toLocaleString()}
-                  </div>
-                  <div className="whitespace-pre-wrap">{d.content}</div>
-                </div>
-              ))
-            ) : (
-              <div className="text-gray-500 text-sm">No entries yet.</div>
-            )}
-          </div>
-        </div>
-      </section>
-    );
-  }
-
-  const handleRunDiagnostics = async () => {
-=======
-  const upcomingPosts = useQuery(
-    api.socialPosts.getUpcomingPosts,
-    isGuest || !businessId ? "skip" : { businessId, limit: 5 }
-  );
-
-  const handleRunDiagnostics = async () => {
->>>>>>> REPLACE
-<<<<<<< SEARCH
-      {/* Campaign List */}
-      <LazyLoadErrorBoundary moduleName="Campaign List">
-        <Suspense fallback={<div className="text-muted-foreground">Loading campaigns...</div>}>
-          <CampaignList campaigns={campaigns} onCreateCampaign={() => setShowComposer(true)} />
-        </Suspense>
-      </LazyLoadErrorBoundary>
-=======
-      {/* Campaign List */}
-      <LazyLoadErrorBoundary moduleName="Campaign List">
-        <Suspense fallback={<div className="text-muted-foreground">Loading campaigns...</div>}>
-          <CampaignList businessId={businessId as string} onCreateCampaign={() => setShowComposer(true)} />
-        </Suspense>
-      </LazyLoadErrorBoundary>
   const [showExperimentCreator, setShowExperimentCreator] = useState(false);
 
   // Add queries for team onboarding and approval health
@@ -361,91 +246,6 @@ const pendingApprovals = useQuery(
     api.socialPosts.getUpcomingPosts,
     isGuest || !businessId ? "skip" : { businessId, limit: 5 }
   );
-
-  function BrainDumpSection({ businessId }: { businessId: string }) {
-    const initiatives = useQuery(
-      api.initiatives.getByBusiness as any,
-      businessId ? { businessId } : undefined
-    );
-    const initiativeId =
-      initiatives && initiatives.length > 0 ? initiatives[0]._id : null;
-
-    const dumps = useQuery(
-      api.initiatives.listBrainDumpsByInitiative as any,
-      initiativeId ? { initiativeId, limit: 10 } : undefined
-    );
-    const addDump = useMutation(api.initiatives.addBrainDump as any);
-
-    const [text, setText] = useState("");
-    const [saving, setSaving] = useState(false);
-
-    const handleSave = async () => {
-      if (!initiativeId) {
-        toast?.("No initiative found. Run Phase 0 diagnostics first.");
-        return;
-      }
-      const content = text.trim();
-      if (!content) {
-        toast?.("Please enter your idea first.");
-        return;
-      }
-      try {
-        setSaving(true);
-        await addDump({ initiativeId, content });
-        setText("");
-        toast?.("Saved to Brain Dump");
-      } catch (e: any) {
-        toast?.(e?.message || "Failed to save brain dump");
-      } finally {
-        setSaving(false);
-      }
-    };
-
-    return (
-      <section className="mt-6 border rounded-md p-4">
-        <div className="flex items-center justify-between">
-          <h3 className="text-lg font-semibold">Brain Dump</h3>
-          <span className="text-xs text-gray-500">Capture rough ideas quickly</span>
-        </div>
-        <div className="my-3 h-px bg-gray-200" />
-        <div className="space-y-3">
-          <textarea
-            placeholder="Write freely here... (e.g., experiment idea, positioning, offer notes)"
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            className="min-h-24 w-full rounded-md border p-2 text-sm"
-          />
-          <div className="flex justify-end">
-            <button
-              onClick={handleSave}
-              disabled={saving || !initiativeId}
-              className="px-3 py-1.5 rounded-md text-white bg-emerald-600 disabled:opacity-50"
-            >
-              {saving ? "Saving..." : "Save Idea"}
-            </button>
-          </div>
-        </div>
-        <div className="my-4 h-px bg-gray-200" />
-        <div className="space-y-2">
-          <div className="text-sm font-medium">Recent ideas</div>
-          <div className="space-y-2">
-            {Array.isArray(dumps) && dumps.length > 0 ? (
-              dumps.map((d: any) => (
-                <div key={d._id?.toString() || `dump-${Math.random()}`} className="rounded-md border p-3 text-sm">
-                  <div className="text-gray-500 text-xs mb-1">
-                    {new Date(d.createdAt).toLocaleString()}
-                  </div>
-                  <div className="whitespace-pre-wrap">{d.content}</div>
-                </div>
-              ))
-            ) : (
-              <div className="text-gray-500 text-sm">No entries yet.</div>
-            )}
-          </div>
-        </div>
-      </section>
-    );
-  }
 
   const handleRunDiagnostics = async () => {
     if (!business?._id) {
