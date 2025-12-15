@@ -65,6 +65,10 @@ import { UpgradeNudgeBanner } from "./startup/UpgradeNudgeBanner";
 import { QuickTeamActions } from "./startup/QuickTeamActions";
 import { ABTestingSummary } from "./startup/ABTestingSummary";
 import { CRMSyncCard } from "./startup/CRMSyncCard";
+import { UpgradeCTA } from "./startup/UpgradeCTA";
+import { LockedRibbon } from "./startup/LockedRibbon";
+import { Sparkline, mkTrend } from "./startup/Sparkline";
+import { BrainDumpSection } from "./startup/BrainDumpSection";
 
 // Static imports to prevent lazy loading errors
 import { TeamPerformance } from "./startup/TeamPerformance";
@@ -160,37 +164,6 @@ export function StartupDashboard() {
     isGuest || !businessId ? "skip" : { businessId }
   );
 
-  const UpgradeCTA = ({ feature }: { feature: string }) => (
-    <Card className="border-dashed border-2 border-gray-300">
-      <CardContent className="flex flex-col items-center justify-center py-8 text-center">
-        <h3 className="font-semibold mb-2">Upgrade to SME</h3>
-        <p className="text-sm text-muted-foreground mb-4">
-          Get {feature} with governance features
-        </p>
-        <Button onClick={onUpgrade} size="sm">
-          Upgrade to SME
-        </Button>
-      </CardContent>
-    </Card>
-  );
-
-  const Sparkline = ({ values, color = "bg-emerald-600" }: { values: number[]; color?: string }) => (
-    <div className="flex items-end gap-1 h-12">
-      {values.map((v, i) => (
-        <div key={i} className={`${color} w-2 rounded-sm`} style={{ height: `${Math.max(6, Math.min(100, v))}%` }} />
-      ))}
-    </div>
-  );
-  const mkTrend = (base?: number): number[] => {
-    const b = typeof base === "number" && !Number.isNaN(base) ? base : 50;
-    const arr: number[] = [];
-    for (let i = 0; i < 10; i++) {
-      const jitter = ((i % 2 === 0 ? 1 : -1) * (6 + (i % 4))) / 2;
-      arr.push(Math.max(5, Math.min(100, b + jitter)));
-    }
-    return arr;
-  };
-
   const revenueTrend = useMemo(
     () => mkTrend((kpis?.totalRevenue ? Math.min(100, (kpis.totalRevenue / 2000) % 100) : 55)),
     [kpis?.totalRevenue]
@@ -246,18 +219,123 @@ const pendingApprovals = useQuery(
   const startupAgentsEnabled = !!startupFlags?.find((f: any) => f.flagName === "startup_growth_panels")?.isEnabled;
   const nav = useNavigate();
 
-  const LockedRibbon = ({ label = "Feature requires upgrade" }: { label?: string }) => (
-    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-      <Badge variant="outline" className="border-amber-300 text-amber-700">Locked</Badge>
-      <span>{label}</span>
-      <Button size="sm" variant="outline" onClick={onUpgrade} className="ml-auto">
-        Upgrade
-      </Button>
-    </div>
-  );
-
   // Add: composer modal state
   const [showComposer, setShowComposer] = useState(false);
+>>>>>>> REPLACE
+<<<<<<< SEARCH
+  const upcomingPosts = useQuery(
+    api.socialPosts.getUpcomingPosts,
+    isGuest || !businessId ? "skip" : { businessId, limit: 5 }
+  );
+
+  function BrainDumpSection({ businessId }: { businessId: string }) {
+    const initiatives = useQuery(
+      api.initiatives.getByBusiness as any,
+      businessId ? { businessId } : undefined
+    );
+    const initiativeId =
+      initiatives && initiatives.length > 0 ? initiatives[0]._id : null;
+
+    const dumps = useQuery(
+      api.initiatives.listBrainDumpsByInitiative as any,
+      initiativeId ? { initiativeId, limit: 10 } : undefined
+    );
+    const addDump = useMutation(api.initiatives.addBrainDump as any);
+
+    const [text, setText] = useState("");
+    const [saving, setSaving] = useState(false);
+
+    const handleSave = async () => {
+      if (!initiativeId) {
+        toast?.("No initiative found. Run Phase 0 diagnostics first.");
+        return;
+      }
+      const content = text.trim();
+      if (!content) {
+        toast?.("Please enter your idea first.");
+        return;
+      }
+      try {
+        setSaving(true);
+        await addDump({ initiativeId, content });
+        setText("");
+        toast?.("Saved to Brain Dump");
+      } catch (e: any) {
+        toast?.(e?.message || "Failed to save brain dump");
+      } finally {
+        setSaving(false);
+      }
+    };
+
+    return (
+      <section className="mt-6 border rounded-md p-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold">Brain Dump</h3>
+          <span className="text-xs text-gray-500">Capture rough ideas quickly</span>
+        </div>
+        <div className="my-3 h-px bg-gray-200" />
+        <div className="space-y-3">
+          <textarea
+            placeholder="Write freely here... (e.g., experiment idea, positioning, offer notes)"
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            className="min-h-24 w-full rounded-md border p-2 text-sm"
+          />
+          <div className="flex justify-end">
+            <button
+              onClick={handleSave}
+              disabled={saving || !initiativeId}
+              className="px-3 py-1.5 rounded-md text-white bg-emerald-600 disabled:opacity-50"
+            >
+              {saving ? "Saving..." : "Save Idea"}
+            </button>
+          </div>
+        </div>
+        <div className="my-4 h-px bg-gray-200" />
+        <div className="space-y-2">
+          <div className="text-sm font-medium">Recent ideas</div>
+          <div className="space-y-2">
+            {Array.isArray(dumps) && dumps.length > 0 ? (
+              dumps.map((d: any) => (
+                <div key={d._id?.toString() || `dump-${Math.random()}`} className="rounded-md border p-3 text-sm">
+                  <div className="text-gray-500 text-xs mb-1">
+                    {new Date(d.createdAt).toLocaleString()}
+                  </div>
+                  <div className="whitespace-pre-wrap">{d.content}</div>
+                </div>
+              ))
+            ) : (
+              <div className="text-gray-500 text-sm">No entries yet.</div>
+            )}
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  const handleRunDiagnostics = async () => {
+=======
+  const upcomingPosts = useQuery(
+    api.socialPosts.getUpcomingPosts,
+    isGuest || !businessId ? "skip" : { businessId, limit: 5 }
+  );
+
+  const handleRunDiagnostics = async () => {
+>>>>>>> REPLACE
+<<<<<<< SEARCH
+      {/* Campaign List */}
+      <LazyLoadErrorBoundary moduleName="Campaign List">
+        <Suspense fallback={<div className="text-muted-foreground">Loading campaigns...</div>}>
+          <CampaignList campaigns={campaigns} onCreateCampaign={() => setShowComposer(true)} />
+        </Suspense>
+      </LazyLoadErrorBoundary>
+=======
+      {/* Campaign List */}
+      <LazyLoadErrorBoundary moduleName="Campaign List">
+        <Suspense fallback={<div className="text-muted-foreground">Loading campaigns...</div>}>
+          <CampaignList businessId={businessId as string} onCreateCampaign={() => setShowComposer(true)} />
+        </Suspense>
+      </LazyLoadErrorBoundary>
   const [showExperimentCreator, setShowExperimentCreator] = useState(false);
 
   // Add queries for team onboarding and approval health
@@ -529,7 +607,7 @@ const pendingApprovals = useQuery(
       {/* Campaign List */}
       <LazyLoadErrorBoundary moduleName="Campaign List">
         <Suspense fallback={<div className="text-muted-foreground">Loading campaigns...</div>}>
-          <CampaignList campaigns={campaigns} onCreateCampaign={() => setShowComposer(true)} />
+          <CampaignList businessId={businessId as string} onCreateCampaign={() => setShowComposer(true)} />
         </Suspense>
       </LazyLoadErrorBoundary>
 
@@ -679,10 +757,10 @@ const pendingApprovals = useQuery(
               </Card>
             );
           })}
-          {!isGuest && <UpgradeCTA feature="Advanced Governance" />}
+          {!isGuest && <UpgradeCTA feature="Advanced Governance" onUpgrade={onUpgrade} />}
           {!hasTier("sme") && (
             <div className="md:col-span-2">
-              <LockedRibbon label="Full approvals workflow is SME+" />
+              <LockedRibbon label="Full approvals workflow is SME+" onUpgrade={onUpgrade} />
             </div>
           )}
         </div>

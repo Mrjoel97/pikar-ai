@@ -9,9 +9,10 @@ import { useNavigate } from "react-router";
 
 interface CampaignListProps {
   businessId: string;
+  onCreateCampaign?: () => void;
 }
 
-export function CampaignList({ businessId }: CampaignListProps) {
+export function CampaignList({ businessId, onCreateCampaign }: CampaignListProps) {
   const navigate = useNavigate();
   const campaigns = useQuery(
     api.emails.listCampaignsByBusiness,
@@ -220,7 +221,7 @@ export function CampaignList({ businessId }: CampaignListProps) {
           <div className="text-center py-8 text-muted-foreground">
             <Mail className="h-12 w-12 mx-auto mb-3 opacity-50" />
             <p className="text-sm">No campaigns yet</p>
-            <Button size="sm" className="mt-3" onClick={() => navigate("/content-calendar")}>
+            <Button size="sm" className="mt-3" onClick={() => onCreateCampaign ? onCreateCampaign() : navigate("/content-calendar")}>
               Create Campaign
             </Button>
           </div>

@@ -149,7 +149,7 @@ export const getBusinessProgressTrends = query({
     const startDate = now - timeframeMs;
 
     const objectives = await ctx.db
-      .query("okrObjectives")
+      .query("objectives")
       .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
       .collect();
 
