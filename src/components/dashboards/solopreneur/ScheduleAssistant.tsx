@@ -25,7 +25,9 @@ export function ScheduleAssistant({ businessId }: ScheduleAssistantWidgetProps) 
   const [showAssistant, setShowAssistant] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false);
 
-  const integrations = useQuery(api.calendar.calendarIntegrations.listIntegrations, 
+  // Only query if businessId is valid
+  const integrations = useQuery(
+    api.calendar.calendarIntegrations.listIntegrations, 
     businessId ? { businessId } : "skip"
   );
 
@@ -34,20 +36,37 @@ export function ScheduleAssistant({ businessId }: ScheduleAssistantWidgetProps) 
 
   const now = Date.now();
   const weekFromNow = now + 7 * 24 * 60 * 60 * 1000;
-  const appointments = useQuery(api.scheduling.availability.listAppointments, {
-    businessId,
-    startDate: now,
-    endDate: weekFromNow,
-  });
+  
+  // Only query appointments if businessId is valid
+  const appointments = useQuery(
+    api.scheduling.availability.listAppointments,
+    businessId ? {
+      businessId,
+      startDate: now,
+      endDate: weekFromNow,
+    } : "skip"
+  );
 
   const getNextMeeting = () => {
-    if (!appointments) return undefined;
-    return appointments
+    if (!appointments || appointments.length === 0) return undefined;
+    const upcoming = appointments
       .filter((i: Appointment) => i.startTime > now)
-      .sort((a: Appointment, b: Appointment) => a.startTime - b.startTime)[0];
+      .sort((a: Appointment, b: Appointment) => a.startTime - b.startTime);
+    return upcoming[0];
   };
 
   const nextMeeting = getNextMeeting();
+
+  const getTodayMeetingsCount = () => {
+    if (!appointments) return 0;
+    const today = new Date();
+    return appointments.filter((i: Appointment) => {
+      const date = new Date(i.startTime);
+      return date.getDate() === today.getDate() &&
+        date.getMonth() === today.getMonth() &&
+        date.getFullYear() === today.getFullYear();
+    }).length;
+  };
 
   return (
     <Card>
@@ -102,13 +121,7 @@ export function ScheduleAssistant({ businessId }: ScheduleAssistantWidgetProps) 
           <div className="flex justify-between items-center mb-2">
             <h4 className="text-sm font-medium">Today's Overview</h4>
             <span className="text-xs text-muted-foreground">
-              {appointments?.filter((i: Appointment) => {
-                const today = new Date();
-                const date = new Date(i.startTime);
-                return date.getDate() === today.getDate() &&
-                  date.getMonth() === today.getMonth() &&
-                  date.getFullYear() === today.getFullYear();
-              }).length || 0} meetings
+              {getTodayMeetingsCount()} meetings
             </span>
           </div>
         </div>
