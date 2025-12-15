@@ -126,3 +126,64 @@ export const getCrossPlatformMetrics = query({
     return metrics;
   },
 });
+
+export const getHistoricalTrends = query({
+  args: {
+    businessId: v.id("businesses"),
+    days: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const days = args.days ?? 30;
+    const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
+
+    // Get social posts from the last N days
+    const posts = await ctx.db
+      .query("socialPosts")
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .filter((q) => q.gte(q.field("scheduledAt"), cutoff))
+      .collect();
+
+    // Aggregate metrics by day
+    const trendsByDay: Record<string, {
+      date: string;
+      posts: number;
+      engagement: number;
+      reach: number;
+    }> = {};
+
+    for (const post of posts) {
+      const dateKey = new Date(post.scheduledAt || 0).toISOString().split('T')[0];
+      
+      if (!trendsByDay[dateKey]) {
+        trendsByDay[dateKey] = {
+          date: dateKey,
+          posts: 0,
+          engagement: 0,
+          reach: 0,
+        };
+      }
+
+      trendsByDay[dateKey].posts += 1;
+      trendsByDay[dateKey].engagement += (post.metrics?.likes || 0) + (post.metrics?.comments || 0);
+      trendsByDay[dateKey].reach += post.metrics?.impressions || 0;
+    }
+
+    // Convert to array and sort by date
+    const trends = Object.values(trendsByDay).sort((a, b) => 
+      a.date.localeCompare(b.date)
+    );
+
+    return {
+      trends,
+      summary: {
+        totalPosts: posts.length,
+        avgEngagement: trends.length > 0 
+          ? trends.reduce((sum, t) => sum + t.engagement, 0) / trends.length 
+          : 0,
+        avgReach: trends.length > 0
+          ? trends.reduce((sum, t) => sum + t.reach, 0) / trends.length
+          : 0,
+      },
+    };
+  },
+});
