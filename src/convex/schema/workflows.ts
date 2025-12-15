@@ -317,4 +317,27 @@ export const workflowsSchema = {
     .index("by_business", ["businessId"])
     .index("by_workflow", ["workflowId"])
     .index("by_status", ["status"]),
+
+  workflowTemplates: defineTable({
+    name: v.string(),
+    description: v.optional(v.string()),
+    category: v.optional(v.string()),
+    tier: v.optional(v.string()),
+    tags: v.optional(v.array(v.string())),
+    steps: v.array(v.any()),
+    businessId: v.optional(v.id("businesses")),
+    createdBy: v.optional(v.id("users")),
+    createdAt: v.optional(v.number()),
+    isPublic: v.optional(v.boolean()),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_category", ["category"])
+    .index("by_tier", ["tier"]),
+
+  templatePins: defineTable({
+    userId: v.id("users"),
+    templateId: v.string(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_template", ["templateId"]),
 };
