@@ -13,9 +13,17 @@ export const listIntegrations = query({
   },
 });
 
-export const addIntegration = mutation({
+export const getIntegration = query({
+  args: { integrationId: v.id("calendarIntegrations") },
+  handler: async (ctx, args) => {
+    return await ctx.db.get(args.integrationId);
+  },
+});
+
+export const storeIntegration = mutation({
   args: {
     businessId: v.id("businesses"),
+    userId: v.optional(v.id("users")),
     provider: v.string(),
     accessToken: v.string(),
     refreshToken: v.optional(v.string()),
@@ -38,11 +46,13 @@ export const addIntegration = mutation({
         email: args.email,
         isActive: true,
         lastSyncAt: Date.now(),
+        userId: args.userId,
       });
     }
 
     return await ctx.db.insert("calendarIntegrations", {
       businessId: args.businessId,
+      userId: args.userId,
       provider: args.provider,
       accessToken: args.accessToken,
       refreshToken: args.refreshToken,
