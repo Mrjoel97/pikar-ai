@@ -3,6 +3,7 @@ import { v } from "convex/values";
 
 export const calendarIntegrations = defineTable({
   businessId: v.id("businesses"),
+  userId: v.optional(v.id("users")),
   provider: v.string(), // "google", "outlook"
   accessToken: v.string(),
   refreshToken: v.optional(v.string()),
@@ -11,9 +12,11 @@ export const calendarIntegrations = defineTable({
   isActive: v.boolean(),
   lastSyncAt: v.optional(v.number()),
   lastSyncError: v.optional(v.string()),
+  connectedAt: v.optional(v.number()),
 })
   .index("by_business", ["businessId"])
-  .index("by_business_and_provider", ["businessId", "provider"]);
+  .index("by_business_and_provider", ["businessId", "provider"])
+  .index("by_user", ["userId"]);
 
 export const appointments = defineTable({
   businessId: v.id("businesses"),
@@ -26,6 +29,7 @@ export const appointments = defineTable({
   meetingLink: v.optional(v.string()),
   provider: v.optional(v.string()), // "google", "outlook", "internal"
   externalId: v.optional(v.string()),
+  type: v.optional(v.string()),
   status: v.string(), // "confirmed", "cancelled", "tentative"
 })
   .index("by_business", ["businessId"])
