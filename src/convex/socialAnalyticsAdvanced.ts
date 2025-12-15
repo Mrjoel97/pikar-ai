@@ -16,7 +16,7 @@ export const getSentimentAnalysis = query({
     const posts = await ctx.db
       .query("socialPosts")
       .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
-      .filter((q) => q.gte(q.field("_creationTime"), startTime))
+      .filter((q) => q.gte(q.field("createdAt"), startTime))
       .collect();
 
     // Simulate sentiment analysis (in production, this would use AI)
@@ -93,7 +93,7 @@ export const getCrossPlatformMetrics = query({
     const posts = await ctx.db
       .query("socialPosts")
       .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
-      .filter((q) => q.gte(q.field("_creationTime"), startTime))
+      .filter((q) => q.gte(q.field("createdAt"), startTime))
       .collect();
 
     // Group by platform
@@ -140,7 +140,7 @@ export const getHistoricalTrends = query({
     const posts = await ctx.db
       .query("socialPosts")
       .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
-      .filter((q) => q.gte(q.field("scheduledAt"), cutoff))
+      .filter((q) => q.gte(q.field("createdAt"), cutoff))
       .collect();
 
     // Aggregate metrics by day
@@ -152,7 +152,7 @@ export const getHistoricalTrends = query({
     }> = {};
 
     for (const post of posts) {
-      const dateKey = new Date(post.scheduledAt || 0).toISOString().split('T')[0];
+      const dateKey = new Date(post.createdAt).toISOString().split('T')[0];
       
       if (!trendsByDay[dateKey]) {
         trendsByDay[dateKey] = {
@@ -164,8 +164,8 @@ export const getHistoricalTrends = query({
       }
 
       trendsByDay[dateKey].posts += 1;
-      trendsByDay[dateKey].engagement += (post.metrics?.likes || 0) + (post.metrics?.comments || 0);
-      trendsByDay[dateKey].reach += post.metrics?.impressions || 0;
+      trendsByDay[dateKey].engagement += (post.likes || 0) + (post.comments || 0);
+      trendsByDay[dateKey].reach += post.reach || 0;
     }
 
     // Convert to array and sort by date
