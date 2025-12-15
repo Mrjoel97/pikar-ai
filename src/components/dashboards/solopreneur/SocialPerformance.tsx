@@ -36,7 +36,7 @@ export default function SocialPerformance({ businessId }: SocialPerformanceProps
   const [recommendations, setRecommendations] = React.useState<any>(null);
   const [loadingRecs, setLoadingRecs] = React.useState(false);
 
-  const trends = useQuery(api.socialAnalyticsAdvanced.getHistoricalTrends, { businessId, metric: "engagement" });
+  const trendsData = useQuery(api.socialAnalyticsAdvanced.getHistoricalTrends, businessId ? { businessId } : "skip");
   const [competitorIndustry, setCompetitorIndustry] = React.useState("tech");
   const [showCompetitors, setShowCompetitors] = React.useState(false);
   const [competitorData, setCompetitorData] = React.useState<any>(null);
@@ -309,24 +309,52 @@ export default function SocialPerformance({ businessId }: SocialPerformanceProps
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {trends ? (
+              {trendsData ? (
                 <div className="space-y-4">
-                  <div className="h-[200px] w-full flex items-end justify-between gap-2 p-4 border rounded-lg bg-muted/10">
-                    {trends.map((point: any, i: number) => (
-                      <div key={i} className="flex flex-col items-center gap-2 flex-1">
-                        <div 
-                          className="w-full bg-primary/80 rounded-t-sm transition-all hover:bg-primary"
-                          style={{ height: `${Math.max(point.value / 10, 10)}%` }}
-                        />
-                        <span className="text-[10px] text-muted-foreground rotate-45 origin-left translate-y-2">
-                          {point.week}
-                        </span>
-                      </div>
-                    ))}
+                  <div className="grid grid-cols-3 gap-4 mb-6">
+                    <div className="text-center p-4 border rounded-lg bg-muted/10">
+                      <div className="text-2xl font-bold">{trendsData.summary.totalPosts}</div>
+                      <div className="text-sm text-muted-foreground">Total Posts</div>
+                    </div>
+                    <div className="text-center p-4 border rounded-lg bg-muted/10">
+                      <div className="text-2xl font-bold">{trendsData.summary.avgEngagement.toFixed(1)}</div>
+                      <div className="text-sm text-muted-foreground">Avg Engagement</div>
+                    </div>
+                    <div className="text-center p-4 border rounded-lg bg-muted/10">
+                      <div className="text-2xl font-bold">{trendsData.summary.avgReach.toFixed(0)}</div>
+                      <div className="text-sm text-muted-foreground">Avg Reach</div>
+                    </div>
                   </div>
-                  <p className="text-sm text-muted-foreground text-center mt-4">
-                    Weekly engagement metrics over the last 90 days
-                  </p>
+                  
+                  {trendsData.trends.length > 0 ? (
+                    <>
+                      <div className="h-[200px] w-full flex items-end justify-between gap-2 p-4 border rounded-lg bg-muted/10">
+                        {trendsData.trends.map((point: any, i: number) => {
+                          const maxEngagement = Math.max(...trendsData.trends.map((t: any) => t.engagement), 1);
+                          const height = (point.engagement / maxEngagement) * 100;
+                          return (
+                            <div key={i} className="flex flex-col items-center gap-2 flex-1">
+                              <div 
+                                className="w-full bg-primary/80 rounded-t-sm transition-all hover:bg-primary cursor-pointer"
+                                style={{ height: `${Math.max(height, 5)}%` }}
+                                title={`${point.date}: ${point.engagement} engagement, ${point.posts} posts`}
+                              />
+                              <span className="text-[10px] text-muted-foreground rotate-45 origin-left translate-y-2">
+                                {new Date(point.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      <p className="text-sm text-muted-foreground text-center mt-4">
+                        Daily engagement metrics over the last {trendsData.trends.length} days
+                      </p>
+                    </>
+                  ) : (
+                    <div className="text-center py-8 text-muted-foreground">
+                      No trend data available yet. Start posting to see your performance trends!
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="text-center py-8 text-muted-foreground">Loading trends...</div>
