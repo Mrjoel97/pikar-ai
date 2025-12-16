@@ -16,7 +16,7 @@ export const envStatus = query({
 
     try {
       const emailSample = await ctx.db.query("emails").take(200);
-      const queueStatuses = ["queued", "scheduled", "sending"];
+      const queueStatuses = ["pending", "queued", "scheduled", "sending"];
       emailQueueDepth = emailSample.filter(email => 
         queueStatuses.includes(String(email.status))
       ).length;
