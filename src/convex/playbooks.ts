@@ -231,10 +231,13 @@ export const adminUpsertPlaybook = mutation({
         // businessId: args.businessId as any, // Removed as it's not in schema
         playbook_key: args.key,
         display_name: args.name,
+        name: args.name, // Added required field
         description: args.description,
         version: "1.0.0",
         active: true,
+        isActive: true, // Added required field
         triggers: [],
+        trigger: "manual", // Added required field
         steps: [],
         input_schema: {},
         output_schema: {},
@@ -242,6 +245,8 @@ export const adminUpsertPlaybook = mutation({
             category: args.category,
             author: identity.email,
         },
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
       });
     }
 

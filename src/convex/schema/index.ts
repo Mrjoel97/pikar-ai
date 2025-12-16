@@ -14,6 +14,15 @@ import { workflowsSchema } from "./workflows";
 import { kpiSchema } from "./kpi";
 import { onboardingSchema } from "./onboarding";
 import { whiteLabelSchema } from "./whiteLabel";
+import { adminSchema } from "./admin";
+import { agentsSchema } from "./agents";
+import { enterpriseSchema } from "./enterprise";
+import { integrationsSchema } from "./integrations";
+import { securitySchema } from "./security";
+import { supportSchema } from "./support";
+import { testingSchema } from "./testing";
+import { vectorsSchema } from "./vectors";
+import { activitySchema } from "./activity";
 
 export default defineSchema({
   ...coreSchema,
@@ -30,6 +39,15 @@ export default defineSchema({
   ...kpiSchema,
   ...onboardingSchema,
   ...whiteLabelSchema,
+  ...adminSchema,
+  ...agentsSchema,
+  ...enterpriseSchema,
+  ...integrationsSchema,
+  ...securitySchema,
+  ...supportSchema,
+  ...testingSchema,
+  ...vectorsSchema,
+  ...activitySchema,
   calendarIntegrations,
   appointments,
   availabilityBlocks,

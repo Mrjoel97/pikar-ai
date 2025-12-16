@@ -11,16 +11,20 @@ export const createProposal = internalMutation({
     diffPreview: v.string(),
   },
   handler: async (ctx, args) => {
-    const docId = await ctx.db.insert("docs", {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Unauthenticated");
+
+    const docId = await ctx.db.insert("docsPages", {
       businessId: args.businessId,
       title: args.title,
       slug: args.slug,
       contentMarkdown: args.contentMarkdown,
-      // diffPreview: args.diffPreview, // Removed as it's not in schema
-      status: "pending",
+      isPublished: false,
+      lastEditedBy: args.userId, // Assuming userId is passed or we should use identity
       createdAt: Date.now(),
-      createdBy: args.userId,
+      updatedAt: Date.now(),
     });
+
     return docId;
   },
 });

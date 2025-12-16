@@ -66,22 +66,6 @@ export const coreSchema = {
     .index("by_owner", ["ownerId"])
     .index("by_tier", ["tier"]),
 
-  wins: defineTable({
-    businessId: v.id("businesses"),
-    title: v.string(),
-    description: v.optional(v.string()),
-    impact: v.optional(v.string()),
-    timeSaved: v.optional(v.number()),
-    category: v.optional(v.union(
-      v.literal("automation"),
-      v.literal("revenue"),
-      v.literal("efficiency"),
-      v.literal("customer"),
-      v.literal("other")
-    )),
-    date: v.number(),
-  }).index("by_business", ["businessId"]),
-
   brainDumps: defineTable({
     businessId: v.id("businesses"),
     userId: v.id("users"),
@@ -151,40 +135,6 @@ export const coreSchema = {
   })
     .index("by_business", ["businessId"])
     .index("by_status", ["status"]),
-
-  appointments: defineTable({
-    businessId: v.id("businesses"),
-    title: v.string(),
-    description: v.optional(v.string()),
-    startTime: v.number(),
-    endTime: v.number(),
-    attendees: v.array(v.string()),
-    location: v.optional(v.string()),
-    type: v.string(),
-    status: v.string(),
-  }).index("by_business", ["businessId"]),
-
-  availabilityBlocks: defineTable({
-    businessId: v.id("businesses"),
-    dayOfWeek: v.number(),
-    startTime: v.string(),
-    endTime: v.string(),
-    isAvailable: v.boolean(),
-  }).index("by_business", ["businessId"]),
-
-  calendarIntegrations: defineTable({
-    businessId: v.id("businesses"),
-    userId: v.id("users"),
-    provider: v.union(v.literal("google"), v.literal("outlook"), v.literal("apple")),
-    accessToken: v.string(),
-    refreshToken: v.optional(v.string()),
-    expiresAt: v.number(),
-    isActive: v.boolean(),
-    connectedAt: v.number(),
-    lastSyncAt: v.optional(v.number()),
-  })
-    .index("by_business", ["businessId"])
-    .index("by_user", ["userId"]),
 
   uploads: defineTable({
     businessId: v.id("businesses"),
@@ -532,29 +482,6 @@ export const coreSchema = {
     .index("by_user", ["userId"])
     .index("by_template", ["templateId"])
     .index("by_user_and_template", ["userId", "templateId"]),
-
-  learningCourses: defineTable({
-    businessId: v.optional(v.id("businesses")),
-    title: v.string(),
-    description: v.optional(v.string()),
-    category: v.string(),
-    difficulty: v.union(
-      v.literal("beginner"),
-      v.literal("intermediate"),
-      v.literal("advanced")
-    ),
-    duration: v.number(),
-    modules: v.array(v.any()),
-    isPublished: v.boolean(),
-    createdBy: v.optional(v.id("users")),
-    availableTiers: v.optional(v.array(v.string())),
-    totalLessons: v.optional(v.number()),
-    quizScores: v.optional(v.any()),
-    createdAt: v.number(),
-    updatedAt: v.number(),
-  })
-    .index("by_business", ["businessId"])
-    .index("by_category", ["category"]),
 
   trainingSessions: defineTable({
     businessId: v.id("businesses"),

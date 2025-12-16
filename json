@@ -1,3 +1,11 @@
 {
-  "plan": "1. Verify that the schema is now valid and free of duplicates.\n2. Check if the dashboard loads without errors.\n3. If errors persist, investigate SolopreneurDashboard.tsx for any other issues."
+  "file_paths": [
+    "src/convex/schema/enterprise.ts",
+    "src/convex/schema/social.ts",
+    "src/convex/docsInternal.ts",
+    "src/convex/playbooks.ts",
+    "src/convex/calendar.ts",
+    "src/convex/schedule.ts"
+  ],
+  "replace_files_in_context": true
 }
