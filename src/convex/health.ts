@@ -11,18 +11,17 @@ export const envStatus = query({
     const hasOPENAI = !!process.env.OPENAI_API_KEY;
     const devSafeEmailsEnabled = process.env.DEV_SAFE_EMAILS === "true";
     
-    // Email queue depth - temporarily disabled to prevent backfilling errors
-    // We return 0 until the index backfill is complete
-    const emailQueueDepth = 0;
-    /*
+    // Email queue depth - use take() without index to avoid backfilling issues
+    let emailQueueDepth = 0;
     try {
-      const allEmails = await ctx.db.query("emails").take(1000);
-      emailQueueDepth = allEmails.filter(e => e.status === "pending").length;
+      // We take the latest 1000 emails and check their status in memory
+      // This avoids using the "by_status" index which might be backfilling
+      const allEmails = await ctx.db.query("emails").order("desc").take(1000);
+      emailQueueDepth = allEmails.filter((e: any) => e.status === "pending").length;
     } catch (error) {
       console.warn("Unable to query emails table:", error);
       emailQueueDepth = 0;
     }
-    */
     
     // Cron last processed - compute latest by _creationTime without requiring a custom index
     let cronLastProcessed = null;
