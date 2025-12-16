@@ -16,23 +16,15 @@ export const envStatus = query({
     let emailQueueDepth = 0;
 
     try {
-      const statusDocs = await Promise.all(
-        queueStatuses.map((status) =>
-          ctx.db
-            .query("emails")
-            .withIndex("by_status", (q) => q.eq("status", status as any))
-            .take(200)
-        )
-      );
-
-      emailQueueDepth = statusDocs.reduce((total, docs) => total + docs.length, 0);
-    } catch (error) {
-      console.warn("health.envStatus: falling back without emails.by_status index", error);
-      const fallbackSample = await ctx.db.query("emails").take(200);
-      emailQueueDepth = fallbackSample.reduce((total, email) => {
+      const emailSample = await ctx.db.query("emails").take(200);
+      emailQueueDepth = emailSample.reduce((total, email) => {
         const status = String(email.status);
-        return queueStatuses.includes(status as (typeof queueStatuses)[number]) ? total + 1 : total;
+        return queueStatuses.includes(status as (typeof queueStatuses)[number])
+          ? total + 1
+          : total;
       }, 0);
+    } catch (error) {
+      console.warn("health.envStatus: unable to sample emails table", error);
     }
     
     // Cron last processed - compute latest by _creationTime without requiring a custom index
