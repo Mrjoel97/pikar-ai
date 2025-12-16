@@ -1,6 +1,8 @@
-const filesToRead = [
-  "src/convex/schema/enterprise.ts",
-  "src/convex/schema/content.ts",
-  "src/convex/aiAgents.ts",
-  "src/convex/adminAuthData.ts"
-];
+const { readFilesToContextTool } = default_api;
+const files = await readFilesToContextTool({
+  file_paths: [
+    "src/convex/demoVideos.ts",
+    "src/convex/schema/index.ts"
+  ],
+  replace_files_in_context: true
+});
