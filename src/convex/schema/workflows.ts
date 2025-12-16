@@ -317,11 +317,4 @@ export const workflowsSchema = {
     .index("by_business", ["businessId"])
     .index("by_workflow", ["workflowId"])
     .index("by_status", ["status"]),
-
-  templatePins: defineTable({
-    userId: v.id("users"),
-    templateId: v.string(),
-  })
-    .index("by_user", ["userId"])
-    .index("by_template", ["templateId"]),
 };

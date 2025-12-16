@@ -4,7 +4,6 @@ import { teamSchema } from "./team";
 import { docsSchema } from "./docs";
 import { winsSchema } from "./wins";
 import { socialSchema } from "./social";
-import { emailSchema } from "./email";
 import { calendarIntegrations, appointments, availabilityBlocks } from "./calendar";
 
 export default defineSchema({
@@ -13,7 +12,6 @@ export default defineSchema({
   ...docsSchema,
   ...winsSchema,
   ...socialSchema,
-  ...emailSchema,
   calendarIntegrations,
   appointments,
   availabilityBlocks,

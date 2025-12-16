@@ -3,40 +3,87 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Play, LucideIcon } from "lucide-react";
+import { Play, User, Users, Building, Building2 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
-
-interface DemoTierDefault {
-  id: string;
-  name: string;
-  icon: LucideIcon;
-  color: string;
-  defaultVideoUrl: string;
-  defaultThumbnail: string;
-  defaultDuration: string;
-  description: string;
-  benefits: string[];
-}
 
 type DemoVideoCarouselProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSelectTier?: (tier: string) => void;
-  defaults: DemoTierDefault[];
 };
 
-export default function DemoVideoCarousel({ open, onOpenChange, onSelectTier, defaults }: DemoVideoCarouselProps) {
+export default function DemoVideoCarousel({ open, onOpenChange, onSelectTier }: DemoVideoCarouselProps) {
   const demoVideos = useQuery(api.demoVideos.list);
 
   // Merge database videos with default tier data
-  const tierVideos = defaults.map(tier => ({
-    ...tier,
-    videoUrl: demoVideos?.find((v: any) => v.tier === tier.id)?.videoUrl || tier.defaultVideoUrl,
-    thumbnail: demoVideos?.find((v: any) => v.tier === tier.id)?.thumbnail || tier.defaultThumbnail,
-    duration: demoVideos?.find((v: any) => v.tier === tier.id)?.duration || tier.defaultDuration,
-  }));
+  const tierVideos = [
+    {
+      id: "solopreneur",
+      name: "Solopreneur",
+      icon: User,
+      color: "bg-blue-500",
+      videoUrl: demoVideos?.find((v: any) => v.tier === "solopreneur")?.videoUrl || "https://www.youtube.com/embed/dQw4w9WgXcQ",
+      thumbnail: demoVideos?.find((v: any) => v.tier === "solopreneur")?.thumbnail || "https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=800&h=450&fit=crop",
+      duration: demoVideos?.find((v: any) => v.tier === "solopreneur")?.duration || "3:45",
+      description: "See how solo entrepreneurs automate their entire business workflow",
+      benefits: [
+        "One-click campaign setup",
+        "AI content generation",
+        "Automated social posting",
+        "Lead capture & follow-up"
+      ]
+    },
+    {
+      id: "startup",
+      name: "Startup",
+      icon: Users,
+      color: "bg-green-500",
+      videoUrl: demoVideos?.find((v: any) => v.tier === "startup")?.videoUrl || "https://www.youtube.com/embed/dQw4w9WgXcQ",
+      thumbnail: demoVideos?.find((v: any) => v.tier === "startup")?.thumbnail || "https://images.unsplash.com/photo-1556761175-b413da4baf72?w=800&h=450&fit=crop",
+      duration: demoVideos?.find((v: any) => v.tier === "startup")?.duration || "5:20",
+      description: "Watch how growing teams coordinate and scale with AI agents",
+      benefits: [
+        "Team collaboration tools",
+        "Multi-channel campaigns",
+        "Advanced analytics",
+        "Workflow automation"
+      ]
+    },
+    {
+      id: "sme",
+      name: "SME",
+      icon: Building,
+      color: "bg-purple-500",
+      videoUrl: demoVideos?.find((v: any) => v.tier === "sme")?.videoUrl || "https://www.youtube.com/embed/dQw4w9WgXcQ",
+      thumbnail: demoVideos?.find((v: any) => v.tier === "sme")?.thumbnail || "https://images.unsplash.com/photo-1497366216548-37526070297c?w=800&h=450&fit=crop",
+      duration: demoVideos?.find((v: any) => v.tier === "sme")?.duration || "6:15",
+      description: "Discover enterprise-grade orchestration for mid-sized businesses",
+      benefits: [
+        "Department-level dashboards",
+        "Compliance automation",
+        "Multi-brand management",
+        "Custom AI agents"
+      ]
+    },
+    {
+      id: "enterprise",
+      name: "Enterprise",
+      icon: Building2,
+      color: "bg-orange-500",
+      videoUrl: demoVideos?.find((v: any) => v.tier === "enterprise")?.videoUrl || "https://www.youtube.com/embed/dQw4w9WgXcQ",
+      thumbnail: demoVideos?.find((v: any) => v.tier === "enterprise")?.thumbnail || "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=800&h=450&fit=crop",
+      duration: demoVideos?.find((v: any) => v.tier === "enterprise")?.duration || "8:30",
+      description: "Experience global business transformation at scale",
+      benefits: [
+        "White-label capabilities",
+        "Custom API access",
+        "SSO & SCIM integration",
+        "Dedicated support"
+      ]
+    }
+  ];
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
