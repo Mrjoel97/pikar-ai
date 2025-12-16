@@ -588,6 +588,27 @@ export const coreSchema = {
     userAgent: v.optional(v.string()),
   }).index("by_token", ["token"]),
 
+  activityFeed: defineTable({
+    businessId: v.id("businesses"),
+    userId: v.id("users"),
+    type: v.string(),
+    content: v.string(),
+    data: v.optional(v.any()),
+    isRead: v.boolean(),
+    createdAt: v.number(),
+  }).index("by_business", ["businessId"]),
+
+  crmDeals: defineTable({
+    businessId: v.id("businesses"),
+    title: v.string(),
+    value: v.optional(v.number()),
+    stage: v.string(),
+    probability: v.optional(v.number()),
+    closeDate: v.optional(v.number()),
+    updatedAt: v.optional(v.number()),
+    createdAt: v.number(),
+  }).index("by_business", ["businessId"]),
+
   featureFlags: defineTable({
     name: v.string(),
     description: v.optional(v.string()),
