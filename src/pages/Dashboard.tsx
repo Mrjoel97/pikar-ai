@@ -24,8 +24,6 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const [helpOpen, setHelpOpen] = useState(false);
 
-  // Local lazy dashboard re-definitions removed; using module-scoped lazy components.
-
   // Guest mode detection (prefer router location, fallback to utils/localStorage)
   const location = useLocation();
   const searchParams = new URLSearchParams(location.search || "");
@@ -38,7 +36,6 @@ export default function Dashboard() {
   // Data fetching - skip in guest mode
   const business = useQuery(
     api.businesses.currentUserBusiness,
-    // Use "skip" to avoid type mismatch when skipping
     guestMode || !isAuthenticated ? "skip" : {}
   );
   
@@ -70,12 +67,6 @@ export default function Dashboard() {
       toast.error(err?.message ?? "Failed to seed demo data");
     }
   };
-
-  // Add: SLA summary for display
-  const slaSummary = useQuery(
-    api.health.envStatus,
-    guestMode || !business?._id ? "skip" : {}
-  );
 
   // Helper to emit lightweight telemetry without backend coupling
   const logTelemetry = (event: string, data?: Record<string, any>) => {
@@ -426,30 +417,10 @@ export default function Dashboard() {
                 Snapshot — Workflows: {upgradeNudges.snapshot.workflowsCount} • Runs: {upgradeNudges.snapshot.runsCount} • Agents: {upgradeNudges.snapshot.agentsCount}
               </div>
               <div>
-                {/* Route to dedicated pricing page */}
                 <Button size="sm" onClick={() => navigate("/pricing")}>
                   View plans
                 </Button>
               </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Add: SLA overdue badge */}
-        {!guestMode && slaSummary && slaSummary.overdueApprovalsCount > 0 && (
-          <Card className="mb-6 border-red-200 bg-red-50">
-            <CardContent className="flex items-center justify-between p-4">
-              <div className="flex items-center gap-3">
-                <Badge variant="outline" className="border-red-300 text-red-700">
-                  SLA Alert
-                </Badge>
-                <span className="text-sm text-red-900">
-                  {slaSummary.overdueApprovalsCount} overdue approvals require attention
-                </span>
-              </div>
-              <Button size="sm" onClick={() => navigate("/workflows")}>
-                Review Approvals
-              </Button>
             </CardContent>
           </Card>
         )}
@@ -469,29 +440,6 @@ export default function Dashboard() {
             </Button>
           </CardContent>
         </Card>
-
-        {/* Audit & Analytics CTA - add View all link */}
-        <div className="flex items-center justify-between">
-          <div className="text-sm text-muted-foreground">
-            Recent audit events
-          </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              try {
-                // Prefer client-side navigation
-                (window as any).appNavigate
-                  ? (window as any).appNavigate("/analytics")
-                  : (window.location.href = "/analytics");
-              } catch {
-                window.location.href = "/analytics";
-              }
-            }}
-          >
-            View all
-          </Button>
-        </div>
 
         {/* Render a fixed action button for authenticated, non-guest users */}
         {isAuthenticated && !guestMode && (
