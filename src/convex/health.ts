@@ -12,56 +12,40 @@ export const envStatus = query({
     const devSafeEmailsEnabled = process.env.DEV_SAFE_EMAILS === "true";
     
     // Email queue depth
-    // FIX: Temporarily disabled to prevent "index backfilling" errors during deployment
-    let emailQueueDepth = 0;
-    /*
-    try {
-      const recentEmails = await ctx.db
-        .query("emails")
-        .order("desc")
-        .take(50);
-      
-      const queued = recentEmails.filter((e: any) => e.status === "queued").length;
-      const scheduled = recentEmails.filter((e: any) => e.status === "scheduled").length;
-      const sending = recentEmails.filter((e: any) => e.status === "sending").length;
-      
-      emailQueueDepth = queued + scheduled + sending;
-    } catch (e) {
-      console.error("Failed to query emails for health check:", e);
-      // Default to 0 if query fails
-    }
-    */
+    const queuedEmails = await ctx.db
+      .query("emails")
+      .withIndex("by_status", (q) => q.eq("status", "queued" as any))
+      .collect();
+    
+    const scheduledEmails = await ctx.db
+      .query("emails")
+      .withIndex("by_status", (q) => q.eq("status", "scheduled" as any))
+      .collect();
+    
+    const sendingEmails = await ctx.db
+      .query("emails")
+      .withIndex("by_status", (q) => q.eq("status", "sending" as any))
+      .collect();
+    
+    const emailQueueDepth = queuedEmails.length + scheduledEmails.length + sendingEmails.length;
     
     // Cron last processed - compute latest by _creationTime without requiring a custom index
-    let cronLastProcessed = null;
-    try {
-      const lastAudit = await ctx.db
-        .query("audit_logs")
-        .order("desc")
-        .first();
-      cronLastProcessed = lastAudit?._creationTime ?? null;
-    } catch (e) {
-      console.error("Failed to query audit_logs for health check:", e);
-    }
+    const lastAudit = await ctx.db
+      .query("audit_logs")
+      .order("desc")
+      .first();
+
+    const cronLastProcessed = lastAudit?._creationTime ?? null;
     
     // Overdue approvals count
     const now = Date.now();
-    let overdueApprovalsCount = 0;
-    /*
-    try {
-      // FIX: Avoid using "by_sla_deadline" index if it might be backfilling
-      const recentApprovals = await ctx.db
-        .query("approvalQueue")
-        .order("desc")
-        .take(50);
-        
-      overdueApprovalsCount = recentApprovals.filter((q: any) => 
-        q.status === "pending" && q.slaDeadline < now
-      ).length;
-    } catch (e) {
-      console.error("Failed to query approvalQueue for health check:", e);
-    }
-    */
+    const overdueApprovals = await ctx.db
+      .query("approvalQueue")
+      .withIndex("by_sla_deadline", (q) => q.lt("slaDeadline", now))
+      .filter((q) => q.eq(q.field("status"), "pending"))
+      .collect();
+    
+    const overdueApprovalsCount = overdueApprovals.length;
     
     return {
       hasRESEND,
