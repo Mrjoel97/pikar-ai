@@ -1,4 +1,111 @@
-import { Brain, BarChart3, Zap, Shield, Users } from "lucide-react";
+import { Brain, BarChart3, Zap, Shield, Users, DollarSign, User, Building, Building2 } from "lucide-react";
+
+export const industries = [
+  "SaaS", "eCommerce", "Healthcare", "Fintech", "Education", "Real Estate",
+  "Logistics", "Hospitality", "Manufacturing", "Agencies", "Nonprofit",
+  "Retail", "Media", "Gaming", "Legal", "HR Tech", "Travel",
+  "Fitness & Wellness", "Consumer Apps", "Marketplaces",
+];
+
+export const benefitsData = [
+  {
+    icon: Zap,
+    title: "10x Faster Execution",
+    description: "Automate repetitive tasks and workflows, freeing up 15+ hours per week to focus on strategic growth initiatives."
+  },
+  {
+    icon: BarChart3,
+    title: "Data-Driven Insights",
+    description: "Real-time analytics and predictive intelligence help you make informed decisions that drive 3x revenue growth."
+  },
+  {
+    icon: Brain,
+    title: "AI-Powered Agents",
+    description: "Deploy specialized AI agents for content creation, customer support, sales, and marketing—working 24/7 for you."
+  },
+  {
+    icon: Shield,
+    title: "Enterprise Security",
+    description: "Bank-level encryption, 95%+ compliance automation, and SOC 2 certified infrastructure protect your business data."
+  },
+  {
+    icon: Users,
+    title: "Seamless Collaboration",
+    description: "Unite your team with integrated workflows, real-time updates, and AI-assisted coordination across all departments."
+  },
+  {
+    icon: DollarSign,
+    title: "Proven ROI",
+    description: "Average 340% ROI in 4 months. Our customers save $50K+ annually while increasing revenue by 200%+."
+  }
+];
+
+export const demoTierDefaults = [
+  {
+    id: "solopreneur",
+    name: "Solopreneur",
+    icon: User,
+    color: "bg-blue-500",
+    defaultVideoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+    defaultThumbnail: "https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=800&h=450&fit=crop",
+    defaultDuration: "3:45",
+    description: "See how solo entrepreneurs automate their entire business workflow",
+    benefits: [
+      "One-click campaign setup",
+      "AI content generation",
+      "Automated social posting",
+      "Lead capture & follow-up"
+    ]
+  },
+  {
+    id: "startup",
+    name: "Startup",
+    icon: Users,
+    color: "bg-green-500",
+    defaultVideoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+    defaultThumbnail: "https://images.unsplash.com/photo-1556761175-b413da4baf72?w=800&h=450&fit=crop",
+    defaultDuration: "5:20",
+    description: "Watch how growing teams coordinate and scale with AI agents",
+    benefits: [
+      "Team collaboration tools",
+      "Multi-channel campaigns",
+      "Advanced analytics",
+      "Workflow automation"
+    ]
+  },
+  {
+    id: "sme",
+    name: "SME",
+    icon: Building,
+    color: "bg-purple-500",
+    defaultVideoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+    defaultThumbnail: "https://images.unsplash.com/photo-1497366216548-37526070297c?w=800&h=450&fit=crop",
+    defaultDuration: "6:15",
+    description: "Discover enterprise-grade orchestration for mid-sized businesses",
+    benefits: [
+      "Department-level dashboards",
+      "Compliance automation",
+      "Multi-brand management",
+      "Custom AI agents"
+    ]
+  },
+  {
+    id: "enterprise",
+    name: "Enterprise",
+    icon: Building2,
+    color: "bg-orange-500",
+    defaultVideoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+    defaultThumbnail: "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=800&h=450&fit=crop",
+    defaultDuration: "8:30",
+    description: "Experience global business transformation at scale",
+    benefits: [
+      "White-label capabilities",
+      "Custom API access",
+      "SSO & SCIM integration",
+      "Dedicated support"
+    ]
+  }
+];
 
 export const trendData = [
   { month: "Jan", revenue: 12000, leads: 240, efficiency: 80 },

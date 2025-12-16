@@ -2,18 +2,15 @@ import { useMemo } from "react";
 import { motion } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
 
-export default function IndustriesSection() {
-  const industries: Array<string> = [
-    "SaaS", "eCommerce", "Healthcare", "Fintech", "Education", "Real Estate",
-    "Logistics", "Hospitality", "Manufacturing", "Agencies", "Nonprofit",
-    "Retail", "Media", "Gaming", "Legal", "HR Tech", "Travel",
-    "Fitness & Wellness", "Consumer Apps", "Marketplaces",
-  ];
-  
+interface IndustriesSectionProps {
+  industries: string[];
+}
+
+export default function IndustriesSection({ industries }: IndustriesSectionProps) {
   const randomIndustries = useMemo(() => {
     const shuffled = [...industries].sort(() => Math.random() - 0.5);
     return shuffled;
-  }, []);
+  }, [industries]);
 
   return (
     <motion.section 

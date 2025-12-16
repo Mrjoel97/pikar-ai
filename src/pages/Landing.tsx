@@ -20,7 +20,7 @@ import DemoVideoCarousel from "@/components/landing/DemoVideoCarousel";
 import TestimonialsSection from "@/components/landing/TestimonialsSection";
 
 // Import data
-import { trendData, features, tiers, trustedLogos, testimonials } from "@/lib/landing-data";
+import { trendData, features, tiers, trustedLogos, testimonials, industries, benefitsData, demoTierDefaults } from "@/lib/landing-data";
 
 export default function Landing() {
   const navigate = useNavigate();
@@ -75,7 +75,7 @@ export default function Landing() {
       <LandingHero handleGetStarted={handleGetStarted} setDemoOpen={setDemoOpen} />
 
       {/* High-Traction Industries */}
-      <IndustriesSection />
+      <IndustriesSection industries={industries} />
 
       {/* Trusted Logos - Animated Marquee */}
       <motion.div
@@ -106,13 +106,14 @@ export default function Landing() {
       </motion.div>
 
       {/* Benefits Card - What You Get with Pikar AI */}
-      <BenefitsSection handleGetStarted={handleGetStarted} />
+      <BenefitsSection handleGetStarted={handleGetStarted} benefits={benefitsData} />
 
       {/* Demo Video Carousel */}
       <DemoVideoCarousel
         open={demoOpen}
         onOpenChange={setDemoOpen}
         onSelectTier={handleDemoTierSelect}
+        defaults={demoTierDefaults}
       />
 
       {/* Testimonials Section */}
