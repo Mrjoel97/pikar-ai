@@ -11,39 +11,44 @@ export const envStatus = query({
     const hasOPENAI = !!process.env.OPENAI_API_KEY;
     const devSafeEmailsEnabled = process.env.DEV_SAFE_EMAILS === "true";
     
-    // Email queue depth
-    const queueStatuses = ["queued", "scheduled", "sending"] as const;
+    // Email queue depth - use simple query without index to avoid backfilling issues
     let emailQueueDepth = 0;
 
     try {
       const emailSample = await ctx.db.query("emails").take(200);
-      emailQueueDepth = emailSample.reduce((total, email) => {
-        const status = String(email.status);
-        return queueStatuses.includes(status as (typeof queueStatuses)[number])
-          ? total + 1
-          : total;
-      }, 0);
+      const queueStatuses = ["queued", "scheduled", "sending"];
+      emailQueueDepth = emailSample.filter(email => 
+        queueStatuses.includes(String(email.status))
+      ).length;
     } catch (error) {
       console.warn("health.envStatus: unable to sample emails table", error);
     }
     
     // Cron last processed - compute latest by _creationTime without requiring a custom index
-    const lastAudit = await ctx.db
-      .query("audit_logs")
-      .order("desc")
-      .first();
-
-    const cronLastProcessed = lastAudit?._creationTime ?? null;
+    let cronLastProcessed: number | null = null;
+    try {
+      const lastAudit = await ctx.db
+        .query("audit_logs")
+        .order("desc")
+        .first();
+      cronLastProcessed = lastAudit?._creationTime ?? null;
+    } catch (error) {
+      console.warn("health.envStatus: unable to query audit_logs", error);
+    }
     
-    // Overdue approvals count
-    const now = Date.now();
-    const overdueApprovals = await ctx.db
-      .query("approvalQueue")
-      .withIndex("by_sla_deadline", (q) => q.lt("slaDeadline", now))
-      .filter((q) => q.eq(q.field("status"), "pending"))
-      .collect();
-    
-    const overdueApprovalsCount = overdueApprovals.length;
+    // Overdue approvals count - wrap in try-catch to handle index backfilling
+    let overdueApprovalsCount = 0;
+    try {
+      const now = Date.now();
+      const overdueApprovals = await ctx.db
+        .query("approvalQueue")
+        .withIndex("by_sla_deadline", (q) => q.lt("slaDeadline", now))
+        .filter((q) => q.eq(q.field("status"), "pending"))
+        .collect();
+      overdueApprovalsCount = overdueApprovals.length;
+    } catch (error) {
+      console.warn("health.envStatus: unable to query approvalQueue", error);
+    }
     
     return {
       hasRESEND,
