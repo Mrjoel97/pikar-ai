@@ -480,16 +480,4 @@ export const enterpriseSchema = {
     .index("by_business", ["businessId"])
     .index("by_timestamp", ["timestamp"])
     .index("by_business_and_event", ["businessId", "event"]),
-
-  dataWarehouseExports: defineTable({
-    businessId: v.id("businesses"),
-    exportType: v.string(),
-    format: v.string(),
-    status: v.string(),
-    url: v.optional(v.string()),
-    error: v.optional(v.string()),
-    createdBy: v.id("users"),
-    createdAt: v.number(),
-    completedAt: v.optional(v.number()),
-  }).index("by_business", ["businessId"]),
 };

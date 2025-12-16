@@ -21,8 +21,7 @@ import EnterpriseSettings from "@/components/settings/EnterpriseSettings";
 
 export default function SettingsPage() {
   const navigate = useNavigate();
-  // Health monitoring has been removed
-  const env = null;
+  const env = useQuery(api.health.envStatus, {}) as any;
   const sendTestEmailAction = useAction(api.emailsActions.sendTestEmail);
   const business = useQuery(api.businesses.currentUserBusiness, {} as any);
 

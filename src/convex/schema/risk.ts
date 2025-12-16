@@ -90,5 +90,13 @@ export const riskSchema = {
     .index("by_business", ["businessId"])
     .index("by_type", ["reportType"]),
 
-  // wins removed - defined in wins.ts
+  wins: defineTable({
+    businessId: v.id("businesses"),
+    title: v.string(),
+    description: v.optional(v.string()),
+    impact: v.optional(v.string()),
+    timeSaved: v.optional(v.number()),
+    category: v.optional(v.string()),
+    date: v.number(),
+  }).index("by_business", ["businessId"]),
 };

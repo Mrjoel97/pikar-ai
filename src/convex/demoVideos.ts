@@ -1,53 +1,49 @@
 import { v } from "convex/values";
 import { query, mutation } from "./_generated/server";
 
-export const list = query({
+export const getDemoVideos = query({
   args: {},
   handler: async (ctx) => {
-    const videos = await ctx.db.query("docsVideos").collect();
-    // Filter for videos that have a tier assigned (landing page demos)
-    return videos.filter((v: any) => v.tier);
+    return await ctx.db.query("docsVideos").collect();
   },
 });
 
-export const upsert = mutation({
+export const addDemoVideo = mutation({
   args: {
-    tier: v.string(),
-    videoUrl: v.string(),
-    thumbnail: v.optional(v.string()),
-    duration: v.optional(v.string()),
+    businessId: v.id("businesses"),
+    title: v.string(),
+    description: v.optional(v.string()),
+    url: v.string(),
+    thumbnailUrl: v.optional(v.string()),
+    duration: v.optional(v.number()),
+    category: v.string(),
+    order: v.number(),
   },
   handler: async (ctx, args) => {
-    const videos = await ctx.db.query("docsVideos").collect();
-    const existing = videos.find((v: any) => v.tier === args.tier);
     const now = Date.now();
-
-    if (existing) {
-      await ctx.db.patch(existing._id, {
-        videoUrl: args.videoUrl,
-        thumbnail: args.thumbnail,
-        duration: args.duration,
-        updatedAt: now,
-      });
-    } else {
-      await ctx.db.insert("docsVideos", {
-        tier: args.tier,
-        videoUrl: args.videoUrl,
-        thumbnail: args.thumbnail,
-        duration: args.duration,
-        isPublished: true,
-        createdAt: now,
-        updatedAt: now,
-        title: `Demo Video - ${args.tier}`,
-        category: "landing_demo",
-      });
-    }
+    return await ctx.db.insert("docsVideos", {
+      businessId: args.businessId,
+      title: args.title,
+      description: args.description,
+      videoUrl: args.url,
+      thumbnail: args.thumbnailUrl,
+      duration: args.duration?.toString(),
+      category: args.category,
+      order: args.order,
+      isPublished: true,
+      createdAt: now,
+      updatedAt: now,
+    });
   },
 });
 
-export const remove = mutation({
-  args: { id: v.id("docsVideos") },
+export const incrementViews = mutation({
+  args: { videoId: v.id("docsVideos") },
   handler: async (ctx, args) => {
-    await ctx.db.delete(args.id);
+    const video = await ctx.db.get(args.videoId);
+    if (video) {
+      // Views tracking removed from schema
+      return;
+    }
   },
 });

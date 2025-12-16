@@ -15,7 +15,6 @@ import { ChevronDown, ExternalLink } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
-// Note: health monitoring has been removed
 import { toast } from "sonner";
 
 type SyncError = {
@@ -177,8 +176,8 @@ export function FullInstrumentationProvider({
     import.meta.env.VITE_CONVEX_URL && import.meta.env.VITE_CONVEX_URL !== "undefined"
   );
 
-  // Health monitoring has been removed
-  const healthStatus = null;
+  // Gate queries to avoid network errors when Convex isn't configured/reachable
+  const healthStatus = useQuery(api.health.envStatus as any, hasConvex ? ({} as any) : undefined);
 
   useEffect(() => {
     if (!hasConvex || !healthStatus || hasShownEnvToast) return;
@@ -207,8 +206,8 @@ export function FullInstrumentationProvider({
 
   const [error, setError] = useState<GenericError | null>(null);
 
-  // Health monitoring has been removed
-  const envStatus = null;
+  // Add: environment precheck to surface actionable toasts once
+  const envStatus = useQuery(api.health.envStatus as any, hasConvex ? ({} as any) : undefined);
   const [envToastsShown, setEnvToastsShown] = useState(false);
 
   useEffect(() => {

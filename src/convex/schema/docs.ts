@@ -1,4 +1,4 @@
-import { defineSchema, defineTable } from "convex/server";
+import { defineTable } from "convex/server";
 import { v } from "convex/values";
 
 export const docsSchema = {
@@ -40,19 +40,18 @@ export const docsSchema = {
     .index("by_published", ["businessId", "isPublished"]),
 
   docsVideos: defineTable({
-    businessId: v.optional(v.string()),
-    title: v.optional(v.string()),
+    businessId: v.id("businesses"),
+    title: v.string(),
     description: v.optional(v.string()),
     videoUrl: v.string(),
     thumbnail: v.optional(v.string()),
     duration: v.optional(v.string()),
-    category: v.optional(v.string()),
-    tier: v.optional(v.string()),
-    order: v.optional(v.number()),
+    category: v.string(),
+    order: v.number(),
     isPublished: v.boolean(),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
-    .index("by_tier", ["tier"])
-    .index("by_business", ["businessId"]),
+    .index("by_business", ["businessId"])
+    .index("by_published", ["businessId", "isPublished"]),
 };

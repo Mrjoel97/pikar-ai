@@ -2,17 +2,6 @@ import { defineTable } from "convex/server";
 import { v } from "convex/values";
 
 export const socialSchema = {
-  crisisEvents: defineTable({
-    businessId: v.id("businesses"),
-    type: v.string(),
-    timestamp: v.number(),
-    data: v.any(),
-    status: v.string(),
-    severity: v.optional(v.string()),
-    resolvedAt: v.optional(v.number()),
-    resolution: v.optional(v.string()),
-  }).index("by_business", ["businessId"]),
-
   socialAccounts: defineTable({
     businessId: v.id("businesses"),
     platform: v.union(

@@ -70,8 +70,7 @@ export default function AdminPage() {
   // removed unused myRole
 
   // Add: health and feature flags queries
-  // Health monitoring has been removed
-  const env = null;
+  const env = useQuery(api.health.envStatus, {} as any);
   const flags = useQuery(api.featureFlags.getFeatureFlags as any, hasAdminAccess ? {} : undefined) as Array<{
     _id: string;
     flagName: string;

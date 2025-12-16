@@ -130,6 +130,7 @@ import type * as governance_remediation from "../governance/remediation.js";
 import type * as governance_violations from "../governance/violations.js";
 import type * as governanceAutomation from "../governanceAutomation.js";
 import type * as governanceRules from "../governanceRules.js";
+import type * as health from "../health.js";
 import type * as helpCoach_assistant from "../helpCoach/assistant.js";
 import type * as helpCoach_tutorials from "../helpCoach/tutorials.js";
 import type * as http from "../http.js";
@@ -418,6 +419,7 @@ declare const fullApi: ApiFromModules<{
   "governance/violations": typeof governance_violations;
   governanceAutomation: typeof governanceAutomation;
   governanceRules: typeof governanceRules;
+  health: typeof health;
   "helpCoach/assistant": typeof helpCoach_assistant;
   "helpCoach/tutorials": typeof helpCoach_tutorials;
   http: typeof http;

@@ -3,7 +3,6 @@
 import { action } from "./_generated/server";
 import { v } from "convex/values";
 import { api } from "./_generated/api";
-// Note: health.ts has been removed
 import { internal } from "./_generated/api";
 
 async function validateAdminAccess(ctx: any, args: any) {
@@ -84,7 +83,22 @@ Provide clear, actionable responses. If suggesting changes, explain the impact.`
       // Gather context based on allowed tools
       const steps: Array<{ tool: string; title: string; data: any }> = [];
 
-      // Health monitoring has been removed
+      if (toolsAllowed.includes("health")) {
+        try {
+          const healthStatus = await (ctx as any).runQuery("health:envStatus", {});
+          steps.push({
+            tool: "health",
+            title: "System Health Check",
+            data: healthStatus,
+          });
+        } catch (err) {
+          steps.push({
+            tool: "health",
+            title: "Health Check Failed",
+            data: { error: String(err).slice(0, 200) },
+          });
+        }
+      }
 
       if (toolsAllowed.includes("flags")) {
         try {
@@ -192,7 +206,22 @@ Provide clear, actionable responses. If suggesting changes, explain the impact.`
       // Gather context based on allowed tools
       const steps: Array<{ tool: string; title: string; data: any }> = [];
 
-      // Health monitoring has been removed
+      if (toolsAllowed.includes("health")) {
+        try {
+          const healthStatus = await (ctx as any).runQuery("health:envStatus", {});
+          steps.push({
+            tool: "health",
+            title: "System Health Check",
+            data: healthStatus,
+          });
+        } catch (err) {
+          steps.push({
+            tool: "health",
+            title: "Health Check Failed",
+            data: { error: String(err).slice(0, 200) },
+          });
+        }
+      }
 
       if (toolsAllowed.includes("flags")) {
         try {

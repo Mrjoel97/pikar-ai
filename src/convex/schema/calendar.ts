@@ -42,19 +42,3 @@ export const availabilityBlocks = defineTable({
   endTime: v.string(),
   isAvailable: v.boolean(),
 }).index("by_business", ["businessId"]);
-
-export const scheduleSlots = defineTable({
-  businessId: v.id("businesses"),
-  userId: v.id("users"),
-  startTime: v.number(),
-  endTime: v.number(),
-  duration: v.number(),
-  status: v.string(),
-  createdAt: v.number(),
-  updatedAt: v.number(),
-  channel: v.optional(v.string()),
-  label: v.optional(v.string()),
-  scheduledAt: v.optional(v.number()),
-})
-  .index("by_business", ["businessId"])
-  .index("by_user_and_time", ["userId", "startTime"]);

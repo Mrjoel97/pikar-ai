@@ -84,8 +84,5 @@ export const emailSchema = {
   })
     .index("by_business", ["businessId"])
     .index("by_campaign", ["campaignId"])
-    .index("by_status", ["status"])
-    .searchIndex("search_recipient", {
-      searchField: "recipientEmail",
-    }),
+    .index("by_status", ["status"]),
 };
