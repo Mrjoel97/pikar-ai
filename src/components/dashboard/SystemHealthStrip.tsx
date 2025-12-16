@@ -23,10 +23,8 @@ export function SystemHealthStrip({ businessId, isGuest }: SystemHealthStripProp
   const [drillDownOpen, setDrillDownOpen] = useState(false);
   const [selectedMetric, setSelectedMetric] = useState<string | null>(null);
 
-  const envStatus = useQuery(
-    api.health.envStatus,
-    !isGuest && businessId ? {} : undefined
-  ) as any;
+  // Health monitoring has been removed
+  const envStatus = null;
 
   const status = envStatus ?? {};
 

@@ -173,11 +173,6 @@ export function StartupDashboard() {
     [kpis?.teamProductivity]
   );
 
-  const envStatus = useQuery(
-    api.health.envStatus,
-    isGuest || !businessId ? "skip" : { businessId }
-  );
-
   const recentActivity = useQuery(
     api.activityFeed.getRecent,
     isGuest || !businessId ? "skip" : { businessId, limit: 10 }

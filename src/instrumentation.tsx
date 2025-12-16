@@ -177,8 +177,8 @@ export function FullInstrumentationProvider({
     import.meta.env.VITE_CONVEX_URL && import.meta.env.VITE_CONVEX_URL !== "undefined"
   );
 
-  // Gate queries to avoid network errors when Convex isn't configured/reachable
-  const healthStatus = useQuery(api.health.envStatus as any, hasConvex ? ({} as any) : undefined);
+  // Health monitoring has been removed
+  const healthStatus = null;
 
   useEffect(() => {
     if (!hasConvex || !healthStatus || hasShownEnvToast) return;
@@ -207,8 +207,8 @@ export function FullInstrumentationProvider({
 
   const [error, setError] = useState<GenericError | null>(null);
 
-  // Add: environment precheck to surface actionable toasts once
-  const envStatus = useQuery(api.health.envStatus as any, hasConvex ? ({} as any) : undefined);
+  // Health monitoring has been removed
+  const envStatus = null;
   const [envToastsShown, setEnvToastsShown] = useState(false);
 
   useEffect(() => {
