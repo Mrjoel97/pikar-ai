@@ -3,6 +3,7 @@
 import { action } from "./_generated/server";
 import { v } from "convex/values";
 import { api } from "./_generated/api";
+// Note: health.ts has been removed
 import { internal } from "./_generated/api";
 
 async function validateAdminAccess(ctx: any, args: any) {

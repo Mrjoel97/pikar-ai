@@ -15,6 +15,7 @@ import { ChevronDown, ExternalLink } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
+// Note: health monitoring has been removed
 import { toast } from "sonner";
 
 type SyncError = {
