@@ -11,23 +11,13 @@ export const envStatus = query({
     const hasOPENAI = !!process.env.OPENAI_API_KEY;
     const devSafeEmailsEnabled = process.env.DEV_SAFE_EMAILS === "true";
     
-    // Email queue depth
-    const queuedEmails = await ctx.db
+    // Email queue depth - using valid statuses from schema
+    const pendingEmails = await ctx.db
       .query("emails")
-      .withIndex("by_status", (q) => q.eq("status", "queued" as any))
+      .withIndex("by_status", (q) => q.eq("status", "pending"))
       .collect();
     
-    const scheduledEmails = await ctx.db
-      .query("emails")
-      .withIndex("by_status", (q) => q.eq("status", "scheduled" as any))
-      .collect();
-    
-    const sendingEmails = await ctx.db
-      .query("emails")
-      .withIndex("by_status", (q) => q.eq("status", "sending" as any))
-      .collect();
-    
-    const emailQueueDepth = queuedEmails.length + scheduledEmails.length + sendingEmails.length;
+    const emailQueueDepth = pendingEmails.length;
     
     // Cron last processed - compute latest by _creationTime without requiring a custom index
     const lastAudit = await ctx.db
