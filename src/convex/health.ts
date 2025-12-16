@@ -13,6 +13,8 @@ export const envStatus = query({
     
     // Email queue depth - use take() without index to avoid backfilling issues
     let emailQueueDepth = 0;
+    /* 
+    // TEMPORARILY DISABLED DUE TO INDEX BACKFILLING
     try {
       // We take the latest 1000 emails and check their status in memory
       // This avoids using the "by_status" index which might be backfilling
@@ -22,6 +24,7 @@ export const envStatus = query({
       console.warn("Unable to query emails table:", error);
       emailQueueDepth = 0;
     }
+    */
     
     // Cron last processed - compute latest by _creationTime without requiring a custom index
     let cronLastProcessed = null;
@@ -40,6 +43,8 @@ export const envStatus = query({
     
     // Overdue approvals count - use take() without index to avoid backfilling issues
     let overdueApprovalsCount = 0;
+    /*
+    // TEMPORARILY DISABLED DUE TO INDEX BACKFILLING
     try {
       const now = Date.now();
       const allApprovals = await ctx.db.query("approvalQueue").take(100);
@@ -51,6 +56,7 @@ export const envStatus = query({
       console.warn("Unable to query approvalQueue table:", error);
       overdueApprovalsCount = 0;
     }
+    */
     
     return {
       hasRESEND,
