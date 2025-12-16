@@ -11,10 +11,10 @@ export const envStatus = query({
     const hasOPENAI = !!process.env.OPENAI_API_KEY;
     const devSafeEmailsEnabled = process.env.DEV_SAFE_EMAILS === "true";
     
-    // Email queue depth - use collect() without index to avoid backfilling issues
+    // Email queue depth - use collect() without any index to avoid backfilling issues
     let emailQueueDepth = 0;
     try {
-      const allEmails = await ctx.db.query("emails").collect();
+      const allEmails = await ctx.db.query("emails").take(1000);
       emailQueueDepth = allEmails.filter(e => e.status === "pending").length;
     } catch (error) {
       console.warn("Unable to query emails table:", error);
@@ -22,18 +22,22 @@ export const envStatus = query({
     }
     
     // Cron last processed - compute latest by _creationTime without requiring a custom index
-    const lastAudit = await ctx.db
-      .query("audit_logs")
-      .order("desc")
-      .first();
-
-    const cronLastProcessed = lastAudit?._creationTime ?? null;
+    let cronLastProcessed = null;
+    try {
+      const lastAudit = await ctx.db
+        .query("audit_logs")
+        .order("desc")
+        .first();
+      cronLastProcessed = lastAudit?._creationTime ?? null;
+    } catch (error) {
+      console.warn("Unable to query audit_logs table:", error);
+    }
     
-    // Overdue approvals count - use collect() without index to avoid backfilling issues
+    // Overdue approvals count - use take() without index to avoid backfilling issues
     let overdueApprovalsCount = 0;
     try {
       const now = Date.now();
-      const allApprovals = await ctx.db.query("approvalQueue").collect();
+      const allApprovals = await ctx.db.query("approvalQueue").take(1000);
       overdueApprovalsCount = allApprovals.filter(
         a => a.status === "pending" && a.slaDeadline < now
       ).length;
