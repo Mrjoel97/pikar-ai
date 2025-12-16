@@ -15,13 +15,18 @@ export const envStatus = query({
     let emailQueueDepth = 0;
 
     try {
-      const emailSample = await ctx.db.query("emails").take(200);
+      // Use order("desc") to get most recent emails without requiring an index
+      const emailSample = await ctx.db
+        .query("emails")
+        .order("desc")
+        .take(200);
       const queueStatuses = ["pending", "queued", "scheduled", "sending"];
       emailQueueDepth = emailSample.filter(email => 
         queueStatuses.includes(String(email.status))
       ).length;
     } catch (error) {
       console.warn("health.envStatus: unable to sample emails table", error);
+      // Silently fail during index backfilling
     }
     
     // Cron last processed - compute latest by _creationTime without requiring a custom index
