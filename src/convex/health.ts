@@ -11,13 +11,19 @@ export const envStatus = query({
     const hasOPENAI = !!process.env.OPENAI_API_KEY;
     const devSafeEmailsEnabled = process.env.DEV_SAFE_EMAILS === "true";
     
-    // Email queue depth - using valid statuses from schema
-    const pendingEmails = await ctx.db
-      .query("emails")
-      .withIndex("by_status", (q) => q.eq("status", "pending"))
-      .collect();
-    
-    const emailQueueDepth = pendingEmails.length;
+    // Email queue depth - gracefully handle backfilling index
+    let emailQueueDepth = 0;
+    try {
+      const pendingEmails = await ctx.db
+        .query("emails")
+        .withIndex("by_status", (q) => q.eq("status", "pending"))
+        .collect();
+      emailQueueDepth = pendingEmails.length;
+    } catch (error) {
+      // Index is backfilling, use fallback: filter without index (less efficient but works)
+      const allEmails = await ctx.db.query("emails").take(1000);
+      emailQueueDepth = allEmails.filter(e => e.status === "pending").length;
+    }
     
     // Cron last processed - compute latest by _creationTime without requiring a custom index
     const lastAudit = await ctx.db
@@ -29,13 +35,21 @@ export const envStatus = query({
     
     // Overdue approvals count
     const now = Date.now();
-    const overdueApprovals = await ctx.db
-      .query("approvalQueue")
-      .withIndex("by_sla_deadline", (q) => q.lt("slaDeadline", now))
-      .filter((q) => q.eq(q.field("status"), "pending"))
-      .collect();
-    
-    const overdueApprovalsCount = overdueApprovals.length;
+    let overdueApprovalsCount = 0;
+    try {
+      const overdueApprovals = await ctx.db
+        .query("approvalQueue")
+        .withIndex("by_sla_deadline", (q) => q.lt("slaDeadline", now))
+        .filter((q) => q.eq(q.field("status"), "pending"))
+        .collect();
+      overdueApprovalsCount = overdueApprovals.length;
+    } catch (error) {
+      // Index might be backfilling, use fallback
+      const allApprovals = await ctx.db.query("approvalQueue").take(1000);
+      overdueApprovalsCount = allApprovals.filter(
+        a => a.status === "pending" && a.slaDeadline && a.slaDeadline < now
+      ).length;
+    }
     
     return {
       hasRESEND,
