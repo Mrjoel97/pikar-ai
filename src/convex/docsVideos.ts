@@ -8,9 +8,8 @@ export const list = query({
     
     return await ctx.db
       .query("docsVideos")
-      .withIndex("by_published", (q) => 
-        q.eq("businessId", args.businessId!).eq("isPublished", true)
-      )
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId!))
+      .filter((q) => q.eq(q.field("isPublished"), true))
       .collect();
   },
 });
