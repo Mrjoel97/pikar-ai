@@ -12,22 +12,28 @@ export const envStatus = query({
     const devSafeEmailsEnabled = process.env.DEV_SAFE_EMAILS === "true";
     
     // Email queue depth
-    const queuedEmails = await ctx.db
-      .query("emails")
-      .withIndex("by_status", (q) => q.eq("status", "queued" as any))
-      .collect();
-    
-    const scheduledEmails = await ctx.db
-      .query("emails")
-      .withIndex("by_status", (q) => q.eq("status", "scheduled" as any))
-      .collect();
-    
-    const sendingEmails = await ctx.db
-      .query("emails")
-      .withIndex("by_status", (q) => q.eq("status", "sending" as any))
-      .collect();
-    
-    const emailQueueDepth = queuedEmails.length + scheduledEmails.length + sendingEmails.length;
+    const queueStatuses = ["queued", "scheduled", "sending"] as const;
+    let emailQueueDepth = 0;
+
+    try {
+      const statusDocs = await Promise.all(
+        queueStatuses.map((status) =>
+          ctx.db
+            .query("emails")
+            .withIndex("by_status", (q) => q.eq("status", status as any))
+            .take(200)
+        )
+      );
+
+      emailQueueDepth = statusDocs.reduce((total, docs) => total + docs.length, 0);
+    } catch (error) {
+      console.warn("health.envStatus: falling back without emails.by_status index", error);
+      const fallbackSample = await ctx.db.query("emails").take(200);
+      emailQueueDepth = fallbackSample.reduce((total, email) => {
+        const status = String(email.status);
+        return queueStatuses.includes(status as (typeof queueStatuses)[number]) ? total + 1 : total;
+      }, 0);
+    }
     
     // Cron last processed - compute latest by _creationTime without requiring a custom index
     const lastAudit = await ctx.db
