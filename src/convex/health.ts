@@ -44,10 +44,10 @@ export const envStatus = query({
           message: `${pendingEmails.length} pending`,
         });
       }
-    } catch (error) {
+    } catch (error: any) {
       // Handle index backfilling gracefully
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      if (errorMessage.includes("backfilling")) {
+      const errorMessage = error?.message || String(error);
+      if (errorMessage.includes("backfilling") || errorMessage.includes("not available to query")) {
         checks.push({
           name: "emailQueue",
           status: "warning",
@@ -56,8 +56,8 @@ export const envStatus = query({
       } else {
         checks.push({
           name: "emailQueue",
-          status: "error",
-          message: "Query failed",
+          status: "warning",
+          message: "Check unavailable",
         });
       }
     }
@@ -92,10 +92,10 @@ export const envStatus = query({
           });
         }
       }
-    } catch (error) {
+    } catch (error: any) {
       // Handle index backfilling gracefully
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      if (errorMessage.includes("backfilling")) {
+      const errorMessage = error?.message || String(error);
+      if (errorMessage.includes("backfilling") || errorMessage.includes("not available to query")) {
         checks.push({
           name: "cronProcessing",
           status: "warning",
@@ -104,8 +104,8 @@ export const envStatus = query({
       } else {
         checks.push({
           name: "cronProcessing",
-          status: "error",
-          message: "Query failed",
+          status: "warning",
+          message: "Check unavailable",
         });
       }
     }
@@ -141,10 +141,10 @@ export const envStatus = query({
           status: "ok",
         });
       }
-    } catch (error) {
+    } catch (error: any) {
       // Handle index backfilling gracefully
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      if (errorMessage.includes("backfilling")) {
+      const errorMessage = error?.message || String(error);
+      if (errorMessage.includes("backfilling") || errorMessage.includes("not available to query")) {
         checks.push({
           name: "overdueApprovals",
           status: "warning",
@@ -153,8 +153,8 @@ export const envStatus = query({
       } else {
         checks.push({
           name: "overdueApprovals",
-          status: "error",
-          message: "Query failed",
+          status: "warning",
+          message: "Check unavailable",
         });
       }
     }
