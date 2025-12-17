@@ -18,20 +18,21 @@ export const envStatus = query({
     // Check email queue depth with fallback for backfilling indexes
     let emailQueueDepth = 0;
     try {
-      const pendingEmails = await ctx.db
-        .query("emails")
-        .withIndex("by_status", (q) => q.eq("status", "pending"))
-        .take(100);
-      emailQueueDepth = pendingEmails.length;
-    } catch (error) {
-      // Fallback: use in-memory filtering during index backfilling
+      // Try to use the index first
       try {
+        const pendingEmails = await ctx.db
+          .query("emails")
+          .withIndex("by_status", (q) => q.eq("status", "pending"))
+          .take(100);
+        emailQueueDepth = pendingEmails.length;
+      } catch (indexError) {
+        // If index is backfilling, fall back to in-memory filtering
         const allEmails = await ctx.db.query("emails").take(1000);
         emailQueueDepth = allEmails.filter((e) => e.status === "pending").length;
-      } catch {
-        // If emails table doesn't exist yet, that's fine
-        emailQueueDepth = 0;
       }
+    } catch (tableError) {
+      // If emails table doesn't exist yet, that's fine
+      emailQueueDepth = 0;
     }
     checks.emailQueueHealthy = emailQueueDepth < 50;
 
@@ -40,24 +41,23 @@ export const envStatus = query({
     try {
       const now = Date.now();
       const oneDayAgo = now - 24 * 60 * 60 * 1000;
-      const approvals = await ctx.db
-        .query("approvalQueue")
-        .withIndex("by_status", (q) => q.eq("status", "pending"))
-        .take(100);
-      overdueApprovals = approvals.filter((a) => a._creationTime < oneDayAgo).length;
-    } catch (error) {
-      // Fallback: use in-memory filtering during index backfilling
+      
       try {
-        const now = Date.now();
-        const oneDayAgo = now - 24 * 60 * 60 * 1000;
+        const approvals = await ctx.db
+          .query("approvalQueue")
+          .withIndex("by_status", (q) => q.eq("status", "pending"))
+          .take(100);
+        overdueApprovals = approvals.filter((a) => a._creationTime < oneDayAgo).length;
+      } catch (indexError) {
+        // Fallback: use in-memory filtering during index backfilling
         const allApprovals = await ctx.db.query("approvalQueue").take(1000);
         overdueApprovals = allApprovals.filter(
           (a) => a.status === "pending" && a._creationTime < oneDayAgo
         ).length;
-      } catch {
-        // If approvalQueue table doesn't exist yet, that's fine
-        overdueApprovals = 0;
       }
+    } catch (tableError) {
+      // If approvalQueue table doesn't exist yet, that's fine
+      overdueApprovals = 0;
     }
     checks.approvalsHealthy = overdueApprovals < 10;
 
@@ -108,34 +108,34 @@ export const systemMetrics = query({
 
     // Count running workflows with fallback
     try {
-      const runningWorkflows = await ctx.db
-        .query("workflowExecutions")
-        .withIndex("by_status", (q) => q.eq("status", "running"))
-        .take(100);
-      metrics.runningWorkflows = runningWorkflows.length;
-    } catch {
       try {
+        const runningWorkflows = await ctx.db
+          .query("workflowExecutions")
+          .withIndex("by_status", (q) => q.eq("status", "running"))
+          .take(100);
+        metrics.runningWorkflows = runningWorkflows.length;
+      } catch (indexError) {
         const allExecutions = await ctx.db.query("workflowExecutions").take(1000);
         metrics.runningWorkflows = allExecutions.filter((w) => w.status === "running").length;
-      } catch {
-        metrics.runningWorkflows = 0;
       }
+    } catch {
+      metrics.runningWorkflows = 0;
     }
 
     // Count active agents with fallback (using by_active index)
     try {
-      const activeAgents = await ctx.db
-        .query("aiAgents")
-        .withIndex("by_active", (q) => q.eq("isActive", true))
-        .take(100);
-      metrics.activeAgents = activeAgents.length;
-    } catch {
       try {
+        const activeAgents = await ctx.db
+          .query("aiAgents")
+          .withIndex("by_active", (q) => q.eq("isActive", true))
+          .take(100);
+        metrics.activeAgents = activeAgents.length;
+      } catch (indexError) {
         const allAgents = await ctx.db.query("aiAgents").take(1000);
         metrics.activeAgents = allAgents.filter((a) => a.isActive === true).length;
-      } catch {
-        metrics.activeAgents = 0;
       }
+    } catch {
+      metrics.activeAgents = 0;
     }
 
     return {
