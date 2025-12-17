@@ -25,8 +25,9 @@ export const envStatus = query({
         queueStatuses.includes(String(email.status))
       ).length;
     } catch (error) {
+      // Silently fail during index backfilling or if table doesn't exist yet
       console.warn("health.envStatus: unable to sample emails table", error);
-      // Silently fail during index backfilling
+      emailQueueDepth = 0;
     }
     
     // Cron last processed - compute latest by _creationTime without requiring a custom index
