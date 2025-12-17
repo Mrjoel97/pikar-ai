@@ -45,21 +45,12 @@ export const envStatus = query({
         });
       }
     } catch (error: any) {
-      // Handle index backfilling gracefully
-      const errorMessage = error?.message || String(error);
-      if (errorMessage.includes("backfilling") || errorMessage.includes("not available to query")) {
-        checks.push({
-          name: "emailQueue",
-          status: "warning",
-          message: "Index backfilling",
-        });
-      } else {
-        checks.push({
-          name: "emailQueue",
-          status: "warning",
-          message: "Check unavailable",
-        });
-      }
+      // Handle index backfilling or any query errors gracefully
+      checks.push({
+        name: "emailQueue",
+        status: "warning",
+        message: "Index backfilling or unavailable",
+      });
     }
 
     // Check cron processing (with backfill handling)
@@ -93,21 +84,12 @@ export const envStatus = query({
         }
       }
     } catch (error: any) {
-      // Handle index backfilling gracefully
-      const errorMessage = error?.message || String(error);
-      if (errorMessage.includes("backfilling") || errorMessage.includes("not available to query")) {
-        checks.push({
-          name: "cronProcessing",
-          status: "warning",
-          message: "Index backfilling",
-        });
-      } else {
-        checks.push({
-          name: "cronProcessing",
-          status: "warning",
-          message: "Check unavailable",
-        });
-      }
+      // Handle index backfilling or any query errors gracefully
+      checks.push({
+        name: "cronProcessing",
+        status: "warning",
+        message: "Index backfilling or unavailable",
+      });
     }
 
     // Check overdue approvals (with backfill handling)
@@ -142,21 +124,12 @@ export const envStatus = query({
         });
       }
     } catch (error: any) {
-      // Handle index backfilling gracefully
-      const errorMessage = error?.message || String(error);
-      if (errorMessage.includes("backfilling") || errorMessage.includes("not available to query")) {
-        checks.push({
-          name: "overdueApprovals",
-          status: "warning",
-          message: "Index backfilling",
-        });
-      } else {
-        checks.push({
-          name: "overdueApprovals",
-          status: "warning",
-          message: "Check unavailable",
-        });
-      }
+      // Handle index backfilling or any query errors gracefully
+      checks.push({
+        name: "overdueApprovals",
+        status: "warning",
+        message: "Index backfilling or unavailable",
+      });
     }
 
     return checks;
