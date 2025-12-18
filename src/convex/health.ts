@@ -7,30 +7,33 @@ export const envStatus = query({
     const checks: Array<{ name: string; status: "ok" | "warning" | "error"; message?: string }> = [];
 
     // Check environment variables
-    const requiredEnvVars = ["JWKS", "JWT_PRIVATE_KEY", "SITE_URL"];
-    for (const envVar of requiredEnvVars) {
-      const value = process.env[envVar];
-      if (!value || value === "undefined") {
-        checks.push({
-          name: `env.${envVar}`,
-          status: "error",
-          message: `Missing or undefined`,
-        });
-      } else {
-        checks.push({
-          name: `env.${envVar}`,
-          status: "ok",
-        });
+    try {
+      const requiredEnvVars = ["JWKS", "JWT_PRIVATE_KEY", "SITE_URL"];
+      for (const envVar of requiredEnvVars) {
+        const value = process.env[envVar];
+        if (!value || value === "undefined") {
+          checks.push({
+            name: `env.${envVar}`,
+            status: "error",
+            message: `Missing or undefined`,
+          });
+        } else {
+          checks.push({
+            name: `env.${envVar}`,
+            status: "ok",
+          });
+        }
       }
+    } catch (e) {
+      checks.push({ name: "env", status: "error", message: String(e) });
     }
 
     // Check email queue depth (with backfill handling)
     try {
-      const pendingEmailsQuery = ctx.db
+      const pendingEmails = await ctx.db
         .query("emails")
-        .withIndex("by_status", (q) => q.eq("status", "pending"));
-      
-      const pendingEmails = await pendingEmailsQuery.take(100);
+        .withIndex("by_status", (q) => q.eq("status", "pending"))
+        .take(100);
       
       if (pendingEmails.length >= 100) {
         checks.push({
@@ -48,29 +51,28 @@ export const envStatus = query({
     } catch (error: any) {
       // Handle index backfilling or any query errors gracefully
       const errorMsg = error?.message || String(error);
-      if (errorMsg.includes("backfilling")) {
+      if (errorMsg.includes("backfilling") || errorMsg.includes("not available") || errorMsg.includes("Index")) {
         checks.push({
           name: "emailQueue",
           status: "warning",
-          message: "Index backfilling",
+          message: "Initializing...",
         });
       } else {
         checks.push({
           name: "emailQueue",
           status: "warning",
-          message: "Temporarily unavailable",
+          message: "Unavailable",
         });
       }
     }
 
     // Check cron processing (with backfill handling)
     try {
-      const recentCronRunsQuery = ctx.db
+      const recentCronRuns = await ctx.db
         .query("activityFeed")
         .withIndex("by_type", (q) => q.eq("type", "cron"))
-        .order("desc");
-      
-      const recentCronRuns = await recentCronRunsQuery.take(1);
+        .order("desc")
+        .take(1);
       
       if (recentCronRuns.length === 0) {
         checks.push({
@@ -95,30 +97,28 @@ export const envStatus = query({
         }
       }
     } catch (error: any) {
-      // Handle index backfilling or any query errors gracefully
       const errorMsg = error?.message || String(error);
-      if (errorMsg.includes("backfilling")) {
+      if (errorMsg.includes("backfilling") || errorMsg.includes("not available") || errorMsg.includes("Index")) {
         checks.push({
           name: "cronProcessing",
           status: "warning",
-          message: "Index backfilling",
+          message: "Initializing...",
         });
       } else {
         checks.push({
           name: "cronProcessing",
           status: "warning",
-          message: "Temporarily unavailable",
+          message: "Unavailable",
         });
       }
     }
 
     // Check overdue approvals (with backfill handling)
     try {
-      const overdueApprovalsQuery = ctx.db
+      const overdueApprovals = await ctx.db
         .query("approvals")
-        .withIndex("by_status", (q) => q.eq("status", "pending"));
-      
-      const overdueApprovals = await overdueApprovalsQuery.take(50);
+        .withIndex("by_status", (q) => q.eq("status", "pending"))
+        .take(50);
       
       const now = Date.now();
       const overdue = overdueApprovals.filter((a) => {
@@ -145,19 +145,18 @@ export const envStatus = query({
         });
       }
     } catch (error: any) {
-      // Handle index backfilling or any query errors gracefully
       const errorMsg = error?.message || String(error);
-      if (errorMsg.includes("backfilling")) {
+      if (errorMsg.includes("backfilling") || errorMsg.includes("not available") || errorMsg.includes("Index")) {
         checks.push({
           name: "overdueApprovals",
           status: "warning",
-          message: "Index backfilling",
+          message: "Initializing...",
         });
       } else {
         checks.push({
           name: "overdueApprovals",
           status: "warning",
-          message: "Temporarily unavailable",
+          message: "Unavailable",
         });
       }
     }
