@@ -271,9 +271,11 @@ export const coreSchema = {
     isPublic: v.optional(v.boolean()),
     steps: v.array(v.any()),
     createdBy: v.optional(v.id("users")),
-    createdAt: v.number(),
+    createdAt: v.optional(v.number()),
     tags: v.optional(v.array(v.string())),
     tier: v.optional(v.string()),
+    industryTags: v.optional(v.array(v.string())),
+    recommendedAgents: v.optional(v.array(v.string())),
   })
     .index("by_business", ["businessId"])
     .index("by_name", ["name"]),

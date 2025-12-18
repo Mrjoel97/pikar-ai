@@ -6,12 +6,14 @@ export const workflowsSchema = {
     businessId: v.id("businesses"),
     name: v.string(),
     description: v.optional(v.string()),
-    status: v.union(v.literal("active"), v.literal("paused"), v.literal("archived")),
+    status: v.union(v.literal("active"), v.literal("paused"), v.literal("archived"), v.literal("draft")),
     trigger: v.optional(v.any()),
-    steps: v.array(v.any()),
-    createdBy: v.id("users"),
-    createdAt: v.number(),
-    updatedAt: v.number(),
+    steps: v.optional(v.array(v.any())),
+    tags: v.optional(v.array(v.string())),
+    template: v.optional(v.boolean()),
+    createdBy: v.optional(v.id("users")),
+    createdAt: v.optional(v.number()),
+    updatedAt: v.optional(v.number()),
     // Governance fields
     pipeline: v.optional(v.array(v.any())),
     governanceHealth: v.optional(v.object({
@@ -22,6 +24,7 @@ export const workflowsSchema = {
     tier: v.optional(v.string()),
     approval: v.optional(v.object({
       required: v.boolean(),
+      threshold: v.optional(v.number()),
     })),
   })
     .index("by_business", ["businessId"])
@@ -29,22 +32,22 @@ export const workflowsSchema = {
 
   playbooks: defineTable({
     businessId: v.optional(v.id("businesses")),
-    name: v.string(),
+    name: v.optional(v.string()),
     description: v.optional(v.string()),
-    trigger: v.string(),
+    trigger: v.optional(v.string()),
     steps: v.array(v.any()),
     triggers: v.optional(v.array(v.any())),
     input_schema: v.optional(v.any()),
     output_schema: v.optional(v.any()),
     metadata: v.optional(v.any()),
-    isActive: v.boolean(),
+    isActive: v.optional(v.boolean()),
     active: v.optional(v.boolean()),
     playbook_key: v.optional(v.string()),
     display_name: v.optional(v.string()),
     version: v.optional(v.string()),
     createdBy: v.optional(v.id("users")),
-    createdAt: v.number(),
-    updatedAt: v.number(),
+    createdAt: v.optional(v.number()),
+    updatedAt: v.optional(v.number()),
   })
     .index("by_business", ["businessId"])
     .index("by_active", ["active"])

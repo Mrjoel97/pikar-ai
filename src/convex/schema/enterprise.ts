@@ -504,8 +504,9 @@ export const enterpriseSchema = {
   telemetryEvents: defineTable({
     businessId: v.id("businesses"),
     userId: v.optional(v.id("users")),
-    event: v.string(),
-    data: v.any(),
+    event: v.optional(v.string()),
+    data: v.optional(v.any()),
+    eventData: v.optional(v.any()),
     timestamp: v.number(),
     eventName: v.optional(v.string()),
   })

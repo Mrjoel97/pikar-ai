@@ -73,7 +73,7 @@ export const agentsSchema = {
     createdBy: v.optional(v.id("users")),
     note: v.optional(v.string()),
   })
-    .index("by_key", ["playbook_key"]),
+    .index("by_playbook_key", ["playbook_key"]),
     
   agentDatasets: defineTable({
     name: v.string(),
