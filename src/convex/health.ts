@@ -28,44 +28,29 @@ export const envStatus = query({
       checks.push({ name: "env", status: "error", message: String(e) });
     }
 
-    // Check email queue depth with graceful fallback for backfilling indexes
+    // Check email queue depth and handle backfilling gracefully
     try {
-      let pendingCount = 0;
-      let usedFallback = false;
-
-      try {
-        const pendingEmails = await ctx.db
-          .query("emails")
-          .withIndex("by_status", (q) => q.eq("status", "pending"))
-          .take(200);
-        pendingCount = pendingEmails.length;
-      } catch (innerError: any) {
-        const innerMessage = innerError?.message || "";
-        if (
-          innerMessage.includes("backfilling") ||
-          innerMessage.includes("not available") ||
-          innerMessage.includes("Index")
-        ) {
-          const recentEmails = await ctx.db.query("emails").take(200);
-          pendingCount = recentEmails.filter((email) => email.status === "pending").length;
-          usedFallback = true;
-        } else {
-          throw innerError;
-        }
-      }
+      const pendingEmails = await ctx.db
+        .query("emails")
+        .withIndex("by_status", (q) => q.eq("status", "pending"))
+        .take(200);
+      const pendingCount = pendingEmails.length;
 
       checks.push({
         name: "emailQueue",
         status: pendingCount >= 100 ? "warning" : "ok",
-        message: `${pendingCount}${pendingCount >= 100 ? "+" : ""} pending${usedFallback ? " (estimating)" : ""}`,
+        message: `${pendingCount}${pendingCount >= 100 ? "+" : ""} pending`,
       });
     } catch (error: any) {
-      const errorMsg = error?.message || String(error);
+      const isBackfilling =
+        typeof error?.message === "string" && error.message.includes("backfilling");
 
       checks.push({
         name: "emailQueue",
         status: "warning",
-        message: errorMsg.includes("backfilling") ? "Initializing..." : "Unavailable",
+        message: isBackfilling
+          ? "Index is backfilling (check back soon)"
+          : "Error checking queue",
       });
     }
 

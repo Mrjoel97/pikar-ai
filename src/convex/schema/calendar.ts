@@ -42,3 +42,15 @@ export const availabilityBlocks = defineTable({
   endTime: v.string(),
   isAvailable: v.boolean(),
 }).index("by_business", ["businessId"]);
+
+export const scheduleSlots = defineTable({
+  businessId: v.optional(v.id("businesses")),
+  userId: v.id("users"),
+  label: v.string(),
+  channel: v.union(v.literal("email"), v.literal("post"), v.literal("other")),
+  scheduledAt: v.number(),
+  status: v.string(),
+  createdAt: v.number(),
+})
+  .index("by_user_and_time", ["userId", "scheduledAt"])
+  .index("by_business", ["businessId"]);
