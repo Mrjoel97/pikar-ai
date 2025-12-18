@@ -28,42 +28,24 @@ export const envStatus = query({
       checks.push({ name: "env", status: "error", message: String(e) });
     }
 
-    // Check email queue depth (with backfill handling)
+    // Check email queue depth without relying on indexes to avoid backfill errors
     try {
-      const pendingEmails = await ctx.db
-        .query("emails")
-        .withIndex("by_status", (q) => q.eq("status", "pending"))
-        .take(100);
-      
-      if (pendingEmails.length >= 100) {
-        checks.push({
-          name: "emailQueue",
-          status: "warning",
-          message: `${pendingEmails.length}+ pending emails`,
-        });
-      } else {
-        checks.push({
-          name: "emailQueue",
-          status: "ok",
-          message: `${pendingEmails.length} pending`,
-        });
-      }
+      const recentEmails = await ctx.db.query("emails").take(200);
+      const pendingCount = recentEmails.filter((email) => email.status === "pending").length;
+
+      checks.push({
+        name: "emailQueue",
+        status: pendingCount >= 100 ? "warning" : "ok",
+        message: `${pendingCount}${pendingCount >= 100 ? "+" : ""} pending`,
+      });
     } catch (error: any) {
-      // Handle index backfilling or any query errors gracefully
       const errorMsg = error?.message || String(error);
-      if (errorMsg.includes("backfilling") || errorMsg.includes("not available") || errorMsg.includes("Index")) {
-        checks.push({
-          name: "emailQueue",
-          status: "warning",
-          message: "Initializing...",
-        });
-      } else {
-        checks.push({
-          name: "emailQueue",
-          status: "warning",
-          message: "Unavailable",
-        });
-      }
+
+      checks.push({
+        name: "emailQueue",
+        status: "warning",
+        message: errorMsg.includes("backfilling") ? "Initializing..." : "Unavailable",
+      });
     }
 
     // Check cron processing (with backfill handling)
