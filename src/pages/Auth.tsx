@@ -221,10 +221,10 @@ function Auth({ redirectAfterAuth = "/dashboard" }: AuthProps) {
               Trusted by leading companies worldwide
             </p>
             <div className="flex items-center justify-center gap-6 opacity-60">
-              <img src="https://cdn.simpleicons.org/google/1A73E8" alt="Google" className="h-4" />
-              <img src="https://cdn.simpleicons.org/stripe/0A2540" alt="Stripe" className="h-4" />
-              <img src="https://cdn.simpleicons.org/slack/4A154B" alt="Slack" className="h-4" />
-              <img src="https://cdn.simpleicons.org/salesforce/00A1E0" alt="Salesforce" className="h-4" />
+              <img src="https://cdn.simpleicons.org/google/1A73E8" alt="Google" className="h-3" />
+              <img src="https://cdn.simpleicons.org/stripe/0A2540" alt="Stripe" className="h-3" />
+              <img src="https://cdn.simpleicons.org/slack/4A154B" alt="Slack" className="h-3" />
+              <img src="https://cdn.simpleicons.org/salesforce/00A1E0" alt="Salesforce" className="h-3" />
             </div>
           </motion.div>
 
