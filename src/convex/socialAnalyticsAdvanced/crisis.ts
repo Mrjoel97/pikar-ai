@@ -96,13 +96,17 @@ export const createCrisisResponse = mutation({
       await ctx.db.insert("crisisEvents", {
         businessId: args.businessId,
         type: "response_sent",
-        severity: "medium", // Default severity
-        title: "Crisis Response Sent", // Default title
+        severity: "medium",
+        title: "Crisis Response Sent",
         description: `Response sent to ${args.channels.join(", ")}`,
         status: "active",
         detectedAt: Date.now(),
         updatedAt: Date.now(),
-        metadata: { channels: args.channels, status: "sent" }, // Move to metadata
+        metadata: { 
+          channels: args.channels, 
+          responseStatus: "sent",
+          alertId: args.alertId,
+        },
       });
     }
 
@@ -143,7 +147,10 @@ export const getCrisisTimeline = query({
       timeline.push({
         type: "alert_resolved",
         timestamp: alert.resolvedAt,
-        data: {},
+        data: { 
+          severity: alert.severity,
+          title: alert.title,
+        },
       });
     }
 

@@ -20,10 +20,7 @@ export const getCustomerContext = internalQuery({
       .query("emails")
       .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
       .filter((q) => 
-        q.and(
-          q.eq(q.field("fromEmail"), args.recipientEmail),
-          // q.eq(q.field("recipients"), [args.recipientEmail]) // Commented out problematic line
-        )
+        q.eq(q.field("recipientEmail"), args.recipientEmail)
       )
       .take(5);
 

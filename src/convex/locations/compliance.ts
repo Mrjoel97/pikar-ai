@@ -1,5 +1,6 @@
-import { query, mutation } from "../_generated/server";
 import { v } from "convex/values";
+import { mutation, query } from "../_generated/server";
+import { Id } from "../_generated/dataModel";
 
 /**
  * Get compliance status by location
@@ -71,6 +72,7 @@ export const getLocationCompliance = query({
  */
 export const recordComplianceAudit = mutation({
   args: {
+    businessId: v.id("businesses"),
     locationId: v.id("locations"),
     auditType: v.string(),
     auditor: v.string(),
@@ -100,15 +102,10 @@ export const recordComplianceAudit = mutation({
 
     await ctx.db.insert("audit_logs", {
       businessId: args.businessId,
-      action: "compliance_audit_completed",
+      action: "location_audit_completed",
       entityType: "location",
       entityId: args.locationId,
-      details: {
-        auditId,
-        auditType: args.auditType,
-        score: args.overallScore,
-        findingsCount: args.findings.length,
-      },
+      details: { auditId, score: args.overallScore },
       createdAt: Date.now(),
     });
 

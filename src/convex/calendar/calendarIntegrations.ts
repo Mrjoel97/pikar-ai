@@ -8,7 +8,7 @@ export const listIntegrations = query({
     
     return await ctx.db
       .query("calendarIntegrations")
-      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId!))
       .collect();
   },
 });

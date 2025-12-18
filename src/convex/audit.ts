@@ -4,6 +4,28 @@ import { api } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 
 /**
+ * Internal query to fetch audit logs for compliance reporting
+ */
+export const fetchAuditLogsForReport = internalQuery({
+  args: {
+    businessId: v.id("businesses"),
+    startDate: v.number(),
+    endDate: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const allLogs = await ctx.db
+      .query("audit_logs")
+      .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
+      .order("desc")
+      .take(10000);
+
+    return allLogs.filter(
+      (log) => log.createdAt >= args.startDate && log.createdAt <= args.endDate
+    );
+  },
+});
+
+/**
  * Internal writer for audit logs. Use from other mutations:
  * await ctx.runMutation(internal.audit.write, { ... })
  */

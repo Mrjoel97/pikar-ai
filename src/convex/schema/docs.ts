@@ -2,6 +2,16 @@ import { defineTable } from "convex/server";
 import { v } from "convex/values";
 
 export const docsSchema = {
+  docs: defineTable({
+    businessId: v.id("businesses"),
+    title: v.string(),
+    slug: v.string(),
+    contentMarkdown: v.string(),
+    status: v.union(v.literal("pending"), v.literal("approved"), v.literal("rejected")),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+  }).index("by_business", ["businessId"]),
+
   docsProposals: defineTable({
     businessId: v.id("businesses"),
     title: v.string(),

@@ -33,6 +33,12 @@ export const initiativesSchema = {
     onboardingProfile: v.optional(v.any()),
     featureFlags: v.optional(v.array(v.string())),
     updatedAt: v.optional(v.number()),
+    
+    // Additional fields found in existing data
+    createdBy: v.optional(v.id("users")),
+    aiAgents: v.optional(v.array(v.any())),
+    metrics: v.optional(v.any()),
+    timeline: v.optional(v.any()),
   })
     .index("by_business", ["businessId"])
     .index("by_status", ["status"]),

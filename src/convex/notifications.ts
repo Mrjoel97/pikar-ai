@@ -794,6 +794,7 @@ export const sendDigestEmails = internalMutation({
 // Add: Request browser push permission
 export const requestPushPermission = mutation({
   args: {
+    businessId: v.id("businesses"),
     subscription: v.any(), // PushSubscription object
   },
   handler: async (ctx, args) => {
@@ -815,17 +816,15 @@ export const requestPushPermission = mutation({
     if (existing) {
       await ctx.db.patch(existing._id, {
         subscription: args.subscription,
-        // updatedAt: Date.now(),
       });
       return existing._id;
     }
 
     return await ctx.db.insert("pushSubscriptions", {
-      businessId: args.businessId, // Added required field
+      businessId: args.businessId,
       userId: user._id,
       subscription: args.subscription,
       createdAt: Date.now(),
-      // updatedAt: Date.now(),
     });
   },
 });

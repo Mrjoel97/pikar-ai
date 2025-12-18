@@ -678,8 +678,6 @@ export const recordPerformance = mutation({
       businessId: vendor.businessId,
       vendorId: args.vendorId,
       metricType: "performance_review",
-      value: overallScore,
-      timestamp: Date.now(),
       onTimeDelivery: args.onTimeDelivery,
       qualityScore: args.qualityScore,
       responsiveness: args.responsiveness,

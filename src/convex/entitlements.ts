@@ -180,7 +180,7 @@ export const canUseAIGeneration = mutation({
     const aiGenerationsThisMonth = await ctx.db
       .query("telemetryEvents")
       .withIndex("by_business_and_event", (q) => 
-        q.eq("businessId", args.businessId).eq("eventName", "ai_generation_used")
+        q.eq("businessId", args.businessId).eq("event", "ai_generation_used")
       )
       .filter((q) => q.gte(q.field("timestamp"), monthStart))
       .collect()

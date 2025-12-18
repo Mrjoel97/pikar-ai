@@ -6,17 +6,22 @@ export const agentsSchema = {
     businessId: v.id("businesses"),
     name: v.string(),
     type: v.string(),
-    status: v.string(),
+    status: v.optional(v.string()),
     isActive: v.boolean(),
     isTemplate: v.optional(v.boolean()),
     category: v.optional(v.string()),
     capabilities: v.optional(v.array(v.string())),
     config: v.optional(v.any()),
-    createdBy: v.id("users"),
-    createdAt: v.number(),
-    updatedAt: v.number(),
+    createdBy: v.optional(v.id("users")),
+    createdAt: v.optional(v.number()),
+    updatedAt: v.optional(v.number()),
     description: v.optional(v.string()),
     personality: v.optional(v.string()),
+    channels: v.optional(v.array(v.any())),
+    configuration: v.optional(v.any()),
+    mmrPolicy: v.optional(v.string()),
+    performance: v.optional(v.any()),
+    playbooks: v.optional(v.array(v.string())),
   })
     .index("by_business", ["businessId"])
     .index("by_active", ["isActive"])
@@ -59,6 +64,16 @@ export const agentsSchema = {
     note: v.optional(v.string()),
   })
     .index("by_key", ["agent_key"]),
+
+  playbookVersions: defineTable({
+    playbook_key: v.string(),
+    version: v.string(),
+    snapshot: v.any(),
+    createdAt: v.number(),
+    createdBy: v.optional(v.id("users")),
+    note: v.optional(v.string()),
+  })
+    .index("by_key", ["playbook_key"]),
     
   agentDatasets: defineTable({
     name: v.string(),

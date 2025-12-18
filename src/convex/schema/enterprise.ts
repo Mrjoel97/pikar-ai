@@ -392,6 +392,38 @@ export const enterpriseSchema = {
     checkedAt: v.number(),
   }).index("by_business", ["businessId"]),
 
+  dataWarehouseExports: defineTable({
+    businessId: v.id("businesses"),
+    scheduleId: v.optional(v.id("exportSchedules")),
+    name: v.string(),
+    format: v.string(),
+    destination: v.string(),
+    status: v.union(v.literal("pending"), v.literal("processing"), v.literal("completed"), v.literal("failed")),
+    recordCount: v.optional(v.number()),
+    fileSize: v.optional(v.number()),
+    fileUrl: v.optional(v.string()),
+    errorMessage: v.optional(v.string()),
+    startedAt: v.number(),
+    completedAt: v.optional(v.number()),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_schedule", ["scheduleId"])
+    .index("by_status", ["status"]),
+
+  crisisEvents: defineTable({
+    businessId: v.id("businesses"),
+    type: v.string(),
+    severity: v.union(v.literal("low"), v.literal("medium"), v.literal("high"), v.literal("critical")),
+    title: v.string(),
+    description: v.string(),
+    status: v.union(v.literal("active"), v.literal("monitoring"), v.literal("resolved")),
+    detectedAt: v.number(),
+    updatedAt: v.number(),
+    metadata: v.optional(v.any()),
+  })
+    .index("by_business", ["businessId"])
+    .index("by_status", ["status"]),
+
   capaItems: defineTable({
     businessId: v.id("businesses"),
     title: v.string(),

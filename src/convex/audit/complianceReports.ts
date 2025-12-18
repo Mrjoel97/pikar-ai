@@ -1,7 +1,7 @@
 "use node";
 import { v } from "convex/values";
-import { action, query, mutation } from "../_generated/server";
-import { internal, api } from "../_generated/api";
+import { action } from "../_generated/server";
+import { internal } from "../_generated/api";
 
 /**
  * Generate a compliance report based on audit logs
@@ -20,15 +20,15 @@ export const generateComplianceReport = action({
     endDate: v.number(),
     includeRemediation: v.optional(v.boolean()),
   },
-  handler: async (ctx, args) => {
-    // Fetch audit logs for the period
-    const logs: any[] = await ctx.runQuery(api.audit.listForBusiness, {
-      businessId: args.businessId,
-      limit: 10000,
-    });
-
-    const filteredLogs = logs.filter(
-      (log: any) => log.createdAt >= args.startDate && log.createdAt <= args.endDate
+  handler: async (ctx, args): Promise<any> => {
+    // Fetch audit logs via internal query to avoid type depth issues
+    const filteredLogs = await ctx.runQuery(
+      "audit:fetchAuditLogsForReport" as any,
+      {
+        businessId: args.businessId,
+        startDate: args.startDate,
+        endDate: args.endDate,
+      }
     );
 
     // Analyze logs based on framework requirements

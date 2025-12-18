@@ -26,9 +26,7 @@ export const createExportSchedule = mutation({
       format: args.format || "csv",
       destination: args.destination,
       status: "pending",
-      // filters: args.filters, // Removed as it's not in schema
-      createdAt: Date.now(),
-      createdBy: identity.subject as string,
+      startedAt: Date.now(),
     });
 
     return exportId;

@@ -628,7 +628,7 @@ export const getCrossPlatformSummary = query({
     };
 
     for (const platform of Object.keys(platformStatus)) {
-      const account = accounts.find((a) => a.platform === platform);
+      const account = accounts.find((a: any) => a.platform === platform);
       if (account) {
         platformStatus[platform] = {
           connected: true,
@@ -804,7 +804,7 @@ export const getConnectionStatus = query({
       if (account.platform in status) {
         status[account.platform as keyof typeof status] = {
           connected: true,
-          lastSync: account.lastUsedAt || account.connectedAt,
+          lastSync: account.lastUsedAt || account.connectedAt || null,
         };
       }
     }

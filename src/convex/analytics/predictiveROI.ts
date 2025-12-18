@@ -177,10 +177,79 @@ export const getROIForecast = query({
     userId: v.id("users"),
   },
   handler: async (ctx, args) => {
-    const predictiveData: any = await ctx.runQuery(
-      api.analytics.predictiveROI.getPredictiveROI,
-      { businessId: args.businessId, userId: args.userId, forecastDays: 90 }
+    // Inline the forecast calculation to avoid type instantiation depth issues
+    const forecastDays = 90;
+    const historicalDays = 180;
+    const startTime = Date.now() - historicalDays * 24 * 60 * 60 * 1000;
+
+    const auditLogs = await ctx.db
+      .query("audit_logs")
+      .filter((q: any) =>
+        q.and(
+          q.eq(q.field("businessId"), args.businessId),
+          q.gte(q.field("createdAt"), startTime)
+        )
+      )
+      .collect();
+
+    const revenueEvents = await ctx.db
+      .query("revenueEvents")
+      .withIndex("by_business", (q: any) => q.eq("businessId", args.businessId))
+      .collect();
+
+    const filteredRevenue = revenueEvents.filter(
+      (event: any) => event.timestamp >= startTime
     );
+
+    const dailyData: Array<{ timeSaved: number; revenue: number }> = [];
+    for (let i = historicalDays - 1; i >= 0; i--) {
+      const dayStart = Date.now() - i * 24 * 60 * 60 * 1000;
+      const dayEnd = dayStart + 24 * 60 * 60 * 1000;
+
+      const dayLogs = auditLogs.filter(
+        (log: any) => log.createdAt >= dayStart && log.createdAt < dayEnd
+      );
+      const dayRevenue = filteredRevenue.filter(
+        (event: any) => event.timestamp >= dayStart && event.timestamp < dayEnd
+      );
+
+      const timeSaved = dayLogs.reduce(
+        (total: number, log: any) => total + (log.details?.timeSavedMinutes ?? 0),
+        0
+      );
+      const revenue = dayRevenue.reduce(
+        (total: number, event: any) => total + event.amount,
+        0
+      );
+
+      dailyData.push({ timeSaved, revenue });
+    }
+
+    const calculateTrend = (data: number[]) => {
+      const n = data.length;
+      const sumX = (n * (n - 1)) / 2;
+      const sumY = data.reduce((a, b) => a + b, 0);
+      const sumXY = data.reduce((sum, y, x) => sum + x * y, 0);
+      const sumX2 = (n * (n - 1) * (2 * n - 1)) / 6;
+      const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
+      const intercept = (sumY - slope * sumX) / n;
+      return { slope, intercept };
+    };
+
+    const revenueValues = dailyData.map((d) => d.revenue);
+    const timeSavedValues = dailyData.map((d) => d.timeSaved);
+    const revenueTrend = calculateTrend(revenueValues);
+    const timeSavedTrend = calculateTrend(timeSavedValues);
+
+    const forecast = [];
+    for (let i = 1; i <= forecastDays; i++) {
+      const x = historicalDays + i;
+      const predictedRevenue = Math.max(0, revenueTrend.slope * x + revenueTrend.intercept);
+      const predictedTimeSaved = Math.max(0, timeSavedTrend.slope * x + timeSavedTrend.intercept);
+      forecast.push({ predictedRevenue, predictedTimeSaved });
+    }
+
+    const predictiveData = { forecast };
 
     // Aggregate forecasts for 30, 60, 90 days
     const periods = [30, 60, 90];

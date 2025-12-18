@@ -227,21 +227,24 @@ export const adminUpsertPlaybook = mutation({
       await ctx.db.patch(existing._id, playbookData);
       playbookId = existing._id;
     } else {
+      const identity = await ctx.auth.getUserIdentity();
       playbookId = await ctx.db.insert("playbooks", {
-        // businessId: args.businessId as any, // Removed as it's not in schema
-        playbook_key: args.key,
-        display_name: args.name,
-        description: args.description,
-        version: "1.0.0",
+        name: doc.display_name,
+        playbook_key: doc.playbook_key,
+        display_name: doc.display_name,
+        version: doc.version,
+        trigger: "manual",
         active: true,
-        triggers: [],
-        steps: [],
-        input_schema: {},
-        output_schema: {},
+        isActive: true,
+        triggers: doc.triggers,
+        steps: doc.steps,
+        input_schema: doc.input_schema,
+        output_schema: doc.output_schema,
         metadata: {
-            category: args.category,
-            author: identity.email,
+          author: identity?.email || "system",
         },
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
       });
     }
 

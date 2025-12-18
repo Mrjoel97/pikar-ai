@@ -522,19 +522,38 @@ export const validateAdminSession = query({
     }
     
     // Fix: session does not have email, fetch from adminAuths
+    // Fix: session does not have email, fetch from adminAuths
+    if (!session.adminId) {
+      // Fallback to session.email for backward compatibility
+      const email = session.email;
+      if (!email) {
+        return { valid: false };
+      }
+      const admin = await ctx.db
+        .query("admins")
+        .withIndex("by_email", (q: any) => q.eq("email", email))
+        .unique();
+      const role = admin?.role || "admin";
+      return {
+        valid: true,
+        email,
+        role,
+      };
+    }
+
     const adminAuth = await ctx.db.get(session.adminId);
     if (!adminAuth) {
-        return { valid: false };
+      return { valid: false };
     }
 
     const admin = await ctx.db
       .query("admins")
-      .withIndex("by_email", (q: any) => q.eq("email", adminAuth.email))
+      .withIndex("by_email", (q: any) => q.eq("email", (adminAuth as any).email))
       .unique();
     const role = admin?.role || "admin";
     return {
       valid: true,
-      email: adminAuth.email,
+      email: (adminAuth as any).email,
       role,
     };
   },
