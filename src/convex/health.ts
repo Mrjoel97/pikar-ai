@@ -26,10 +26,11 @@ export const envStatus = query({
 
     // Check email queue depth (with backfill handling)
     try {
-      const pendingEmails = await ctx.db
+      const pendingEmailsQuery = ctx.db
         .query("emails")
-        .withIndex("by_status", (q) => q.eq("status", "pending"))
-        .take(100);
+        .withIndex("by_status", (q) => q.eq("status", "pending"));
+      
+      const pendingEmails = await pendingEmailsQuery.take(100);
       
       if (pendingEmails.length >= 100) {
         checks.push({
