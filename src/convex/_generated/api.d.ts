@@ -206,6 +206,7 @@ import type * as schema_calendar from "../schema/calendar.js";
 import type * as schema_contacts from "../schema/contacts.js";
 import type * as schema_content from "../schema/content.js";
 import type * as schema_core from "../schema/core.js";
+import type * as schema_demoVideos from "../schema/demoVideos.js";
 import type * as schema_docs from "../schema/docs.js";
 import type * as schema_email from "../schema/email.js";
 import type * as schema_enterprise from "../schema/enterprise.js";
@@ -495,6 +496,7 @@ declare const fullApi: ApiFromModules<{
   "schema/contacts": typeof schema_contacts;
   "schema/content": typeof schema_content;
   "schema/core": typeof schema_core;
+  "schema/demoVideos": typeof schema_demoVideos;
   "schema/docs": typeof schema_docs;
   "schema/email": typeof schema_email;
   "schema/enterprise": typeof schema_enterprise;

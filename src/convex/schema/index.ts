@@ -23,6 +23,7 @@ import { riskSchema } from "./risk";
 import { testingSchema } from "./testing";
 import { vectorsSchema } from "./vectors";
 import { whiteLabelSchema } from "./whiteLabel";
+import { demoVideosSchema } from "./demoVideos";
 
 export default defineSchema({
   ...coreSchema,
@@ -48,6 +49,7 @@ export default defineSchema({
   ...testingSchema,
   ...vectorsSchema,
   ...whiteLabelSchema,
+  ...demoVideosSchema,
   calendarIntegrations,
   appointments,
   availabilityBlocks,

@@ -1,49 +1,52 @@
-import { v } from "convex/values";
 import { query, mutation } from "./_generated/server";
+import { v } from "convex/values";
 
-export const getDemoVideos = query({
+export const list = query({
   args: {},
   handler: async (ctx) => {
-    return await ctx.db.query("docsVideos").collect();
+    return await ctx.db.query("demoVideos").collect();
   },
 });
 
-export const addDemoVideo = mutation({
+export const create = mutation({
   args: {
-    businessId: v.id("businesses"),
     title: v.string(),
-    description: v.optional(v.string()),
     url: v.string(),
-    thumbnailUrl: v.optional(v.string()),
-    duration: v.optional(v.number()),
+    description: v.optional(v.string()),
     category: v.string(),
-    order: v.number(),
+    duration: v.optional(v.number()),
+    thumbnailUrl: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const now = Date.now();
-    return await ctx.db.insert("docsVideos", {
-      businessId: args.businessId,
-      title: args.title,
-      description: args.description,
-      videoUrl: args.url,
-      thumbnail: args.thumbnailUrl,
-      duration: args.duration?.toString(),
-      category: args.category,
-      order: args.order,
-      isPublished: true,
-      createdAt: now,
-      updatedAt: now,
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Unauthenticated");
+
+    return await ctx.db.insert("demoVideos", {
+      ...args,
+      views: 0,
+      isActive: true,
+      createdAt: Date.now(),
+      createdBy: identity.subject,
     });
   },
 });
 
-export const incrementViews = mutation({
-  args: { videoId: v.id("docsVideos") },
+export const update = mutation({
+  args: {
+    id: v.id("demoVideos"),
+    title: v.optional(v.string()),
+    description: v.optional(v.string()),
+    isActive: v.optional(v.boolean()),
+  },
   handler: async (ctx, args) => {
-    const video = await ctx.db.get(args.videoId);
-    if (video) {
-      // Views tracking removed from schema
-      return;
-    }
+    const { id, ...updates } = args;
+    await ctx.db.patch(id, updates);
+  },
+});
+
+export const remove = mutation({
+  args: { id: v.id("demoVideos") },
+  handler: async (ctx, args) => {
+    await ctx.db.delete(args.id);
   },
 });
