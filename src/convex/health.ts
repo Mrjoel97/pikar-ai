@@ -28,15 +28,36 @@ export const envStatus = query({
       checks.push({ name: "env", status: "error", message: String(e) });
     }
 
-    // Check email queue depth without relying on indexes to avoid backfill errors
+    // Check email queue depth with graceful fallback for backfilling indexes
     try {
-      const recentEmails = await ctx.db.query("emails").take(200);
-      const pendingCount = recentEmails.filter((email) => email.status === "pending").length;
+      let pendingCount = 0;
+      let usedFallback = false;
+
+      try {
+        const pendingEmails = await ctx.db
+          .query("emails")
+          .withIndex("by_status", (q) => q.eq("status", "pending"))
+          .take(200);
+        pendingCount = pendingEmails.length;
+      } catch (innerError: any) {
+        const innerMessage = innerError?.message || "";
+        if (
+          innerMessage.includes("backfilling") ||
+          innerMessage.includes("not available") ||
+          innerMessage.includes("Index")
+        ) {
+          const recentEmails = await ctx.db.query("emails").take(200);
+          pendingCount = recentEmails.filter((email) => email.status === "pending").length;
+          usedFallback = true;
+        } else {
+          throw innerError;
+        }
+      }
 
       checks.push({
         name: "emailQueue",
         status: pendingCount >= 100 ? "warning" : "ok",
-        message: `${pendingCount}${pendingCount >= 100 ? "+" : ""} pending`,
+        message: `${pendingCount}${pendingCount >= 100 ? "+" : ""} pending${usedFallback ? " (estimating)" : ""}`,
       });
     } catch (error: any) {
       const errorMsg = error?.message || String(error);
