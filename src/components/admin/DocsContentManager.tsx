@@ -37,17 +37,24 @@ export function DocsContentManager() {
     isPublished: false,
   });
 
-  const faqs = useQuery(api.docsFaqs.listAll as any);
-  const videos = useQuery(api.docsVideos.listAll as any);
+  const business = useQuery(api.businesses.currentUserBusiness);
+  const businessId = business?._id;
 
-  const upsertFaq = useMutation(api.docsFaqs.upsert as any);
-  const removeFaq = useMutation(api.docsFaqs.remove as any);
-  const upsertVideo = useMutation(api.docsVideos.upsert as any);
-  const removeVideo = useMutation(api.docsVideos.remove as any);
+  const faqs = useQuery(api.docsFaqs.listAll, businessId ? { businessId } : "skip");
+  const videos = useQuery(api.docsVideos.listAll, businessId ? { businessId } : "skip");
+
+  const upsertFaq = useMutation(api.docsFaqs.upsert);
+  const removeFaq = useMutation(api.docsFaqs.remove);
+  const upsertVideo = useMutation(api.docsVideos.upsert);
+  const removeVideo = useMutation(api.docsVideos.remove);
 
   const handleSaveFaq = async () => {
+    if (!businessId) {
+      toast.error("No business found");
+      return;
+    }
     try {
-      await upsertFaq(faqForm);
+      await upsertFaq({ ...faqForm, businessId });
       toast.success("FAQ saved successfully");
       setFaqForm({ id: undefined, question: "", answer: "", category: "", order: 0, isPublished: false });
     } catch (e: any) {
@@ -56,8 +63,12 @@ export function DocsContentManager() {
   };
 
   const handleSaveVideo = async () => {
+    if (!businessId) {
+      toast.error("No business found");
+      return;
+    }
     try {
-      await upsertVideo(videoForm);
+      await upsertVideo({ ...videoForm, businessId });
       toast.success("Video saved successfully");
       setVideoForm({ id: undefined, title: "", description: "", videoUrl: "", thumbnailUrl: "", duration: "", category: "", order: 0, isPublished: false });
     } catch (e: any) {
