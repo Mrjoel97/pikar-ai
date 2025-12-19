@@ -582,9 +582,9 @@ export const coreSchema = {
     .index("by_course", ["courseId"]),
 
   authRefreshTokens: defineTable({
-    userId: v.id("users"),
-    token: v.string(),
-    expiresAt: v.number(),
+    userId: v.optional(v.id("users")),
+    token: v.optional(v.string()),
+    expiresAt: v.optional(v.number()),
     createdAt: v.optional(v.number()),
     ipAddress: v.optional(v.string()),
     userAgent: v.optional(v.string()),
