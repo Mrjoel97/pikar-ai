@@ -24,8 +24,8 @@ importers:
         specifier: ^4.10.0
         version: 4.10.0
       '@convex-dev/auth':
-        specifier: ^0.0.88
-        version: 0.0.88(@auth/core@0.40.0)(convex@1.31.0(react@19.1.0))(react@19.1.0)
+        specifier: ^0.0.90
+        version: 0.0.90(@auth/core@0.40.0)(convex@1.31.0(react@19.1.0))(react@19.1.0)
       '@dnd-kit/core':
         specifier: ^6.3.1
         version: 6.3.1(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
@@ -666,8 +666,8 @@ packages:
     resolution: {integrity: sha512-Y1GkI4ktrtvmawoSq+4FCVHNryea6uR+qUQy0AGxLSsjCX0nVmkYQMBLHDkXZuo5hGx7eYdnIaslsdBFm7zbUw==}
     engines: {node: '>=6.9.0'}
 
-  '@convex-dev/auth@0.0.88':
-    resolution: {integrity: sha512-D1uMuBEQH+1h6T42yxtppivUYXEAqID5/j4aqzgXrVDnqpQJMoeSU9qM3qJaSV3psA1VClwTRj6JMrDPHLFXqQ==}
+  '@convex-dev/auth@0.0.90':
+    resolution: {integrity: sha512-aqw88EB042HvnaF4wcf/f/wTocmT2Bus2VDQRuV79cM0+8kORM0ICK/ByZ6XsHgQ9qr6TmidNbXm6QAgndrdpQ==}
     hasBin: true
     peerDependencies:
       '@auth/core': ^0.37.0
@@ -5812,7 +5812,7 @@ snapshots:
       '@babel/helper-string-parser': 7.27.1
       '@babel/helper-validator-identifier': 7.27.1
 
-  '@convex-dev/auth@0.0.88(@auth/core@0.40.0)(convex@1.31.0(react@19.1.0))(react@19.1.0)':
+  '@convex-dev/auth@0.0.90(@auth/core@0.40.0)(convex@1.31.0(react@19.1.0))(react@19.1.0)':
     dependencies:
       '@auth/core': 0.40.0
       '@oslojs/crypto': 1.0.1
@@ -5823,7 +5823,7 @@ snapshots:
       jose: 5.10.0
       jwt-decode: 4.0.0
       lucia: 3.2.2
-      oauth4webapi: 3.5.1
+      oauth4webapi: 3.8.2
       path-to-regexp: 6.3.0
       server-only: 0.0.1
     optionalDependencies:
