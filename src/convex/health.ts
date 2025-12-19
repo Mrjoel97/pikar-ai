@@ -8,6 +8,10 @@ export const envStatus = query({
       resendApiKey: !!process.env.RESEND_API_KEY,
       openaiApiKey: !!process.env.OPENAI_API_KEY,
       convexUrl: !!process.env.CONVEX_URL,
+      salesInbox: !!process.env.SALES_INBOX,
+      publicSalesInbox: !!process.env.PUBLIC_SALES_INBOX,
+      baseUrl: !!process.env.VITE_PUBLIC_BASE_URL,
+      devSafeEmails: process.env.DEV_SAFE_EMAILS === "true",
     };
 
     // Email queue check with graceful backfilling handling
@@ -115,6 +119,10 @@ export const systemHealth = query({
       resendApiKey: !!process.env.RESEND_API_KEY,
       openaiApiKey: !!process.env.OPENAI_API_KEY,
       convexUrl: !!process.env.CONVEX_URL,
+      salesInbox: !!process.env.SALES_INBOX,
+      publicSalesInbox: !!process.env.PUBLIC_SALES_INBOX,
+      baseUrl: !!process.env.VITE_PUBLIC_BASE_URL,
+      devSafeEmails: process.env.DEV_SAFE_EMAILS === "true",
     };
 
     let emailQueueDepth = 0;

@@ -8,15 +8,25 @@ import { toast } from "sonner";
 
 interface EnvironmentSettingsProps {
   env?: {
-    hasRESEND?: boolean;
-    hasSALES_INBOX?: boolean;
-    hasPUBLIC_SALES_INBOX?: boolean;
-    hasBASE_URL?: boolean;
-    hasOPENAI?: boolean;
-    devSafeEmailsEnabled?: boolean;
-    emailQueueDepth?: number;
-    overdueApprovalsCount?: number;
-    cronLastProcessed?: number;
+    status?: string;
+    checks?: {
+      resendApiKey?: boolean;
+      openaiApiKey?: boolean;
+      convexUrl?: boolean;
+      salesInbox?: boolean;
+      publicSalesInbox?: boolean;
+      baseUrl?: boolean;
+      devSafeEmails?: boolean;
+    };
+    metrics?: {
+      emailQueueDepth?: number;
+      emailQueueStatus?: string;
+      cronStatus?: string;
+      lastCronRun?: number;
+      overdueApprovals?: number;
+      approvalStatus?: string;
+    };
+    timestamp?: number;
   };
 }
 
@@ -50,8 +60,8 @@ export function EnvironmentSettings({ env }: EnvironmentSettingsProps) {
 
             <Tooltip>
               <TooltipTrigger asChild>
-                <Badge variant={env?.hasRESEND ? "outline" : "destructive"}>
-                  RESEND: {env?.hasRESEND ? "Configured" : "Missing"}
+                <Badge variant={env?.checks?.resendApiKey ? "outline" : "destructive"}>
+                  RESEND: {env?.checks?.resendApiKey ? "Configured" : "Missing"}
                 </Badge>
               </TooltipTrigger>
               <TooltipContent className="max-w-xs text-xs">
@@ -61,8 +71,8 @@ export function EnvironmentSettings({ env }: EnvironmentSettingsProps) {
 
             <Tooltip>
               <TooltipTrigger asChild>
-                <Badge variant={env?.hasSALES_INBOX || env?.hasPUBLIC_SALES_INBOX ? "outline" : "destructive"}>
-                  Sales Inbox: {env?.hasSALES_INBOX || env?.hasPUBLIC_SALES_INBOX ? "OK" : "Missing"}
+                <Badge variant={env?.checks?.salesInbox || env?.checks?.publicSalesInbox ? "outline" : "destructive"}>
+                  Sales Inbox: {env?.checks?.salesInbox || env?.checks?.publicSalesInbox ? "OK" : "Missing"}
                 </Badge>
               </TooltipTrigger>
               <TooltipContent className="max-w-xs text-xs">
@@ -72,8 +82,8 @@ export function EnvironmentSettings({ env }: EnvironmentSettingsProps) {
 
             <Tooltip>
               <TooltipTrigger asChild>
-                <Badge variant={env?.hasBASE_URL ? "outline" : "destructive"}>
-                  Public Base URL: {env?.hasBASE_URL ? "OK" : "Missing"}
+                <Badge variant={env?.checks?.baseUrl ? "outline" : "destructive"}>
+                  Public Base URL: {env?.checks?.baseUrl ? "OK" : "Missing"}
                 </Badge>
               </TooltipTrigger>
               <TooltipContent className="max-w-xs text-xs">
@@ -83,8 +93,8 @@ export function EnvironmentSettings({ env }: EnvironmentSettingsProps) {
 
             <Tooltip>
               <TooltipTrigger asChild>
-                <Badge variant={env?.devSafeEmailsEnabled ? "secondary" : "outline"}>
-                  Email Mode: {env?.devSafeEmailsEnabled ? "DEV SAFE (stubbed)" : "Live"}
+                <Badge variant={env?.checks?.devSafeEmails ? "secondary" : "outline"}>
+                  Email Mode: {env?.checks?.devSafeEmails ? "DEV SAFE (stubbed)" : "Live"}
                 </Badge>
               </TooltipTrigger>
               <TooltipContent className="max-w-xs text-xs">
@@ -118,16 +128,16 @@ export function EnvironmentSettings({ env }: EnvironmentSettingsProps) {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="p-3 rounded-md border">
             <div className="text-sm text-muted-foreground">Email Queue Depth</div>
-            <div className="text-xl font-semibold">{env?.emailQueueDepth ?? 0}</div>
+            <div className="text-xl font-semibold">{env?.metrics?.emailQueueDepth ?? 0}</div>
           </div>
           <div className="p-3 rounded-md border">
             <div className="text-sm text-muted-foreground">Overdue Approvals</div>
-            <div className="text-xl font-semibold">{env?.overdueApprovalsCount ?? 0}</div>
+            <div className="text-xl font-semibold">{env?.metrics?.overdueApprovals ?? 0}</div>
           </div>
           <div className="p-3 rounded-md border">
             <div className="text-sm text-muted-foreground">Cron Freshness</div>
             <div className="text-xs text-muted-foreground">
-              {env?.cronLastProcessed ? new Date(env.cronLastProcessed).toLocaleString() : "Unknown"}
+              {env?.metrics?.lastCronRun ? new Date(env.metrics.lastCronRun).toLocaleString() : "Unknown"}
             </div>
           </div>
         </div>
