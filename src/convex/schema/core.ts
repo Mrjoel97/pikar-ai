@@ -585,7 +585,7 @@ export const coreSchema = {
     userId: v.id("users"),
     token: v.string(),
     expiresAt: v.number(),
-    createdAt: v.number(),
+    createdAt: v.optional(v.number()),
     ipAddress: v.optional(v.string()),
     userAgent: v.optional(v.string()),
   }).index("by_token", ["token"]),
