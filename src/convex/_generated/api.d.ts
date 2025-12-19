@@ -136,6 +136,7 @@ import type * as helpCoach_assistant from "../helpCoach/assistant.js";
 import type * as helpCoach_tutorials from "../helpCoach/tutorials.js";
 import type * as http from "../http.js";
 import type * as init from "../init.js";
+import type * as initWorkspaceDefaults from "../initWorkspaceDefaults.js";
 import type * as initiativeJourney from "../initiativeJourney.js";
 import type * as initiatives from "../initiatives.js";
 import type * as inspector from "../inspector.js";
@@ -427,6 +428,7 @@ declare const fullApi: ApiFromModules<{
   "helpCoach/tutorials": typeof helpCoach_tutorials;
   http: typeof http;
   init: typeof init;
+  initWorkspaceDefaults: typeof initWorkspaceDefaults;
   initiativeJourney: typeof initiativeJourney;
   initiatives: typeof initiatives;
   inspector: typeof inspector;
