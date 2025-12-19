@@ -130,11 +130,11 @@ export default function LandingFooter() {
             </div>
 
             <div>
-              <p className="text-xs sm:text-sm font-semibold mb-2 sm:mb-3">Resources</p>
+              <p className="text-xs sm:text-sm font-semibold mb-2 sm:mb-3">Legal</p>
               <ul className="space-y-1.5 sm:space-y-2 text-xs sm:text-sm text-muted-foreground">
-                <li><button className="hover:text-foreground transition-colors">Help Center</button></li>
-                <li><button className="hover:text-foreground transition-colors">Guides</button></li>
-                <li><button className="hover:text-foreground transition-colors">Status</button></li>
+                <li><a href="/privacy" className="hover:text-foreground transition-colors">Privacy Policy</a></li>
+                <li><a href="/terms" className="hover:text-foreground transition-colors">Terms of Service</a></li>
+                <li><a href="/docs" className="hover:text-foreground transition-colors">Documentation</a></li>
               </ul>
             </div>
           </div>
