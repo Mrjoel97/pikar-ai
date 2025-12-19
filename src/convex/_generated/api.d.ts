@@ -114,6 +114,7 @@ import type * as emailDrafts from "../emailDrafts.js";
 import type * as emailTracking from "../emailTracking.js";
 import type * as emails from "../emails.js";
 import type * as emailsActions from "../emailsActions.js";
+import type * as enableFeatures from "../enableFeatures.js";
 import type * as enterpriseMetrics from "../enterpriseMetrics.js";
 import type * as enterpriseSecurity from "../enterpriseSecurity.js";
 import type * as enterpriseSupport from "../enterpriseSupport.js";
@@ -404,6 +405,7 @@ declare const fullApi: ApiFromModules<{
   emailTracking: typeof emailTracking;
   emails: typeof emails;
   emailsActions: typeof emailsActions;
+  enableFeatures: typeof enableFeatures;
   enterpriseMetrics: typeof enterpriseMetrics;
   enterpriseSecurity: typeof enterpriseSecurity;
   enterpriseSupport: typeof enterpriseSupport;

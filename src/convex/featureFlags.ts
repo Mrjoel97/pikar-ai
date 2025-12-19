@@ -116,6 +116,7 @@ export const upsertFeatureFlag = mutation({
     }
 
     return await (ctx.db as any).insert("featureFlags" as any, {
+      name: args.flagName,
       businessId: args.businessId,
       flagName: args.flagName,
       isEnabled: args.isEnabled,

@@ -604,7 +604,10 @@ export const coreSchema = {
     createdAt: v.number(),
     updatedAt: v.number(),
     flagName: v.optional(v.string()),
+    businessId: v.optional(v.id("businesses")),
+    tenantId: v.optional(v.id("businesses")),
   })
     .index("by_name", ["name"])
-    .index("by_flag_name", ["flagName"]),
+    .index("by_flag_name", ["flagName"])
+    .index("by_business", ["businessId"]),
 };

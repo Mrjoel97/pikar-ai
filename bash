@@ -1,1 +1,1 @@
-npx convex dev --once
+npx convex run enableFeatures:enableAll
