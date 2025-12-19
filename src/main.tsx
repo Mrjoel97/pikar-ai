@@ -48,6 +48,8 @@ import PortfolioDashboardPage from "./pages/PortfolioDashboard";
 import DataWarehousePage from "./pages/DataWarehouse";
 import SecurityPage from "./pages/Security";
 import ResetPassword from "./pages/ResetPassword";
+import Privacy from "./pages/Privacy";
+import Terms from "./pages/Terms";
 
 console.log("Main.tsx: Module loaded");
 
@@ -190,6 +192,8 @@ function AnimatedRoutes() {
           <Route path="/portfolio-dashboard" element={<PortfolioDashboardPage />} />
           <Route path="/data-warehouse" element={<DataWarehousePage />} />
           <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="/privacy" element={<Privacy />} />
+          <Route path="/terms" element={<Terms />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </motion.div>
