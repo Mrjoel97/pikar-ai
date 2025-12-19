@@ -37,12 +37,12 @@ export function EnvironmentSettings({ env }: EnvironmentSettingsProps) {
           <div className="flex flex-wrap gap-2">
             <Tooltip>
               <TooltipTrigger asChild>
-                <Badge variant={env?.hasOPENAI ? "outline" : "destructive"}>
-                  OpenAI: {env?.hasOPENAI ? "Configured ✓" : "Missing"}
+                <Badge variant={env?.checks?.openaiApiKey ? "outline" : "destructive"}>
+                  OpenAI: {env?.checks?.openaiApiKey ? "Configured ✓" : "Missing"}
                 </Badge>
               </TooltipTrigger>
               <TooltipContent className="max-w-xs text-xs">
-                {env?.hasOPENAI 
+                {env?.checks?.openaiApiKey 
                   ? "OpenAI API key is configured. AI features (Content Capsules, Customer Segmentation) are active."
                   : "Set OPENAI_API_KEY in Convex Dashboard to enable AI-powered features."}
               </TooltipContent>
@@ -96,7 +96,7 @@ export function EnvironmentSettings({ env }: EnvironmentSettingsProps) {
 
         <Separator />
 
-        {!env?.hasOPENAI && (
+        {!env?.checks?.openaiApiKey && (
           <div className="p-3 rounded-md border border-amber-300 bg-amber-50 text-amber-900">
             <div className="font-medium mb-1">⚠️ OpenAI API Key Not Configured</div>
             <div className="text-sm mb-2">
@@ -144,7 +144,7 @@ export function EnvironmentSettings({ env }: EnvironmentSettingsProps) {
             size="sm"
             variant="outline"
             onClick={() => {
-              toast(env?.hasOPENAI 
+              toast(env?.checks?.openaiApiKey 
                 ? "✓ OpenAI is configured and active" 
                 : "⚠️ OpenAI API key is missing. Click 'Configure in Convex Dashboard' to add it.");
             }}
