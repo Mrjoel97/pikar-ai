@@ -8,9 +8,16 @@ export const getFeatureFlags = query({
   handler: async (ctx: any, args) => {
     try {
       const allFlags = await ctx.db.query("featureFlags").collect();
-      const globalFlags = allFlags.filter((f: any) => f.businessId === undefined);
-      const tenantFlags = args.businessId ? allFlags.filter((f: any) => f.businessId === args.businessId) : [];
-      return [...globalFlags, ...tenantFlags];
+      // Return global flags (no businessId) and business-specific flags
+      const globalFlags = allFlags.filter((f: any) => !f.businessId && !f.tenantId);
+      const tenantFlags = args.businessId 
+        ? allFlags.filter((f: any) => 
+            f.businessId === args.businessId || f.tenantId === args.businessId
+          ) 
+        : [];
+      // Merge with global flags taking precedence if no tenant override
+      const merged = [...globalFlags, ...tenantFlags];
+      return merged;
     } catch {
       // Never throw for reads
       return [];
