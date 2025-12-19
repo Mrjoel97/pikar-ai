@@ -71,8 +71,8 @@ export function AlertDashboard({ businessId }: AlertDashboardProps) {
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            {activeAlerts?.map((alert) => (
-              <div key={alert.id} className="flex items-start justify-between border-b pb-3 last:border-0">
+            {activeAlerts?.map((alert: any) => (
+              <div key={alert._id} className="flex items-start justify-between border-b pb-3 last:border-0">
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1">
                     <Badge

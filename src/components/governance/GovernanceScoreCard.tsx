@@ -45,6 +45,8 @@ export function GovernanceScoreCard({ businessId, days = 30 }: GovernanceScoreCa
   const scoreDelta = currentScore - previousScore;
   const isImproving = scoreDelta >= 0;
 
+  const violationsByType = Object.entries(byPolicyType || {}).map(([type, count]) => ({ type, count }));
+
   const getScoreColor = (score: number) => {
     if (score >= 90) return "text-green-600";
     if (score >= 70) return "text-yellow-600";
@@ -265,15 +267,15 @@ export function GovernanceScoreCard({ businessId, days = 30 }: GovernanceScoreCa
               </div>
               <div className="grid grid-cols-3 gap-4 text-center">
                 <div>
-                  <div className="text-2xl font-bold text-green-600">{Math.max(...trend.map(t => t.score)).toFixed(1)}%</div>
+                  <div className="text-2xl font-bold text-green-600">{Math.max(...trend.map((t: any) => t.score)).toFixed(1)}%</div>
                   <div className="text-xs text-muted-foreground">Peak Score</div>
                 </div>
                 <div>
-                  <div className="text-2xl font-bold text-red-600">{Math.min(...trend.map(t => t.score)).toFixed(1)}%</div>
+                  <div className="text-2xl font-bold text-red-600">{Math.min(...trend.map((t: any) => t.score)).toFixed(1)}%</div>
                   <div className="text-xs text-muted-foreground">Lowest Score</div>
                 </div>
                 <div>
-                  <div className="text-2xl font-bold">{(trend.reduce((sum, t) => sum + t.score, 0) / trend.length).toFixed(1)}%</div>
+                  <div className="text-2xl font-bold">{(trend.reduce((sum: number, t: any) => sum + t.score, 0) / trend.length).toFixed(1)}%</div>
                   <div className="text-xs text-muted-foreground">Average</div>
                 </div>
               </div>
@@ -440,7 +442,7 @@ export function GovernanceScoreCard({ businessId, days = 30 }: GovernanceScoreCa
             </ResponsiveContainer>
           </div>
           <div className="mt-4 text-center text-sm text-muted-foreground">
-            Total Violations: {violationsByType?.reduce((sum: any, t: any) => sum + t.count, 0)}
+            Total Violations: {violationsByType?.reduce((sum: number, t: any) => sum + (t.count as number), 0)}
           </div>
         </CardContent>
       </Card>

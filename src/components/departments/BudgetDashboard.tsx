@@ -9,23 +9,33 @@ import { DollarSign, TrendingUp, TrendingDown, AlertTriangle, Target } from "luc
 
 interface BudgetDashboardProps {
   businessId: Id<"businesses">;
+  isGuest?: boolean;
 }
 
-export function BudgetDashboard({ businessId }: BudgetDashboardProps) {
-  const budgetTracking = useQuery(api.departmentKpis.getBudgetTracking, { businessId });
-  const crossDeptAnalytics = useQuery(api.departmentKpis.getCrossDepartmentAnalytics, { businessId });
+export function BudgetDashboard({ businessId, isGuest = false }: BudgetDashboardProps) {
+  const budgetTracking = useQuery(api.departmentKpis.getBudgetTracking, isGuest ? "skip" : { businessId });
+  const crossDeptAnalytics = useQuery(api.departmentKpis.getCrossDepartmentAnalytics, isGuest ? "skip" : { businessId });
 
-  if (!budgetTracking || !crossDeptAnalytics) {
+  const guestBudgetTracking = [
+    { department: "marketing", allocated: 50000, spent: 45000, remaining: 5000, utilizationRate: 90, trend: "increasing", monthlyBurnRate: 5000 },
+    { department: "sales", allocated: 60000, spent: 30000, remaining: 30000, utilizationRate: 50, trend: "stable", monthlyBurnRate: 4000 },
+    { department: "engineering", allocated: 100000, spent: 60000, remaining: 40000, utilizationRate: 60, trend: "decreasing", monthlyBurnRate: 8000 },
+    { department: "operations", allocated: 40000, spent: 38000, remaining: 2000, utilizationRate: 95, trend: "increasing", monthlyBurnRate: 4500 },
+  ];
+
+  const data = isGuest ? guestBudgetTracking : budgetTracking;
+
+  if (!data) {
     return <div>Loading budget data...</div>;
   }
 
-  const totalBudget = budgetTracking.reduce((sum: number, dept: any) => sum + dept.allocated, 0);
-  const totalSpent = budgetTracking.reduce((sum: number, dept: any) => sum + dept.spent, 0);
+  const totalBudget = data.reduce((sum: number, dept: any) => sum + dept.allocated, 0);
+  const totalSpent = data.reduce((sum: number, dept: any) => sum + dept.spent, 0);
   const totalRemaining = totalBudget - totalSpent;
   const overallUtilization = (totalSpent / totalBudget) * 100;
 
-  const atRiskDepts = budgetTracking.filter((dept: any) => dept.utilizationRate > 90);
-  const underUtilizedDepts = budgetTracking.filter((dept: any) => dept.utilizationRate < 50);
+  const atRiskDepts = data.filter((dept: any) => dept.utilizationRate > 90);
+  const underUtilizedDepts = data.filter((dept: any) => dept.utilizationRate < 50);
 
   return (
     <div className="space-y-4">
@@ -96,7 +106,7 @@ export function BudgetDashboard({ businessId }: BudgetDashboardProps) {
 
         <TabsContent value="departments" className="space-y-4">
           <div className="space-y-3">
-            {budgetTracking.map((dept: any) => (
+            {data.map((dept: any) => (
               <Card key={dept.department}>
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between">
@@ -155,7 +165,7 @@ export function BudgetDashboard({ businessId }: BudgetDashboardProps) {
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {budgetTracking.map((dept: any) => (
+                {data.map((dept: any) => (
                   <div key={dept.department} className="space-y-1">
                     <div className="flex items-center justify-between text-sm">
                       <span className="capitalize font-medium">{dept.department}</span>

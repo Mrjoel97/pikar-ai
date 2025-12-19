@@ -24,7 +24,7 @@ export function ResponseCenter({ businessId }: ResponseCenterProps) {
     if (!selectedAlert) return;
     try {
       await updateAlert({
-        alertId: selectedAlert.id,
+        alertId: selectedAlert._id,
         status: "resolved",
         resolution,
       });
@@ -44,11 +44,11 @@ export function ResponseCenter({ businessId }: ResponseCenterProps) {
         </CardHeader>
         <CardContent>
           <div className="space-y-2">
-            {activeAlerts?.map((alert) => (
+            {activeAlerts?.map((alert: any) => (
               <div
-                key={alert.id}
+                key={alert._id}
                 className={`p-3 border rounded-lg cursor-pointer hover:bg-accent ${
-                  selectedAlert?.id === alert.id ? "bg-accent" : ""
+                  selectedAlert?._id === alert._id ? "bg-accent" : ""
                 }`}
                 onClick={() => setSelectedAlert(alert)}
               >
@@ -98,7 +98,7 @@ export function ResponseCenter({ businessId }: ResponseCenterProps) {
               <div>
                 <h4 className="font-medium mb-2">Response Playbook</h4>
                 {playbooks?.filter((p: any) => p.crisisType === selectedAlert.type).map((playbook: any) => (
-                  <div key={playbook.id} className="text-sm space-y-2">
+                  <div key={playbook._id} className="text-sm space-y-2">
                     <p className="font-medium">{playbook.name}</p>
                     <ul className="list-disc list-inside space-y-1 text-muted-foreground">
                       {playbook.steps.map((step: string, idx: number) => (

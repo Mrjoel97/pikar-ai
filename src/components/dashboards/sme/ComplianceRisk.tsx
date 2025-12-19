@@ -48,11 +48,6 @@ export function ComplianceRisk({
   riskAnalyticsEnabled,
   LockedRibbon 
 }: ComplianceRiskProps) {
-  const riskMatrix = useQuery(
-    api.riskAnalytics.getRiskMatrix,
-    isGuest || !businessId || !riskAnalyticsEnabled ? undefined : { businessId }
-  );
-
   const riskTrend30d = useQuery(
     api.riskAnalytics.getRiskTrend,
     isGuest || !businessId || !riskAnalyticsEnabled ? undefined : { businessId, days: 30 }
@@ -128,21 +123,17 @@ export function ComplianceRisk({
       {/* Risk Analytics Section - gated by feature flag */}
       {!isGuest && riskAnalyticsEnabled && (
         <>
-          {riskMatrix === undefined || riskTrend30d === undefined ? (
+          {riskTrend30d === undefined ? (
             <Card>
               <CardContent className="p-4">
                 <p className="text-sm text-muted-foreground">{getLoadingMessage("risk analytics")}</p>
               </CardContent>
             </Card>
-          ) : riskMatrix && riskTrend30d ? (
+          ) : riskTrend30d ? (
             <section>
               <h2 className="text-xl font-semibold mb-4">Risk Analytics</h2>
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                <RiskHeatmap 
-                  matrix={riskMatrix.matrix}
-                  totalRisks={riskMatrix.totalRisks}
-                  highRisks={riskMatrix.highRisks}
-                />
+                {businessId && <RiskHeatmap businessId={businessId} />}
                 <RiskTrendChart 
                   trendData={riskTrend30d.trendData}
                   byCategory={riskTrend30d.byCategory}

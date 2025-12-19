@@ -176,11 +176,11 @@ export default function DepartmentTabs({ businessId, isGuest, kpiDoc }: Departme
             </TabsContent>
             
             <TabsContent value="finance" className="mt-6">
-              <FinanceDashboard businessId={businessId} isGuest={isGuest} />
+              <FinanceDashboard businessId={businessId as Id<"businesses">} isGuest={isGuest} />
             </TabsContent>
 
             <TabsContent value="budget" className="mt-6">
-              <BudgetDashboard businessId={businessId} isGuest={isGuest} />
+              <BudgetDashboard businessId={businessId as Id<"businesses">} isGuest={isGuest} />
             </TabsContent>
 
             <TabsContent value="vendors" className="mt-6">

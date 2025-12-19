@@ -6,6 +6,7 @@ import { Globe, Zap, FileText, Palette, AlertTriangle } from "lucide-react";
 import { LockedRibbon } from "./LockedRibbon";
 import { SentimentAnalysis } from "./social/SentimentAnalysis";
 import { CrossPlatformMetrics } from "./social/CrossPlatformMetrics";
+import { Id } from "@/convex/_generated/dataModel";
 
 type GlobalSocialSectionProps = {
   globalSocialCommandEnabled: boolean;
@@ -297,11 +298,11 @@ export function GlobalSocialSection({
         </TabsContent>
 
         <TabsContent value="sentiment" className="space-y-4">
-          {businessId && <SentimentAnalysis businessId={businessId} />}
+          {businessId && <SentimentAnalysis businessId={businessId as Id<"businesses">} />}
         </TabsContent>
 
         <TabsContent value="platforms" className="space-y-4">
-          {businessId && <CrossPlatformMetrics businessId={businessId} />}
+          {businessId && <CrossPlatformMetrics businessId={businessId as Id<"businesses">} />}
         </TabsContent>
 
         <TabsContent value="content" className="space-y-4">

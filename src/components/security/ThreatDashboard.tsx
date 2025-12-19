@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Shield, AlertTriangle } from "lucide-react";
+import { Shield, AlertTriangle, ShieldAlert } from "lucide-react";
 import type { Id } from "@/convex/_generated/dataModel";
 import { ResponsiveContainer, AreaChart, CartesianGrid, XAxis, YAxis, Tooltip, Area } from 'recharts';
 
@@ -41,7 +41,7 @@ export function ThreatDashboard({ businessId }: { businessId: Id<"businesses"> }
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            {threats?.filter(t => t.status === "active").map((threat) => (
+            {threats?.filter((t: any) => t.status === "active").map((threat: any) => (
               <div key={threat._id} className="flex items-start justify-between p-3 border rounded-lg">
                 <div className="space-y-1 flex-1">
                   <div className="flex items-center gap-2">
@@ -61,7 +61,7 @@ export function ThreatDashboard({ businessId }: { businessId: Id<"businesses"> }
                 </Button>
               </div>
             ))}
-            {threats?.filter(t => t.status === "active").length === 0 && (
+            {threats?.filter((t: any) => t.status === "active").length === 0 && (
               <p className="text-sm text-muted-foreground text-center py-4">
                 No active threats detected
               </p>
@@ -76,7 +76,7 @@ export function ThreatDashboard({ businessId }: { businessId: Id<"businesses"> }
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {activeThreats?.map((threat: any) => (
+            {threats?.filter((t: any) => t.status === "active").map((threat: any) => (
               <div key={threat._id} className="flex items-center justify-between p-4 border rounded-lg bg-red-50/50">
                 <div className="flex items-center gap-3">
                   <ShieldAlert className="h-5 w-5 text-red-600" />

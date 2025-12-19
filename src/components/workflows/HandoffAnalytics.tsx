@@ -5,20 +5,27 @@ import { Badge } from "@/components/ui/badge";
 import { ArrowRight, TrendingUp, AlertTriangle, Clock } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from "recharts";
 import { Id } from "@/convex/_generated/dataModel";
-import { COLORS } from "@/components/ui/colors";
+
+const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
 
 interface HandoffAnalyticsProps {
   businessId: Id<"businesses">;
 }
 
 export function HandoffAnalytics({ businessId }: HandoffAnalyticsProps) {
-  const analytics = useQuery(api.workflows.crossDepartment.getHandoffAnalytics, { businessId });
+  const handoffs = useQuery(api.workflows.crossDepartment.getHandoffAnalytics, { businessId });
   const bottlenecks = useQuery(api.workflows.crossDepartment.getBottleneckAnalysis, { businessId });
   const durations = useQuery(api.workflows.crossDepartment.getHandoffDuration, { businessId });
 
-  if (!analytics || !bottlenecks || !durations) {
+  if (!handoffs || !bottlenecks || !durations) {
     return <div>Loading analytics...</div>;
   }
+
+  const durationTrends = handoffs.map((h: any, i: number) => ({
+    index: i + 1,
+    duration: h.duration ? h.duration / (1000 * 60 * 60) : 0,
+    route: `${h.fromDepartment}->${h.toDepartment}`
+  }));
 
   const getAverageDuration = () => {
     if (!handoffs?.length) return 0;
