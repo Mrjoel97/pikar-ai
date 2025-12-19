@@ -45,6 +45,10 @@ export const emailSchema = {
     isVerified: v.boolean(),
     createdAt: v.number(),
     updatedAt: v.number(),
+    // Workspace-specific fields
+    resendApiKey: v.optional(v.string()),
+    salesInbox: v.optional(v.string()),
+    publicBaseUrl: v.optional(v.string()),
   }).index("by_business", ["businessId"]),
 
   emailDrafts: defineTable({

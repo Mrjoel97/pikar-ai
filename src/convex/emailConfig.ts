@@ -112,14 +112,7 @@ export const saveForBusiness = mutation({
     }
 
     if (existing) {
-      await ctx.db.patch(existing._id, {
-        apiKey: patch.apiKey,
-        fromEmail: patch.fromEmail,
-        fromName: patch.fromName,
-        replyTo: patch.replyTo,
-        domain: patch.domain,
-        updatedAt: Date.now(),
-      });
+      await ctx.db.patch(existing._id, patch);
       return existing._id;
     } else {
       return await ctx.db.insert("emailConfigs", {
@@ -128,10 +121,12 @@ export const saveForBusiness = mutation({
         fromName: patch.fromName || "Default",
         fromEmail: patch.fromEmail || "default@example.com",
         isVerified: false,
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-        apiKey: patch.apiKey,
-        replyTo: patch.replyTo,
+        createdAt: now,
+        updatedAt: now,
+        ...(patch.resendApiKey !== undefined && { resendApiKey: patch.resendApiKey }),
+        ...(patch.salesInbox !== undefined && { salesInbox: patch.salesInbox }),
+        ...(patch.publicBaseUrl !== undefined && { publicBaseUrl: patch.publicBaseUrl }),
+        ...(patch.replyTo !== undefined && { replyTo: patch.replyTo }),
       });
     }
   },
