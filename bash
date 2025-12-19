@@ -1,1 +1,1 @@
-pnpm update
+npx convex dev --once

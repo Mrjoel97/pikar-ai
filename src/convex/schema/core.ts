@@ -588,6 +588,11 @@ export const coreSchema = {
     createdAt: v.optional(v.number()),
     ipAddress: v.optional(v.string()),
     userAgent: v.optional(v.string()),
+    // Legacy/External auth fields
+    expirationTime: v.optional(v.number()),
+    firstUsedTime: v.optional(v.number()),
+    parentRefreshTokenId: v.optional(v.string()),
+    sessionId: v.optional(v.string()),
   }).index("by_token", ["token"]),
 
   featureFlags: defineTable({
