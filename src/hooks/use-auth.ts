@@ -1,4 +1,5 @@
-import * as AuthReact from "@convex-dev/auth/react";
+import { useAuthActions } from "@convex-dev/auth/react";
+import { useConvexAuth } from "convex/react";
 import { isGuestMode } from "@/lib/guestUtils";
 
 // Expand the adapter shape so consumers can safely destructure fields app-wide.
@@ -12,52 +13,19 @@ type UseAuthResult = {
     role?: string;
     [key: string]: unknown;
   } | null;
-  signIn: (provider: string, formData?: FormData) => Promise<void>;
+  signIn: (provider: string, formData?: FormData) => Promise<{ signingIn: boolean; redirect?: URL }>;
   signOut: () => Promise<void>;
-  [key: string]: unknown; // allow passthrough of additional fields from the underlying hook
+  [key: string]: unknown;
 };
 
 export function useAuth(): UseAuthResult {
-  const authModule = AuthReact as {
-    useAuth?: () => Partial<UseAuthResult>;
-  };
-
+  const { isAuthenticated, isLoading } = useConvexAuth();
+  const { signIn, signOut } = useAuthActions();
+  
   // Check if currently in guest mode
   const guestMode = isGuestMode();
 
-  // If the Convex auth hook exists, return it while ensuring required fields are present.
-  if (typeof authModule.useAuth === "function") {
-    const res = authModule.useAuth();
-    
-    // If in guest mode, override authentication state
-    if (guestMode) {
-      return {
-        ...res,
-        isAuthenticated: false,
-        isLoading: false,
-        isGuest: true,
-        user: {
-          email: "guest@pikar.ai",
-          name: "Guest User",
-          role: "guest",
-        },
-        signIn: res?.signIn ?? (async () => {}),
-        signOut: res?.signOut ?? (async () => {}),
-      };
-    }
-
-    return {
-      ...res,
-      isAuthenticated: !!res?.isAuthenticated,
-      isLoading: !!res?.isLoading,
-      isGuest: false,
-      user: res?.user ?? null,
-      signIn: res?.signIn ?? (async () => {}),
-      signOut: res?.signOut ?? (async () => {}),
-    };
-  }
-
-  // Safe fallback for environments where the auth hook isn't available
+  // If in guest mode, override authentication state
   if (guestMode) {
     return {
       isAuthenticated: false,
@@ -68,17 +36,17 @@ export function useAuth(): UseAuthResult {
         name: "Guest User",
         role: "guest",
       },
-      signIn: async () => {},
-      signOut: async () => {},
+      signIn,
+      signOut,
     };
   }
 
   return {
-    isAuthenticated: false,
-    isLoading: false,
+    isAuthenticated,
+    isLoading,
     isGuest: false,
-    user: null,
-    signIn: async () => {},
-    signOut: async () => {},
+    user: null, // You can fetch user details separately if needed
+    signIn,
+    signOut,
   };
 }
