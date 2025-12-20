@@ -109,7 +109,48 @@ export const adminListAgents = query({
     tier: v.optional(v.string()),
     limit: v.optional(v.number()),
   },
-  handler: (ctx, args) => admin.adminListAgents(ctx, args),
+  handler: async (ctx, args) => {
+    // Query the agentCatalog table for built-in system agents
+    let agents;
+    
+    // Apply active filter if specified
+    if (args.activeOnly) {
+      agents = await ctx.db
+        .query("agentCatalog")
+        .withIndex("by_active", (q) => q.eq("active", true))
+        .collect();
+    } else {
+      agents = await ctx.db.query("agentCatalog").collect();
+    }
+    
+    // Apply tier filter if specified
+    let filtered = agents;
+    if (args.tier) {
+      const tierValue = args.tier;
+      filtered = agents.filter(agent => 
+        !agent.tier_restrictions || 
+        agent.tier_restrictions.length === 0 || 
+        agent.tier_restrictions.includes(tierValue)
+      );
+    }
+    
+    // Apply limit if specified
+    const limited = args.limit ? filtered.slice(0, args.limit) : filtered;
+    
+    // Return agents with consistent field names
+    return limited.map(agent => ({
+      _id: agent._id,
+      agent_key: agent.agent_key,
+      display_name: agent.display_name,
+      short_desc: agent.short_desc,
+      long_desc: agent.long_desc,
+      capabilities: agent.capabilities,
+      default_model: agent.default_model,
+      tier_restrictions: agent.tier_restrictions || [],
+      active: agent.active,
+      confidence_hint: 0.8, // Default confidence
+    }));
+  },
 });
 
 // Admin-gated: get single agent by key
