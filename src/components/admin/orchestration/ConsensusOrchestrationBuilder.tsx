@@ -30,6 +30,7 @@ export function ConsensusOrchestrationBuilder() {
   const [threshold, setThreshold] = useState(0.6);
   const [newAgentKey, setNewAgentKey] = useState("");
   const [executing, setExecuting] = useState<string | null>(null);
+  const [errorDetails, setErrorDetails] = useState<string | null>(null);
 
   const orchestrations = useQuery(api.agentOrchestrationData.listConsensusOrchestrations as any) as ConsensusOrchestration[] | undefined;
   const createOrchestration = useMutation(api.agentOrchestrationData.createConsensusOrchestration as any);
@@ -102,7 +103,10 @@ export function ConsensusOrchestrationBuilder() {
       }
       handleReset();
     } catch (e: any) {
-      toast.error(e?.message || "Failed to save consensus");
+      const errorMsg = e?.message || "Failed to save consensus";
+      setErrorDetails(errorMsg);
+      toast.error(errorMsg);
+      console.error("Consensus save error:", e);
     }
   };
 
@@ -130,7 +134,10 @@ export function ConsensusOrchestrationBuilder() {
       await deleteOrchestration({ orchestrationId: id });
       toast.success("Consensus deleted");
     } catch (e: any) {
-      toast.error(e?.message || "Failed to delete");
+      const errorMsg = e?.message || "Failed to delete";
+      setErrorDetails(errorMsg);
+      toast.error(errorMsg);
+      console.error("Consensus delete error:", e);
     }
   };
 
@@ -139,7 +146,10 @@ export function ConsensusOrchestrationBuilder() {
       await toggleOrchestration({ orchestrationId: id, isActive: !currentStatus });
       toast.success(`Consensus ${!currentStatus ? "activated" : "deactivated"}`);
     } catch (e: any) {
-      toast.error(e?.message || "Failed to toggle");
+      const errorMsg = e?.message || "Failed to toggle";
+      setErrorDetails(errorMsg);
+      toast.error(errorMsg);
+      console.error("Consensus toggle error:", e);
     }
   };
 
@@ -167,7 +177,10 @@ export function ConsensusOrchestrationBuilder() {
         toast.warning(`No consensus reached. Score: ${Math.round(result.consensusScore * 100)}%`);
       }
     } catch (e: any) {
-      toast.error(e?.message || "Execution failed");
+      const errorMsg = e?.message || "Execution failed";
+      setErrorDetails(errorMsg);
+      toast.error(errorMsg);
+      console.error("Consensus execution error:", e);
     } finally {
       setExecuting(null);
     }
@@ -251,18 +264,38 @@ export function ConsensusOrchestrationBuilder() {
           </div>
 
           {agents.length > 0 && (
-            <div className="flex flex-wrap gap-2">
-              {agents.map((agentKey) => (
-                <Badge key={agentKey} variant="outline" className="flex items-center gap-1">
-                  {agentKey}
-                  <button
-                    onClick={() => handleRemoveAgent(agentKey)}
-                    className="ml-1 hover:text-destructive"
-                  >
-                    <Trash2 className="h-3 w-3" />
-                  </button>
-                </Badge>
-              ))}
+            <div className="space-y-2">
+              <div className="text-sm text-muted-foreground mb-2">
+                Consensus Flow: All agents provide opinions → Consensus calculated
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                {agents.map((agentKey, idx) => (
+                  <div key={agentKey} className="flex items-center gap-2 p-2 border rounded bg-muted/30">
+                    <Badge variant="outline" className="text-xs">#{idx + 1}</Badge>
+                    <span className="text-sm flex-1 truncate">{agentKey}</span>
+                    <button
+                      onClick={() => handleRemoveAgent(agentKey)}
+                      className="hover:text-destructive"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {errorDetails && (
+            <div className="p-3 bg-destructive/10 border border-destructive/20 rounded text-sm text-destructive">
+              <strong>Error:</strong> {errorDetails}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setErrorDetails(null)}
+                className="ml-2 h-6 px-2"
+              >
+                Dismiss
+              </Button>
             </div>
           )}
 

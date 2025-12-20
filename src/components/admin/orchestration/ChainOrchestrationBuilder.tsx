@@ -35,6 +35,7 @@ export function ChainOrchestrationBuilder() {
   const [newAgentMode, setNewAgentMode] = useState("proposeNextAction");
   const [newTransform, setNewTransform] = useState("");
   const [executing, setExecuting] = useState<string | null>(null);
+  const [errorDetails, setErrorDetails] = useState<string | null>(null);
 
   const orchestrations = useQuery(api.agentOrchestrationData.listChainOrchestrations as any) as ChainOrchestration[] | undefined;
   const createOrchestration = useMutation(api.agentOrchestrationData.createChainOrchestration as any);
@@ -105,7 +106,10 @@ export function ChainOrchestrationBuilder() {
       }
       handleReset();
     } catch (e: any) {
-      toast.error(e?.message || "Failed to save chain");
+      const errorMsg = e?.message || "Failed to save chain";
+      setErrorDetails(errorMsg);
+      toast.error(errorMsg);
+      console.error("Chain save error:", e);
     }
   };
 
@@ -131,7 +135,10 @@ export function ChainOrchestrationBuilder() {
       await deleteOrchestration({ orchestrationId: id });
       toast.success("Chain deleted");
     } catch (e: any) {
-      toast.error(e?.message || "Failed to delete");
+      const errorMsg = e?.message || "Failed to delete";
+      setErrorDetails(errorMsg);
+      toast.error(errorMsg);
+      console.error("Chain delete error:", e);
     }
   };
 
@@ -140,7 +147,10 @@ export function ChainOrchestrationBuilder() {
       await toggleOrchestration({ orchestrationId: id, isActive: !currentStatus });
       toast.success(`Chain ${!currentStatus ? "activated" : "deactivated"}`);
     } catch (e: any) {
-      toast.error(e?.message || "Failed to toggle");
+      const errorMsg = e?.message || "Failed to toggle";
+      setErrorDetails(errorMsg);
+      toast.error(errorMsg);
+      console.error("Chain toggle error:", e);
     }
   };
 
@@ -167,7 +177,10 @@ export function ChainOrchestrationBuilder() {
         toast.error(`Chain failed at step ${result.failedAt + 1}`);
       }
     } catch (e: any) {
-      toast.error(e?.message || "Execution failed");
+      const errorMsg = e?.message || "Execution failed";
+      setErrorDetails(errorMsg);
+      toast.error(errorMsg);
+      console.error("Chain execution error:", e);
     } finally {
       setExecuting(null);
     }
@@ -235,9 +248,15 @@ export function ChainOrchestrationBuilder() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="proposeNextAction">Propose Action</SelectItem>
-                  <SelectItem value="summarizeIdeas">Summarize</SelectItem>
+                  <SelectItem value="summarizeIdeas">Summarize Ideas</SelectItem>
                   <SelectItem value="planWeek">Plan Week</SelectItem>
                   <SelectItem value="analyzeData">Analyze Data</SelectItem>
+                  <SelectItem value="generateContent">Generate Content</SelectItem>
+                  <SelectItem value="reviewContent">Review Content</SelectItem>
+                  <SelectItem value="optimizeStrategy">Optimize Strategy</SelectItem>
+                  <SelectItem value="researchTopic">Research Topic</SelectItem>
+                  <SelectItem value="createReport">Create Report</SelectItem>
+                  <SelectItem value="validateData">Validate Data</SelectItem>
                 </SelectContent>
               </Select>
               <div className="flex gap-2">
@@ -255,33 +274,55 @@ export function ChainOrchestrationBuilder() {
 
           {chain.length > 0 && (
             <div className="space-y-2">
+              <div className="text-sm text-muted-foreground mb-2">
+                Sequential Execution Flow:
+              </div>
               {chain.map((step, idx) => (
                 <div key={idx}>
-                  <div className="flex items-center gap-2 p-2 border rounded">
-                    <Badge variant="outline">Step {idx + 1}</Badge>
-                    <Badge variant="outline">{step.agentKey}</Badge>
-                    <Badge variant="secondary">{step.mode}</Badge>
-                    {step.inputTransform && (
-                      <Badge variant="secondary" className="text-xs">
-                        Transform: {step.inputTransform}
-                      </Badge>
-                    )}
+                  <div className="flex items-center gap-2 p-3 border rounded bg-muted/30">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Badge variant="outline">Step {idx + 1}</Badge>
+                        <span className="font-medium text-sm">{step.agentKey}</span>
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        <Badge variant="secondary" className="text-xs">{step.mode}</Badge>
+                        {step.inputTransform && (
+                          <Badge variant="secondary" className="text-xs">
+                            Transform: {step.inputTransform}
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
                     <Button
                       size="icon"
                       variant="ghost"
                       onClick={() => handleRemoveStep(idx)}
-                      className="ml-auto"
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
                   {idx < chain.length - 1 && (
                     <div className="flex justify-center py-1">
-                      <ArrowDown className="h-4 w-4 text-muted-foreground" />
+                      <ArrowDown className="h-4 w-4 text-primary" />
                     </div>
                   )}
                 </div>
               ))}
+            </div>
+          )}
+
+          {errorDetails && (
+            <div className="p-3 bg-destructive/10 border border-destructive/20 rounded text-sm text-destructive">
+              <strong>Error:</strong> {errorDetails}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setErrorDetails(null)}
+                className="ml-2 h-6 px-2"
+              >
+                Dismiss
+              </Button>
             </div>
           )}
 

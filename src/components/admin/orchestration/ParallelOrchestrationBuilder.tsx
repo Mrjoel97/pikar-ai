@@ -31,6 +31,7 @@ export function ParallelOrchestrationBuilder() {
   const [agents, setAgents] = useState<AgentConfig[]>([]);
   const [newAgentKey, setNewAgentKey] = useState("");
   const [newAgentMode, setNewAgentMode] = useState("proposeNextAction");
+  const [errorDetails, setErrorDetails] = useState<string | null>(null);
   const [executing, setExecuting] = useState<string | null>(null);
 
   const orchestrations = useQuery(api.agentOrchestrationData.listParallelOrchestrations as any) as ParallelOrchestration[] | undefined;
@@ -97,7 +98,10 @@ export function ParallelOrchestrationBuilder() {
       }
       handleReset();
     } catch (e: any) {
-      toast.error(e?.message || "Failed to save orchestration");
+      const errorMsg = e?.message || "Failed to save orchestration";
+      setErrorDetails(errorMsg);
+      toast.error(errorMsg);
+      console.error("Orchestration save error:", e);
     }
   };
 
@@ -121,7 +125,10 @@ export function ParallelOrchestrationBuilder() {
       await deleteOrchestration({ orchestrationId: id });
       toast.success("Orchestration deleted");
     } catch (e: any) {
-      toast.error(e?.message || "Failed to delete");
+      const errorMsg = e?.message || "Failed to delete";
+      setErrorDetails(errorMsg);
+      toast.error(errorMsg);
+      console.error("Orchestration delete error:", e);
     }
   };
 
@@ -130,7 +137,10 @@ export function ParallelOrchestrationBuilder() {
       await toggleOrchestration({ orchestrationId: id, isActive: !currentStatus });
       toast.success(`Orchestration ${!currentStatus ? "activated" : "deactivated"}`);
     } catch (e: any) {
-      toast.error(e?.message || "Failed to toggle");
+      const errorMsg = e?.message || "Failed to toggle";
+      setErrorDetails(errorMsg);
+      toast.error(errorMsg);
+      console.error("Orchestration toggle error:", e);
     }
   };
 
@@ -153,7 +163,10 @@ export function ParallelOrchestrationBuilder() {
       
       toast.success(`Executed successfully! Success rate: ${Math.round(result.successRate * 100)}%`);
     } catch (e: any) {
-      toast.error(e?.message || "Execution failed");
+      const errorMsg = e?.message || "Execution failed";
+      setErrorDetails(errorMsg);
+      toast.error(errorMsg);
+      console.error("Orchestration execution error:", e);
     } finally {
       setExecuting(null);
     }
@@ -213,9 +226,15 @@ export function ParallelOrchestrationBuilder() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="proposeNextAction">Propose Action</SelectItem>
-                  <SelectItem value="summarizeIdeas">Summarize</SelectItem>
+                  <SelectItem value="summarizeIdeas">Summarize Ideas</SelectItem>
                   <SelectItem value="planWeek">Plan Week</SelectItem>
                   <SelectItem value="analyzeData">Analyze Data</SelectItem>
+                  <SelectItem value="generateContent">Generate Content</SelectItem>
+                  <SelectItem value="reviewContent">Review Content</SelectItem>
+                  <SelectItem value="optimizeStrategy">Optimize Strategy</SelectItem>
+                  <SelectItem value="researchTopic">Research Topic</SelectItem>
+                  <SelectItem value="createReport">Create Report</SelectItem>
+                  <SelectItem value="validateData">Validate Data</SelectItem>
                 </SelectContent>
               </Select>
               <Button onClick={handleAddAgent} size="icon">
@@ -226,20 +245,43 @@ export function ParallelOrchestrationBuilder() {
 
           {agents.length > 0 && (
             <div className="space-y-2">
-              {agents.map((agent, idx) => (
-                <div key={idx} className="flex items-center gap-2 p-2 border rounded">
-                  <Badge variant="outline">{agent.agentKey}</Badge>
-                  <Badge variant="secondary">{agent.mode}</Badge>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    onClick={() => handleRemoveAgent(idx)}
-                    className="ml-auto"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              ))}
+              <div className="text-sm text-muted-foreground mb-2">
+                Execution Flow: All agents run simultaneously →
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                {agents.map((agent, idx) => (
+                  <div key={idx} className="flex items-center gap-2 p-3 border rounded bg-muted/30">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Badge variant="outline" className="text-xs">#{idx + 1}</Badge>
+                        <span className="font-medium text-sm">{agent.agentKey}</span>
+                      </div>
+                      <Badge variant="secondary" className="text-xs">{agent.mode}</Badge>
+                    </div>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onClick={() => handleRemoveAgent(idx)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {errorDetails && (
+            <div className="p-3 bg-destructive/10 border border-destructive/20 rounded text-sm text-destructive">
+              <strong>Error:</strong> {errorDetails}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setErrorDetails(null)}
+                className="ml-2 h-6 px-2"
+              >
+                Dismiss
+              </Button>
             </div>
           )}
 
