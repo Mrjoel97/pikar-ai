@@ -35,6 +35,8 @@ import { IntegrationsHubPanel } from "@/components/admin/IntegrationsHubPanel";
 import { AssistantDocsPanel } from "@/components/admin/AssistantDocsPanel";
 import { AuditExplorerPanel } from "@/components/admin/AuditExplorerPanel";
 import { SystemAgentsHub } from "@/components/admin/SystemAgentsHub";
+import { AdminRoadmapCompliance } from "@/components/admin/AdminRoadmapCompliance";
+import { AgentSessionDrawer } from "@/components/admin/AgentSessionDrawer";
 
 // Add local types for transcript steps
 export default function AdminPage() {
@@ -405,266 +407,65 @@ export default function AdminPage() {
           </div>
         </div>
 
-        {/* Replace inline System Health section with EnvironmentSettings component */}
         <EnvironmentSettings env={env} />
-
-        {/* KPI Snapshot Row */}
         <KpiSnapshot kpis={kpis} />
-
-        {/* Feature Flags Panel */}
         <FeatureFlagsPanel
           flags={flags}
           flagAnalytics={flagAnalytics}
           toggleFlag={toggleFlag}
           updateFlag={updateFlag}
         />
-
-        {/* Pending Senior Admin Requests */}
         <PendingSeniorRequestsPanel pending={pending} approveSenior={approveSenior} />
-
-        {/* Administrators Table */}
         <AdministratorsPanel adminList={adminList} />
-
-        {/* Replace inline Tenants Panel with component */}
         <TenantsPanel
           selectedTenantId={selectedTenantId}
           onSelectTenant={setSelectedTenantId}
         />
-
-        {/* Replace inline API Keys Panel with component */}
         <ApiKeysPanel
           selectedTenantId={selectedTenantId}
           tenants={tenants}
           onSelectTenant={setSelectedTenantId}
         />
-
-        {/* Replace inline Billing & Usage Section with component */}
         <BillingUsagePanel
           selectedTenantId={selectedTenantId}
           tenants={tenants}
         />
-
-        {/* Replace inline Integrations Hub with component */}
         <IntegrationsHubPanel
           env={env}
           saveSystemConfigMutation={saveSystemConfigMutation}
           adminToken={adminToken}
         />
-
-        {/* Replace inline Custom Agents Admin Panel with component */}
         <CustomAgentsPanel
           selectedTenantId={selectedTenantId}
           recentAudits={recentAudits}
         />
-
-        {/* Replace inline Assistant Docs section with component */}
         <AssistantDocsPanel
           hasAdminAccess={hasAdminAccess}
           generateDocsProposal={generateDocsProposal}
           approveDocsProposal={approveDocsProposal}
         />
-
-        {/* Demo Video Management Section */}
         <DemoVideoManager />
-
-        {/* Documentation Content Management */}
         <DocsContentManager />
-
-        {/* Replace inline Audit Explorer with component */}
         <AuditExplorerPanel recentAudits={recentAudits} />
-
-        {/* Replace inline Alerts & Incidents with component */}
         <AlertsIncidentsPanel selectedTenantId={selectedTenantId} />
-
-        {/* Admin Assistant Section (moved to component) */}
         <AdminAssistantSection
           adminSessionValid={isAdminSession}
           adminToken={adminToken}
         />
-
-        {/* User Management Section */}
         <UserManagement />
 
-        {/* Replace the System Agents placeholder section */}
         <div id="section-system-agents">
           <SystemAgentsHub />
         </div>
 
-        {/* Admin Roadmap Compliance card */}
-        <Card>
-          <CardHeader>
-            <CardTitle id="section-roadmap-compliance">Admin Roadmap Compliance</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3 text-sm">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {/* Feature Management */}
-              <div className="p-3 rounded-md border">
-                <div className="font-medium">Feature Flags & Rollouts</div>
-                <div className="mt-1 flex items-center gap-2">
-                  <Badge variant="outline">Implemented</Badge>
-                  <span className="text-muted-foreground">Per-tenant flags, toggle, rollout % edit, scope</span>
-                </div>
-              </div>
+        <AdminRoadmapCompliance />
 
-              {/* Audit & Compliance */}
-              <div className="p-3 rounded-md border">
-                <div className="font-medium">Audit & Compliance</div>
-                <div className="mt-1 flex items-center gap-2">
-                  <Badge variant="outline">Implemented</Badge>
-                  <span className="text-muted-foreground">Audit Explorer with filters and CSV export</span>
-                </div>
-              </div>
-
-              {/* System Health & Observability */}
-              <div className="p-3 rounded-md border">
-                <div className="font-medium">System Health & Alerting</div>
-                <div className="mt-1 flex items-center gap-2">
-                  <Badge variant="outline">Implemented</Badge>
-                  <span className="text-muted-foreground">Env checks, queue depth, cron freshness, SLA</span>
-                </div>
-              </div>
-
-              {/* Tenant & User Management */}
-              <div className="p-3 rounded-md border">
-                <div className="font-medium">Tenant & User Management</div>
-                <div className="mt-1 flex items-center gap-2">
-                  <Badge variant="secondary">Partial</Badge>
-                  <span className="text-muted-foreground">Admin roles present; full tenant provisioning planned</span>
-                </div>
-              </div>
-
-              {/* Auth/Onboarding/SSO/SCIM */}
-              <div className="p-3 rounded-md border">
-                <div className="font-medium">SSO/SCIM & Onboarding</div>
-                <div className="mt-1 flex items-center gap-2">
-                  <Badge variant="secondary">Partial</Badge>
-                  <span className="text-muted-foreground">Independent admin auth done; SSO/SCIM planned</span>
-                </div>
-              </div>
-
-              {/* API Key Management */}
-              <div className="p-3 rounded-md border">
-                <div className="font-medium">API Key Management</div>
-                <div className="mt-1 flex items-center gap-2">
-                  <Badge variant="secondary">Planned</Badge>
-                  <span className="text-muted-foreground">Create/rotate/revoke service keys pending</span>
-                </div>
-              </div>
-
-              {/* Billing & Usage */}
-              <div className="p-3 rounded-md border">
-                <div className="font-medium">Billing & Usage</div>
-                <div className="mt-1 flex items-center gap-2">
-                  <Badge variant="secondary">Partial</Badge>
-                  <span className="text-muted-foreground">Stripe onboarding integrated; usage metering planned</span>
-                </div>
-              </div>
-
-              {/* Agent Orchestration */}
-              <div className="p-3 rounded-md border">
-                <div className="font-medium">Agent Orchestration & Templates</div>
-                <div className="mt-1 flex items-center gap-2">
-                  <Badge variant="secondary">Partial</Badge>
-                  <span className="text-muted-foreground">Custom AI Agent base present; registry/rollback planned</span>
-                </div>
-              </div>
-
-              {/* Integrations & Connectors */}
-              <div className="p-3 rounded-md border">
-                <div className="font-medium">Integrations & Connectors</div>
-                <div className="mt-1 flex items-center gap-2">
-                  <Badge variant="secondary">Planned</Badge>
-                  <span className="text-muted-foreground">Connector store, webhooks, secret store pending</span>
-                </div>
-              </div>
-
-              {/* Support & Changelog */}
-              <div className="p-3 rounded-md border">
-                <div className="font-medium">Support & Changelog</div>
-                <div className="mt-1 flex items-center gap-2">
-                  <Badge variant="secondary">Planned</Badge>
-                  <span className="text-muted-foreground">Support console & release notes pending</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="text-xs text-muted-foreground">
-              Note: This checklist reflects current implementation within the Admin Panel UI and supporting backend. Items marked "Planned" or "Partial" are on the roadmap.
-            </div>
-          </CardContent>
-        </Card>
-
-        <Drawer open={agentViewerOpen} onOpenChange={setAgentViewerOpen}>
-          <DrawerContent>
-            <DrawerHeader>
-              <DrawerTitle>Agent Session</DrawerTitle>
-              <DrawerDescription className="text-sm">
-                Agent: {viewAgentId || "—"}
-              </DrawerDescription>
-            </DrawerHeader>
-            <div className="px-6 pb-6 space-y-4">
-              <div>
-                <div className="text-sm font-medium mb-1">Top Intents</div>
-                <div className="flex flex-wrap gap-2">
-                  {agentTopIntents.length > 0 ? (
-                    agentTopIntents.map(([intent, count]) => (
-                      <Badge key={intent as string} variant="outline">
-                        {String(intent)}: {String(count)}
-                      </Badge>
-                    ))
-                  ) : (
-                    <div className="text-sm text-muted-foreground">No intents observed.</div>
-                  )}
-                </div>
-              </div>
-              <Separator />
-              <div>
-                <div className="text-sm font-medium mb-1">Recent Activity</div>
-                <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2">
-                  {viewAgentAudits.map((ev: any, idx: number) => (
-                    <div key={ev._id || idx} className="p-2 rounded border">
-                      <div className="text-xs text-muted-foreground">
-                        {ev.createdAt ? new Date(ev.createdAt).toLocaleString() : "—"}
-                      </div>
-                      <div className="text-sm font-medium">{ev.action || "event"}</div>
-                      <div className="text-xs break-words text-muted-foreground">
-                        {(() => {
-                          try {
-                            const preview = JSON.stringify(ev.details ?? {}, null, 0);
-                            return preview.length > 240 ? preview.slice(0, 240) + "…" : preview;
-                          } catch {
-                            return "—";
-                          }
-                        })()}
-                      </div>
-                    </div>
-                  ))}
-                  {viewAgentAudits.length === 0 && (
-                    <div className="text-sm text-muted-foreground">No recent activity for this agent.</div>
-                  )}
-                </div>
-              </div>
-              <Separator />
-              <div>
-                <div className="text-sm font-medium mb-1">Last Errors</div>
-                <div className="space-y-1">
-                  {agentLastErrors.length > 0 ? (
-                    agentLastErrors.map((e, i) => (
-                      <div key={i} className="text-xs">
-                        <span className="text-muted-foreground mr-2">
-                          {new Date(e.when).toLocaleString()}:
-                        </span>
-                        <span>{e.message || "Error"}</span>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="text-sm text-muted-foreground">None</div>
-                  )}
-                </div>
-              </div>
-            </div>
-          </DrawerContent>
-        </Drawer>
+        <AgentSessionDrawer
+          open={agentViewerOpen}
+          onOpenChange={setAgentViewerOpen}
+          agentId={viewAgentId}
+          recentAudits={recentAudits}
+        />
       </div>
     </>
   );
