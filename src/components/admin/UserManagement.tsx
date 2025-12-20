@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Mail, Search, User, ChevronLeft, ChevronRight } from "lucide-react";
+import { Mail, Search, User, ChevronLeft, ChevronRight, Download, ArrowUpDown } from "lucide-react";
 import type { Id } from "@/convex/_generated/dataModel";
 import { UserListItem } from "./user-management/UserListItem";
 import { EmailDialog } from "./user-management/EmailDialog";
@@ -22,6 +22,8 @@ export function UserManagement() {
   const [emailDialogOpen, setEmailDialogOpen] = useState(false);
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<Id<"users"> | null>(null);
+  const [sortBy, setSortBy] = useState<"email" | "name" | "tier" | "createdAt">("createdAt");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
   const usersData = useQuery(api.adminUsers.listAllUsers, { 
     limit: pageSize,
@@ -29,6 +31,8 @@ export function UserManagement() {
     searchEmail: searchEmail || undefined,
     filterTier: filterTier !== "all" ? filterTier : undefined,
     filterStatus: filterStatus !== "all" ? filterStatus : undefined,
+    sortBy,
+    sortOrder,
   });
 
   const users = usersData?.users;
@@ -144,6 +148,41 @@ export function UserManagement() {
     }
   };
 
+  const handleExportUsers = () => {
+    if (!users || users.length === 0) {
+      toast.error("No users to export");
+      return;
+    }
+
+    // Create CSV content
+    const headers = ["Email", "Name", "Tier", "Status", "Joined Date"];
+    const rows = users.map((user: any) => [
+      user.email || "N/A",
+      user.name || "N/A",
+      user.businessTier || "N/A",
+      user.isAnonymous ? "Inactive" : "Active",
+      new Date(user._creationTime).toLocaleDateString(),
+    ]);
+
+    const csvContent = [
+      headers.join(","),
+      ...rows.map((row: any) => row.map((cell: any) => `"${cell}"`).join(",")),
+    ].join("\n");
+
+    // Create and download file
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", `users_export_${new Date().toISOString().split("T")[0]}.csv`);
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    toast.success(`Exported ${users.length} user(s)`);
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -200,22 +239,57 @@ export function UserManagement() {
           </Select>
         </div>
 
-        {/* Actions */}
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            onClick={handleSelectAll}
-            disabled={!users || users.length === 0}
-          >
-            {selectedUsers.size === users?.length ? "Deselect All" : "Select All"}
-          </Button>
-          <Button 
-            disabled={selectedUsers.size === 0}
-            onClick={() => setEmailDialogOpen(true)}
-          >
-            <Mail className="h-4 w-4 mr-2" />
-            Email ({selectedUsers.size})
-          </Button>
+        {/* Actions and Sorting */}
+        <div className="flex flex-wrap gap-2 items-center justify-between">
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={handleSelectAll}
+              disabled={!users || users.length === 0}
+            >
+              {selectedUsers.size === users?.length ? "Deselect All" : "Select All"}
+            </Button>
+            <Button 
+              disabled={selectedUsers.size === 0}
+              onClick={() => setEmailDialogOpen(true)}
+            >
+              <Mail className="h-4 w-4 mr-2" />
+              Email ({selectedUsers.size})
+            </Button>
+            <Button
+              variant="outline"
+              onClick={handleExportUsers}
+              disabled={!users || users.length === 0}
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Export CSV
+            </Button>
+          </div>
+          
+          <div className="flex gap-2 items-center">
+            <span className="text-sm text-muted-foreground">Sort by:</span>
+            <Select value={sortBy} onValueChange={(value: any) => setSortBy(value)}>
+              <SelectTrigger className="w-[140px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="createdAt">Join Date</SelectItem>
+                <SelectItem value="email">Email</SelectItem>
+                <SelectItem value="name">Name</SelectItem>
+                <SelectItem value="tier">Tier</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")}
+            >
+              <ArrowUpDown className="h-4 w-4" />
+            </Button>
+            <span className="text-xs text-muted-foreground">
+              {sortOrder === "asc" ? "↑" : "↓"}
+            </span>
+          </div>
         </div>
 
         {/* User List */}

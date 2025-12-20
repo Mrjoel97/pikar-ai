@@ -29,6 +29,8 @@ export const listAllUsers = query({
     searchEmail: v.optional(v.string()),
     filterTier: v.optional(v.string()),
     filterStatus: v.optional(v.union(v.literal("active"), v.literal("inactive"), v.literal("all"))),
+    sortBy: v.optional(v.union(v.literal("email"), v.literal("name"), v.literal("tier"), v.literal("createdAt"))),
+    sortOrder: v.optional(v.union(v.literal("asc"), v.literal("desc"))),
   },
   handler: async (ctx, args) => {
     const isAdmin = await isPlatformAdmin(ctx);
@@ -62,6 +64,40 @@ export const listAllUsers = query({
         users = users.filter((u: any) => u.isAnonymous);
       }
     }
+
+    // Sort users
+    const sortBy = args.sortBy || "createdAt";
+    const sortOrder = args.sortOrder || "desc";
+    
+    users.sort((a: any, b: any) => {
+      let aVal, bVal;
+      
+      switch (sortBy) {
+        case "email":
+          aVal = (a.email || "").toLowerCase();
+          bVal = (b.email || "").toLowerCase();
+          break;
+        case "name":
+          aVal = (a.name || "").toLowerCase();
+          bVal = (b.name || "").toLowerCase();
+          break;
+        case "tier":
+          aVal = a.businessTier || "";
+          bVal = b.businessTier || "";
+          break;
+        case "createdAt":
+        default:
+          aVal = a._creationTime;
+          bVal = b._creationTime;
+          break;
+      }
+      
+      if (sortOrder === "asc") {
+        return aVal > bVal ? 1 : aVal < bVal ? -1 : 0;
+      } else {
+        return aVal < bVal ? 1 : aVal > bVal ? -1 : 0;
+      }
+    });
 
     const total = users.length;
     const hasMore = users.length > offset + limit;
