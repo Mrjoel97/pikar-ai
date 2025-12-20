@@ -51,6 +51,14 @@ export function ChainOrchestrationBuilder() {
       toast.error("Please select an agent");
       return;
     }
+    if (chain.length >= 10) {
+      toast.error("Maximum 10 steps allowed per chain");
+      return;
+    }
+    if (newTransform && newTransform.length > 200) {
+      toast.error("Transform instruction must be 200 characters or less");
+      return;
+    }
     setChain([...chain, { agentKey: newAgentKey, mode: newAgentMode, inputTransform: newTransform || undefined }]);
     setNewAgentKey("");
     setNewAgentMode("proposeNextAction");
@@ -66,8 +74,24 @@ export function ChainOrchestrationBuilder() {
       toast.error("Please enter a name");
       return;
     }
+    if (name.length > 100) {
+      toast.error("Name must be 100 characters or less");
+      return;
+    }
+    if (description.length > 500) {
+      toast.error("Description must be 500 characters or less");
+      return;
+    }
     if (chain.length === 0) {
       toast.error("Please add at least one step");
+      return;
+    }
+    if (chain.length > 10) {
+      toast.error("Maximum 10 steps allowed");
+      return;
+    }
+    if (initialInput.length > 1000) {
+      toast.error("Initial input must be 1000 characters or less");
       return;
     }
 

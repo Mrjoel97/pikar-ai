@@ -48,6 +48,14 @@ export function ParallelOrchestrationBuilder() {
       toast.error("Please select an agent");
       return;
     }
+    if (agents.some(a => a.agentKey === newAgentKey)) {
+      toast.error("This agent is already added to the orchestration");
+      return;
+    }
+    if (agents.length >= 10) {
+      toast.error("Maximum 10 agents allowed per orchestration");
+      return;
+    }
     setAgents([...agents, { agentKey: newAgentKey, mode: newAgentMode }]);
     setNewAgentKey("");
     setNewAgentMode("proposeNextAction");
@@ -62,8 +70,20 @@ export function ParallelOrchestrationBuilder() {
       toast.error("Please enter a name");
       return;
     }
+    if (name.length > 100) {
+      toast.error("Name must be 100 characters or less");
+      return;
+    }
+    if (description.length > 500) {
+      toast.error("Description must be 500 characters or less");
+      return;
+    }
     if (agents.length === 0) {
       toast.error("Please add at least one agent");
+      return;
+    }
+    if (agents.length > 10) {
+      toast.error("Maximum 10 agents allowed");
       return;
     }
 

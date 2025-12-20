@@ -63,12 +63,32 @@ export function ConsensusOrchestrationBuilder() {
       toast.error("Please enter a name");
       return;
     }
+    if (name.length > 100) {
+      toast.error("Name must be 100 characters or less");
+      return;
+    }
+    if (description.length > 500) {
+      toast.error("Description must be 500 characters or less");
+      return;
+    }
     if (agents.length < 2) {
       toast.error("Please add at least 2 agents for consensus");
       return;
     }
+    if (agents.length > 10) {
+      toast.error("Maximum 10 agents allowed");
+      return;
+    }
     if (!question.trim()) {
       toast.error("Please enter a question");
+      return;
+    }
+    if (question.length > 500) {
+      toast.error("Question must be 500 characters or less");
+      return;
+    }
+    if (threshold < 0.5 || threshold > 1.0) {
+      toast.error("Consensus threshold must be between 50% and 100%");
       return;
     }
 
