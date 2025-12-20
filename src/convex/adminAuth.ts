@@ -25,7 +25,6 @@ export const signUp = action({
     const normalizedEmail = email.toLowerCase().trim();
 
     // Check if admin auth already exists
-    // Break type inference chain by avoiding internal object entirely
     const existing = (await ctx.runQuery(
       (internal as any)["adminAuthData"]["getAdminAuthByEmail"],
       { email: normalizedEmail } as any
@@ -62,6 +61,16 @@ export const signUp = action({
         role: "admin",
       });
     }
+
+    // Log admin signup
+    await ctx.runMutation(
+      (internal as any)["adminAuthData"]["logAdminAction"],
+      {
+        email: normalizedEmail,
+        action: "admin_signup",
+        details: { timestamp: Date.now() },
+      }
+    );
 
     return { success: true };
   },
@@ -108,6 +117,52 @@ export const login = action({
       expiresAt,
     });
 
+    // Log admin login
+    await ctx.runMutation(
+      (internal as any)["adminAuthData"]["logAdminAction"],
+      {
+        email: normalizedEmail,
+        action: "admin_login",
+        details: { timestamp: Date.now() },
+      }
+    );
+
     return { token, expiresAt };
+  },
+});
+
+// Logout action (Node runtime)
+export const logout = action({
+  args: {
+    token: v.string(),
+  },
+  handler: async (ctx, args) => {
+    // Validate and get session info
+    const sessionInfo = (await ctx.runQuery(
+      (internal as any)["adminAuthData"]["validateSessionInternal"],
+      { token: args.token } as any
+    )) as any;
+
+    if (!sessionInfo?.valid) {
+      throw new Error("Invalid session");
+    }
+
+    // Invalidate session
+    await ctx.runMutation(
+      (internal as any)["adminAuthData"]["invalidateSession"],
+      { token: args.token }
+    );
+
+    // Log admin logout
+    await ctx.runMutation(
+      (internal as any)["adminAuthData"]["logAdminAction"],
+      {
+        email: sessionInfo.email,
+        action: "admin_logout",
+        details: { timestamp: Date.now() },
+      }
+    );
+
+    return { success: true };
   },
 });

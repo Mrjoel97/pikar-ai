@@ -63,6 +63,22 @@ export const createSession = internalMutation({
   },
 });
 
+export const invalidateSession = internalMutation({
+  args: { token: v.string() },
+  handler: async (ctx, args) => {
+    const session = await ctx.db
+      .query("adminSessions")
+      .withIndex("by_token", (q: any) => q.eq("token", args.token))
+      .unique();
+    
+    if (session) {
+      await ctx.db.delete(session._id);
+    }
+    
+    return { success: true };
+  },
+});
+
 export const ensureAdminRole = internalMutation({
   args: {
     email: v.string(),
@@ -85,6 +101,28 @@ export const ensureAdminRole = internalMutation({
         createdAt: Date.now(),
       });
     }
+  },
+});
+
+// Log admin actions to audit_logs
+export const logAdminAction = internalMutation({
+  args: {
+    email: v.string(),
+    action: v.string(),
+    details: v.any(),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.insert("audit_logs", {
+      businessId: "system" as any,
+      action: args.action,
+      entityType: "admin_session",
+      entityId: args.email,
+      details: {
+        adminEmail: args.email,
+        ...args.details,
+      },
+      createdAt: Date.now(),
+    });
   },
 });
 

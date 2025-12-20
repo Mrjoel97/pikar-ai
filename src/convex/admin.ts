@@ -572,6 +572,7 @@ export const saveSystemConfig = mutation({
 
     const now = Date.now();
 
+    let configId;
     if (existing) {
       await ctx.db.patch(existing._id, {
         value: args.value,
@@ -579,17 +580,34 @@ export const saveSystemConfig = mutation({
         updatedBy: emailForLog,
         updatedAt: now,
       });
-      return existing._id;
+      configId = existing._id;
+    } else {
+      configId = await ctx.db.insert("systemConfig", {
+        key: args.key,
+        value: args.value,
+        description: args.description,
+        updatedBy: emailForLog,
+        createdAt: now,
+        updatedAt: now,
+      });
     }
 
-    return await ctx.db.insert("systemConfig", {
-      key: args.key,
-      value: args.value,
-      description: args.description,
-      updatedBy: emailForLog,
+    // Log system config change
+    await ctx.db.insert("audit_logs", {
+      businessId: "system" as any,
+      action: "system_config_updated",
+      entityType: "system_config",
+      entityId: args.key,
+      details: {
+        key: args.key,
+        previousValue: existing?.value,
+        newValue: args.value,
+        updatedBy: emailForLog,
+      },
       createdAt: now,
-      updatedAt: now,
     });
+
+    return configId;
   },
 });
 
