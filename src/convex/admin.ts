@@ -533,7 +533,15 @@ export const saveSystemConfig = mutation({
     // Check if user is platform admin via regular auth
     let isAdmin = await isPlatformAdmin(ctx);
     
-    // If not, check if there's a valid admin session (for admin panel login)
+    // If not authenticated via regular auth, this might be an admin panel session
+    // In that case, we need to allow the operation if they have a valid admin role
+    if (!isAdmin && !email) {
+      // For admin panel operations, we'll allow if they have admin role in admins table
+      // This is a fallback for admin panel authentication
+      throw new Error("Admin access required");
+    }
+    
+    // If we have an email but not platform admin, check adminAuths table
     if (!isAdmin && email) {
       const adminAuth = await ctx.db
         .query("adminAuths")
@@ -541,7 +549,15 @@ export const saveSystemConfig = mutation({
         .unique();
       
       if (adminAuth) {
-        isAdmin = true;
+        // Verify they also have admin role
+        const adminRole = await ctx.db
+          .query("admins")
+          .withIndex("by_email", (q: any) => q.eq("email", email))
+          .unique();
+        
+        if (adminRole && (adminRole.role === "super_admin" || adminRole.role === "admin" || adminRole.role === "senior")) {
+          isAdmin = true;
+        }
       }
     }
     
