@@ -24,6 +24,7 @@ import { testingSchema } from "./testing";
 import { vectorsSchema } from "./vectors";
 import { whiteLabelSchema } from "./whiteLabel";
 import { demoVideosSchema } from "./demoVideos";
+import { orchestrationSchema } from "./orchestration";
 
 export default defineSchema({
   ...coreSchema,
@@ -50,6 +51,7 @@ export default defineSchema({
   ...vectorsSchema,
   ...whiteLabelSchema,
   ...demoVideosSchema,
+  ...orchestrationSchema,
   calendarIntegrations,
   appointments,
   availabilityBlocks,

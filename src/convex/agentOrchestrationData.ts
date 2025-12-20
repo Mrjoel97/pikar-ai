@@ -1,0 +1,166 @@
+import { internalMutation, internalQuery } from "./_generated/server";
+import { v } from "convex/values";
+
+/**
+ * Internal mutations for data persistence
+ */
+
+export const recordAgentMessage = internalMutation({
+  args: {
+    fromAgentKey: v.string(),
+    toAgentKey: v.string(),
+    message: v.string(),
+    context: v.optional(v.any()),
+    businessId: v.id("businesses"),
+    status: v.string(),
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db.insert("agentMessages", {
+      ...args,
+      createdAt: Date.now(),
+    });
+  },
+});
+
+export const updateAgentMessage = internalMutation({
+  args: {
+    messageId: v.id("agentMessages"),
+    response: v.optional(v.any()),
+    status: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.messageId, {
+      response: args.response,
+      status: args.status,
+      updatedAt: Date.now(),
+    });
+  },
+});
+
+export const createOrchestration = internalMutation({
+  args: {
+    businessId: v.id("businesses"),
+    type: v.string(),
+    agentCount: v.number(),
+    status: v.string(),
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db.insert("agentOrchestrations", {
+      ...args,
+      createdAt: Date.now(),
+    });
+  },
+});
+
+export const updateOrchestration = internalMutation({
+  args: {
+    orchestrationId: v.id("agentOrchestrations"),
+    status: v.string(),
+    duration: v.optional(v.number()),
+    successCount: v.optional(v.number()),
+    failureCount: v.optional(v.number()),
+    error: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const { orchestrationId, ...updates } = args;
+    await ctx.db.patch(orchestrationId, {
+      ...updates,
+      updatedAt: Date.now(),
+    });
+  },
+});
+
+export const recordAgentExecution = internalMutation({
+  args: {
+    orchestrationId: v.id("agentOrchestrations"),
+    agentKey: v.string(),
+    status: v.string(),
+    duration: v.number(),
+    result: v.optional(v.any()),
+    error: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.insert("agentExecutions", {
+      ...args,
+      createdAt: Date.now(),
+    });
+  },
+});
+
+/**
+ * Orchestration Analytics: Get performance metrics
+ */
+export const getOrchestrationAnalytics = internalQuery({
+  args: {
+    businessId: v.optional(v.id("businesses")),
+    since: v.optional(v.number()),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const cutoff = args.since || (Date.now() - 7 * 24 * 60 * 60 * 1000); // 7 days default
+    
+    let orchestrations;
+    
+    if (args.businessId) {
+      const businessId = args.businessId;
+      orchestrations = await ctx.db
+        .query("agentOrchestrations")
+        .withIndex("by_business", q => q.eq("businessId", businessId))
+        .filter(q => q.gte(q.field("createdAt"), cutoff))
+        .take(args.limit || 100);
+    } else {
+      orchestrations = await ctx.db
+        .query("agentOrchestrations")
+        .filter(q => q.gte(q.field("createdAt"), cutoff))
+        .take(args.limit || 100);
+    }
+
+    const executions = await ctx.db
+      .query("agentExecutions")
+      .filter(q => q.gte(q.field("createdAt"), cutoff))
+      .take(1000);
+
+    // Calculate metrics
+    const totalOrchestrations = orchestrations.length;
+    const completedOrchestrations = orchestrations.filter(o => o.status === "completed").length;
+    const failedOrchestrations = orchestrations.filter(o => o.status === "failed").length;
+    
+    const avgDuration = orchestrations.length > 0
+      ? orchestrations.reduce((sum, o) => sum + (o.duration || 0), 0) / orchestrations.length
+      : 0;
+
+    const byType = orchestrations.reduce((acc, o) => {
+      acc[o.type] = (acc[o.type] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+
+    const agentPerformance = executions.reduce((acc, e) => {
+      if (!acc[e.agentKey]) {
+        acc[e.agentKey] = { total: 0, success: 0, failed: 0, totalDuration: 0 };
+      }
+      acc[e.agentKey].total++;
+      if (e.status === "success") acc[e.agentKey].success++;
+      if (e.status === "failed") acc[e.agentKey].failed++;
+      acc[e.agentKey].totalDuration += e.duration || 0;
+      return acc;
+    }, {} as Record<string, any>);
+
+    return {
+      summary: {
+        totalOrchestrations,
+        completedOrchestrations,
+        failedOrchestrations,
+        successRate: totalOrchestrations > 0 ? completedOrchestrations / totalOrchestrations : 0,
+        avgDuration,
+      },
+      byType,
+      agentPerformance: Object.entries(agentPerformance).map(([key, stats]) => ({
+        agentKey: key,
+        ...stats,
+        successRate: stats.total > 0 ? stats.success / stats.total : 0,
+        avgDuration: stats.total > 0 ? stats.totalDuration / stats.total : 0,
+      })),
+      recentOrchestrations: orchestrations.slice(0, 10),
+    };
+  },
+});

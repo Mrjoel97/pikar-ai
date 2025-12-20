@@ -27,7 +27,7 @@ export const getCostForecast = query({
         const historicalDays = 30;
         const executions = await ctx.db
           .query("agentExecutions")
-          .withIndex("by_agent", (q) => q.eq("agentId", agent._id))
+          .withIndex("by_agent", (q) => q.eq("agentKey", agent._id))
           .filter((q) => q.gte(q.field("_creationTime"), Date.now() - historicalDays * 24 * 60 * 60 * 1000))
           .collect();
 
@@ -92,7 +92,7 @@ export const getCostOptimizationScenarios = query({
 
         const executions = await ctx.db
           .query("agentExecutions")
-          .withIndex("by_agent", (q) => q.eq("agentId", agent._id))
+          .withIndex("by_agent", (q) => q.eq("agentKey", agent._id))
           .filter((q) => q.gte(q.field("_creationTime"), Date.now() - 30 * 24 * 60 * 60 * 1000))
           .collect();
 
@@ -166,7 +166,7 @@ export const getROIProjections = query({
 
         const executions = await ctx.db
           .query("agentExecutions")
-          .withIndex("by_agent", (q) => q.eq("agentId", agent._id))
+          .withIndex("by_agent", (q) => q.eq("agentKey", agent._id))
           .filter((q) => q.gte(q.field("_creationTime"), Date.now() - 30 * 24 * 60 * 60 * 1000))
           .collect();
 

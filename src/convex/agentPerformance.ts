@@ -21,7 +21,7 @@ export const getPredictiveAgentInsights = query({
         // Get recent executions
         const executions = await ctx.db
           .query("agentExecutions")
-          .withIndex("by_agent", (q) => q.eq("agentId", agent._id))
+          .withIndex("by_agent", (q) => q.eq("agentKey", agent._id))
           .filter((q) => q.gte(q.field("_creationTime"), last30Days))
           .collect();
 
@@ -106,7 +106,7 @@ export const getAgentCostOptimization = query({
       agents.map(async (agent) => {
         const executions = await ctx.db
           .query("agentExecutions")
-          .withIndex("by_agent", (q) => q.eq("agentId", agent._id))
+          .withIndex("by_agent", (q) => q.eq("agentKey", agent._id))
           .filter((q) => q.gte(q.field("_creationTime"), last30Days))
           .collect();
 

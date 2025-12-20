@@ -27,7 +27,7 @@ export const getPredictivePerformance = query({
         const historicalPeriod = 90 * 24 * 60 * 60 * 1000;
         const executions = await ctx.db
           .query("agentExecutions")
-          .withIndex("by_agent", (q) => q.eq("agentId", agent._id))
+          .withIndex("by_agent", (q) => q.eq("agentKey", agent._id))
           .filter((q) => q.gte(q.field("_creationTime"), Date.now() - historicalPeriod))
           .collect();
 
@@ -90,7 +90,7 @@ export const getPerformanceForecast = query({
 
     const executions = await ctx.db
       .query("agentExecutions")
-      .withIndex("by_agent", (q) => q.eq("agentId", args.agentId))
+      .withIndex("by_agent", (q) => q.eq("agentKey", args.agentId))
       .filter((q) => q.gte(q.field("_creationTime"), Date.now() - 90 * 24 * 60 * 60 * 1000))
       .collect();
 
@@ -144,7 +144,7 @@ export const getOptimizationRecommendations = query({
 
         const executions = await ctx.db
           .query("agentExecutions")
-          .withIndex("by_agent", (q) => q.eq("agentId", agent._id))
+          .withIndex("by_agent", (q) => q.eq("agentKey", agent._id))
           .filter((q) => q.gte(q.field("_creationTime"), Date.now() - 30 * 24 * 60 * 60 * 1000))
           .collect();
 
@@ -238,7 +238,7 @@ export const getAgentHealthPredictions = query({
       agents.map(async (agent) => {
         const executions = await ctx.db
           .query("agentExecutions")
-          .withIndex("by_agent", (q) => q.eq("agentId", agent._id))
+          .withIndex("by_agent", (q) => q.eq("agentKey", agent._id))
           .filter((q) => q.gte(q.field("_creationTime"), Date.now() - 30 * 24 * 60 * 60 * 1000))
           .collect();
 
