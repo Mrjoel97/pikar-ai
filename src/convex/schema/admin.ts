@@ -57,4 +57,13 @@ export const adminSchema = {
     createdAt: v.number(),
     updatedAt: v.optional(v.number()),
   }).index("by_active", ["active"]),
+
+  systemConfig: defineTable({
+    key: v.string(),
+    value: v.string(),
+    description: v.optional(v.string()),
+    updatedBy: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_key", ["key"]),
 };

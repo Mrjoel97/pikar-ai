@@ -143,6 +143,29 @@ export const testPublicBaseUrl = query({
   },
 });
 
+export const getPublicBaseUrl = query({
+  args: {},
+  handler: async (ctx) => {
+    // Try database first
+    const config = await ctx.db
+      .query("systemConfig")
+      .withIndex("by_key", (q) => q.eq("key", "publicBaseUrl"))
+      .unique();
+    
+    if (config?.value) {
+      return { source: "database", url: config.value };
+    }
+
+    // Fallback to environment variable
+    const envUrl = process.env.VITE_PUBLIC_BASE_URL;
+    if (envUrl) {
+      return { source: "environment", url: envUrl };
+    }
+
+    return { source: "none", url: null };
+  },
+});
+
 export const getStripeConfig = query({
   args: {},
   handler: async (ctx) => {

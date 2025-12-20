@@ -506,6 +506,60 @@ export const resolveAlert = mutation({
   },
 });
 
+// Add new query to get system config
+export const getSystemConfig = query({
+  args: { key: v.string() },
+  handler: async (ctx, args) => {
+    const config = await ctx.db
+      .query("systemConfig")
+      .withIndex("by_key", (q) => q.eq("key", args.key))
+      .unique();
+    return config?.value ?? null;
+  },
+});
+
+// Add new mutation to save system config (admin only)
+export const saveSystemConfig = mutation({
+  args: {
+    key: v.string(),
+    value: v.string(),
+    description: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const ok = await isPlatformAdmin(ctx);
+    if (!ok) throw new Error("Admin access required");
+
+    const identity = await ctx.auth.getUserIdentity();
+    const email = identity?.email ?? "unknown";
+
+    const existing = await ctx.db
+      .query("systemConfig")
+      .withIndex("by_key", (q) => q.eq("key", args.key))
+      .unique();
+
+    const now = Date.now();
+
+    if (existing) {
+      await ctx.db.patch(existing._id, {
+        value: args.value,
+        description: args.description,
+        updatedBy: email,
+        updatedAt: now,
+      });
+      return existing._id;
+    }
+
+    return await ctx.db.insert("systemConfig", {
+      key: args.key,
+      value: args.value,
+      description: args.description,
+      updatedBy: email,
+      createdAt: now,
+      updatedAt: now,
+    });
+  },
+});
+
 // Add public query for admin session validation (client-callable)
 export const validateAdminSession = query({
   args: { token: v.optional(v.string()) },

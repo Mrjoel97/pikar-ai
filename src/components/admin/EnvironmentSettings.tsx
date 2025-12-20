@@ -2,10 +2,12 @@ import React from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
-import { useQuery } from "convex/react";
+import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 
 interface EnvironmentSettingsProps {
@@ -34,11 +36,21 @@ interface EnvironmentSettingsProps {
 
 export function EnvironmentSettings({ env }: EnvironmentSettingsProps) {
   const stripeConfig = useQuery(api.health.getStripeConfig, {});
+  const publicBaseUrlData = useQuery(api.health.getPublicBaseUrl, {});
   const [testingResend, setTestingResend] = React.useState(false);
   const [testingBaseUrl, setTestingBaseUrl] = React.useState(false);
+  const [editingBaseUrl, setEditingBaseUrl] = React.useState(false);
+  const [baseUrlInput, setBaseUrlInput] = React.useState("");
 
   const testResendKey = useQuery(api.health.testResendKey, {});
   const testPublicBaseUrl = useQuery(api.health.testPublicBaseUrl, {});
+  const saveSystemConfig = useMutation(api.admin.saveSystemConfig);
+
+  React.useEffect(() => {
+    if (publicBaseUrlData?.url && !baseUrlInput) {
+      setBaseUrlInput(publicBaseUrlData.url);
+    }
+  }, [publicBaseUrlData]);
 
   const openConvexDashboard = () => {
     const convexUrl = "https://dashboard.convex.dev/d/hushed-cat-860";
@@ -68,6 +80,25 @@ export function EnvironmentSettings({ env }: EnvironmentSettingsProps) {
       }
       setTestingBaseUrl(false);
     }, 500);
+  };
+
+  const handleSaveBaseUrl = async () => {
+    if (!baseUrlInput.trim()) {
+      toast.error("Please enter a valid URL");
+      return;
+    }
+
+    try {
+      await saveSystemConfig({
+        key: "publicBaseUrl",
+        value: baseUrlInput.trim(),
+        description: "System-wide public base URL for generating absolute links",
+      });
+      toast.success("Public Base URL saved successfully!");
+      setEditingBaseUrl(false);
+    } catch (error: any) {
+      toast.error(error.message || "Failed to save Public Base URL");
+    }
   };
 
   return (
@@ -106,12 +137,16 @@ export function EnvironmentSettings({ env }: EnvironmentSettingsProps) {
 
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Badge variant={env?.checks?.baseUrl ? "outline" : "destructive"}>
-                    Public Base URL: {env?.checks?.baseUrl ? "OK" : "Missing"}
+                  <Badge variant={publicBaseUrlData?.url ? "outline" : "destructive"}>
+                    Public Base URL: {publicBaseUrlData?.url ? "OK" : "Missing"}
                   </Badge>
                 </TooltipTrigger>
                 <TooltipContent className="max-w-xs text-xs">
-                  Set VITE_PUBLIC_BASE_URL for absolute links in emails and redirects.
+                  {publicBaseUrlData?.source === "database" 
+                    ? "Configured in database (editable below)"
+                    : publicBaseUrlData?.source === "environment"
+                    ? "Set via VITE_PUBLIC_BASE_URL environment variable"
+                    : "Not configured"}
                 </TooltipContent>
               </Tooltip>
 
@@ -184,16 +219,6 @@ export function EnvironmentSettings({ env }: EnvironmentSettingsProps) {
               }}
             >
               Check OpenAI Status
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => {
-                toast("Opening Settings...");
-                window.location.href = "/settings";
-              }}
-            >
-              Open Settings
             </Button>
           </div>
         </CardContent>
@@ -278,41 +303,82 @@ export function EnvironmentSettings({ env }: EnvironmentSettingsProps) {
         </CardContent>
       </Card>
 
-      {/* Public Base URL */}
+      {/* Public Base URL - Now Editable */}
       <Card>
         <CardHeader>
           <CardTitle>Public Base URL (System-Wide)</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           <p className="text-sm text-muted-foreground">
-            System-wide public base URL for generating absolute links in emails and redirects.
+            System-wide public base URL for generating absolute links in emails, webhooks, and redirects.
           </p>
           <div className="flex items-center gap-2">
-            <Badge variant={env?.checks?.baseUrl ? "outline" : "destructive"}>
-              {env?.checks?.baseUrl ? "Configured ✓" : "Not Configured"}
+            <Badge variant={publicBaseUrlData?.url ? "outline" : "destructive"}>
+              {publicBaseUrlData?.url ? "Configured ✓" : "Not Configured"}
             </Badge>
-            {testPublicBaseUrl && (
+            {publicBaseUrlData?.source && (
               <span className="text-xs text-muted-foreground">
-                {testPublicBaseUrl.message}
+                Source: {publicBaseUrlData.source}
               </span>
             )}
           </div>
-          <div className="flex gap-2">
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={handleTestBaseUrl}
-              disabled={testingBaseUrl || !env?.checks?.baseUrl}
-            >
-              {testingBaseUrl ? "Testing..." : "Test Base URL"}
-            </Button>
-            <Button size="sm" onClick={openConvexDashboard}>
-              Configure Base URL
-            </Button>
-          </div>
-          {!env?.checks?.baseUrl && (
+
+          {editingBaseUrl ? (
+            <div className="space-y-2">
+              <Label htmlFor="baseUrl">Public Base URL</Label>
+              <Input
+                id="baseUrl"
+                type="text"
+                placeholder="https://pikar-ai.com"
+                value={baseUrlInput}
+                onChange={(e) => setBaseUrlInput(e.target.value)}
+              />
+              <div className="flex gap-2">
+                <Button size="sm" onClick={handleSaveBaseUrl}>
+                  Save URL
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    setEditingBaseUrl(false);
+                    setBaseUrlInput(publicBaseUrlData?.url || "");
+                  }}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {publicBaseUrlData?.url && (
+                <div className="p-2 rounded-md bg-muted text-sm font-mono">
+                  {publicBaseUrlData.url}
+                </div>
+              )}
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  variant="default"
+                  onClick={() => setEditingBaseUrl(true)}
+                >
+                  {publicBaseUrlData?.url ? "Edit URL" : "Set URL"}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleTestBaseUrl}
+                  disabled={testingBaseUrl || !publicBaseUrlData?.url}
+                >
+                  {testingBaseUrl ? "Testing..." : "Test URL"}
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {!publicBaseUrlData?.url && (
             <div className="p-3 rounded-md border border-amber-300 bg-amber-50 text-amber-900 text-sm">
-              Add <code className="bg-white px-1 rounded">VITE_PUBLIC_BASE_URL</code> in Convex Dashboard → Settings → Environment Variables (e.g., "https://pikar-ai.com")
+              Set your public base URL above (e.g., "https://pikar-ai.com"). This will be used by backend functions to generate absolute URLs.
             </div>
           )}
         </CardContent>
