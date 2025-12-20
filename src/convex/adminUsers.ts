@@ -48,6 +48,7 @@ export const listAllUsers = query({
       email: u.email,
       name: u.name,
       isAnonymous: u.isAnonymous,
+      businessTier: u.businessTier,
       _creationTime: u._creationTime,
     }));
   },
@@ -70,15 +71,220 @@ export const getUserDetails = query({
       (Array.isArray(b.teamMembers) && b.teamMembers.some((m: any) => String(m) === String(args.userId)))
     );
 
+    // Get AI agents for user's businesses
+    const agentProfiles = await ctx.db
+      .query("agentProfiles")
+      .filter((q: any) => 
+        q.or(
+          ...userBusinesses.map((b: any) => q.eq(q.field("businessId"), b._id))
+        )
+      )
+      .collect();
+
+    // Get active AI agents from catalog
+    const aiAgents = await ctx.db
+      .query("aiAgents")
+      .filter((q: any) => 
+        q.or(
+          ...userBusinesses.map((b: any) => q.eq(q.field("businessId"), b._id))
+        )
+      )
+      .collect();
+
     return {
       user,
       businesses: userBusinesses.map((b: any) => ({
         _id: b._id,
         name: b.name,
-        plan: b.plan,
+        tier: b.tier,
+        industry: b.industry,
+        website: b.website,
+        location: b.location,
+        description: b.description,
         role: String(b.ownerId) === String(args.userId) ? "owner" : "member",
+        limits: b.limits,
+        features: b.features,
+      })),
+      agentProfiles: agentProfiles.map((a: any) => ({
+        _id: a._id,
+        businessId: a.businessId,
+        trainingNotes: a.trainingNotes,
+        brandVoice: a.brandVoice,
+        lastUpdated: a.lastUpdated,
+      })),
+      aiAgents: aiAgents.map((a: any) => ({
+        _id: a._id,
+        name: a.name,
+        type: a.type,
+        isActive: a.isActive,
+        businessId: a.businessId,
       })),
     };
+  },
+});
+
+// Toggle user account active status
+export const toggleUserStatus = mutation({
+  args: {
+    userId: v.id("users"),
+    isActive: v.boolean(),
+  },
+  handler: async (ctx, args) => {
+    const isAdmin = await isPlatformAdmin(ctx);
+    if (!isAdmin) throw new Error("Admin access required");
+
+    const user = await ctx.db.get(args.userId);
+    if (!user) throw new Error("User not found");
+
+    // Store active status in user metadata
+    await ctx.db.patch(args.userId, {
+      isAnonymous: args.isActive ? (user.isAnonymous ?? false) : true,
+    });
+
+    const identity = await ctx.auth.getUserIdentity();
+    const adminEmail = identity?.email || "admin@pikar-ai.com";
+
+    // Log audit event
+    await ctx.db.insert("audit_logs", {
+      businessId: "system" as any,
+      action: args.isActive ? "user_activated" : "user_deactivated",
+      entityType: "user",
+      entityId: String(args.userId),
+      details: {
+        userEmail: user.email,
+        performedBy: adminEmail,
+      },
+      createdAt: Date.now(),
+    });
+
+    return { success: true };
+  },
+});
+
+// Update user tier
+export const updateUserTier = mutation({
+  args: {
+    userId: v.id("users"),
+    tier: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const isAdmin = await isPlatformAdmin(ctx);
+    if (!isAdmin) throw new Error("Admin access required");
+
+    const user = await ctx.db.get(args.userId);
+    if (!user) throw new Error("User not found");
+
+    await ctx.db.patch(args.userId, {
+      businessTier: args.tier,
+    });
+
+    // Update all user's businesses
+    if (user.businessId) {
+      await ctx.db.patch(user.businessId, {
+        tier: args.tier,
+      });
+    }
+
+    const identity = await ctx.auth.getUserIdentity();
+    const adminEmail = identity?.email || "admin@pikar-ai.com";
+
+    await ctx.db.insert("audit_logs", {
+      businessId: "system" as any,
+      action: "user_tier_updated",
+      entityType: "user",
+      entityId: String(args.userId),
+      details: {
+        userEmail: user.email,
+        newTier: args.tier,
+        performedBy: adminEmail,
+      },
+      createdAt: Date.now(),
+    });
+
+    return { success: true };
+  },
+});
+
+// Update AI agent limits for user
+export const updateAgentLimits = mutation({
+  args: {
+    businessId: v.id("businesses"),
+    maxAgents: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const isAdmin = await isPlatformAdmin(ctx);
+    if (!isAdmin) throw new Error("Admin access required");
+
+    const business = await ctx.db.get(args.businessId);
+    if (!business) throw new Error("Business not found");
+
+    const currentLimits = business.limits || {
+      maxUsers: 1,
+      maxAgents: 3,
+      maxWorkflows: 10,
+      maxStorage: 1000,
+    };
+
+    await ctx.db.patch(args.businessId, {
+      limits: {
+        ...currentLimits,
+        maxAgents: args.maxAgents,
+      },
+    });
+
+    const identity = await ctx.auth.getUserIdentity();
+    const adminEmail = identity?.email || "admin@pikar-ai.com";
+
+    await ctx.db.insert("audit_logs", {
+      businessId: args.businessId,
+      action: "agent_limits_updated",
+      entityType: "business",
+      entityId: String(args.businessId),
+      details: {
+        previousLimit: currentLimits.maxAgents,
+        newLimit: args.maxAgents,
+        performedBy: adminEmail,
+      },
+      createdAt: Date.now(),
+    });
+
+    return { success: true };
+  },
+});
+
+// Toggle AI agent for user
+export const toggleUserAgent = mutation({
+  args: {
+    agentId: v.id("aiAgents"),
+    isActive: v.boolean(),
+  },
+  handler: async (ctx, args) => {
+    const isAdmin = await isPlatformAdmin(ctx);
+    if (!isAdmin) throw new Error("Admin access required");
+
+    const agent = await ctx.db.get(args.agentId);
+    if (!agent) throw new Error("Agent not found");
+
+    await ctx.db.patch(args.agentId, {
+      isActive: args.isActive,
+    });
+
+    const identity = await ctx.auth.getUserIdentity();
+    const adminEmail = identity?.email || "admin@pikar-ai.com";
+
+    await ctx.db.insert("audit_logs", {
+      businessId: agent.businessId,
+      action: args.isActive ? "agent_activated" : "agent_deactivated",
+      entityType: "agent",
+      entityId: String(args.agentId),
+      details: {
+        agentName: agent.name,
+        performedBy: adminEmail,
+      },
+      createdAt: Date.now(),
+    });
+
+    return { success: true };
   },
 });
 
