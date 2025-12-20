@@ -7,7 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Zap, Plus, Trash2, Play, Save, Edit2, Loader2 } from "lucide-react";
+import { Zap, Plus, Trash2, Play, Save, Edit2, Loader2, Info } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 type AgentConfig = {
@@ -227,31 +228,54 @@ export function ParallelOrchestrationBuilder() {
                   ))}
                 </SelectContent>
               </Select>
-              <Select value={showCustomMode ? "custom" : newAgentMode} onValueChange={(val) => {
-                if (val === "custom") {
-                  setShowCustomMode(true);
-                } else {
-                  setShowCustomMode(false);
-                  setNewAgentMode(val);
-                }
-              }}>
-                <SelectTrigger className="w-48">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="proposeNextAction">Propose Action</SelectItem>
-                  <SelectItem value="summarizeIdeas">Summarize Ideas</SelectItem>
-                  <SelectItem value="planWeek">Plan Week</SelectItem>
-                  <SelectItem value="analyzeData">Analyze Data</SelectItem>
-                  <SelectItem value="generateContent">Generate Content</SelectItem>
-                  <SelectItem value="reviewContent">Review Content</SelectItem>
-                  <SelectItem value="optimizeStrategy">Optimize Strategy</SelectItem>
-                  <SelectItem value="researchTopic">Research Topic</SelectItem>
-                  <SelectItem value="createReport">Create Report</SelectItem>
-                  <SelectItem value="validateData">Validate Data</SelectItem>
-                  <SelectItem value="custom">Custom Mode...</SelectItem>
-                </SelectContent>
-              </Select>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="flex items-center gap-1">
+                      <Select value={showCustomMode ? "custom" : newAgentMode} onValueChange={(val) => {
+                        if (val === "custom") {
+                          setShowCustomMode(true);
+                        } else {
+                          setShowCustomMode(false);
+                          setNewAgentMode(val);
+                        }
+                      }}>
+                        <SelectTrigger className="w-48">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="proposeNextAction">Propose Action</SelectItem>
+                          <SelectItem value="summarizeIdeas">Summarize Ideas</SelectItem>
+                          <SelectItem value="planWeek">Plan Week</SelectItem>
+                          <SelectItem value="analyzeData">Analyze Data</SelectItem>
+                          <SelectItem value="generateContent">Generate Content</SelectItem>
+                          <SelectItem value="reviewContent">Review Content</SelectItem>
+                          <SelectItem value="optimizeStrategy">Optimize Strategy</SelectItem>
+                          <SelectItem value="researchTopic">Research Topic</SelectItem>
+                          <SelectItem value="createReport">Create Report</SelectItem>
+                          <SelectItem value="validateData">Validate Data</SelectItem>
+                          <SelectItem value="custom">Custom Mode...</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Info className="h-4 w-4 text-muted-foreground" />
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent side="right" className="max-w-xs">
+                    <div className="space-y-1 text-xs">
+                      <p><strong>Propose Action:</strong> Suggest next steps</p>
+                      <p><strong>Summarize Ideas:</strong> Condense information</p>
+                      <p><strong>Plan Week:</strong> Create schedules</p>
+                      <p><strong>Analyze Data:</strong> Extract insights</p>
+                      <p><strong>Generate Content:</strong> Create new material</p>
+                      <p><strong>Review Content:</strong> Evaluate quality</p>
+                      <p><strong>Optimize Strategy:</strong> Improve approaches</p>
+                      <p><strong>Research Topic:</strong> Gather information</p>
+                      <p><strong>Create Report:</strong> Compile findings</p>
+                      <p><strong>Validate Data:</strong> Check accuracy</p>
+                    </div>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
               <Button onClick={handleAddAgent} size="icon">
                 <Plus className="h-4 w-4" />
               </Button>

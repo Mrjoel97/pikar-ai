@@ -8,6 +8,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { Clock, CheckCircle, XCircle, Eye, Trash2, RefreshCw } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { formatDistanceToNow } from "date-fns";
 
 type OrchestrationRun = {
@@ -44,11 +45,49 @@ type AgentExecution = {
 export function OrchestrationRunsViewer() {
   const [selectedRun, setSelectedRun] = useState<string | null>(null);
   const [typeFilter, setTypeFilter] = useState<"all" | "parallel" | "chain" | "consensus">("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | "completed" | "failed" | "running">("all");
+  const [agentFilter, setAgentFilter] = useState<string>("all");
 
-  const runs = useQuery(api.agentOrchestrationData.getRecentOrchestrationRuns, {
+  const allRuns = useQuery(api.agentOrchestrationData.getRecentOrchestrationRuns, {
     type: typeFilter === "all" ? undefined : typeFilter,
-    limit: 50,
+    limit: 100,
   }) as OrchestrationRun[] | undefined;
+
+  const allExecutions = useQuery(
+    api.agentOrchestrationData.getOrchestrationExecutions,
+    { limit: 500 }
+  ) as AgentExecution[] | undefined;
+
+  // Extract unique agent keys for filter
+  const uniqueAgents = React.useMemo(() => {
+    if (!allExecutions) return [];
+    const agents = new Set(allExecutions.map(e => e.agentKey));
+    return Array.from(agents).sort();
+  }, [allExecutions]);
+
+  // Apply filters
+  const runs = React.useMemo(() => {
+    if (!allRuns) return [];
+    
+    let filtered = allRuns;
+    
+    // Status filter
+    if (statusFilter !== "all") {
+      filtered = filtered.filter(run => run.status === statusFilter);
+    }
+    
+    // Agent filter (check if any execution in this run matches the agent)
+    if (agentFilter !== "all" && allExecutions) {
+      const runIdsWithAgent = new Set(
+        allExecutions
+          .filter(e => e.agentKey === agentFilter)
+          .map(e => e.orchestrationId)
+      );
+      filtered = filtered.filter(run => runIdsWithAgent.has(run._id));
+    }
+    
+    return filtered;
+  }, [allRuns, statusFilter, agentFilter, allExecutions]);
 
   const executions = useQuery(
     api.agentOrchestrationData.getOrchestrationExecutions,
@@ -93,17 +132,68 @@ export function OrchestrationRunsViewer() {
         <CardHeader>
           <CardTitle>Orchestration Runs</CardTitle>
           <CardDescription>View and manage orchestration execution history</CardDescription>
-          <div className="flex gap-2 mt-4">
-            {["all", "parallel", "chain", "consensus"].map((type) => (
-              <Button
-                key={type}
-                size="sm"
-                variant={typeFilter === type ? "default" : "outline"}
-                onClick={() => setTypeFilter(type as any)}
-              >
-                {type.charAt(0).toUpperCase() + type.slice(1)}
-              </Button>
-            ))}
+          <div className="space-y-3 mt-4">
+            <div className="flex flex-wrap gap-2">
+              <div className="text-xs font-medium text-muted-foreground mr-2 flex items-center">Type:</div>
+              {["all", "parallel", "chain", "consensus"].map((type) => (
+                <Button
+                  key={type}
+                  size="sm"
+                  variant={typeFilter === type ? "default" : "outline"}
+                  onClick={() => setTypeFilter(type as any)}
+                >
+                  {type.charAt(0).toUpperCase() + type.slice(1)}
+                </Button>
+              ))}
+            </div>
+            
+            <div className="flex flex-wrap gap-2">
+              <div className="text-xs font-medium text-muted-foreground mr-2 flex items-center">Status:</div>
+              {["all", "completed", "failed", "running"].map((status) => (
+                <Button
+                  key={status}
+                  size="sm"
+                  variant={statusFilter === status ? "default" : "outline"}
+                  onClick={() => setStatusFilter(status as any)}
+                >
+                  {status.charAt(0).toUpperCase() + status.slice(1)}
+                </Button>
+              ))}
+            </div>
+            
+            <div className="flex flex-wrap gap-2 items-center">
+              <div className="text-xs font-medium text-muted-foreground mr-2">Agent:</div>
+              <Select value={agentFilter} onValueChange={setAgentFilter}>
+                <SelectTrigger className="w-48">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Agents</SelectItem>
+                  {uniqueAgents.map((agent) => (
+                    <SelectItem key={agent} value={agent}>
+                      {agent}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {(typeFilter !== "all" || statusFilter !== "all" || agentFilter !== "all") && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => {
+                    setTypeFilter("all");
+                    setStatusFilter("all");
+                    setAgentFilter("all");
+                  }}
+                >
+                  Clear Filters
+                </Button>
+              )}
+            </div>
+            
+            <div className="text-xs text-muted-foreground">
+              Showing {runs?.length || 0} run{runs?.length !== 1 ? 's' : ''}
+            </div>
           </div>
         </CardHeader>
         <CardContent>
