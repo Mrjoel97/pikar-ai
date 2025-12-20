@@ -1,2 +1,7 @@
-// Looking at adminAuth.ts, I can see there's a separate admin authentication system
-// with sessions stored in adminSessions table
+const saveSystemConfigMutation = useMutation(api.admin.saveSystemConfig as any);
+await saveSystemConfigMutation({
+  key: "BASE_URL",
+  value: newUrl,
+  description: "Public base URL for the application",
+  adminToken: adminToken || undefined,
+});

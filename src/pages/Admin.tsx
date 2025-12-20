@@ -172,6 +172,7 @@ export default function AdminPage() {
 
   const createAlertMutation = useMutation(api.admin.createAlert as any);
   const resolveAlertMutation = useMutation(api.admin.resolveAlert as any);
+  const saveSystemConfigMutation = useMutation(api.admin.saveSystemConfig as any);
 
   // Add Admin Assistant transcript + dry-run state
   const [assistantTranscriptOpen, setAssistantTranscriptOpen] = useState(false);
@@ -998,17 +999,24 @@ export default function AdminPage() {
               <Button
                 size="sm"
                 variant="outline"
-                onClick={() => {
-                  const base = (import.meta as any)?.env?.VITE_PUBLIC_BASE_URL as string | undefined;
-                  if (base) {
-                    toast.success(`Base URL: ${base}`);
-                    try { window.open(base, "_blank", "noopener,noreferrer"); } catch {}
-                  } else {
-                    toast.error("VITE_PUBLIC_BASE_URL not set in frontend env.");
+                onClick={async () => {
+                  const newUrl = prompt("Enter new Base URL:", (import.meta as any)?.env?.VITE_PUBLIC_BASE_URL || "");
+                  if (!newUrl) return;
+                  
+                  try {
+                    await saveSystemConfigMutation({
+                      key: "BASE_URL",
+                      value: newUrl,
+                      description: "Public base URL for the application",
+                      adminToken: adminToken || undefined,
+                    });
+                    toast.success("Base URL updated successfully");
+                  } catch (e: any) {
+                    toast.error(e?.message || "Failed to update Base URL");
                   }
                 }}
               >
-                Check Base URL
+                Update Base URL
               </Button>
             </div>
             <div className="text-xs text-muted-foreground">
