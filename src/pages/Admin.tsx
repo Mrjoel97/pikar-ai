@@ -22,6 +22,8 @@ import { SocialApiSettings } from "@/components/admin/SocialApiSettings";
 import DemoVideoManager from "@/components/admin/DemoVideoManager";
 import { DocsContentManager } from "@/components/admin/DocsContentManager";
 import { UserManagement } from "@/components/admin/UserManagement";
+import { AlertsIncidentsPanel } from "@/components/admin/AlertsIncidentsPanel";
+import { TenantsPanel } from "@/components/admin/TenantsPanel";
 
 // Add local types for transcript steps
 export default function AdminPage() {
@@ -625,78 +627,11 @@ export default function AdminPage() {
           </CardContent>
         </Card>
 
-        {/* Tenants Panel (read-only) */}
-        <Card>
-          <CardHeader>
-            <CardTitle id="section-tenants">Tenants</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <p className="text-sm text-muted-foreground">
-              Read-only list of tenants. Select a tenant to view its users and API keys.
-            </p>
-
-            <div className="rounded-md border overflow-hidden">
-              <div className="grid grid-cols-3 md:grid-cols-5 gap-2 p-3 bg-muted/40 text-xs font-medium">
-                <div>Name</div>
-                <div className="hidden md:block">Plan</div>
-                <div>Status</div>
-                <div className="hidden md:block">Id</div>
-                <div className="text-right">Select</div>
-              </div>
-              <Separator />
-              <div className="divide-y">
-                {(tenants || []).map((t) => (
-                  <div key={t._id} className="grid grid-cols-3 md:grid-cols-5 gap-2 p-3 text-sm items-center">
-                    <div className="truncate">{t.name || "Tenant"}</div>
-                    <div className="hidden md:block">{t.plan || "—"}</div>
-                    <div>{t.status || "active"}</div>
-                    <div className="hidden md:block text-muted-foreground truncate">{t._id}</div>
-                    <div className="text-right">
-                      <Button
-                        size="sm"
-                        variant={selectedTenantId === t._id ? "default" : "outline"}
-                        onClick={() => setSelectedTenantId(selectedTenantId === t._id ? "" : t._id)}
-                      >
-                        {selectedTenantId === t._id ? "Selected" : "Select"}
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-                {(!tenants || tenants.length === 0) && (
-                  <div className="p-3 text-sm text-muted-foreground">No tenants found.</div>
-                )}
-              </div>
-            </div>
-
-            {selectedTenantId && (
-              <div className="rounded-md border p-3">
-                <div className="font-medium mb-2">Tenant Users</div>
-                <div className="rounded-md border overflow-hidden">
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2 p-3 bg-muted/40 text-xs font-medium">
-                    <div>Name</div>
-                    <div>Email</div>
-                    <div className="hidden md:block">Role</div>
-                    <div className="text-right">Id</div>
-                  </div>
-                  <Separator />
-                  <div className="divide-y">
-                    {(tenantUsers || []).map((u) => (
-                      <div key={u._id} className="grid grid-cols-2 md:grid-cols-4 gap-2 p-3 text-sm items-center">
-                        <div className="truncate">{u.name || "User"}</div>
-                        <div className="truncate">{u.email || "—"}</div>
-                        <div className="hidden md:block">{u.role || "member"}</div>
-                        <div className="text-right text-muted-foreground truncate">{u._id}</div>
-                      </div>
-                    ))}
-                    {(!tenantUsers || tenantUsers.length === 0) && (
-                      <div className="p-3 text-sm text-muted-foreground">No users for this tenant.</div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        {/* Replace inline Tenants Panel with component */}
+        <TenantsPanel
+          selectedTenantId={selectedTenantId}
+          onSelectTenant={setSelectedTenantId}
+        />
 
         {/* API Keys Panel (generate/revoke) */}
         <Card>
@@ -1331,6 +1266,9 @@ export default function AdminPage() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Replace inline Alerts & Incidents with component */}
+        <AlertsIncidentsPanel selectedTenantId={selectedTenantId} />
 
         {/* Admin Assistant Section (moved to component) */}
         <AdminAssistantSection
