@@ -32,7 +32,7 @@ export const emailSchema = {
   })
     .index("by_business", ["businessId"])
     .index("by_status", ["status"])
-    .index("by_experiment", ["abTest"]), // Placeholder if needed, or use field
+    .index("by_experiment", ["abTest"]),
 
   emailConfigs: defineTable({
     businessId: v.id("businesses"),
@@ -49,6 +49,18 @@ export const emailSchema = {
     resendApiKey: v.optional(v.string()),
     salesInbox: v.optional(v.string()),
     publicBaseUrl: v.optional(v.string()),
+    // Invoice settings (all tiers)
+    invoicePrefix: v.optional(v.string()),
+    invoiceNumberStart: v.optional(v.number()),
+    invoiceCurrency: v.optional(v.string()),
+    invoicePaymentTerms: v.optional(v.string()),
+    invoiceNotes: v.optional(v.string()),
+    // Business profile information (Startup, SME, Enterprise)
+    businessLegalName: v.optional(v.string()),
+    businessAddress: v.optional(v.string()),
+    businessPhone: v.optional(v.string()),
+    businessTaxId: v.optional(v.string()),
+    businessWebsite: v.optional(v.string()),
   }).index("by_business", ["businessId"]),
 
   emailDrafts: defineTable({

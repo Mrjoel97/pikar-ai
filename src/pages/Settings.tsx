@@ -36,6 +36,16 @@ export default function SettingsPage() {
         fromEmail: string | null;
         fromName: string | null;
         replyTo: string | null;
+        invoicePrefix: string | null;
+        invoiceNumberStart: number | null;
+        invoiceCurrency: string | null;
+        invoicePaymentTerms: string | null;
+        invoiceNotes: string | null;
+        businessLegalName: string | null;
+        businessAddress: string | null;
+        businessPhone: string | null;
+        businessTaxId: string | null;
+        businessWebsite: string | null;
         updatedAt: number | null;
       }
     | null
@@ -64,6 +74,16 @@ export default function SettingsPage() {
   const [wsReplyTo, setWsReplyTo] = useState("");
   const [wsSalesInbox, setWsSalesInbox] = useState("");
   const [wsBaseUrl, setWsBaseUrl] = useState("");
+  const [wsInvoicePrefix, setWsInvoicePrefix] = useState("");
+  const [wsInvoiceNumberStart, setWsInvoiceNumberStart] = useState("");
+  const [wsInvoiceCurrency, setWsInvoiceCurrency] = useState("USD");
+  const [wsInvoicePaymentTerms, setWsInvoicePaymentTerms] = useState("");
+  const [wsInvoiceNotes, setWsInvoiceNotes] = useState("");
+  const [wsBusinessLegalName, setWsBusinessLegalName] = useState("");
+  const [wsBusinessAddress, setWsBusinessAddress] = useState("");
+  const [wsBusinessPhone, setWsBusinessPhone] = useState("");
+  const [wsBusinessTaxId, setWsBusinessTaxId] = useState("");
+  const [wsBusinessWebsite, setWsBusinessWebsite] = useState("");
 
   React.useEffect(() => {
     if (!workspace) return;
@@ -72,6 +92,16 @@ export default function SettingsPage() {
     setWsReplyTo(workspace.replyTo || "");
     setWsSalesInbox(workspace.salesInbox || "");
     setWsBaseUrl(workspace.publicBaseUrl || "");
+    setWsInvoicePrefix(workspace.invoicePrefix || "");
+    setWsInvoiceNumberStart(workspace.invoiceNumberStart?.toString() || "");
+    setWsInvoiceCurrency(workspace.invoiceCurrency || "USD");
+    setWsInvoicePaymentTerms(workspace.invoicePaymentTerms || "");
+    setWsInvoiceNotes(workspace.invoiceNotes || "");
+    setWsBusinessLegalName(workspace.businessLegalName || "");
+    setWsBusinessAddress(workspace.businessAddress || "");
+    setWsBusinessPhone(workspace.businessPhone || "");
+    setWsBusinessTaxId(workspace.businessTaxId || "");
+    setWsBusinessWebsite(workspace.businessWebsite || "");
   }, [workspace?.updatedAt]);
 
   function isEmail(s: string) {
@@ -141,7 +171,7 @@ export default function SettingsPage() {
       return;
     }
     try {
-      toast("Saving workspace email settings...");
+      toast("Saving workspace settings...");
       await saveWorkspace({
         businessId: business._id,
         resendApiKey: wsResendKey ? wsResendKey : undefined,
@@ -150,9 +180,19 @@ export default function SettingsPage() {
         replyTo: wsReplyTo || null,
         salesInbox: wsSalesInbox || null,
         publicBaseUrl: wsBaseUrl || null,
+        invoicePrefix: wsInvoicePrefix || null,
+        invoiceNumberStart: wsInvoiceNumberStart ? parseInt(wsInvoiceNumberStart) : null,
+        invoiceCurrency: wsInvoiceCurrency || null,
+        invoicePaymentTerms: wsInvoicePaymentTerms || null,
+        invoiceNotes: wsInvoiceNotes || null,
+        businessLegalName: wsBusinessLegalName || null,
+        businessAddress: wsBusinessAddress || null,
+        businessPhone: wsBusinessPhone || null,
+        businessTaxId: wsBusinessTaxId || null,
+        businessWebsite: wsBusinessWebsite || null,
       });
       setWsResendKey("");
-      toast.success("Workspace email settings saved.");
+      toast.success("Workspace settings saved.");
     } catch (e: any) {
       toast.error(e?.message || "Failed to save workspace settings");
     }
@@ -280,26 +320,29 @@ export default function SettingsPage() {
 
         {/* Workspace Tab */}
         <TabsContent value="workspace" className="space-y-6 mt-6">
+          {/* Email & Communication Settings */}
           <Card className="neu-raised border-0">
             <CardHeader>
-              <CardTitle>Workspace Email Settings</CardTitle>
+              <CardTitle>Email & Communication Settings</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex flex-wrap items-center gap-2">
                 <Badge variant="outline" className={workspace?.hasResendKey ? "border-emerald-300 text-emerald-700" : "border-amber-400 text-amber-700"}>
-                  Workspace Resend Key: {workspace?.hasResendKey ? "Configured" : "Missing"}
+                  Resend Key: {workspace?.hasResendKey ? "Configured" : "Missing"}
                 </Badge>
-                <Badge variant="outline" className={wsSalesInbox ? "border-emerald-300 text-emerald-700" : "border-amber-400 text-amber-700"}>
-                  Workspace Sales Inbox: {wsSalesInbox ? "Configured" : "Missing"}
-                </Badge>
+                {(userTier === "startup" || userTier === "sme" || userTier === "enterprise") && (
+                  <Badge variant="outline" className={wsSalesInbox ? "border-emerald-300 text-emerald-700" : "border-amber-400 text-amber-700"}>
+                    Sales Inbox: {wsSalesInbox ? "Configured" : "Missing"}
+                  </Badge>
+                )}
                 <Badge variant="outline" className={wsBaseUrl ? "border-emerald-300 text-emerald-700" : "border-amber-400 text-amber-700"}>
-                  Workspace Base URL: {wsBaseUrl ? "Configured" : "Missing"}
+                  Base URL: {wsBaseUrl ? "Configured" : "Missing"}
                 </Badge>
               </div>
 
               <div className="grid md:grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <Label htmlFor="wsResend">Resend API Key (workspace)</Label>
+                  <Label htmlFor="wsResend">Resend API Key</Label>
                   <Input
                     id="wsResend"
                     type="password"
@@ -309,29 +352,34 @@ export default function SettingsPage() {
                     className="neu-inset"
                   />
                   <p className="text-xs text-muted-foreground">
-                    Used for your own emails. Not shown after save for security.
+                    Used for your workspace emails. Not shown after save for security.
                   </p>
                 </div>
+                
                 <div className="space-y-1.5">
-                  <Label htmlFor="wsSalesInbox">Sales Inbox (workspace)</Label>
-                  <Input
-                    id="wsSalesInbox"
-                    placeholder="sales@yourdomain.com"
-                    value={wsSalesInbox}
-                    onChange={(e) => setWsSalesInbox(e.target.value)}
-                    className="neu-inset"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="wsBaseUrl">Public Base URL (workspace)</Label>
+                  <Label htmlFor="wsBaseUrl">Public Base URL</Label>
                   <Input
                     id="wsBaseUrl"
-                    placeholder="https://app.yourdomain.com"
+                    placeholder="pikar-ai.com"
                     value={wsBaseUrl}
                     onChange={(e) => setWsBaseUrl(e.target.value)}
                     className="neu-inset"
                   />
                 </div>
+
+                {(userTier === "startup" || userTier === "sme" || userTier === "enterprise") && (
+                  <div className="space-y-1.5">
+                    <Label htmlFor="wsSalesInbox">Sales Inbox</Label>
+                    <Input
+                      id="wsSalesInbox"
+                      placeholder="sales@yourdomain.com"
+                      value={wsSalesInbox}
+                      onChange={(e) => setWsSalesInbox(e.target.value)}
+                      className="neu-inset"
+                    />
+                  </div>
+                )}
+
                 <div className="space-y-1.5">
                   <Label htmlFor="wsFromEmail">Default From Email</Label>
                   <Input
@@ -363,18 +411,147 @@ export default function SettingsPage() {
                   />
                 </div>
               </div>
-
-              <div className="flex items-center gap-2">
-                <Button size="sm" onClick={handleSaveWorkspace} className="neu-raised">
-                  Save Workspace Settings
-                </Button>
-              </div>
-
-              <p className="text-xs text-muted-foreground">
-                Workspace settings override global env for your own sends. Admin communications keep using the platform's global configuration.
-              </p>
             </CardContent>
           </Card>
+
+          {/* Invoice Settings - All Tiers */}
+          <Card className="neu-raised border-0">
+            <CardHeader>
+              <CardTitle>Invoice Settings</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid md:grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="wsInvoicePrefix">Invoice Prefix</Label>
+                  <Input
+                    id="wsInvoicePrefix"
+                    placeholder="INV-"
+                    value={wsInvoicePrefix}
+                    onChange={(e) => setWsInvoicePrefix(e.target.value)}
+                    className="neu-inset"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Prefix for invoice numbers (e.g., INV-, BILL-)
+                  </p>
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="wsInvoiceNumberStart">Starting Invoice Number</Label>
+                  <Input
+                    id="wsInvoiceNumberStart"
+                    type="number"
+                    placeholder="1000"
+                    value={wsInvoiceNumberStart}
+                    onChange={(e) => setWsInvoiceNumberStart(e.target.value)}
+                    className="neu-inset"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="wsInvoiceCurrency">Currency</Label>
+                  <Input
+                    id="wsInvoiceCurrency"
+                    placeholder="USD"
+                    value={wsInvoiceCurrency}
+                    onChange={(e) => setWsInvoiceCurrency(e.target.value)}
+                    className="neu-inset"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="wsInvoicePaymentTerms">Payment Terms</Label>
+                  <Input
+                    id="wsInvoicePaymentTerms"
+                    placeholder="Net 30"
+                    value={wsInvoicePaymentTerms}
+                    onChange={(e) => setWsInvoicePaymentTerms(e.target.value)}
+                    className="neu-inset"
+                  />
+                </div>
+                <div className="space-y-1.5 md:col-span-2">
+                  <Label htmlFor="wsInvoiceNotes">Default Invoice Notes</Label>
+                  <Input
+                    id="wsInvoiceNotes"
+                    placeholder="Thank you for your business!"
+                    value={wsInvoiceNotes}
+                    onChange={(e) => setWsInvoiceNotes(e.target.value)}
+                    className="neu-inset"
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Business Profile - Startup, SME, Enterprise Only */}
+          {(userTier === "startup" || userTier === "sme" || userTier === "enterprise") && (
+            <Card className="neu-raised border-0">
+              <CardHeader>
+                <CardTitle>Business Profile Information</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid md:grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="wsBusinessLegalName">Legal Business Name</Label>
+                    <Input
+                      id="wsBusinessLegalName"
+                      placeholder="Your Company LLC"
+                      value={wsBusinessLegalName}
+                      onChange={(e) => setWsBusinessLegalName(e.target.value)}
+                      className="neu-inset"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="wsBusinessPhone">Business Phone</Label>
+                    <Input
+                      id="wsBusinessPhone"
+                      placeholder="+1 (555) 123-4567"
+                      value={wsBusinessPhone}
+                      onChange={(e) => setWsBusinessPhone(e.target.value)}
+                      className="neu-inset"
+                    />
+                  </div>
+                  <div className="space-y-1.5 md:col-span-2">
+                    <Label htmlFor="wsBusinessAddress">Business Address</Label>
+                    <Input
+                      id="wsBusinessAddress"
+                      placeholder="123 Main St, City, State, ZIP"
+                      value={wsBusinessAddress}
+                      onChange={(e) => setWsBusinessAddress(e.target.value)}
+                      className="neu-inset"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="wsBusinessTaxId">Tax ID / EIN</Label>
+                    <Input
+                      id="wsBusinessTaxId"
+                      placeholder="12-3456789"
+                      value={wsBusinessTaxId}
+                      onChange={(e) => setWsBusinessTaxId(e.target.value)}
+                      className="neu-inset"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="wsBusinessWebsite">Business Website</Label>
+                    <Input
+                      id="wsBusinessWebsite"
+                      placeholder="https://yourcompany.com"
+                      value={wsBusinessWebsite}
+                      onChange={(e) => setWsBusinessWebsite(e.target.value)}
+                      className="neu-inset"
+                    />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Save Button */}
+          <div className="flex items-center gap-2">
+            <Button size="default" onClick={handleSaveWorkspace} className="neu-raised">
+              Save All Workspace Settings
+            </Button>
+          </div>
+
+          <p className="text-xs text-muted-foreground">
+            Workspace settings are specific to your business. Admin-level configurations (like OpenAI API key) are managed separately in the Admin panel.
+          </p>
         </TabsContent>
 
         {/* Test Email Tab */}

@@ -32,6 +32,16 @@ type WorkspaceEmailSummary = {
   fromEmail: string | null;
   fromName: string | null;
   replyTo: string | null;
+  invoicePrefix: string | null;
+  invoiceNumberStart: number | null;
+  invoiceCurrency: string | null;
+  invoicePaymentTerms: string | null;
+  invoiceNotes: string | null;
+  businessLegalName: string | null;
+  businessAddress: string | null;
+  businessPhone: string | null;
+  businessTaxId: string | null;
+  businessWebsite: string | null;
   updatedAt: number | null;
 };
 
@@ -42,7 +52,6 @@ type WorkspaceEmailSummary = {
 export const getForBusinessSummary = query({
   args: {},
   handler: async (ctx): Promise<WorkspaceEmailSummary | null> => {
-    // Derive business from the signed-in user; guest-safe (returns null if none)
     const business: any = await ctx.runQuery("businesses:currentUserBusiness" as any, {});
     const businessId: any = business?._id;
     if (!businessId) return null;
@@ -60,6 +69,16 @@ export const getForBusinessSummary = query({
           fromEmail: existing.fromEmail ?? null,
           fromName: existing.fromName ?? null,
           replyTo: existing.replyTo ?? null,
+          invoicePrefix: existing.invoicePrefix ?? null,
+          invoiceNumberStart: existing.invoiceNumberStart ?? null,
+          invoiceCurrency: existing.invoiceCurrency ?? null,
+          invoicePaymentTerms: existing.invoicePaymentTerms ?? null,
+          invoiceNotes: existing.invoiceNotes ?? null,
+          businessLegalName: existing.businessLegalName ?? null,
+          businessAddress: existing.businessAddress ?? null,
+          businessPhone: existing.businessPhone ?? null,
+          businessTaxId: existing.businessTaxId ?? null,
+          businessWebsite: existing.businessWebsite ?? null,
           updatedAt: existing.updatedAt ?? null,
         }
       : {
@@ -69,6 +88,16 @@ export const getForBusinessSummary = query({
           fromEmail: null,
           fromName: null,
           replyTo: null,
+          invoicePrefix: null,
+          invoiceNumberStart: null,
+          invoiceCurrency: null,
+          invoicePaymentTerms: null,
+          invoiceNotes: null,
+          businessLegalName: null,
+          businessAddress: null,
+          businessPhone: null,
+          businessTaxId: null,
+          businessWebsite: null,
           updatedAt: null,
         };
   },
@@ -87,6 +116,16 @@ export const saveForBusiness = mutation({
     fromEmail: v.optional(v.union(v.string(), v.null())),
     fromName: v.optional(v.union(v.string(), v.null())),
     replyTo: v.optional(v.union(v.string(), v.null())),
+    invoicePrefix: v.optional(v.union(v.string(), v.null())),
+    invoiceNumberStart: v.optional(v.union(v.number(), v.null())),
+    invoiceCurrency: v.optional(v.union(v.string(), v.null())),
+    invoicePaymentTerms: v.optional(v.union(v.string(), v.null())),
+    invoiceNotes: v.optional(v.union(v.string(), v.null())),
+    businessLegalName: v.optional(v.union(v.string(), v.null())),
+    businessAddress: v.optional(v.union(v.string(), v.null())),
+    businessPhone: v.optional(v.union(v.string(), v.null())),
+    businessTaxId: v.optional(v.union(v.string(), v.null())),
+    businessWebsite: v.optional(v.union(v.string(), v.null())),
   },
   handler: async (ctx, args) => {
     await assertCanManageBusiness(ctx, args.businessId);
@@ -98,6 +137,7 @@ export const saveForBusiness = mutation({
       .unique();
 
     const patch: Record<string, any> = { updatedAt: now };
+    
     // Apply only provided fields; null explicitly clears; undefined leaves unchanged.
     if ("resendApiKey" in args) patch.resendApiKey = args.resendApiKey ?? undefined;
     if ("salesInbox" in args) patch.salesInbox = args.salesInbox ?? undefined;
@@ -105,6 +145,16 @@ export const saveForBusiness = mutation({
     if ("fromEmail" in args) patch.fromEmail = args.fromEmail ?? undefined;
     if ("fromName" in args) patch.fromName = args.fromName ?? undefined;
     if ("replyTo" in args) patch.replyTo = args.replyTo ?? undefined;
+    if ("invoicePrefix" in args) patch.invoicePrefix = args.invoicePrefix ?? undefined;
+    if ("invoiceNumberStart" in args) patch.invoiceNumberStart = args.invoiceNumberStart ?? undefined;
+    if ("invoiceCurrency" in args) patch.invoiceCurrency = args.invoiceCurrency ?? undefined;
+    if ("invoicePaymentTerms" in args) patch.invoicePaymentTerms = args.invoicePaymentTerms ?? undefined;
+    if ("invoiceNotes" in args) patch.invoiceNotes = args.invoiceNotes ?? undefined;
+    if ("businessLegalName" in args) patch.businessLegalName = args.businessLegalName ?? undefined;
+    if ("businessAddress" in args) patch.businessAddress = args.businessAddress ?? undefined;
+    if ("businessPhone" in args) patch.businessPhone = args.businessPhone ?? undefined;
+    if ("businessTaxId" in args) patch.businessTaxId = args.businessTaxId ?? undefined;
+    if ("businessWebsite" in args) patch.businessWebsite = args.businessWebsite ?? undefined;
 
     // Remove undefined keys to prevent accidental clearing via patch
     for (const k of Object.keys(patch)) {
@@ -127,6 +177,16 @@ export const saveForBusiness = mutation({
         ...(patch.salesInbox !== undefined && { salesInbox: patch.salesInbox }),
         ...(patch.publicBaseUrl !== undefined && { publicBaseUrl: patch.publicBaseUrl }),
         ...(patch.replyTo !== undefined && { replyTo: patch.replyTo }),
+        ...(patch.invoicePrefix !== undefined && { invoicePrefix: patch.invoicePrefix }),
+        ...(patch.invoiceNumberStart !== undefined && { invoiceNumberStart: patch.invoiceNumberStart }),
+        ...(patch.invoiceCurrency !== undefined && { invoiceCurrency: patch.invoiceCurrency }),
+        ...(patch.invoicePaymentTerms !== undefined && { invoicePaymentTerms: patch.invoicePaymentTerms }),
+        ...(patch.invoiceNotes !== undefined && { invoiceNotes: patch.invoiceNotes }),
+        ...(patch.businessLegalName !== undefined && { businessLegalName: patch.businessLegalName }),
+        ...(patch.businessAddress !== undefined && { businessAddress: patch.businessAddress }),
+        ...(patch.businessPhone !== undefined && { businessPhone: patch.businessPhone }),
+        ...(patch.businessTaxId !== undefined && { businessTaxId: patch.businessTaxId }),
+        ...(patch.businessWebsite !== undefined && { businessWebsite: patch.businessWebsite }),
       });
     }
   },
