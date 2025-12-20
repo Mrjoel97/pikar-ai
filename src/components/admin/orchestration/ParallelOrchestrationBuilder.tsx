@@ -31,6 +31,8 @@ export function ParallelOrchestrationBuilder() {
   const [agents, setAgents] = useState<AgentConfig[]>([]);
   const [newAgentKey, setNewAgentKey] = useState("");
   const [newAgentMode, setNewAgentMode] = useState("proposeNextAction");
+  const [customMode, setCustomMode] = useState("");
+  const [showCustomMode, setShowCustomMode] = useState(false);
   const [errorDetails, setErrorDetails] = useState<string | null>(null);
   const [executing, setExecuting] = useState<string | null>(null);
 
@@ -57,9 +59,14 @@ export function ParallelOrchestrationBuilder() {
       toast.error("Maximum 10 agents allowed per orchestration");
       return;
     }
-    setAgents([...agents, { agentKey: newAgentKey, mode: newAgentMode }]);
+    
+    const modeToUse = showCustomMode && customMode.trim() ? customMode.trim() : newAgentMode;
+    
+    setAgents([...agents, { agentKey: newAgentKey, mode: modeToUse }]);
     setNewAgentKey("");
     setNewAgentMode("proposeNextAction");
+    setCustomMode("");
+    setShowCustomMode(false);
   };
 
   const handleRemoveAgent = (index: number) => {
@@ -220,7 +227,14 @@ export function ParallelOrchestrationBuilder() {
                   ))}
                 </SelectContent>
               </Select>
-              <Select value={newAgentMode} onValueChange={setNewAgentMode}>
+              <Select value={showCustomMode ? "custom" : newAgentMode} onValueChange={(val) => {
+                if (val === "custom") {
+                  setShowCustomMode(true);
+                } else {
+                  setShowCustomMode(false);
+                  setNewAgentMode(val);
+                }
+              }}>
                 <SelectTrigger className="w-48">
                   <SelectValue />
                 </SelectTrigger>
@@ -235,12 +249,21 @@ export function ParallelOrchestrationBuilder() {
                   <SelectItem value="researchTopic">Research Topic</SelectItem>
                   <SelectItem value="createReport">Create Report</SelectItem>
                   <SelectItem value="validateData">Validate Data</SelectItem>
+                  <SelectItem value="custom">Custom Mode...</SelectItem>
                 </SelectContent>
               </Select>
               <Button onClick={handleAddAgent} size="icon">
                 <Plus className="h-4 w-4" />
               </Button>
             </div>
+            {showCustomMode && (
+              <Input
+                placeholder="Enter custom mode name"
+                value={customMode}
+                onChange={(e) => setCustomMode(e.target.value)}
+                className="mt-2"
+              />
+            )}
           </div>
 
           {agents.length > 0 && (

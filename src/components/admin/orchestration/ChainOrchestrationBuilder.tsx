@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { GitBranch, Plus, Trash2, Save, Edit2, ArrowDown, Play, Loader2 } from "lucide-react";
+import { GitBranch, Plus, Trash2, Save, Edit2, ArrowDown, Play, Loader2, GripVertical, ArrowUp } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 type ChainStep = {
@@ -34,6 +34,8 @@ export function ChainOrchestrationBuilder() {
   const [newAgentKey, setNewAgentKey] = useState("");
   const [newAgentMode, setNewAgentMode] = useState("proposeNextAction");
   const [newTransform, setNewTransform] = useState("");
+  const [customMode, setCustomMode] = useState("");
+  const [showCustomMode, setShowCustomMode] = useState(false);
   const [executing, setExecuting] = useState<string | null>(null);
   const [errorDetails, setErrorDetails] = useState<string | null>(null);
 
@@ -60,14 +62,29 @@ export function ChainOrchestrationBuilder() {
       toast.error("Transform instruction must be 200 characters or less");
       return;
     }
-    setChain([...chain, { agentKey: newAgentKey, mode: newAgentMode, inputTransform: newTransform || undefined }]);
+    
+    const modeToUse = showCustomMode && customMode.trim() ? customMode.trim() : newAgentMode;
+    
+    setChain([...chain, { agentKey: newAgentKey, mode: modeToUse, inputTransform: newTransform || undefined }]);
     setNewAgentKey("");
     setNewAgentMode("proposeNextAction");
     setNewTransform("");
+    setCustomMode("");
+    setShowCustomMode(false);
   };
 
   const handleRemoveStep = (index: number) => {
     setChain(chain.filter((_, i) => i !== index));
+  };
+
+  const handleMoveStep = (index: number, direction: "up" | "down") => {
+    if (direction === "up" && index === 0) return;
+    if (direction === "down" && index === chain.length - 1) return;
+    
+    const newChain = [...chain];
+    const targetIndex = direction === "up" ? index - 1 : index + 1;
+    [newChain[index], newChain[targetIndex]] = [newChain[targetIndex], newChain[index]];
+    setChain(newChain);
   };
 
   const handleSave = async () => {
@@ -242,7 +259,14 @@ export function ChainOrchestrationBuilder() {
                   ))}
                 </SelectContent>
               </Select>
-              <Select value={newAgentMode} onValueChange={setNewAgentMode}>
+              <Select value={showCustomMode ? "custom" : newAgentMode} onValueChange={(val) => {
+                if (val === "custom") {
+                  setShowCustomMode(true);
+                } else {
+                  setShowCustomMode(false);
+                  setNewAgentMode(val);
+                }
+              }}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -257,6 +281,7 @@ export function ChainOrchestrationBuilder() {
                   <SelectItem value="researchTopic">Research Topic</SelectItem>
                   <SelectItem value="createReport">Create Report</SelectItem>
                   <SelectItem value="validateData">Validate Data</SelectItem>
+                  <SelectItem value="custom">Custom Mode...</SelectItem>
                 </SelectContent>
               </Select>
               <div className="flex gap-2">
@@ -270,6 +295,14 @@ export function ChainOrchestrationBuilder() {
                 </Button>
               </div>
             </div>
+            {showCustomMode && (
+              <Input
+                placeholder="Enter custom mode name"
+                value={customMode}
+                onChange={(e) => setCustomMode(e.target.value)}
+                className="mt-2"
+              />
+            )}
           </div>
 
           {chain.length > 0 && (
@@ -280,6 +313,27 @@ export function ChainOrchestrationBuilder() {
               {chain.map((step, idx) => (
                 <div key={idx}>
                   <div className="flex items-center gap-2 p-3 border rounded bg-muted/30">
+                    <div className="flex flex-col gap-1">
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-6 w-6"
+                        onClick={() => handleMoveStep(idx, "up")}
+                        disabled={idx === 0}
+                      >
+                        <ArrowUp className="h-3 w-3" />
+                      </Button>
+                      <GripVertical className="h-4 w-4 text-muted-foreground" />
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-6 w-6"
+                        onClick={() => handleMoveStep(idx, "down")}
+                        disabled={idx === chain.length - 1}
+                      >
+                        <ArrowDown className="h-3 w-3" />
+                      </Button>
+                    </div>
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
                         <Badge variant="outline">Step {idx + 1}</Badge>

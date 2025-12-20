@@ -3,10 +3,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Network, Database, Loader2, Info, BookOpen } from "lucide-react";
+import { Network, Database, Loader2, Info, BookOpen, History } from "lucide-react";
 import { ParallelOrchestrationBuilder } from "./orchestration/ParallelOrchestrationBuilder";
 import { ChainOrchestrationBuilder } from "./orchestration/ChainOrchestrationBuilder";
 import { ConsensusOrchestrationBuilder } from "./orchestration/ConsensusOrchestrationBuilder";
+import { OrchestrationRunsViewer } from "./orchestration/OrchestrationRunsViewer";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { toast } from "sonner";
@@ -150,7 +151,7 @@ export function AgentOrchestrationPanel() {
         )}
 
         <Tabs defaultValue="parallel">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="parallel">
               Parallel ({parallelOrchestrations?.length || 0})
             </TabsTrigger>
@@ -159,6 +160,10 @@ export function AgentOrchestrationPanel() {
             </TabsTrigger>
             <TabsTrigger value="consensus">
               Consensus ({consensusOrchestrations?.length || 0})
+            </TabsTrigger>
+            <TabsTrigger value="history">
+              <History className="w-4 h-4 mr-2" />
+              Run History
             </TabsTrigger>
           </TabsList>
 
@@ -172,6 +177,10 @@ export function AgentOrchestrationPanel() {
 
           <TabsContent value="consensus" className="space-y-4 mt-4">
             <ConsensusOrchestrationBuilder />
+          </TabsContent>
+
+          <TabsContent value="history" className="space-y-4 mt-4">
+            <OrchestrationRunsViewer />
           </TabsContent>
         </Tabs>
       </CardContent>
