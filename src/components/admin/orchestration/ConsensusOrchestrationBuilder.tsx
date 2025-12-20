@@ -39,6 +39,7 @@ export function ConsensusOrchestrationBuilder() {
   const resolveWithConsensus = useAction(api.agentOrchestration.resolveWithConsensus);
 
   const systemAgents = useQuery(api.aiAgents.adminListAgents as any, { activeOnly: true, limit: 50 }) as Array<{ agent_key: string; display_name: string }> | undefined;
+  const businesses = useQuery(api.businesses.getUserBusinesses);
 
   const handleAddAgent = () => {
     if (!newAgentKey) {
@@ -125,10 +126,18 @@ export function ConsensusOrchestrationBuilder() {
   const handleExecute = async (orch: ConsensusOrchestration) => {
     setExecuting(orch._id);
     try {
+      const businessId = businesses?.[0]?._id;
+      
+      if (!businessId) {
+        toast.error("No business context found");
+        setExecuting(null);
+        return;
+      }
+
       const result = await resolveWithConsensus({
         agents: orch.agents,
         question: orch.question,
-        businessId: "placeholder" as any, // TODO: Get from context
+        businessId: businessId,
         consensusThreshold: orch.consensusThreshold,
       });
       

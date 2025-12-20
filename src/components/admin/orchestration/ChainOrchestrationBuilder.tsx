@@ -44,6 +44,7 @@ export function ChainOrchestrationBuilder() {
   const chainAgents = useAction(api.agentOrchestration.chainAgents);
 
   const systemAgents = useQuery(api.aiAgents.adminListAgents as any, { activeOnly: true, limit: 50 }) as Array<{ agent_key: string; display_name: string }> | undefined;
+  const businesses = useQuery(api.businesses.getUserBusinesses);
 
   const handleAddStep = () => {
     if (!newAgentKey) {
@@ -122,10 +123,18 @@ export function ChainOrchestrationBuilder() {
   const handleExecute = async (orch: ChainOrchestration) => {
     setExecuting(orch._id);
     try {
+      const businessId = businesses?.[0]?._id;
+      
+      if (!businessId) {
+        toast.error("No business context found");
+        setExecuting(null);
+        return;
+      }
+
       const result = await chainAgents({
         chain: orch.chain,
         initialInput: orch.initialInput,
-        businessId: "placeholder" as any, // TODO: Get from context
+        businessId: businessId,
       });
       
       if (result.success) {

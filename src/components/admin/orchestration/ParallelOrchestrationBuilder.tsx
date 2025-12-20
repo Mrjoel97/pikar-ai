@@ -41,7 +41,7 @@ export function ParallelOrchestrationBuilder() {
   const executeParallel = useAction(api.agentOrchestration.executeParallel);
 
   const systemAgents = useQuery(api.aiAgents.adminListAgents as any, { activeOnly: true, limit: 50 }) as Array<{ agent_key: string; display_name: string }> | undefined;
-  const businesses = useQuery(api.businesses.listUserBusinesses as any);
+  const businesses = useQuery(api.businesses.getUserBusinesses);
 
   const handleAddAgent = () => {
     if (!newAgentKey) {
