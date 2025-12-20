@@ -17,17 +17,17 @@ export const sendAgentMessage: any = action({
   },
   handler: async (ctx, args) => {
     // Record the message
-    const messageId = await ctx.runMutation(internal.agentOrchestrationData.recordAgentMessage, {
+    const messageId: any = await ctx.runMutation("agentOrchestrationData:recordAgentMessage" as any, {
       fromAgentKey: args.fromAgentKey,
       toAgentKey: args.toAgentKey,
       message: args.message,
       context: args.context,
       businessId: args.businessId,
       status: "pending",
-    }) as any;
+    });
 
     // Route to target agent
-    const response: any = await ctx.runAction(internal.agentRouter.execRouter as any, {
+    const response: any = await ctx.runAction("agentRouter:execRouter" as any, {
       mode: "proposeNextAction",
       businessId: args.businessId,
       input: `Message from ${args.fromAgentKey}: ${args.message}`,
@@ -35,7 +35,7 @@ export const sendAgentMessage: any = action({
     });
 
     // Update message with response
-    await ctx.runMutation(internal.agentOrchestrationData.updateAgentMessage, {
+    await ctx.runMutation("agentOrchestrationData:updateAgentMessage" as any, {
       messageId,
       response: response,
       status: "completed",
@@ -64,7 +64,7 @@ export const executeParallel: any = action({
     
     // Create orchestration record
     const orchId = (args.orchestrationId || await ctx.runMutation(
-      internal.agentOrchestrationData.createOrchestration,
+      "agentOrchestrationData:createOrchestration" as any,
       {
         businessId: args.businessId,
         type: "parallel",
@@ -78,7 +78,7 @@ export const executeParallel: any = action({
       args.agents.map(async (agent) => {
         const agentStart = Date.now();
         try {
-          const result: any = await ctx.runAction(internal.agentRouter.execRouter as any, {
+          const result: any = await ctx.runAction("agentRouter:execRouter" as any, {
             mode: agent.mode as any,
             businessId: args.businessId,
             input: agent.input,
@@ -88,7 +88,7 @@ export const executeParallel: any = action({
           const duration = Date.now() - agentStart;
           
           // Record agent execution
-          await ctx.runMutation(internal.agentOrchestrationData.recordAgentExecution, {
+          await ctx.runMutation("agentOrchestrationData:recordAgentExecution" as any, {
             orchestrationId: orchId,
             agentKey: agent.agentKey,
             status: "success",
@@ -100,7 +100,7 @@ export const executeParallel: any = action({
         } catch (error: any) {
           const duration = Date.now() - agentStart;
           
-          await ctx.runMutation(internal.agentOrchestrationData.recordAgentExecution, {
+          await ctx.runMutation("agentOrchestrationData:recordAgentExecution" as any, {
             orchestrationId: orchId,
             agentKey: agent.agentKey,
             status: "failed",
@@ -117,7 +117,7 @@ export const executeParallel: any = action({
     const successful = results.filter(r => r.status === "fulfilled" && (r.value as any).success).length;
     
     // Update orchestration status
-    await ctx.runMutation(internal.agentOrchestrationData.updateOrchestration, {
+    await ctx.runMutation("agentOrchestrationData:updateOrchestration" as any, {
       orchestrationId: orchId,
       status: "completed",
       duration: totalDuration,
@@ -150,7 +150,7 @@ export const chainAgents: any = action({
   handler: async (ctx, args) => {
     const startTime = Date.now();
     
-    const orchId = await ctx.runMutation(internal.agentOrchestrationData.createOrchestration, {
+    const orchId = await ctx.runMutation("agentOrchestrationData:createOrchestration" as any, {
       businessId: args.businessId,
       type: "chain",
       agentCount: args.chain.length,
@@ -175,7 +175,7 @@ export const chainAgents: any = action({
           }
         }
 
-        const result: any = await ctx.runAction(internal.agentRouter.execRouter as any, {
+        const result: any = await ctx.runAction("agentRouter:execRouter" as any, {
           mode: agent.mode as any,
           businessId: args.businessId,
           input: currentInput,
@@ -184,7 +184,7 @@ export const chainAgents: any = action({
 
         const duration = Date.now() - agentStart;
         
-        await ctx.runMutation(internal.agentOrchestrationData.recordAgentExecution, {
+        await ctx.runMutation("agentOrchestrationData:recordAgentExecution" as any, {
           orchestrationId: orchId,
           agentKey: agent.agentKey,
           status: "success",
@@ -200,7 +200,7 @@ export const chainAgents: any = action({
       } catch (error: any) {
         const duration = Date.now() - agentStart;
         
-        await ctx.runMutation(internal.agentOrchestrationData.recordAgentExecution, {
+        await ctx.runMutation("agentOrchestrationData:recordAgentExecution" as any, {
           orchestrationId: orchId,
           agentKey: agent.agentKey,
           status: "failed",
@@ -209,7 +209,7 @@ export const chainAgents: any = action({
         });
 
         // Stop chain on failure
-        await ctx.runMutation(internal.agentOrchestrationData.updateOrchestration, {
+        await ctx.runMutation("agentOrchestrationData:updateOrchestration" as any, {
           orchestrationId: orchId,
           status: "failed",
           duration: Date.now() - startTime,
@@ -228,7 +228,7 @@ export const chainAgents: any = action({
 
     const totalDuration = Date.now() - startTime;
     
-    await ctx.runMutation(internal.agentOrchestrationData.updateOrchestration, {
+    await ctx.runMutation("agentOrchestrationData:updateOrchestration" as any, {
       orchestrationId: orchId,
       status: "completed",
       duration: totalDuration,
@@ -260,7 +260,7 @@ export const resolveWithConsensus: any = action({
     const threshold = args.consensusThreshold || 0.6;
     const startTime = Date.now();
     
-    const orchId = await ctx.runMutation(internal.agentOrchestrationData.createOrchestration, {
+    const orchId = await ctx.runMutation("agentOrchestrationData:createOrchestration" as any, {
       businessId: args.businessId,
       type: "consensus",
       agentCount: args.agents.length,
@@ -270,13 +270,13 @@ export const resolveWithConsensus: any = action({
     // Get responses from all agents
     const responses = await Promise.allSettled(
       args.agents.map(async (agentKey) => {
-        const result: any = await ctx.runAction(internal.agentRouter.execRouter as any, {
+        const result: any = await ctx.runAction("agentRouter:execRouter" as any, {
           mode: "proposeNextAction",
           businessId: args.businessId,
           input: args.question,
         });
         
-        await ctx.runMutation(internal.agentOrchestrationData.recordAgentExecution, {
+        await ctx.runMutation("agentOrchestrationData:recordAgentExecution" as any, {
           orchestrationId: orchId,
           agentKey,
           status: "success",
@@ -319,7 +319,7 @@ export const resolveWithConsensus: any = action({
     const hasConsensus = consensusScore >= threshold;
     const totalDuration = Date.now() - startTime;
 
-    await ctx.runMutation(internal.agentOrchestrationData.updateOrchestration, {
+    await ctx.runMutation("agentOrchestrationData:updateOrchestration" as any, {
       orchestrationId: orchId,
       status: "completed",
       duration: totalDuration,

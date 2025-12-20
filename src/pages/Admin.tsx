@@ -34,10 +34,8 @@ import { CustomAgentsPanel } from "@/components/admin/CustomAgentsPanel";
 import { IntegrationsHubPanel } from "@/components/admin/IntegrationsHubPanel";
 import { AssistantDocsPanel } from "@/components/admin/AssistantDocsPanel";
 import { AuditExplorerPanel } from "@/components/admin/AuditExplorerPanel";
-import { SystemAgentsHub } from "@/components/admin/SystemAgentsHub";
 import { AdminRoadmapCompliance } from "@/components/admin/AdminRoadmapCompliance";
 import { AgentSessionDrawer } from "@/components/admin/AgentSessionDrawer";
-import { AgentOrchestrationPanel } from "@/components/admin/AgentOrchestrationPanel";
 
 // Add local types for transcript steps
 export default function AdminPage() {
@@ -455,10 +453,6 @@ export default function AdminPage() {
         />
         <UserManagement />
 
-        <div id="section-system-agents">
-          <SystemAgentsHub />
-        </div>
-
         <AdminRoadmapCompliance />
 
         <AgentSessionDrawer
@@ -467,8 +461,6 @@ export default function AdminPage() {
           agentId={viewAgentId}
           recentAudits={recentAudits}
         />
-
-        <AgentOrchestrationPanel />
       </div>
     </>
   );

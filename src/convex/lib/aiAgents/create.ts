@@ -19,7 +19,7 @@ export const adminCreateAgent = mutation({
     // Check admin access
     const adminRecord = await ctx.db
       .query("admins")
-      .withIndex("by_email", (q) => q.eq("email", identity.email))
+      .withIndex("by_email", (q) => q.eq("email", identity.email || ""))
       .first();
 
     if (!adminRecord || !["superadmin", "senior", "admin"].includes(adminRecord.role)) {
@@ -29,8 +29,8 @@ export const adminCreateAgent = mutation({
     // Check if agent_key already exists
     const existing = await ctx.db
       .query("agentCatalog")
-      .withIndex("by_agent_key", (q) => q.eq("agent_key", args.agent_key))
-      .first();
+      .collect()
+      .then(agents => agents.find(a => a.agent_key === args.agent_key));
 
     if (existing) {
       throw new Error("Agent with this key already exists");
@@ -51,17 +51,19 @@ export const adminCreateAgent = mutation({
       updatedAt: Date.now(),
     });
 
-    // Audit log
-    await ctx.db.insert("auditLogs", {
+    // Audit log - using a placeholder businessId since this is a system-level agent
+    const systemBusinessId = "system" as any; // System-level agents don't belong to a specific business
+    await ctx.db.insert("audit_logs", {
+      businessId: systemBusinessId,
       action: "admin_create_agent",
       entityType: "agentCatalog",
-      entityId: agentId,
+      entityId: agentId as string,
       details: {
         agent_key: args.agent_key,
         display_name: args.display_name,
-        createdBy: identity.email,
+        createdBy: identity.email || "",
       },
-      timestamp: Date.now(),
+      createdAt: Date.now(),
     });
 
     return agentId;
