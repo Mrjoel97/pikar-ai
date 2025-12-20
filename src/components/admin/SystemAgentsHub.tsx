@@ -13,8 +13,8 @@ export function SystemAgentsHub() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTier, setSelectedTier] = useState<string>("");
 
-  // Fetch all system agents from catalog
-  const agents = useQuery(api.aiAgents.adminListAgents as any, {
+  // Fetch system agents from agentCatalog (built-in agents)
+  const catalogAgents = useQuery(api.aiAgents.adminListAgents as any, {
     activeOnly: false,
     limit: 100,
   }) as Array<{
@@ -33,7 +33,7 @@ export function SystemAgentsHub() {
   const toggleAgent = useMutation(api.aiAgents.adminToggleAgent as any);
 
   // Filter agents based on search and tier
-  const filteredAgents = (agents || []).filter((agent) => {
+  const filteredAgents = (catalogAgents || []).filter((agent) => {
     const matchesSearch = searchQuery
       ? agent.display_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         agent.agent_key?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -101,10 +101,10 @@ export function SystemAgentsHub() {
             </select>
             <div className="flex items-center gap-2">
               <Badge variant="outline">
-                Total: {agents?.length || 0}
+                Total: {catalogAgents?.length || 0}
               </Badge>
               <Badge variant="outline">
-                Active: {agents?.filter(a => a.active).length || 0}
+                Active: {catalogAgents?.filter(a => a.active).length || 0}
               </Badge>
               <Badge variant="outline">
                 Filtered: {filteredAgents.length}
