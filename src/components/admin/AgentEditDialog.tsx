@@ -1,124 +1,247 @@
-import React, { useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import React, { useState, useEffect } from "react";
+import { useMutation, useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
+import { Loader2, X, Plus } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-type Agent = {
-  _id: string;
-  agent_key: string;
-  display_name: string;
-  short_desc: string;
-  long_desc: string;
-  capabilities: string[];
-  default_model: string;
-  model_routing: string;
-  prompt_template_version: string;
-  prompt_templates: string;
-  input_schema: string;
-  output_schema: string;
-  tier_restrictions: string[];
-  confidence_hint: number;
-  active: boolean;
-  createdAt: number;
-  updatedAt?: number;
+type AgentEditDialogProps = {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  agentKey: string;
 };
 
-export function AgentEditDialog({ 
-  agent, 
-  onSave, 
-  onClose 
-}: { 
-  agent: Agent; 
-  onSave: (data: Partial<Agent>) => void; 
-  onClose: () => void; 
-}) {
-  const [formData, setFormData] = useState(agent);
+export function AgentEditDialog({ open, onOpenChange, agentKey }: AgentEditDialogProps) {
+  const [displayName, setDisplayName] = useState("");
+  const [shortDesc, setShortDesc] = useState("");
+  const [longDesc, setLongDesc] = useState("");
+  const [defaultModel, setDefaultModel] = useState("gpt-4o-mini");
+  const [capabilities, setCapabilities] = useState<string[]>([]);
+  const [newCapability, setNewCapability] = useState("");
+  const [tierRestrictions, setTierRestrictions] = useState<string[]>([]);
+  const [confidenceHint, setConfidenceHint] = useState(0.8);
+  const [isActive, setIsActive] = useState(true);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    onSave(formData);
+  const agent = useQuery(api.aiAgents.adminGetAgent, { agent_key: agentKey });
+  const updateAgent = useMutation(api.aiAgents.adminUpsertAgent);
+
+  useEffect(() => {
+    if (agent) {
+      setDisplayName(agent.display_name || "");
+      setShortDesc(agent.short_desc || "");
+      setLongDesc(agent.long_desc || "");
+      setDefaultModel(agent.default_model || "gpt-4o-mini");
+      setCapabilities(agent.capabilities || []);
+      setTierRestrictions(agent.tier_restrictions || []);
+      setConfidenceHint(agent.confidence_hint || 0.8);
+      setIsActive(agent.active);
+    }
+  }, [agent]);
+
+  const handleAddCapability = () => {
+    if (newCapability.trim() && !capabilities.includes(newCapability.trim())) {
+      setCapabilities([...capabilities, newCapability.trim()]);
+      setNewCapability("");
+    }
   };
 
-  return (
-    <Dialog open={true} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Edit Agent: {agent.display_name}</DialogTitle>
-        </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="text-sm font-medium">Agent Key</label>
-              <Input
-                value={formData.agent_key}
-                onChange={(e) => setFormData({ ...formData, agent_key: e.target.value })}
-                disabled
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium">Display Name</label>
-              <Input
-                value={formData.display_name}
-                onChange={(e) => setFormData({ ...formData, display_name: e.target.value })}
-              />
-            </div>
-          </div>
+  const handleRemoveCapability = (cap: string) => {
+    setCapabilities(capabilities.filter(c => c !== cap));
+  };
 
-          <div>
-            <label className="text-sm font-medium">Short Description</label>
+  const toggleTier = (tier: string) => {
+    if (tierRestrictions.includes(tier)) {
+      setTierRestrictions(tierRestrictions.filter(t => t !== tier));
+    } else {
+      setTierRestrictions([...tierRestrictions, tier]);
+    }
+  };
+
+  const handleSave = async () => {
+    if (!displayName.trim()) {
+      toast.error("Display name is required");
+      return;
+    }
+
+    try {
+      await updateAgent({
+        agent_key: agentKey,
+        display_name: displayName,
+        short_desc: shortDesc,
+        long_desc: longDesc,
+        capabilities,
+        default_model: defaultModel,
+        model_routing: "default",
+        prompt_template_version: "v1",
+        prompt_templates: "{}",
+        input_schema: "{}",
+        output_schema: "{}",
+        tier_restrictions: tierRestrictions,
+        confidence_hint: confidenceHint,
+        active: isActive,
+      });
+      toast.success("Agent updated successfully");
+      onOpenChange(false);
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to update agent");
+    }
+  };
+
+  if (!agent) {
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent>
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="h-8 w-8 animate-spin" />
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Edit Agent: {agentKey}</DialogTitle>
+          <DialogDescription>
+            Update agent configuration. Agent key cannot be changed.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label>Display Name *</Label>
             <Input
-              value={formData.short_desc}
-              onChange={(e) => setFormData({ ...formData, short_desc: e.target.value })}
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
+              placeholder="e.g., Content Creator Agent"
             />
           </div>
 
-          <div>
-            <label className="text-sm font-medium">Long Description</label>
+          <div className="space-y-2">
+            <Label>Short Description</Label>
+            <Input
+              value={shortDesc}
+              onChange={(e) => setShortDesc(e.target.value)}
+              placeholder="Brief one-line description"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Long Description</Label>
             <Textarea
-              value={formData.long_desc}
-              onChange={(e) => setFormData({ ...formData, long_desc: e.target.value })}
+              value={longDesc}
+              onChange={(e) => setLongDesc(e.target.value)}
+              placeholder="Detailed description of agent capabilities"
               rows={3}
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="text-sm font-medium">Default Model</label>
+          <div className="space-y-2">
+            <Label>Default Model</Label>
+            <Select value={defaultModel} onValueChange={setDefaultModel}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="gpt-4o">GPT-4o</SelectItem>
+                <SelectItem value="gpt-4o-mini">GPT-4o Mini</SelectItem>
+                <SelectItem value="gpt-4-turbo">GPT-4 Turbo</SelectItem>
+                <SelectItem value="claude-3-opus">Claude 3 Opus</SelectItem>
+                <SelectItem value="claude-3-sonnet">Claude 3 Sonnet</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Capabilities</Label>
+            <div className="flex gap-2">
               <Input
-                value={formData.default_model}
-                onChange={(e) => setFormData({ ...formData, default_model: e.target.value })}
+                value={newCapability}
+                onChange={(e) => setNewCapability(e.target.value)}
+                placeholder="Add capability"
+                onKeyPress={(e) => e.key === "Enter" && handleAddCapability()}
               />
+              <Button onClick={handleAddCapability} size="icon">
+                <Plus className="h-4 w-4" />
+              </Button>
             </div>
-            <div>
-              <label className="text-sm font-medium">Confidence Hint</label>
-              <Input
-                type="number"
-                step="0.1"
-                min="0"
-                max="1"
-                value={formData.confidence_hint}
-                onChange={(e) => setFormData({ ...formData, confidence_hint: parseFloat(e.target.value) })}
-              />
+            <div className="flex flex-wrap gap-2 mt-2">
+              {capabilities.map((cap, idx) => (
+                <Badge key={idx} variant="secondary" className="gap-1">
+                  {cap}
+                  <X
+                    className="h-3 w-3 cursor-pointer"
+                    onClick={() => handleRemoveCapability(cap)}
+                  />
+                </Badge>
+              ))}
             </div>
           </div>
 
-          <div className="flex items-center space-x-2">
-            <Switch
-              checked={formData.active}
-              onCheckedChange={(active) => setFormData({ ...formData, active })}
+          <div className="space-y-2">
+            <Label>Tier Restrictions (empty = all tiers)</Label>
+            <div className="flex flex-wrap gap-2">
+              {["solopreneur", "startup", "sme", "enterprise"].map((tier) => (
+                <Badge
+                  key={tier}
+                  variant={tierRestrictions.includes(tier) ? "default" : "outline"}
+                  className="cursor-pointer"
+                  onClick={() => toggleTier(tier)}
+                >
+                  {tier}
+                </Badge>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Confidence Hint: {Math.round(confidenceHint * 100)}%</Label>
+            <input
+              type="range"
+              min="0"
+              max="1"
+              step="0.05"
+              value={confidenceHint}
+              onChange={(e) => setConfidenceHint(parseFloat(e.target.value))}
+              className="w-full"
             />
-            <label className="text-sm font-medium">Active</label>
           </div>
 
-          <div className="flex justify-end gap-2">
-            <Button type="button" variant="outline" onClick={onClose}>
-              Cancel
-            </Button>
-            <Button type="submit">Save Changes</Button>
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="isActive"
+              checked={isActive}
+              onChange={(e) => setIsActive(e.target.checked)}
+              className="h-4 w-4"
+            />
+            <Label htmlFor="isActive">Active</Label>
           </div>
-        </form>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
+          <Button onClick={handleSave}>
+            Save Changes
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

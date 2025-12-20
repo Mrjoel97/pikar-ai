@@ -221,6 +221,11 @@ export const adminMarkAgentDisabled = mutation({
   handler: (ctx, args) => admin.adminMarkAgentDisabled(ctx, args),
 });
 
+export const adminDeleteAgent = mutation({
+  args: { agent_key: v.string() },
+  handler: (ctx, args) => admin.adminDeleteAgent(ctx, args),
+});
+
 export const adminPublishAgent = mutation({
   args: { agent_key: v.string() },
   handler: (ctx, args) => publish.adminPublishAgent(ctx, args),

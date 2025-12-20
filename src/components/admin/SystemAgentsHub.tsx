@@ -7,18 +7,30 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
-import { Bot, Zap, CheckCircle, XCircle, Search, Plus, Edit, Eye, BookOpen } from "lucide-react";
+import { Bot, Zap, CheckCircle, XCircle, Search, Plus, Edit, Eye, BookOpen, Trash2 } from "lucide-react";
 import { AgentCreateDialog } from "./AgentCreateDialog";
+import { AgentEditDialog } from "./AgentEditDialog";
 import { AgentTrainingDialog } from "./AgentTrainingDialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export function SystemAgentsHub() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTier, setSelectedTier] = useState<string>("");
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [trainingDialogOpen, setTrainingDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedAgent, setSelectedAgent] = useState<{ key: string; name: string } | null>(null);
 
-  // Fetch system agents from agentCatalog (built-in agents)
   const catalogAgents = useQuery(api.aiAgents.adminListAgents as any, {
     activeOnly: false,
     limit: 100,
@@ -36,8 +48,8 @@ export function SystemAgentsHub() {
   }> | undefined;
 
   const toggleAgent = useMutation(api.aiAgents.adminToggleAgent as any);
+  const deleteAgent = useMutation(api.aiAgents.adminDeleteAgent as any);
 
-  // Filter agents based on search and tier
   const filteredAgents = (catalogAgents || []).filter((agent) => {
     const matchesSearch = searchQuery
       ? agent.display_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -61,9 +73,32 @@ export function SystemAgentsHub() {
     }
   };
 
+  const handleOpenEdit = (agentKey: string, agentName: string) => {
+    setSelectedAgent({ key: agentKey, name: agentName });
+    setEditDialogOpen(true);
+  };
+
   const handleOpenTraining = (agentKey: string, agentName: string) => {
     setSelectedAgent({ key: agentKey, name: agentName });
     setTrainingDialogOpen(true);
+  };
+
+  const handleOpenDelete = (agentKey: string, agentName: string) => {
+    setSelectedAgent({ key: agentKey, name: agentName });
+    setDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!selectedAgent) return;
+    
+    try {
+      await deleteAgent({ agent_key: selectedAgent.key });
+      toast.success("Agent deleted successfully");
+      setDeleteDialogOpen(false);
+      setSelectedAgent(null);
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to delete agent");
+    }
   };
 
   return (
@@ -200,31 +235,37 @@ export function SystemAgentsHub() {
               <Separator />
 
               {/* Actions */}
-              <div className="flex gap-2">
+              <div className="grid grid-cols-2 gap-2">
                 <Button
                   size="sm"
                   variant="outline"
-                  className="flex-1"
+                  onClick={() => handleOpenEdit(agent.agent_key, agent.display_name || agent.agent_key)}
+                >
+                  <Edit className="h-3 w-3 mr-1" />
+                  Edit
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
                   onClick={() => handleOpenTraining(agent.agent_key, agent.display_name || agent.agent_key)}
                 >
                   <BookOpen className="h-3 w-3 mr-1" />
-                  Training
+                  Train
                 </Button>
                 <Button
                   size="sm"
-                  variant="outline"
-                  className="flex-1"
-                  onClick={() => toast.info("View details coming soon")}
-                >
-                  <Eye className="h-3 w-3 mr-1" />
-                  View
-                </Button>
-                <Button
-                  size="sm"
-                  variant={agent.active ? "destructive" : "default"}
+                  variant={agent.active ? "secondary" : "default"}
                   onClick={() => handleToggleAgent(agent.agent_key, agent.active)}
                 >
                   {agent.active ? "Disable" : "Enable"}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  onClick={() => handleOpenDelete(agent.agent_key, agent.display_name || agent.agent_key)}
+                >
+                  <Trash2 className="h-3 w-3 mr-1" />
+                  Delete
                 </Button>
               </div>
             </CardContent>
@@ -254,12 +295,38 @@ export function SystemAgentsHub() {
       />
 
       {selectedAgent && (
-        <AgentTrainingDialog
-          open={trainingDialogOpen}
-          onOpenChange={setTrainingDialogOpen}
-          agentKey={selectedAgent.key}
-          agentName={selectedAgent.name}
-        />
+        <>
+          <AgentEditDialog
+            open={editDialogOpen}
+            onOpenChange={setEditDialogOpen}
+            agentKey={selectedAgent.key}
+          />
+
+          <AgentTrainingDialog
+            open={trainingDialogOpen}
+            onOpenChange={setTrainingDialogOpen}
+            agentKey={selectedAgent.key}
+            agentName={selectedAgent.name}
+          />
+
+          <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete Agent</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Are you sure you want to delete "{selectedAgent.name}"? This action cannot be undone.
+                  Any orchestrations using this agent may fail.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleConfirmDelete} className="bg-destructive text-destructive-foreground">
+                  Delete
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </>
       )}
     </div>
   );

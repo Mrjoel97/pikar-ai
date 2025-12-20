@@ -193,3 +193,59 @@ export async function adminMarkAgentDisabled(ctx: any, args: any) {
 
   return { disabled: true };
 }
+
+export async function adminDeleteAgent(ctx: any, args: any) {
+  const isAdmin = await (ctx as any).runQuery("admin:getIsAdmin" as any, {});
+  if (!isAdmin) throw new Error("Admin access required");
+
+  const agent = await ctx.db
+    .query("agentCatalog")
+    .withIndex("by_agent_key", (q: any) => q.eq("agent_key", args.agent_key))
+    .unique();
+
+  if (!agent) throw new Error("Agent not found");
+
+  // Check if agent is used in any active orchestrations
+  const parallelOrch = await ctx.db
+    .query("parallelOrchestrations")
+    .filter((q: any) => q.eq(q.field("isActive"), true))
+    .collect();
+  
+  const chainOrch = await ctx.db
+    .query("chainOrchestrations")
+    .filter((q: any) => q.eq(q.field("isActive"), true))
+    .collect();
+  
+  const consensusOrch = await ctx.db
+    .query("consensusOrchestrations")
+    .filter((q: any) => q.eq(q.field("isActive"), true))
+    .collect();
+
+  // Check if agent is referenced in any active orchestration
+  const isUsedInParallel = parallelOrch.some((orch: any) => 
+    orch.agents?.some((a: any) => a.agentKey === args.agent_key)
+  );
+  
+  const isUsedInChain = chainOrch.some((orch: any) => 
+    orch.chain?.some((step: any) => step.agentKey === args.agent_key)
+  );
+  
+  const isUsedInConsensus = consensusOrch.some((orch: any) => 
+    orch.agents?.includes(args.agent_key)
+  );
+
+  if (isUsedInParallel || isUsedInChain || isUsedInConsensus) {
+    throw new Error(
+      "Cannot delete agent: it is currently used in active orchestrations. " +
+      "Please deactivate or remove it from orchestrations first."
+    );
+  }
+
+  // Soft delete: mark as inactive instead of hard delete
+  await ctx.db.patch(agent._id, {
+    active: false,
+    updatedAt: Date.now(),
+  });
+
+  return { success: true, deleted: false, deactivated: true };
+}
