@@ -34,6 +34,7 @@ import { CustomAgentsPanel } from "@/components/admin/CustomAgentsPanel";
 import { IntegrationsHubPanel } from "@/components/admin/IntegrationsHubPanel";
 import { AssistantDocsPanel } from "@/components/admin/AssistantDocsPanel";
 import { AuditExplorerPanel } from "@/components/admin/AuditExplorerPanel";
+import { SystemAgentsHub } from "@/components/admin/SystemAgentsHub";
 
 // Add local types for transcript steps
 export default function AdminPage() {
@@ -484,20 +485,10 @@ export default function AdminPage() {
         {/* User Management Section */}
         <UserManagement />
 
-        {/* System Agents placeholder section (training studio to be built in next phase) */}
-        <Card>
-          <CardHeader>
-            <CardTitle id="section-system-agents">System Agents</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <div className="text-sm text-muted-foreground">
-              Registry and training studio for built-in agents will appear here (next phase).
-            </div>
-            <div className="rounded-md border p-3 text-sm">
-              Coming soon: list of built-ins, prompt editor, datasets, tool permissions, evals, test harness, and publish flow.
-            </div>
-          </CardContent>
-        </Card>
+        {/* Replace the System Agents placeholder section */}
+        <div id="section-system-agents">
+          <SystemAgentsHub />
+        </div>
 
         {/* Admin Roadmap Compliance card */}
         <Card>

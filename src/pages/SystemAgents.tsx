@@ -1,4 +1,4 @@
-import SystemAgentsHub from "@/components/admin/SystemAgentsHub";
+import { SystemAgentsHub } from "@/components/admin/SystemAgentsHub";
 
 export default function SystemAgentsPage() {
   return (
