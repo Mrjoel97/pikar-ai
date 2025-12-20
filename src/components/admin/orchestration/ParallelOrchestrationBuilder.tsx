@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import { useMutation, useQuery, useAction } from "convex/react";
-import { useQuery as useConvexQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -42,6 +41,7 @@ export function ParallelOrchestrationBuilder() {
   const executeParallel = useAction(api.agentOrchestration.executeParallel);
 
   const systemAgents = useQuery(api.aiAgents.adminListAgents as any, { activeOnly: true, limit: 50 }) as Array<{ agent_key: string; display_name: string }> | undefined;
+  const businesses = useQuery(api.businesses.listUserBusinesses as any);
 
   const handleAddAgent = () => {
     if (!newAgentKey) {
@@ -117,8 +117,6 @@ export function ParallelOrchestrationBuilder() {
   const handleExecute = async (orch: ParallelOrchestration) => {
     setExecuting(orch._id);
     try {
-      // Get a business ID from current user context
-      const businesses = useConvexQuery(api.businesses.listUserBusinesses as any);
       const businessId = businesses?.[0]?._id;
       
       if (!businessId) {
