@@ -1,4 +1,4 @@
-import { internalMutation, internalQuery } from "./_generated/server";
+import { internalMutation, internalQuery, mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 
 /**
@@ -88,7 +88,7 @@ export const recordAgentExecution = internalMutation({
 });
 
 // Parallel Orchestration CRUD
-export const createParallelOrchestration = internalMutation({
+export const createParallelOrchestration = mutation({
   args: {
     name: v.string(),
     description: v.string(),
@@ -107,14 +107,14 @@ export const createParallelOrchestration = internalMutation({
   },
 });
 
-export const listParallelOrchestrations = internalQuery({
+export const listParallelOrchestrations = query({
   args: {},
   handler: async (ctx) => {
     return await ctx.db.query("parallelOrchestrations").collect();
   },
 });
 
-export const updateParallelOrchestration = internalMutation({
+export const updateParallelOrchestration = mutation({
   args: {
     orchestrationId: v.id("parallelOrchestrations"),
     name: v.string(),
@@ -131,14 +131,14 @@ export const updateParallelOrchestration = internalMutation({
   },
 });
 
-export const deleteParallelOrchestration = internalMutation({
+export const deleteParallelOrchestration = mutation({
   args: { orchestrationId: v.id("parallelOrchestrations") },
   handler: async (ctx, args) => {
     await ctx.db.delete(args.orchestrationId);
   },
 });
 
-export const toggleParallelOrchestration = internalMutation({
+export const toggleParallelOrchestration = mutation({
   args: {
     orchestrationId: v.id("parallelOrchestrations"),
     isActive: v.boolean(),
@@ -149,7 +149,7 @@ export const toggleParallelOrchestration = internalMutation({
 });
 
 // Chain Orchestration CRUD
-export const createChainOrchestration = internalMutation({
+export const createChainOrchestration = mutation({
   args: {
     name: v.string(),
     description: v.string(),
@@ -169,14 +169,14 @@ export const createChainOrchestration = internalMutation({
   },
 });
 
-export const listChainOrchestrations = internalQuery({
+export const listChainOrchestrations = query({
   args: {},
   handler: async (ctx) => {
     return await ctx.db.query("chainOrchestrations").collect();
   },
 });
 
-export const updateChainOrchestration = internalMutation({
+export const updateChainOrchestration = mutation({
   args: {
     orchestrationId: v.id("chainOrchestrations"),
     name: v.string(),
@@ -194,14 +194,14 @@ export const updateChainOrchestration = internalMutation({
   },
 });
 
-export const deleteChainOrchestration = internalMutation({
+export const deleteChainOrchestration = mutation({
   args: { orchestrationId: v.id("chainOrchestrations") },
   handler: async (ctx, args) => {
     await ctx.db.delete(args.orchestrationId);
   },
 });
 
-export const toggleChainOrchestration = internalMutation({
+export const toggleChainOrchestration = mutation({
   args: {
     orchestrationId: v.id("chainOrchestrations"),
     isActive: v.boolean(),
@@ -212,7 +212,7 @@ export const toggleChainOrchestration = internalMutation({
 });
 
 // Consensus Orchestration CRUD
-export const createConsensusOrchestration = internalMutation({
+export const createConsensusOrchestration = mutation({
   args: {
     name: v.string(),
     description: v.string(),
@@ -229,14 +229,14 @@ export const createConsensusOrchestration = internalMutation({
   },
 });
 
-export const listConsensusOrchestrations = internalQuery({
+export const listConsensusOrchestrations = query({
   args: {},
   handler: async (ctx) => {
     return await ctx.db.query("consensusOrchestrations").collect();
   },
 });
 
-export const updateConsensusOrchestration = internalMutation({
+export const updateConsensusOrchestration = mutation({
   args: {
     orchestrationId: v.id("consensusOrchestrations"),
     name: v.string(),
@@ -251,14 +251,14 @@ export const updateConsensusOrchestration = internalMutation({
   },
 });
 
-export const deleteConsensusOrchestration = internalMutation({
+export const deleteConsensusOrchestration = mutation({
   args: { orchestrationId: v.id("consensusOrchestrations") },
   handler: async (ctx, args) => {
     await ctx.db.delete(args.orchestrationId);
   },
 });
 
-export const toggleConsensusOrchestration = internalMutation({
+export const toggleConsensusOrchestration = mutation({
   args: {
     orchestrationId: v.id("consensusOrchestrations"),
     isActive: v.boolean(),
@@ -269,18 +269,21 @@ export const toggleConsensusOrchestration = internalMutation({
 });
 
 // Add execution status tracking
-export const getOrchestrationExecutions = internalQuery({
+export const getOrchestrationExecutions = query({
   args: {
     orchestrationId: v.optional(v.id("agentOrchestrations")),
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
+    const limit = args.limit || 50;
+
     if (args.orchestrationId) {
+      const orchestrationId = args.orchestrationId;
       return await ctx.db
         .query("agentExecutions")
-        .withIndex("by_orchestration", (q) => q.eq("orchestrationId", args.orchestrationId))
+        .withIndex("by_orchestration", (q) => q.eq("orchestrationId", orchestrationId))
         .order("desc")
-        .take(args.limit || 50);
+        .take(limit);
     }
     
     return await ctx.db
@@ -291,30 +294,31 @@ export const getOrchestrationExecutions = internalQuery({
 });
 
 // Get recent orchestration runs with status
-export const getRecentOrchestrationRuns = internalQuery({
+export const getRecentOrchestrationRuns = query({
   args: {
     type: v.optional(v.union(v.literal("parallel"), v.literal("chain"), v.literal("consensus"))),
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    let query = ctx.db.query("agentOrchestrations");
+    const limit = args.limit || 20;
     
     if (args.type) {
-      query = query.withIndex("by_type", (q) => q.eq("type", args.type));
+      return await ctx.db.query("agentOrchestrations")
+        .withIndex("by_type", (q) => q.eq("type", args.type!))
+        .order("desc")
+        .take(limit);
     }
     
-    const runs = await query
+    return await ctx.db.query("agentOrchestrations")
       .order("desc")
-      .take(args.limit || 20);
-    
-    return runs;
+      .take(limit);
   },
 });
 
 /**
  * Orchestration Analytics: Get performance metrics
  */
-export const getOrchestrationAnalytics = internalQuery({
+export const getOrchestrationAnalytics = query({
   args: {
     businessId: v.optional(v.id("businesses")),
     since: v.optional(v.number()),
