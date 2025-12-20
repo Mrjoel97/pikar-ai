@@ -315,6 +315,77 @@ export const getRecentOrchestrationRuns = query({
   },
 });
 
+// Get agent performance metrics from orchestration executions
+export const getAgentPerformanceFromOrchestrations = query({
+  args: {
+    agentKey: v.optional(v.string()),
+    since: v.optional(v.number()),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const cutoff = args.since || (Date.now() - 30 * 24 * 60 * 60 * 1000); // 30 days default
+    
+    let executions;
+    
+    if (args.agentKey) {
+      executions = await ctx.db
+        .query("agentExecutions")
+        .withIndex("by_agent", (q) => q.eq("agentKey", args.agentKey!))
+        .filter((q) => q.gte(q.field("createdAt"), cutoff))
+        .take(args.limit || 1000);
+    } else {
+      executions = await ctx.db
+        .query("agentExecutions")
+        .filter((q) => q.gte(q.field("createdAt"), cutoff))
+        .take(args.limit || 1000);
+    }
+
+    const total = executions.length;
+    const successful = executions.filter(e => e.status === "success").length;
+    const failed = executions.filter(e => e.status === "failed").length;
+    
+    const avgDuration = total > 0
+      ? executions.reduce((sum, e) => sum + e.duration, 0) / total
+      : 0;
+
+    const totalTokens = executions.reduce((sum, e) => {
+      const input = e.metadata?.inputTokens || 0;
+      const output = e.metadata?.outputTokens || 0;
+      return sum + input + output;
+    }, 0);
+
+    return {
+      agentKey: args.agentKey,
+      total,
+      successful,
+      failed,
+      successRate: total > 0 ? successful / total : 0,
+      avgDuration,
+      totalTokens,
+      avgTokensPerExecution: total > 0 ? totalTokens / total : 0,
+      recentExecutions: executions.slice(0, 10),
+    };
+  },
+});
+
+export const deleteOrchestrationRun = mutation({
+  args: { orchestrationId: v.id("agentOrchestrations") },
+  handler: async (ctx, args) => {
+    // Delete all associated executions first
+    const executions = await ctx.db
+      .query("agentExecutions")
+      .withIndex("by_orchestration", (q) => q.eq("orchestrationId", args.orchestrationId))
+      .collect();
+    
+    for (const exec of executions) {
+      await ctx.db.delete(exec._id);
+    }
+    
+    // Delete the orchestration run
+    await ctx.db.delete(args.orchestrationId);
+  },
+});
+
 /**
  * Orchestration Analytics: Get performance metrics
  */

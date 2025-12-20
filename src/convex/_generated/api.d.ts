@@ -21,6 +21,7 @@ import type * as adminUsersActions from "../adminUsersActions.js";
 import type * as agentDatasets from "../agentDatasets.js";
 import type * as agentMemory from "../agentMemory.js";
 import type * as agentOrchestration from "../agentOrchestration.js";
+import type * as agentOrchestration_integration from "../agentOrchestration/integration.js";
 import type * as agentOrchestrationData from "../agentOrchestrationData.js";
 import type * as agentPerformance from "../agentPerformance.js";
 import type * as agentPerformance_costForecasting from "../agentPerformance/costForecasting.js";
@@ -323,6 +324,7 @@ declare const fullApi: ApiFromModules<{
   agentDatasets: typeof agentDatasets;
   agentMemory: typeof agentMemory;
   agentOrchestration: typeof agentOrchestration;
+  "agentOrchestration/integration": typeof agentOrchestration_integration;
   agentOrchestrationData: typeof agentOrchestrationData;
   agentPerformance: typeof agentPerformance;
   "agentPerformance/costForecasting": typeof agentPerformance_costForecasting;

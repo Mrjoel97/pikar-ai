@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useMutation, useQuery, useAction } from "convex/react";
+import { useQuery as useConvexQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -116,10 +117,19 @@ export function ParallelOrchestrationBuilder() {
   const handleExecute = async (orch: ParallelOrchestration) => {
     setExecuting(orch._id);
     try {
-      // Get a business ID (in real app, this would come from context)
+      // Get a business ID from current user context
+      const businesses = useConvexQuery(api.businesses.listUserBusinesses as any);
+      const businessId = businesses?.[0]?._id;
+      
+      if (!businessId) {
+        toast.error("No business context found");
+        setExecuting(null);
+        return;
+      }
+
       const result = await executeParallel({
         agents: orch.agents,
-        businessId: "placeholder" as any, // TODO: Get from context
+        businessId: businessId,
         orchestrationId: orch._id,
       });
       

@@ -42,10 +42,17 @@ export const orchestrationSchema = {
     result: v.optional(v.any()),
     error: v.optional(v.string()),
     createdAt: v.number(),
+    metadata: v.optional(v.object({
+      inputTokens: v.optional(v.number()),
+      outputTokens: v.optional(v.number()),
+      model: v.optional(v.string()),
+      retries: v.optional(v.number()),
+    })),
   })
     .index("by_orchestration", ["orchestrationId"])
     .index("by_agent", ["agentKey"])
-    .index("by_status", ["status"]),
+    .index("by_status", ["status"])
+    .index("by_agent_and_status", ["agentKey", "status"]),
 
   parallelOrchestrations: defineTable({
     name: v.string(),
