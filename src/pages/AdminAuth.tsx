@@ -99,6 +99,19 @@ export default function AdminAuthPage() {
               />
             </div>
 
+            {isLogin && (
+              <div className="text-right">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => navigate("/admin-forgot-password")}
+                  className="text-emerald-200 hover:text-emerald-100 hover:bg-emerald-700 text-sm"
+                >
+                  Forgot password?
+                </Button>
+              </div>
+            )}
+
             <Button
               type="submit"
               disabled={isLoading}

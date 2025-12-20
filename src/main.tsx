@@ -51,6 +51,10 @@ import ResetPassword from "./pages/ResetPassword";
 import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
 
+// Add new routes for admin password reset
+import AdminForgotPasswordPage from "./pages/AdminForgotPassword.tsx";
+import AdminResetPasswordPage from "./pages/AdminResetPassword.tsx";
+
 console.log("Main.tsx: Module loaded");
 
 class ErrorBoundary extends Component<
@@ -169,6 +173,8 @@ function AnimatedRoutes() {
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/admin" element={<AdminPage />} />
           <Route path="/admin-auth" element={<AdminAuthPage />} />
+          <Route path="/admin-forgot-password" element={<AdminForgotPasswordPage />} />
+          <Route path="/admin-reset-password" element={<AdminResetPasswordPage />} />
           <Route path="/learning-hub" element={<LearningHubPage />} />
           <Route path="/admin/system-agents" element={<SystemAgentsPage />} />
           <Route path="/branding" element={<BrandingPortal />} />
