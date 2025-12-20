@@ -1401,3 +1401,42 @@ export const applyAgentCatalogSeed = internalMutation({
     return { inserted, updated, total: defaults.length };
   },
 });
+
+export const cleanupDuplicateAgents = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const allAgents = await ctx.db.query("agentCatalog").collect();
+    
+    // Group agents by agent_key
+    const agentsByKey = new Map<string, Array<any>>();
+    for (const agent of allAgents) {
+      const key = agent.agent_key;
+      if (!agentsByKey.has(key)) {
+        agentsByKey.set(key, []);
+      }
+      agentsByKey.get(key)!.push(agent);
+    }
+    
+    let deleted = 0;
+    
+    // For each agent_key with duplicates, keep the one with more capabilities
+    for (const [key, agents] of agentsByKey.entries()) {
+      if (agents.length > 1) {
+        // Sort by number of capabilities (descending) and keep the first one
+        agents.sort((a, b) => (b.capabilities?.length || 0) - (a.capabilities?.length || 0));
+        
+        // Delete all but the first (most detailed) one
+        for (let i = 1; i < agents.length; i++) {
+          await ctx.db.delete(agents[i]._id);
+          deleted++;
+        }
+      }
+    }
+    
+    return { 
+      message: "Duplicate agents cleaned up", 
+      deleted,
+      remaining: allAgents.length - deleted 
+    };
+  },
+});
