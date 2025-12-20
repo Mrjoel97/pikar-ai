@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Mail, Search, User, ChevronLeft, ChevronRight, Download, ArrowUpDown } from "lucide-react";
+import { Mail, Search, User, ChevronLeft, ChevronRight, Download, ArrowUpDown, UserCheck, UserX, Award } from "lucide-react";
 import type { Id } from "@/convex/_generated/dataModel";
 import { UserListItem } from "./user-management/UserListItem";
 import { EmailDialog } from "./user-management/EmailDialog";
@@ -49,6 +49,8 @@ export function UserManagement() {
   const updateUserTier = useMutation(api.adminUsers.updateUserTier);
   const updateAgentLimits = useMutation(api.adminUsers.updateAgentLimits);
   const toggleUserAgent = useMutation(api.adminUsers.toggleUserAgent);
+  const bulkToggleStatus = useMutation(api.adminUsers.bulkToggleUserStatus);
+  const bulkUpdateTier = useMutation(api.adminUsers.bulkUpdateUserTier);
 
   const handleSelectAll = () => {
     if (!users) return;
@@ -61,12 +63,12 @@ export function UserManagement() {
 
   const handlePageChange = (newPage: number) => {
     setCurrentPage(newPage);
-    setSelectedUsers(new Set()); // Clear selection on page change
+    setSelectedUsers(new Set());
   };
 
   const handlePageSizeChange = (newSize: string) => {
     setPageSize(parseInt(newSize));
-    setCurrentPage(0); // Reset to first page
+    setCurrentPage(0);
     setSelectedUsers(new Set());
   };
 
@@ -112,6 +114,54 @@ export function UserManagement() {
     }
   };
 
+  const handleBulkActivate = async () => {
+    if (selectedUsers.size === 0) {
+      toast.error("No users selected");
+      return;
+    }
+
+    try {
+      const userIds = Array.from(selectedUsers) as Id<"users">[];
+      const result = await bulkToggleStatus({ userIds, isActive: true });
+      toast.success(`Activated ${result.results.filter((r: any) => r.success).length} of ${result.total} user(s)`);
+      setSelectedUsers(new Set());
+    } catch (error: any) {
+      toast.error(error.message || "Failed to activate users");
+    }
+  };
+
+  const handleBulkDeactivate = async () => {
+    if (selectedUsers.size === 0) {
+      toast.error("No users selected");
+      return;
+    }
+
+    try {
+      const userIds = Array.from(selectedUsers) as Id<"users">[];
+      const result = await bulkToggleStatus({ userIds, isActive: false });
+      toast.success(`Deactivated ${result.results.filter((r: any) => r.success).length} of ${result.total} user(s)`);
+      setSelectedUsers(new Set());
+    } catch (error: any) {
+      toast.error(error.message || "Failed to deactivate users");
+    }
+  };
+
+  const handleBulkUpdateTier = async (tier: string) => {
+    if (selectedUsers.size === 0) {
+      toast.error("No users selected");
+      return;
+    }
+
+    try {
+      const userIds = Array.from(selectedUsers) as Id<"users">[];
+      const result = await bulkUpdateTier({ userIds, tier });
+      toast.success(`Updated tier for ${result.results.filter((r: any) => r.success).length} of ${result.total} user(s)`);
+      setSelectedUsers(new Set());
+    } catch (error: any) {
+      toast.error(error.message || "Failed to update tier");
+    }
+  };
+
   const handleToggleUserStatus = async (userId: Id<"users">, currentStatus: boolean) => {
     try {
       await toggleUserStatus({ userId, isActive: !currentStatus });
@@ -154,7 +204,6 @@ export function UserManagement() {
       return;
     }
 
-    // Create CSV content
     const headers = ["Email", "Name", "Tier", "Status", "Joined Date"];
     const rows = users.map((user: any) => [
       user.email || "N/A",
@@ -169,7 +218,6 @@ export function UserManagement() {
       ...rows.map((row: any) => row.map((cell: any) => `"${cell}"`).join(",")),
     ].join("\n");
 
-    // Create and download file
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const link = document.createElement("a");
     const url = URL.createObjectURL(blob);
@@ -204,7 +252,7 @@ export function UserManagement() {
               value={searchEmail}
               onChange={(e) => {
                 setSearchEmail(e.target.value);
-                setCurrentPage(0); // Reset to first page on search
+                setCurrentPage(0);
               }}
               className="pl-9"
             />
@@ -239,9 +287,9 @@ export function UserManagement() {
           </Select>
         </div>
 
-        {/* Actions and Sorting */}
+        {/* Bulk Actions and Sorting */}
         <div className="flex flex-wrap gap-2 items-center justify-between">
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button
               variant="outline"
               onClick={handleSelectAll}
@@ -256,6 +304,37 @@ export function UserManagement() {
               <Mail className="h-4 w-4 mr-2" />
               Email ({selectedUsers.size})
             </Button>
+            <Button
+              variant="outline"
+              disabled={selectedUsers.size === 0}
+              onClick={handleBulkActivate}
+            >
+              <UserCheck className="h-4 w-4 mr-2" />
+              Activate
+            </Button>
+            <Button
+              variant="outline"
+              disabled={selectedUsers.size === 0}
+              onClick={handleBulkDeactivate}
+            >
+              <UserX className="h-4 w-4 mr-2" />
+              Deactivate
+            </Button>
+            <Select 
+              disabled={selectedUsers.size === 0}
+              onValueChange={handleBulkUpdateTier}
+            >
+              <SelectTrigger className="w-[160px]">
+                <Award className="h-4 w-4 mr-2" />
+                <SelectValue placeholder="Update Tier" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="solopreneur">Solopreneur</SelectItem>
+                <SelectItem value="startup">Startup</SelectItem>
+                <SelectItem value="sme">SME</SelectItem>
+                <SelectItem value="enterprise">Enterprise</SelectItem>
+              </SelectContent>
+            </Select>
             <Button
               variant="outline"
               onClick={handleExportUsers}

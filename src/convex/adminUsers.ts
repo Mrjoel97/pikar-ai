@@ -352,6 +352,111 @@ export const toggleUserAgent = mutation({
   },
 });
 
+// Bulk activate/deactivate users
+export const bulkToggleUserStatus = mutation({
+  args: {
+    userIds: v.array(v.id("users")),
+    isActive: v.boolean(),
+  },
+  handler: async (ctx, args) => {
+    const isAdmin = await isPlatformAdmin(ctx);
+    if (!isAdmin) throw new Error("Admin access required");
+
+    const results = [];
+    for (const userId of args.userIds) {
+      try {
+        const user = await ctx.db.get(userId);
+        if (!user) {
+          results.push({ userId, success: false, error: "User not found" });
+          continue;
+        }
+
+        await ctx.db.patch(userId, {
+          isAnonymous: args.isActive ? (user.isAnonymous ?? false) : true,
+        });
+
+        results.push({ userId, success: true });
+      } catch (error: any) {
+        results.push({ userId, success: false, error: error.message });
+      }
+    }
+
+    const identity = await ctx.auth.getUserIdentity();
+    const adminEmail = identity?.email || "admin@pikar-ai.com";
+
+    await ctx.db.insert("audit_logs", {
+      businessId: "system" as any,
+      action: args.isActive ? "bulk_users_activated" : "bulk_users_deactivated",
+      entityType: "user",
+      entityId: "bulk",
+      details: {
+        userCount: args.userIds.length,
+        successCount: results.filter(r => r.success).length,
+        performedBy: adminEmail,
+      },
+      createdAt: Date.now(),
+    });
+
+    return { results, total: args.userIds.length };
+  },
+});
+
+// Bulk update user tier
+export const bulkUpdateUserTier = mutation({
+  args: {
+    userIds: v.array(v.id("users")),
+    tier: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const isAdmin = await isPlatformAdmin(ctx);
+    if (!isAdmin) throw new Error("Admin access required");
+
+    const results = [];
+    for (const userId of args.userIds) {
+      try {
+        const user = await ctx.db.get(userId);
+        if (!user) {
+          results.push({ userId, success: false, error: "User not found" });
+          continue;
+        }
+
+        await ctx.db.patch(userId, {
+          businessTier: args.tier,
+        });
+
+        if (user.businessId) {
+          await ctx.db.patch(user.businessId, {
+            tier: args.tier,
+          });
+        }
+
+        results.push({ userId, success: true });
+      } catch (error: any) {
+        results.push({ userId, success: false, error: error.message });
+      }
+    }
+
+    const identity = await ctx.auth.getUserIdentity();
+    const adminEmail = identity?.email || "admin@pikar-ai.com";
+
+    await ctx.db.insert("audit_logs", {
+      businessId: "system" as any,
+      action: "bulk_users_tier_updated",
+      entityType: "user",
+      entityId: "bulk",
+      details: {
+        userCount: args.userIds.length,
+        successCount: results.filter(r => r.success).length,
+        newTier: args.tier,
+        performedBy: adminEmail,
+      },
+      createdAt: Date.now(),
+    });
+
+    return { results, total: args.userIds.length };
+  },
+});
+
 // Send email to user(s) via Resend (admin only)
 export const sendAdminEmail = mutation({
   args: {
