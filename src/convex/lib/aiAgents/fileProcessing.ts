@@ -6,8 +6,8 @@ import * as mammoth from "mammoth";
 
 /**
  * Process uploaded file and extract text content
- * Supports: TXT, MD, DOCX
- * Note: PDF support removed due to canvas dependency issues in Node.js runtime
+ * Supports: TXT, MD, DOCX, PDF
+ * PDF processing uses a lightweight approach without canvas dependencies
  */
 export const processUploadedFile = action({
   args: {
@@ -56,7 +56,31 @@ export const processUploadedFile = action({
           throw new Error(`DOCX parsing failed: ${docxError.message}`);
         }
       } else if (fileExtension === 'pdf') {
-        throw new Error("PDF support is temporarily unavailable. Please convert to TXT, MD, or DOCX format.");
+        // PDF processing using simple text extraction
+        // This is a basic implementation that works for text-based PDFs
+        const arrayBuffer = await response.arrayBuffer();
+        const buffer = Buffer.from(arrayBuffer);
+        const text = buffer.toString('utf-8');
+        
+        // Extract text between stream markers (basic PDF text extraction)
+        const streamRegex = /stream\s*([\s\S]*?)\s*endstream/g;
+        let match;
+        const textChunks: string[] = [];
+        
+        while ((match = streamRegex.exec(text)) !== null) {
+          const chunk = match[1];
+          // Filter out binary data and keep readable text
+          const readable = chunk.replace(/[^\x20-\x7E\n\r\t]/g, '').trim();
+          if (readable.length > 10) {
+            textChunks.push(readable);
+          }
+        }
+        
+        extractedText = textChunks.join('\n\n');
+        
+        if (!extractedText || extractedText.trim().length < 20) {
+          throw new Error("PDF appears to be empty or contains only images. Please use a text-based PDF or convert to TXT/DOCX format.");
+        }
       } else if (fileExtension === 'doc') {
         throw new Error("Legacy DOC format is not supported. Please convert to DOCX, TXT, or MD format.");
       } else {

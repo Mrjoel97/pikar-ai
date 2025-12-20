@@ -12,6 +12,7 @@ import { AgentCreateDialog } from "./AgentCreateDialog";
 import { AgentEditDialog } from "./AgentEditDialog";
 import { AgentTrainingDialog } from "./AgentTrainingDialog";
 import { AgentVersionsDrawer } from "./AgentVersionsDrawer";
+import { AgentPromptTemplates } from "./AgentPromptTemplates";
 import {
   AlertDialog,
   AlertDialogAction,

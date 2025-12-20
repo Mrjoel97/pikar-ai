@@ -51,6 +51,14 @@ export const agentsSchema = {
     active: v.boolean(),
     tier_restrictions: v.optional(v.array(v.string())),
     createdAt: v.number(),
+    prompt_templates: v.optional(v.array(v.object({
+      id: v.string(),
+      name: v.string(),
+      description: v.string(),
+      template: v.string(),
+      variables: v.optional(v.array(v.string())),
+      category: v.optional(v.string()),
+    }))),
   })
     .index("by_active", ["active"])
     .index("by_key", ["agent_key"]),
