@@ -4,8 +4,9 @@ import { api } from "@/convex/_generated/api";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Mail, Search, User } from "lucide-react";
+import { Mail, Search, User, ChevronLeft, ChevronRight } from "lucide-react";
 import type { Id } from "@/convex/_generated/dataModel";
 import { UserListItem } from "./user-management/UserListItem";
 import { EmailDialog } from "./user-management/EmailDialog";
@@ -13,15 +14,26 @@ import { UserDetailsDialog } from "./user-management/UserDetailsDialog";
 
 export function UserManagement() {
   const [searchEmail, setSearchEmail] = useState("");
+  const [filterTier, setFilterTier] = useState("all");
+  const [filterStatus, setFilterStatus] = useState<"active" | "inactive" | "all">("all");
+  const [pageSize, setPageSize] = useState(50);
+  const [currentPage, setCurrentPage] = useState(0);
   const [selectedUsers, setSelectedUsers] = useState<Set<string>>(new Set());
   const [emailDialogOpen, setEmailDialogOpen] = useState(false);
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<Id<"users"> | null>(null);
 
-  const users = useQuery(api.adminUsers.listAllUsers, { 
-    limit: 100,
-    searchEmail: searchEmail || undefined 
+  const usersData = useQuery(api.adminUsers.listAllUsers, { 
+    limit: pageSize,
+    offset: currentPage * pageSize,
+    searchEmail: searchEmail || undefined,
+    filterTier: filterTier !== "all" ? filterTier : undefined,
+    filterStatus: filterStatus !== "all" ? filterStatus : undefined,
   });
+
+  const users = usersData?.users;
+  const totalUsers = usersData?.total ?? 0;
+  const hasMore = usersData?.hasMore ?? false;
   
   const userDetails = useQuery(
     api.adminUsers.getUserDetails,
@@ -42,6 +54,19 @@ export function UserManagement() {
       setSelectedUsers(new Set(users.map((u: any) => u._id)));
     }
   };
+
+  const handlePageChange = (newPage: number) => {
+    setCurrentPage(newPage);
+    setSelectedUsers(new Set()); // Clear selection on page change
+  };
+
+  const handlePageSizeChange = (newSize: string) => {
+    setPageSize(parseInt(newSize));
+    setCurrentPage(0); // Reset to first page
+    setSelectedUsers(new Set());
+  };
+
+  const totalPages = Math.ceil(totalUsers / pageSize);
 
   const handleSelectUser = (userId: string) => {
     const newSelected = new Set(selectedUsers);
@@ -131,17 +156,52 @@ export function UserManagement() {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Search and Actions */}
-        <div className="flex gap-2">
-          <div className="relative flex-1">
+        {/* Search and Filters */}
+        <div className="flex flex-wrap gap-2">
+          <div className="relative flex-1 min-w-[200px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search by email..."
+              placeholder="Search by email or name..."
               value={searchEmail}
-              onChange={(e) => setSearchEmail(e.target.value)}
+              onChange={(e) => {
+                setSearchEmail(e.target.value);
+                setCurrentPage(0); // Reset to first page on search
+              }}
               className="pl-9"
             />
           </div>
+          <Select value={filterTier} onValueChange={(value) => {
+            setFilterTier(value);
+            setCurrentPage(0);
+          }}>
+            <SelectTrigger className="w-[150px]">
+              <SelectValue placeholder="Filter by tier" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Tiers</SelectItem>
+              <SelectItem value="solopreneur">Solopreneur</SelectItem>
+              <SelectItem value="startup">Startup</SelectItem>
+              <SelectItem value="sme">SME</SelectItem>
+              <SelectItem value="enterprise">Enterprise</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={filterStatus} onValueChange={(value: any) => {
+            setFilterStatus(value);
+            setCurrentPage(0);
+          }}>
+            <SelectTrigger className="w-[150px]">
+              <SelectValue placeholder="Filter by status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Status</SelectItem>
+              <SelectItem value="active">Active</SelectItem>
+              <SelectItem value="inactive">Inactive</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Actions */}
+        <div className="flex gap-2">
           <Button
             variant="outline"
             onClick={handleSelectAll}
@@ -197,8 +257,50 @@ export function UserManagement() {
           onToggleAgent={handleToggleAgent}
         />
 
+        {/* Pagination Controls */}
+        <div className="flex items-center justify-between border-t pt-4">
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">
+              Showing {currentPage * pageSize + 1}-{Math.min((currentPage + 1) * pageSize, totalUsers)} of {totalUsers}
+            </span>
+            <Select value={pageSize.toString()} onValueChange={handlePageSizeChange}>
+              <SelectTrigger className="w-[100px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="25">25 / page</SelectItem>
+                <SelectItem value="50">50 / page</SelectItem>
+                <SelectItem value="100">100 / page</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handlePageChange(currentPage - 1)}
+              disabled={currentPage === 0}
+            >
+              <ChevronLeft className="h-4 w-4" />
+              Previous
+            </Button>
+            <span className="text-sm text-muted-foreground">
+              Page {currentPage + 1} of {totalPages || 1}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handlePageChange(currentPage + 1)}
+              disabled={!hasMore}
+            >
+              Next
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+
         <p className="text-sm text-muted-foreground">
-          Total users: {users?.length || 0} • Selected: {selectedUsers.size}
+          Selected: {selectedUsers.size} user(s)
         </p>
       </CardContent>
     </Card>

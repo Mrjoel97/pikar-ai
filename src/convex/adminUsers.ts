@@ -25,32 +25,60 @@ async function isPlatformAdmin(ctx: any): Promise<boolean> {
 export const listAllUsers = query({
   args: {
     limit: v.optional(v.number()),
+    offset: v.optional(v.number()),
     searchEmail: v.optional(v.string()),
+    filterTier: v.optional(v.string()),
+    filterStatus: v.optional(v.union(v.literal("active"), v.literal("inactive"), v.literal("all"))),
   },
   handler: async (ctx, args) => {
     const isAdmin = await isPlatformAdmin(ctx);
-    if (!isAdmin) return [];
+    if (!isAdmin) return { users: [], total: 0, hasMore: false };
 
-    const limit = Math.min(args.limit ?? 100, 500);
+    const limit = Math.min(args.limit ?? 50, 500);
+    const offset = args.offset ?? 0;
     
-    let users = await ctx.db.query("users").take(limit);
+    // Fetch more than needed to calculate hasMore
+    let users = await ctx.db.query("users").take(offset + limit + 1);
     
     // Filter by email if search term provided
     if (args.searchEmail) {
       const searchTerm = args.searchEmail.toLowerCase();
       users = users.filter((u: any) => 
-        u.email?.toLowerCase().includes(searchTerm)
+        u.email?.toLowerCase().includes(searchTerm) ||
+        u.name?.toLowerCase().includes(searchTerm)
       );
     }
 
-    return users.map((u: any) => ({
-      _id: u._id,
-      email: u.email,
-      name: u.name,
-      isAnonymous: u.isAnonymous,
-      businessTier: u.businessTier,
-      _creationTime: u._creationTime,
-    }));
+    // Filter by tier
+    if (args.filterTier && args.filterTier !== "all") {
+      users = users.filter((u: any) => u.businessTier === args.filterTier);
+    }
+
+    // Filter by status
+    if (args.filterStatus && args.filterStatus !== "all") {
+      if (args.filterStatus === "active") {
+        users = users.filter((u: any) => !u.isAnonymous);
+      } else if (args.filterStatus === "inactive") {
+        users = users.filter((u: any) => u.isAnonymous);
+      }
+    }
+
+    const total = users.length;
+    const hasMore = users.length > offset + limit;
+    const paginatedUsers = users.slice(offset, offset + limit);
+
+    return {
+      users: paginatedUsers.map((u: any) => ({
+        _id: u._id,
+        email: u.email,
+        name: u.name,
+        isAnonymous: u.isAnonymous,
+        businessTier: u.businessTier,
+        _creationTime: u._creationTime,
+      })),
+      total,
+      hasMore,
+    };
   },
 });
 
