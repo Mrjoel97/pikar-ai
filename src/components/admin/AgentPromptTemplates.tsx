@@ -1,12 +1,21 @@
 import React, { useState } from "react";
+import { useQuery, useMutation } from "convex/react";
+import { api } from "@/convex/_generated/api";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Copy, Check, Sparkles } from "lucide-react";
+import { Copy, Check, Sparkles, Plus, Trash2, Edit } from "lucide-react";
 import { toast } from "sonner";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 interface PromptTemplate {
   id: string;
@@ -20,65 +29,26 @@ interface PromptTemplate {
 interface AgentPromptTemplatesProps {
   agentKey: string;
   agentName: string;
-  templates?: PromptTemplate[];
 }
 
-export function AgentPromptTemplates({ agentKey, agentName, templates = [] }: AgentPromptTemplatesProps) {
+export function AgentPromptTemplates({ agentKey, agentName }: AgentPromptTemplatesProps) {
   const [selectedTemplate, setSelectedTemplate] = useState<PromptTemplate | null>(null);
   const [variableValues, setVariableValues] = useState<Record<string, string>>({});
   const [generatedPrompt, setGeneratedPrompt] = useState("");
   const [copied, setCopied] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [newTemplate, setNewTemplate] = useState<Partial<PromptTemplate>>({});
 
-  // Default templates if none provided
-  const defaultTemplates: PromptTemplate[] = [
-    {
-      id: "content-creation",
-      name: "Content Creation",
-      description: "Generate engaging content for social media or blog posts",
-      template: "Create a {tone} {content_type} about {topic} for {audience}. Include {key_points} and make it {length}.",
-      variables: ["tone", "content_type", "topic", "audience", "key_points", "length"],
-      category: "Content"
-    },
-    {
-      id: "data-analysis",
-      name: "Data Analysis",
-      description: "Analyze data and provide insights",
-      template: "Analyze the following {data_type} data and provide insights on {focus_area}. Include trends, patterns, and actionable recommendations.",
-      variables: ["data_type", "focus_area"],
-      category: "Analytics"
-    },
-    {
-      id: "customer-support",
-      name: "Customer Support",
-      description: "Handle customer inquiries professionally",
-      template: "Respond to this customer inquiry about {issue} with a {tone} tone. Provide {solution_type} and ensure customer satisfaction.",
-      variables: ["issue", "tone", "solution_type"],
-      category: "Support"
-    },
-    {
-      id: "email-draft",
-      name: "Email Draft",
-      description: "Draft professional emails",
-      template: "Draft a {formality} email to {recipient} about {subject}. The purpose is to {purpose} and the tone should be {tone}.",
-      variables: ["formality", "recipient", "subject", "purpose", "tone"],
-      category: "Communication"
-    },
-    {
-      id: "report-generation",
-      name: "Report Generation",
-      description: "Generate comprehensive reports",
-      template: "Generate a {report_type} report covering {time_period}. Focus on {metrics} and include {sections}. Format: {format}.",
-      variables: ["report_type", "time_period", "metrics", "sections", "format"],
-      category: "Reporting"
-    }
-  ];
+  // Fetch templates from database
+  const templates = useQuery(api.aiAgents.getAgentPromptTemplates, { agent_key: agentKey }) as PromptTemplate[] | undefined;
+  const addTemplate = useMutation(api.aiAgents.addPromptTemplate);
+  const deleteTemplate = useMutation(api.aiAgents.deletePromptTemplate);
 
-  const availableTemplates = templates.length > 0 ? templates : defaultTemplates;
+  const availableTemplates = templates || [];
 
   const handleTemplateSelect = (template: PromptTemplate) => {
     setSelectedTemplate(template);
     setGeneratedPrompt("");
-    // Initialize variable values
     const initialValues: Record<string, string> = {};
     template.variables?.forEach(v => {
       initialValues[v] = "";
@@ -91,7 +61,6 @@ export function AgentPromptTemplates({ agentKey, agentName, templates = [] }: Ag
 
     let prompt = selectedTemplate.template;
     
-    // Replace variables with values
     selectedTemplate.variables?.forEach(variable => {
       const value = variableValues[variable] || `[${variable}]`;
       prompt = prompt.replace(new RegExp(`{${variable}}`, 'g'), value);
@@ -108,13 +77,54 @@ export function AgentPromptTemplates({ agentKey, agentName, templates = [] }: Ag
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const handleAddTemplate = async () => {
+    if (!newTemplate.name || !newTemplate.template) {
+      toast.error("Please provide name and template");
+      return;
+    }
+
+    try {
+      await addTemplate({
+        agent_key: agentKey,
+        template: {
+          id: `custom_${Date.now()}`,
+          name: newTemplate.name,
+          description: newTemplate.description || "",
+          template: newTemplate.template,
+          variables: newTemplate.variables || [],
+          category: newTemplate.category || "Custom",
+        },
+      });
+      toast.success("Template added successfully!");
+      setEditDialogOpen(false);
+      setNewTemplate({});
+    } catch (error: any) {
+      toast.error(error?.message || "Failed to add template");
+    }
+  };
+
+  const handleDeleteTemplate = async (templateId: string) => {
+    try {
+      await deleteTemplate({ agent_key: agentKey, templateId });
+      toast.success("Template deleted successfully!");
+    } catch (error: any) {
+      toast.error(error?.message || "Failed to delete template");
+    }
+  };
+
   return (
     <div className="space-y-6">
-      <div>
-        <h3 className="text-lg font-semibold mb-2">Prompt Templates for {agentName}</h3>
-        <p className="text-sm text-muted-foreground">
-          Select a template and customize it to create effective prompts for your agent
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-lg font-semibold">Prompt Templates for {agentName}</h3>
+          <p className="text-sm text-muted-foreground">
+            Select a template and customize it to create effective prompts
+          </p>
+        </div>
+        <Button size="sm" onClick={() => setEditDialogOpen(true)}>
+          <Plus className="h-4 w-4 mr-2" />
+          Add Template
+        </Button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -128,17 +138,31 @@ export function AgentPromptTemplates({ agentKey, agentName, templates = [] }: Ag
           >
             <CardHeader className="pb-3">
               <div className="flex items-start justify-between">
-                <div>
+                <div className="flex-1">
                   <CardTitle className="text-base">{template.name}</CardTitle>
                   <CardDescription className="text-xs mt-1">
                     {template.description}
                   </CardDescription>
                 </div>
-                {template.category && (
-                  <Badge variant="outline" className="text-xs">
-                    {template.category}
-                  </Badge>
-                )}
+                <div className="flex items-center gap-2">
+                  {template.category && (
+                    <Badge variant="outline" className="text-xs">
+                      {template.category}
+                    </Badge>
+                  )}
+                  {template.id.startsWith('custom_') && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteTemplate(template.id);
+                      }}
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  )}
+                </div>
               </div>
             </CardHeader>
             <CardContent>
@@ -227,6 +251,66 @@ export function AgentPromptTemplates({ agentKey, agentName, templates = [] }: Ag
           </CardContent>
         </Card>
       )}
+
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Prompt Template</DialogTitle>
+            <DialogDescription>
+              Create a new prompt template for this agent
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Template Name</Label>
+              <Input
+                placeholder="e.g., Email Response"
+                value={newTemplate.name || ""}
+                onChange={(e) => setNewTemplate({ ...newTemplate, name: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Description</Label>
+              <Input
+                placeholder="Brief description"
+                value={newTemplate.description || ""}
+                onChange={(e) => setNewTemplate({ ...newTemplate, description: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Category</Label>
+              <Input
+                placeholder="e.g., Communication"
+                value={newTemplate.category || ""}
+                onChange={(e) => setNewTemplate({ ...newTemplate, category: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Template (use {"{variable}"} for placeholders)</Label>
+              <Textarea
+                placeholder="Write a {tone} email about {subject}..."
+                value={newTemplate.template || ""}
+                onChange={(e) => setNewTemplate({ ...newTemplate, template: e.target.value })}
+                rows={4}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Variables (comma-separated)</Label>
+              <Input
+                placeholder="tone, subject, recipient"
+                value={newTemplate.variables?.join(", ") || ""}
+                onChange={(e) => setNewTemplate({ 
+                  ...newTemplate, 
+                  variables: e.target.value.split(",").map(v => v.trim()).filter(Boolean)
+                })}
+              />
+            </div>
+            <Button onClick={handleAddTemplate} className="w-full">
+              Add Template
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

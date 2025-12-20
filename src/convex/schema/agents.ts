@@ -51,6 +51,7 @@ export const agentsSchema = {
     active: v.boolean(),
     tier_restrictions: v.optional(v.array(v.string())),
     createdAt: v.number(),
+    updatedAt: v.optional(v.number()),
     prompt_templates: v.optional(v.array(v.object({
       id: v.string(),
       name: v.string(),
@@ -61,7 +62,7 @@ export const agentsSchema = {
     }))),
   })
     .index("by_active", ["active"])
-    .index("by_key", ["agent_key"]),
+    .index("by_agent_key", ["agent_key"]),
     
   agentVersions: defineTable({
     agent_key: v.string(),

@@ -32,10 +32,11 @@ const ALLOWED_FILE_TYPES = {
   'text/plain': ['.txt'],
   'text/markdown': ['.md'],
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
+  'application/msword': ['.doc'],
   'application/pdf': ['.pdf'],
 };
 
-const ALLOWED_EXTENSIONS = ['.txt', '.md', '.docx', '.pdf'];
+const ALLOWED_EXTENSIONS = ['.txt', '.md', '.docx', '.doc', '.pdf'];
 
 type ProcessingStage = 'idle' | 'uploading' | 'processing' | 'complete' | 'error';
 
@@ -405,7 +406,7 @@ export function AgentTrainingDialog({
                     {getProcessingIcon()}
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Supported formats: TXT, MD, DOCX, PDF (Max size: 10MB)
+                    Supported formats: TXT, MD, DOC, DOCX, PDF (Max size: 10MB)
                   </p>
                   
                   {/* Processing Progress */}

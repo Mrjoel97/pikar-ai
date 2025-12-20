@@ -18,6 +18,7 @@ import * as versions from "./lib/aiAgents/versions";
 import * as datasets from "./lib/aiAgents/datasets";
 import * as config from "./lib/aiAgents/config";
 import * as publish from "./lib/aiAgents/publish";
+import * as promptTemplates from "./lib/aiAgents/promptTemplates";
 
 // Solopreneur S1: Initialize private agent profile with randomized high-traction industry
 export const initSolopreneurAgent = mutation({
@@ -660,6 +661,50 @@ export const recordAgentExecution: any = mutation({
 
 // Export the new create function
 export { adminCreateAgent } from "./lib/aiAgents/create";
+
+// Prompt template management
+export const getAgentPromptTemplates = query({
+  args: { agent_key: v.string() },
+  handler: (ctx, args) => promptTemplates.getAgentPromptTemplates(ctx, args),
+});
+
+export const updateAgentPromptTemplates = mutation({
+  args: {
+    agent_key: v.string(),
+    templates: v.array(v.object({
+      id: v.string(),
+      name: v.string(),
+      description: v.string(),
+      template: v.string(),
+      variables: v.optional(v.array(v.string())),
+      category: v.optional(v.string()),
+    })),
+  },
+  handler: (ctx, args) => promptTemplates.updateAgentPromptTemplates(ctx, args),
+});
+
+export const addPromptTemplate = mutation({
+  args: {
+    agent_key: v.string(),
+    template: v.object({
+      id: v.string(),
+      name: v.string(),
+      description: v.string(),
+      template: v.string(),
+      variables: v.optional(v.array(v.string())),
+      category: v.optional(v.string()),
+    }),
+  },
+  handler: (ctx, args) => promptTemplates.addPromptTemplate(ctx, args),
+});
+
+export const deletePromptTemplate = mutation({
+  args: {
+    agent_key: v.string(),
+    templateId: v.string(),
+  },
+  handler: (ctx, args) => promptTemplates.deletePromptTemplate(ctx, args),
+});
 
 // Orchestration public wrappers
 export const createParallelOrchestration = mutation({
