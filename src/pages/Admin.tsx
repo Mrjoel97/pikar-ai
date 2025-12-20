@@ -31,6 +31,9 @@ import { FeatureFlagsPanel } from "@/components/admin/FeatureFlagsPanel";
 import { ApiKeysPanel } from "@/components/admin/ApiKeysPanel";
 import { BillingUsagePanel } from "@/components/admin/BillingUsagePanel";
 import { CustomAgentsPanel } from "@/components/admin/CustomAgentsPanel";
+import { IntegrationsHubPanel } from "@/components/admin/IntegrationsHubPanel";
+import { AssistantDocsPanel } from "@/components/admin/AssistantDocsPanel";
+import { AuditExplorerPanel } from "@/components/admin/AuditExplorerPanel";
 
 // Add local types for transcript steps
 export default function AdminPage() {
@@ -440,79 +443,12 @@ export default function AdminPage() {
           tenants={tenants}
         />
 
-        {/* Integrations Hub */}
-        <Card>
-          <CardHeader>
-            <CardTitle id="section-integrations">Integrations</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <p className="text-sm text-muted-foreground">
-              Integration posture derives from System Health. Use quick actions to remediate.
-            </p>
-            
-            {/* Social API Settings Section */}
-            <div className="pt-4 border-t">
-              <SocialApiSettings />
-            </div>
-            
-            <Separator className="my-4" />
-            
-            <p className="text-sm text-muted-foreground">
-              Email and system integrations:
-            </p>
-            <div className="flex flex-wrap gap-2">
-              <Badge variant={env?.hasRESEND ? "outline" : "destructive"}>
-                Resend: {env?.hasRESEND ? "Configured" : "Missing"}
-              </Badge>
-              <Badge variant={env?.hasSALES_INBOX || env?.hasPUBLIC_SALES_INBOX ? "outline" : "destructive"}>
-                Sales Inbox: {env?.hasSALES_INBOX || env?.hasPUBLIC_SALES_INBOX ? "OK" : "Missing"}
-              </Badge>
-              <Badge variant={env?.hasBASE_URL ? "outline" : "destructive"}>
-                Public Base URL: {env?.hasBASE_URL ? "OK" : "Missing"}
-              </Badge>
-              <Badge variant={env?.devSafeEmailsEnabled ? "secondary" : "outline"}>
-                Email Mode: {env?.devSafeEmailsEnabled ? "DEV SAFE" : "Live"}
-              </Badge>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => {
-                  toast("Opening Settings...");
-                  window.location.href = "/settings";
-                }}
-              >
-                Open Settings
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={async () => {
-                  const newUrl = prompt("Enter new Base URL:", (import.meta as any)?.env?.VITE_PUBLIC_BASE_URL || "");
-                  if (!newUrl) return;
-                  
-                  try {
-                    await saveSystemConfigMutation({
-                      key: "BASE_URL",
-                      value: newUrl,
-                      description: "Public base URL for the application",
-                      adminToken: adminToken || undefined,
-                    });
-                    toast.success("Base URL updated successfully");
-                  } catch (e: any) {
-                    toast.error(e?.message || "Failed to update Base URL");
-                  }
-                }}
-              >
-                Update Base URL
-              </Button>
-            </div>
-            <div className="text-xs text-muted-foreground">
-              For test email sending and deeper checks, use the Settings page's inline validators.
-            </div>
-          </CardContent>
-        </Card>
+        {/* Replace inline Integrations Hub with component */}
+        <IntegrationsHubPanel
+          env={env}
+          saveSystemConfigMutation={saveSystemConfigMutation}
+          adminToken={adminToken}
+        />
 
         {/* Replace inline Custom Agents Admin Panel with component */}
         <CustomAgentsPanel
@@ -520,100 +456,12 @@ export default function AdminPage() {
           recentAudits={recentAudits}
         />
 
-        {/* Add the new "Assistant Docs" section */}
-        <Card>
-          <CardHeader>
-            <CardTitle id="section-assistant-docs">Assistant Docs</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <p className="text-sm text-muted-foreground">
-              Generate docs proposals from internal sources and approve to publish. This MVP seeds from an internal overview.
-            </p>
-
-            <div className="flex gap-2">
-              <Button
-                size="sm"
-                onClick={async () => {
-                  try {
-                    toast("Generating proposal from seed...");
-                    await generateDocsProposal({ source: "seed:readme" } as any);
-                    toast.success("Proposal generated");
-                  } catch (e: any) {
-                    toast.error(e?.message || "Failed to generate proposal");
-                  }
-                }}
-              >
-                Generate from README seed
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => {
-                  toast("Open proposals are listed below. Approve to publish.");
-                }}
-              >
-                How it works
-              </Button>
-            </div>
-
-            <div className="rounded-md border overflow-hidden">
-              <div className="grid grid-cols-3 md:grid-cols-6 gap-2 p-3 bg-muted/40 text-xs font-medium">
-                <div>Title</div>
-                <div className="hidden md:block">Slug</div>
-                <div>Source</div>
-                <div className="hidden md:block">Created</div>
-                <div className="hidden md:block">Status</div>
-                <div className="text-right">Action</div>
-              </div>
-              <Separator />
-              <div className="divide-y">
-                {(docsProposals || []).map((p) => (
-                  <div key={p._id} className="grid grid-cols-3 md:grid-cols-6 gap-2 p-3 text-sm items-center">
-                    <div className="truncate">{p.title}</div>
-                    <div className="hidden md:block truncate">/{p.slug}</div>
-                    <div className="truncate">{p.source}</div>
-                    <div className="hidden md:block text-xs text-muted-foreground">
-                      {p.createdAt ? new Date(p.createdAt).toLocaleString() : "—"}
-                    </div>
-                    <div className="hidden md:block">
-                      <Badge variant={p.status === "pending" ? "secondary" : "outline"}>{p.status}</Badge>
-                    </div>
-                    <div className="text-right flex gap-2 justify-end">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => toast(p.diffPreview)}
-                      >
-                        View Diff
-                      </Button>
-                      <Button
-                        size="sm"
-                        onClick={async () => {
-                          try {
-                            await approveDocsProposal({ proposalId: p._id } as any);
-                            toast.success("Published");
-                          } catch (e: any) {
-                            toast.error(e?.message || "Failed to publish");
-                          }
-                        }}
-                        disabled={p.status !== "pending"}
-                      >
-                        Approve & Publish
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-                {(!docsProposals || docsProposals.length === 0) && (
-                  <div className="p-3 text-sm text-muted-foreground">No pending proposals. Generate one above.</div>
-                )}
-              </div>
-            </div>
-
-            <div className="text-xs text-muted-foreground">
-              Publishing writes a docs page record. Future steps: multi-source ingestion, manual edits, and a public docs viewer.
-            </div>
-          </CardContent>
-        </Card>
+        {/* Replace inline Assistant Docs section with component */}
+        <AssistantDocsPanel
+          hasAdminAccess={hasAdminAccess}
+          generateDocsProposal={generateDocsProposal}
+          approveDocsProposal={approveDocsProposal}
+        />
 
         {/* Demo Video Management Section */}
         <DemoVideoManager />
@@ -621,79 +469,8 @@ export default function AdminPage() {
         {/* Documentation Content Management */}
         <DocsContentManager />
 
-        {/* Audit Explorer (MVP) */}
-        <Card>
-          <CardHeader>
-            <CardTitle id="section-audit-explorer">Audit Explorer</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-2">
-              <Input
-                placeholder="Filter by action"
-                value={actionFilter}
-                onChange={(e) => setActionFilter(e.target.value)}
-              />
-              <Input
-                placeholder="Filter by entity type"
-                value={entityFilter}
-                onChange={(e) => setEntityFilter(e.target.value)}
-              />
-              <div className="col-span-1 md:col-span-2 flex items-center gap-2">
-                <Input
-                  type="number"
-                  min={0}
-                  value={sinceDays}
-                  onChange={(e) => setSinceDays(Number(e.target.value || 0))}
-                />
-                <span className="text-sm text-muted-foreground">days</span>
-              </div>
-              <div className="flex justify-end">
-                <Button variant="outline" onClick={exportAuditsCsv}>
-                  Export CSV
-                </Button>
-              </div>
-            </div>
-
-            <div className="rounded-md border overflow-hidden">
-              <div className="grid grid-cols-4 md:grid-cols-6 gap-2 p-3 bg-muted/40 text-xs font-medium">
-                <div>When</div>
-                <div className="hidden md:block">Tenant</div>
-                <div>Action</div>
-                <div>Entity</div>
-                <div className="hidden md:block">Actor</div>
-                <div className="text-right">Details</div>
-              </div>
-              <Separator />
-              <div className="divide-y">
-                {filteredAudits.map((a) => (
-                  <div key={a._id} className="grid grid-cols-4 md:grid-cols-6 gap-2 p-3 text-sm">
-                    <div className="text-xs text-muted-foreground">
-                      {new Date(a.createdAt).toLocaleString()}
-                    </div>
-                    <div className="hidden md:block truncate">{a.businessId}</div>
-                    <div className="truncate">{a.action}</div>
-                    <div className="truncate">{a.entityType}{a.entityId ? `:${a.entityId}` : ""}</div>
-                    <div className="hidden md:block truncate">{a.userId || "—"}</div>
-                    <div className="text-right">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => {
-                          toast(JSON.stringify(a.details ?? {}, null, 2));
-                        }}
-                      >
-                        View
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-                {filteredAudits.length === 0 && (
-                  <div className="p-3 text-sm text-muted-foreground">No audit events found for the current filters.</div>
-                )}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        {/* Replace inline Audit Explorer with component */}
+        <AuditExplorerPanel recentAudits={recentAudits} />
 
         {/* Replace inline Alerts & Incidents with component */}
         <AlertsIncidentsPanel selectedTenantId={selectedTenantId} />
