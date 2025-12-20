@@ -526,11 +526,28 @@ export const saveSystemConfig = mutation({
     description: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const ok = await isPlatformAdmin(ctx);
-    if (!ok) throw new Error("Admin access required");
-
+    // Check both regular admin access and admin session authentication
     const identity = await ctx.auth.getUserIdentity();
-    const email = identity?.email ?? "unknown";
+    const email = identity?.email?.toLowerCase();
+    
+    // Check if user is platform admin via regular auth
+    let isAdmin = await isPlatformAdmin(ctx);
+    
+    // If not, check if there's a valid admin session (for admin panel login)
+    if (!isAdmin && email) {
+      const adminAuth = await ctx.db
+        .query("adminAuths")
+        .withIndex("by_email", (q: any) => q.eq("email", email))
+        .unique();
+      
+      if (adminAuth) {
+        isAdmin = true;
+      }
+    }
+    
+    if (!isAdmin) throw new Error("Admin access required");
+
+    const emailForLog = email ?? "unknown";
 
     const existing = await ctx.db
       .query("systemConfig")
@@ -543,7 +560,7 @@ export const saveSystemConfig = mutation({
       await ctx.db.patch(existing._id, {
         value: args.value,
         description: args.description,
-        updatedBy: email,
+        updatedBy: emailForLog,
         updatedAt: now,
       });
       return existing._id;
@@ -553,7 +570,7 @@ export const saveSystemConfig = mutation({
       key: args.key,
       value: args.value,
       description: args.description,
-      updatedBy: email,
+      updatedBy: emailForLog,
       createdAt: now,
       updatedAt: now,
     });
