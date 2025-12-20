@@ -524,46 +524,59 @@ export const saveSystemConfig = mutation({
     key: v.string(),
     value: v.string(),
     description: v.optional(v.string()),
+    adminToken: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    // Check both regular admin access and admin session authentication
-    const identity = await ctx.auth.getUserIdentity();
-    const email = identity?.email?.toLowerCase();
+    let isAdmin = false;
+    let emailForLog = "unknown";
     
-    // Check if user is platform admin via regular auth
-    let isAdmin = await isPlatformAdmin(ctx);
-    
-    // If not authenticated via regular auth, this might be an admin panel session
-    // In that case, we need to allow the operation if they have a valid admin role
-    if (!isAdmin && !email) {
-      // For admin panel operations, we'll allow if they have admin role in admins table
-      // This is a fallback for admin panel authentication
-      throw new Error("Admin access required");
-    }
-    
-    // If we have an email but not platform admin, check adminAuths table
-    if (!isAdmin && email) {
-      const adminAuth = await ctx.db
-        .query("adminAuths")
-        .withIndex("by_email", (q: any) => q.eq("email", email))
+    // First, try to validate admin session token if provided
+    if (args.adminToken) {
+      const session = await ctx.db
+        .query("adminSessions")
+        .withIndex("by_token", (q: any) => q.eq("token", args.adminToken))
         .unique();
       
-      if (adminAuth) {
-        // Verify they also have admin role
-        const adminRole = await ctx.db
-          .query("admins")
-          .withIndex("by_email", (q: any) => q.eq("email", email))
-          .unique();
+      if (session && session.expiresAt > Date.now()) {
+        // Get email from adminAuth
+        let sessionEmail: string | undefined;
         
-        if (adminRole && (adminRole.role === "super_admin" || adminRole.role === "admin" || adminRole.role === "senior")) {
-          isAdmin = true;
+        if (session.adminId) {
+          const adminAuth = await ctx.db.get(session.adminId);
+          sessionEmail = (adminAuth as any)?.email;
+        } else if (session.email) {
+          sessionEmail = session.email;
+        }
+        
+        if (sessionEmail) {
+          // Verify admin role
+          const adminRole = await ctx.db
+            .query("admins")
+            .withIndex("by_email", (q: any) => q.eq("email", sessionEmail))
+            .unique();
+          
+          if (adminRole && (adminRole.role === "super_admin" || adminRole.role === "admin" || adminRole.role === "senior")) {
+            isAdmin = true;
+            emailForLog = sessionEmail;
+          }
+        }
+      }
+    }
+    
+    // If not authenticated via admin token, check regular platform admin
+    if (!isAdmin) {
+      const identity = await ctx.auth.getUserIdentity();
+      const email = identity?.email?.toLowerCase();
+      
+      if (email) {
+        isAdmin = await isPlatformAdmin(ctx);
+        if (isAdmin) {
+          emailForLog = email;
         }
       }
     }
     
     if (!isAdmin) throw new Error("Admin access required");
-
-    const emailForLog = email ?? "unknown";
 
     const existing = await ctx.db
       .query("systemConfig")
