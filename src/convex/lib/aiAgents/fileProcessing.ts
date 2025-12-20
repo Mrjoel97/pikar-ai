@@ -2,11 +2,12 @@
 
 import { action } from "../../_generated/server";
 import { v } from "convex/values";
-import { api } from "../../_generated/api";
+import * as mammoth from "mammoth";
 
 /**
  * Process uploaded file and extract text content
- * Supports: TXT, MD, PDF, DOC, DOCX
+ * Supports: TXT, MD, DOCX
+ * Note: PDF support removed due to canvas dependency issues in Node.js runtime
  */
 export const processUploadedFile = action({
   args: {
@@ -34,33 +35,30 @@ export const processUploadedFile = action({
       if (fileExtension === 'txt' || fileExtension === 'md') {
         // Plain text files
         extractedText = await response.text();
-      } else if (fileExtension === 'pdf') {
-        // PDF processing - using a simple text extraction approach
-        // For production, consider using pdf-parse or similar library
+      } else if (fileExtension === 'docx') {
+        // DOCX processing using mammoth
         const arrayBuffer = await response.arrayBuffer();
         const buffer = Buffer.from(arrayBuffer);
         
-        // Basic PDF text extraction (this is a simplified approach)
-        // In production, you'd want to use a proper PDF parsing library
-        const text = buffer.toString('utf-8');
-        
-        // Try to extract readable text (very basic approach)
-        const textMatch = text.match(/\/Contents\s*\((.*?)\)/gs);
-        if (textMatch) {
-          extractedText = textMatch.map(m => m.replace(/\/Contents\s*\(|\)/g, '')).join('\n');
-        } else {
-          // Fallback: try to get any readable text
-          extractedText = text.replace(/[^\x20-\x7E\n]/g, '').trim();
+        try {
+          const result = await mammoth.extractRawText({ buffer });
+          extractedText = result.value;
+          
+          if (!extractedText || extractedText.trim().length < 10) {
+            throw new Error("DOCX appears to be empty");
+          }
+          
+          // Log any warnings from mammoth
+          if (result.messages.length > 0) {
+            console.warn("DOCX parsing warnings:", result.messages);
+          }
+        } catch (docxError: any) {
+          throw new Error(`DOCX parsing failed: ${docxError.message}`);
         }
-        
-        if (!extractedText || extractedText.length < 50) {
-          throw new Error("Could not extract text from PDF. The file may be image-based or encrypted.");
-        }
-      } else if (fileExtension === 'doc' || fileExtension === 'docx') {
-        // DOC/DOCX processing
-        // For DOCX (which is a ZIP file), we'd need to extract and parse XML
-        // This is a placeholder - in production, use mammoth or similar library
-        throw new Error("DOC/DOCX processing requires additional libraries. Please convert to PDF or TXT for now.");
+      } else if (fileExtension === 'pdf') {
+        throw new Error("PDF support is temporarily unavailable. Please convert to TXT, MD, or DOCX format.");
+      } else if (fileExtension === 'doc') {
+        throw new Error("Legacy DOC format is not supported. Please convert to DOCX, TXT, or MD format.");
       } else {
         throw new Error(`Unsupported file type: ${fileExtension}`);
       }
@@ -80,6 +78,8 @@ export const processUploadedFile = action({
         text: extractedText,
         fileId: args.fileId,
         fileName: args.fileName,
+        wordCount: extractedText.split(/\s+/).length,
+        charCount: extractedText.length,
       };
     } catch (error: any) {
       console.error("File processing error:", error);

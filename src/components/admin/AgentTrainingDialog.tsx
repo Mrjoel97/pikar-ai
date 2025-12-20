@@ -15,8 +15,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
-import { Upload, FileText, Link as LinkIcon, Type, Trash2, BookOpen, Loader2 } from "lucide-react";
+import { Upload, FileText, Link as LinkIcon, Type, Trash2, BookOpen, Loader2, CheckCircle, AlertCircle } from "lucide-react";
 
 interface AgentTrainingDialogProps {
   open: boolean;
@@ -30,12 +31,12 @@ const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 const ALLOWED_FILE_TYPES = {
   'text/plain': ['.txt'],
   'text/markdown': ['.md'],
-  'application/pdf': ['.pdf'],
-  'application/msword': ['.doc'],
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
 };
 
-const ALLOWED_EXTENSIONS = ['.txt', '.md', '.pdf', '.doc', '.docx'];
+const ALLOWED_EXTENSIONS = ['.txt', '.md', '.docx'];
+
+type ProcessingStage = 'idle' | 'uploading' | 'processing' | 'complete' | 'error';
 
 export function AgentTrainingDialog({
   open,
@@ -48,9 +49,11 @@ export function AgentTrainingDialog({
   const [noteText, setNoteText] = useState("");
   const [title, setTitle] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isProcessingFile, setIsProcessingFile] = useState(false);
+  const [processingStage, setProcessingStage] = useState<ProcessingStage>('idle');
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadedFileId, setUploadedFileId] = useState<string | null>(null);
   const [uploadedFileName, setUploadedFileName] = useState<string>("");
+  const [fileStats, setFileStats] = useState<{ wordCount?: number; charCount?: number } | null>(null);
 
   const datasets = useQuery(api.lib.aiAgents.datasets.listDatasets as any) as Array<{
     _id: string;
@@ -115,12 +118,14 @@ export function AgentTrainingDialog({
       return;
     }
 
-    setIsProcessingFile(true);
+    setProcessingStage('uploading');
+    setUploadProgress(0);
     toast.info(`Uploading ${file.name}...`);
 
     try {
       // Get upload URL
       const { uploadUrl, storageId } = await generateUploadUrl();
+      setUploadProgress(25);
 
       // Upload file to Convex storage
       const uploadResponse = await fetch(uploadUrl, {
@@ -133,6 +138,8 @@ export function AgentTrainingDialog({
         throw new Error('Failed to upload file');
       }
 
+      setUploadProgress(50);
+
       // Get the storage ID from the response
       const { storageId: finalStorageId } = await uploadResponse.json();
       const fileId = finalStorageId || storageId;
@@ -140,16 +147,27 @@ export function AgentTrainingDialog({
       toast.success('File uploaded successfully');
       setUploadedFileId(fileId);
       setUploadedFileName(file.name);
+      setUploadProgress(60);
 
       // Process the file to extract text
+      setProcessingStage('processing');
       toast.info('Processing file...');
+      
       const result = await processFile({
         fileId: fileId as any,
         fileName: file.name,
       });
 
+      setUploadProgress(90);
+
       if (result.success && result.text) {
         setNoteText(result.text);
+        setFileStats({
+          wordCount: result.wordCount,
+          charCount: result.charCount,
+        });
+        setUploadProgress(100);
+        setProcessingStage('complete');
         toast.success('File processed successfully');
         
         // Auto-fill title if empty
@@ -158,17 +176,18 @@ export function AgentTrainingDialog({
           setTitle(nameWithoutExt);
         }
       } else {
+        setProcessingStage('error');
         toast.error(result.error || 'Failed to process file');
         // Keep the file uploaded but show error
         setNoteText(`[File uploaded but processing failed: ${result.error}]\n\nPlease edit manually or re-upload.`);
       }
     } catch (error: any) {
       console.error('File upload error:', error);
+      setProcessingStage('error');
       toast.error(error.message || 'Failed to upload file');
       setUploadedFileId(null);
       setUploadedFileName('');
-    } finally {
-      setIsProcessingFile(false);
+      setUploadProgress(0);
     }
   };
 
@@ -216,6 +235,9 @@ export function AgentTrainingDialog({
       setNoteText("");
       setUploadedFileId(null);
       setUploadedFileName("");
+      setProcessingStage('idle');
+      setUploadProgress(0);
+      setFileStats(null);
     } catch (error: any) {
       toast.error(error?.message || "Failed to add training data");
     } finally {
@@ -244,6 +266,35 @@ export function AgentTrainingDialog({
       toast.success("Dataset unlinked successfully");
     } catch (error: any) {
       toast.error(error?.message || "Failed to unlink dataset");
+    }
+  };
+
+  const getProcessingIcon = () => {
+    switch (processingStage) {
+      case 'uploading':
+      case 'processing':
+        return <Loader2 className="h-4 w-4 animate-spin text-blue-500" />;
+      case 'complete':
+        return <CheckCircle className="h-4 w-4 text-green-500" />;
+      case 'error':
+        return <AlertCircle className="h-4 w-4 text-red-500" />;
+      default:
+        return null;
+    }
+  };
+
+  const getProcessingMessage = () => {
+    switch (processingStage) {
+      case 'uploading':
+        return 'Uploading file...';
+      case 'processing':
+        return 'Extracting text content...';
+      case 'complete':
+        return 'File processed successfully';
+      case 'error':
+        return 'Processing failed';
+      default:
+        return '';
     }
   };
 
@@ -348,21 +399,39 @@ export function AgentTrainingDialog({
                           handleFileUpload(file);
                         }
                       }}
-                      disabled={isProcessingFile}
+                      disabled={processingStage === 'uploading' || processingStage === 'processing'}
                     />
-                    {isProcessingFile && (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    )}
+                    {getProcessingIcon()}
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Supported formats: TXT, MD, PDF, DOC, DOCX (Max size: 10MB)
+                    Supported formats: TXT, MD, DOCX (Max size: 10MB)
                   </p>
-                  {uploadedFileName && (
-                    <Badge variant="secondary" className="mt-2">
-                      <FileText className="h-3 w-3 mr-1" />
-                      {uploadedFileName}
-                    </Badge>
+                  
+                  {/* Processing Progress */}
+                  {(processingStage === 'uploading' || processingStage === 'processing') && (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground">{getProcessingMessage()}</span>
+                        <span className="font-medium">{uploadProgress}%</span>
+                      </div>
+                      <Progress value={uploadProgress} className="h-2" />
+                    </div>
                   )}
+                  
+                  {uploadedFileName && (
+                    <div className="flex items-center gap-2">
+                      <Badge variant="secondary" className="mt-2">
+                        <FileText className="h-3 w-3 mr-1" />
+                        {uploadedFileName}
+                      </Badge>
+                      {fileStats && (
+                        <Badge variant="outline" className="mt-2">
+                          {fileStats.wordCount} words, {fileStats.charCount} chars
+                        </Badge>
+                      )}
+                    </div>
+                  )}
+                  
                   {noteText && (
                     <div className="mt-2">
                       <Label>Extracted Content Preview</Label>
@@ -383,7 +452,7 @@ export function AgentTrainingDialog({
 
               <Button 
                 onClick={handleCreateDataset} 
-                disabled={isSubmitting || isProcessingFile} 
+                disabled={isSubmitting || processingStage === 'uploading' || processingStage === 'processing'} 
                 className="w-full"
               >
                 {isSubmitting ? (
