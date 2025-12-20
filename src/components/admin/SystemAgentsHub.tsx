@@ -7,11 +7,16 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
-import { Bot, Zap, CheckCircle, XCircle, Search, Plus, Edit, Eye } from "lucide-react";
+import { Bot, Zap, CheckCircle, XCircle, Search, Plus, Edit, Eye, BookOpen } from "lucide-react";
+import { AgentCreateDialog } from "./AgentCreateDialog";
+import { AgentTrainingDialog } from "./AgentTrainingDialog";
 
 export function SystemAgentsHub() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTier, setSelectedTier] = useState<string>("");
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [trainingDialogOpen, setTrainingDialogOpen] = useState(false);
+  const [selectedAgent, setSelectedAgent] = useState<{ key: string; name: string } | null>(null);
 
   // Fetch system agents from agentCatalog (built-in agents)
   const catalogAgents = useQuery(api.aiAgents.adminListAgents as any, {
@@ -56,6 +61,11 @@ export function SystemAgentsHub() {
     }
   };
 
+  const handleOpenTraining = (agentKey: string, agentName: string) => {
+    setSelectedAgent({ key: agentKey, name: agentName });
+    setTrainingDialogOpen(true);
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -69,7 +79,7 @@ export function SystemAgentsHub() {
             Manage and configure built-in AI agents across the platform
           </p>
         </div>
-        <Button size="sm" variant="outline">
+        <Button size="sm" onClick={() => setCreateDialogOpen(true)}>
           <Plus className="h-4 w-4 mr-2" />
           Create Agent
         </Button>
@@ -195,19 +205,19 @@ export function SystemAgentsHub() {
                   size="sm"
                   variant="outline"
                   className="flex-1"
-                  onClick={() => toast.info("View details coming soon")}
+                  onClick={() => handleOpenTraining(agent.agent_key, agent.display_name || agent.agent_key)}
                 >
-                  <Eye className="h-3 w-3 mr-1" />
-                  View
+                  <BookOpen className="h-3 w-3 mr-1" />
+                  Training
                 </Button>
                 <Button
                   size="sm"
                   variant="outline"
                   className="flex-1"
-                  onClick={() => toast.info("Edit coming soon")}
+                  onClick={() => toast.info("View details coming soon")}
                 >
-                  <Edit className="h-3 w-3 mr-1" />
-                  Edit
+                  <Eye className="h-3 w-3 mr-1" />
+                  View
                 </Button>
                 <Button
                   size="sm"
@@ -235,6 +245,21 @@ export function SystemAgentsHub() {
             </p>
           </CardContent>
         </Card>
+      )}
+
+      {/* Dialogs */}
+      <AgentCreateDialog
+        open={createDialogOpen}
+        onOpenChange={setCreateDialogOpen}
+      />
+
+      {selectedAgent && (
+        <AgentTrainingDialog
+          open={trainingDialogOpen}
+          onOpenChange={setTrainingDialogOpen}
+          agentKey={selectedAgent.key}
+          agentName={selectedAgent.name}
+        />
       )}
     </div>
   );

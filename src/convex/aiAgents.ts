@@ -652,3 +652,6 @@ export const recordAgentExecution: any = mutation({
     return await (ctx as any).runMutation("agentPerformance:recordExecution" as any, args);
   },
 });
+
+// Export the new create function
+export { adminCreateAgent } from "./lib/aiAgents/create";

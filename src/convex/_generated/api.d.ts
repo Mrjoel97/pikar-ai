@@ -162,6 +162,7 @@ import type * as learningContent from "../learningContent.js";
 import type * as learningContentActions from "../learningContentActions.js";
 import type * as lib_aiAgents_admin from "../lib/aiAgents/admin.js";
 import type * as lib_aiAgents_config from "../lib/aiAgents/config.js";
+import type * as lib_aiAgents_create from "../lib/aiAgents/create.js";
 import type * as lib_aiAgents_datasets from "../lib/aiAgents/datasets.js";
 import type * as lib_aiAgents_publish from "../lib/aiAgents/publish.js";
 import type * as lib_aiAgents_training from "../lib/aiAgents/training.js";
@@ -462,6 +463,7 @@ declare const fullApi: ApiFromModules<{
   learningContentActions: typeof learningContentActions;
   "lib/aiAgents/admin": typeof lib_aiAgents_admin;
   "lib/aiAgents/config": typeof lib_aiAgents_config;
+  "lib/aiAgents/create": typeof lib_aiAgents_create;
   "lib/aiAgents/datasets": typeof lib_aiAgents_datasets;
   "lib/aiAgents/publish": typeof lib_aiAgents_publish;
   "lib/aiAgents/training": typeof lib_aiAgents_training;
