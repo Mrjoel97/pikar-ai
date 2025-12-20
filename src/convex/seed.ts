@@ -4,6 +4,7 @@ import { Id } from "./_generated/dataModel";
 import { action, mutation, internalMutation } from "./_generated/server";
 import { v } from "convex/values";
 import { api, internal } from "./_generated/api";
+import { AGENT_CATALOG_SEED } from "./data/agentCatalogSeed";
 
 export const run = action({
   args: {},
