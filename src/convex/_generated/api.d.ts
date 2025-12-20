@@ -179,6 +179,7 @@ import type * as oidcActions from "../oidcActions.js";
 import type * as onboarding from "../onboarding.js";
 import type * as openai from "../openai.js";
 import type * as openapi from "../openapi.js";
+import type * as orchestrationSeed from "../orchestrationSeed.js";
 import type * as passwordAuth from "../passwordAuth.js";
 import type * as passwordAuthActions from "../passwordAuthActions.js";
 import type * as passwordAuthData from "../passwordAuthData.js";
@@ -480,6 +481,7 @@ declare const fullApi: ApiFromModules<{
   onboarding: typeof onboarding;
   openai: typeof openai;
   openapi: typeof openapi;
+  orchestrationSeed: typeof orchestrationSeed;
   passwordAuth: typeof passwordAuth;
   passwordAuthActions: typeof passwordAuthActions;
   passwordAuthData: typeof passwordAuthData;

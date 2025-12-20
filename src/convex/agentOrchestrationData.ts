@@ -87,6 +87,187 @@ export const recordAgentExecution = internalMutation({
   },
 });
 
+// Parallel Orchestration CRUD
+export const createParallelOrchestration = internalMutation({
+  args: {
+    name: v.string(),
+    description: v.string(),
+    agents: v.array(v.object({
+      agentKey: v.string(),
+      mode: v.string(),
+      input: v.optional(v.string()),
+    })),
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db.insert("parallelOrchestrations", {
+      ...args,
+      isActive: false,
+      createdAt: Date.now(),
+    });
+  },
+});
+
+export const listParallelOrchestrations = internalQuery({
+  args: {},
+  handler: async (ctx) => {
+    return await ctx.db.query("parallelOrchestrations").collect();
+  },
+});
+
+export const updateParallelOrchestration = internalMutation({
+  args: {
+    orchestrationId: v.id("parallelOrchestrations"),
+    name: v.string(),
+    description: v.string(),
+    agents: v.array(v.object({
+      agentKey: v.string(),
+      mode: v.string(),
+      input: v.optional(v.string()),
+    })),
+  },
+  handler: async (ctx, args) => {
+    const { orchestrationId, ...updates } = args;
+    await ctx.db.patch(orchestrationId, { ...updates, updatedAt: Date.now() });
+  },
+});
+
+export const deleteParallelOrchestration = internalMutation({
+  args: { orchestrationId: v.id("parallelOrchestrations") },
+  handler: async (ctx, args) => {
+    await ctx.db.delete(args.orchestrationId);
+  },
+});
+
+export const toggleParallelOrchestration = internalMutation({
+  args: {
+    orchestrationId: v.id("parallelOrchestrations"),
+    isActive: v.boolean(),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.orchestrationId, { isActive: args.isActive });
+  },
+});
+
+// Chain Orchestration CRUD
+export const createChainOrchestration = internalMutation({
+  args: {
+    name: v.string(),
+    description: v.string(),
+    chain: v.array(v.object({
+      agentKey: v.string(),
+      mode: v.string(),
+      inputTransform: v.optional(v.string()),
+    })),
+    initialInput: v.string(),
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db.insert("chainOrchestrations", {
+      ...args,
+      isActive: false,
+      createdAt: Date.now(),
+    });
+  },
+});
+
+export const listChainOrchestrations = internalQuery({
+  args: {},
+  handler: async (ctx) => {
+    return await ctx.db.query("chainOrchestrations").collect();
+  },
+});
+
+export const updateChainOrchestration = internalMutation({
+  args: {
+    orchestrationId: v.id("chainOrchestrations"),
+    name: v.string(),
+    description: v.string(),
+    chain: v.array(v.object({
+      agentKey: v.string(),
+      mode: v.string(),
+      inputTransform: v.optional(v.string()),
+    })),
+    initialInput: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const { orchestrationId, ...updates } = args;
+    await ctx.db.patch(orchestrationId, { ...updates, updatedAt: Date.now() });
+  },
+});
+
+export const deleteChainOrchestration = internalMutation({
+  args: { orchestrationId: v.id("chainOrchestrations") },
+  handler: async (ctx, args) => {
+    await ctx.db.delete(args.orchestrationId);
+  },
+});
+
+export const toggleChainOrchestration = internalMutation({
+  args: {
+    orchestrationId: v.id("chainOrchestrations"),
+    isActive: v.boolean(),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.orchestrationId, { isActive: args.isActive });
+  },
+});
+
+// Consensus Orchestration CRUD
+export const createConsensusOrchestration = internalMutation({
+  args: {
+    name: v.string(),
+    description: v.string(),
+    agents: v.array(v.string()),
+    question: v.string(),
+    consensusThreshold: v.number(),
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db.insert("consensusOrchestrations", {
+      ...args,
+      isActive: false,
+      createdAt: Date.now(),
+    });
+  },
+});
+
+export const listConsensusOrchestrations = internalQuery({
+  args: {},
+  handler: async (ctx) => {
+    return await ctx.db.query("consensusOrchestrations").collect();
+  },
+});
+
+export const updateConsensusOrchestration = internalMutation({
+  args: {
+    orchestrationId: v.id("consensusOrchestrations"),
+    name: v.string(),
+    description: v.string(),
+    agents: v.array(v.string()),
+    question: v.string(),
+    consensusThreshold: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const { orchestrationId, ...updates } = args;
+    await ctx.db.patch(orchestrationId, { ...updates, updatedAt: Date.now() });
+  },
+});
+
+export const deleteConsensusOrchestration = internalMutation({
+  args: { orchestrationId: v.id("consensusOrchestrations") },
+  handler: async (ctx, args) => {
+    await ctx.db.delete(args.orchestrationId);
+  },
+});
+
+export const toggleConsensusOrchestration = internalMutation({
+  args: {
+    orchestrationId: v.id("consensusOrchestrations"),
+    isActive: v.boolean(),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.orchestrationId, { isActive: args.isActive });
+  },
+});
+
 /**
  * Orchestration Analytics: Get performance metrics
  */

@@ -655,3 +655,216 @@ export const recordAgentExecution: any = mutation({
 
 // Export the new create function
 export { adminCreateAgent } from "./lib/aiAgents/create";
+
+// Orchestration public wrappers
+export const createParallelOrchestration = mutation({
+  args: {
+    name: v.string(),
+    description: v.string(),
+    agents: v.array(v.object({
+      agentKey: v.string(),
+      mode: v.string(),
+      input: v.optional(v.string()),
+    })),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+    
+    return await (ctx as any).runMutation("agentOrchestrationData:createParallelOrchestration", args);
+  },
+});
+
+export const listParallelOrchestrations = query({
+  args: {},
+  handler: async (ctx) => {
+    return await (ctx as any).runQuery("agentOrchestrationData:listParallelOrchestrations", {});
+  },
+});
+
+export const updateParallelOrchestration = mutation({
+  args: {
+    orchestrationId: v.id("parallelOrchestrations"),
+    name: v.string(),
+    description: v.string(),
+    agents: v.array(v.object({
+      agentKey: v.string(),
+      mode: v.string(),
+      input: v.optional(v.string()),
+    })),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+    
+    return await (ctx as any).runMutation("agentOrchestrationData:updateParallelOrchestration", args);
+  },
+});
+
+export const deleteParallelOrchestration = mutation({
+  args: { orchestrationId: v.id("parallelOrchestrations") },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+    
+    return await (ctx as any).runMutation("agentOrchestrationData:deleteParallelOrchestration", args);
+  },
+});
+
+export const toggleParallelOrchestration = mutation({
+  args: {
+    orchestrationId: v.id("parallelOrchestrations"),
+    isActive: v.boolean(),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+    
+    return await (ctx as any).runMutation("agentOrchestrationData:toggleParallelOrchestration", args);
+  },
+});
+
+// Chain orchestration wrappers
+export const createChainOrchestration = mutation({
+  args: {
+    name: v.string(),
+    description: v.string(),
+    chain: v.array(v.object({
+      agentKey: v.string(),
+      mode: v.string(),
+      inputTransform: v.optional(v.string()),
+    })),
+    initialInput: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+    
+    return await (ctx as any).runMutation("agentOrchestrationData:createChainOrchestration", args);
+  },
+});
+
+export const listChainOrchestrations = query({
+  args: {},
+  handler: async (ctx) => {
+    return await (ctx as any).runQuery("agentOrchestrationData:listChainOrchestrations", {});
+  },
+});
+
+export const updateChainOrchestration = mutation({
+  args: {
+    orchestrationId: v.id("chainOrchestrations"),
+    name: v.string(),
+    description: v.string(),
+    chain: v.array(v.object({
+      agentKey: v.string(),
+      mode: v.string(),
+      inputTransform: v.optional(v.string()),
+    })),
+    initialInput: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+    
+    return await (ctx as any).runMutation("agentOrchestrationData:updateChainOrchestration", args);
+  },
+});
+
+export const deleteChainOrchestration = mutation({
+  args: { orchestrationId: v.id("chainOrchestrations") },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+    
+    return await (ctx as any).runMutation("agentOrchestrationData:deleteChainOrchestration", args);
+  },
+});
+
+export const toggleChainOrchestration = mutation({
+  args: {
+    orchestrationId: v.id("chainOrchestrations"),
+    isActive: v.boolean(),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+    
+    return await (ctx as any).runMutation("agentOrchestrationData:toggleChainOrchestration", args);
+  },
+});
+
+// Consensus orchestration wrappers
+export const createConsensusOrchestration = mutation({
+  args: {
+    name: v.string(),
+    description: v.string(),
+    agents: v.array(v.string()),
+    question: v.string(),
+    consensusThreshold: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+    
+    return await (ctx as any).runMutation("agentOrchestrationData:createConsensusOrchestration", args);
+  },
+});
+
+export const listConsensusOrchestrations = query({
+  args: {},
+  handler: async (ctx) => {
+    return await (ctx as any).runQuery("agentOrchestrationData:listConsensusOrchestrations", {});
+  },
+});
+
+export const updateConsensusOrchestration = mutation({
+  args: {
+    orchestrationId: v.id("consensusOrchestrations"),
+    name: v.string(),
+    description: v.string(),
+    agents: v.array(v.string()),
+    question: v.string(),
+    consensusThreshold: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+    
+    return await (ctx as any).runMutation("agentOrchestrationData:updateConsensusOrchestration", args);
+  },
+});
+
+export const deleteConsensusOrchestration = mutation({
+  args: { orchestrationId: v.id("consensusOrchestrations") },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+    
+    return await (ctx as any).runMutation("agentOrchestrationData:deleteConsensusOrchestration", args);
+  },
+});
+
+export const toggleConsensusOrchestration = mutation({
+  args: {
+    orchestrationId: v.id("consensusOrchestrations"),
+    isActive: v.boolean(),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+    
+    return await (ctx as any).runMutation("agentOrchestrationData:toggleConsensusOrchestration", args);
+  },
+});
+
+// Seed orchestrations
+export const seedOrchestrations = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+    
+    return await (ctx as any).runMutation("orchestrationSeed:seedOrchestrations", {});
+  },
+});

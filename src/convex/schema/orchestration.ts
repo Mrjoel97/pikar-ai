@@ -46,4 +46,42 @@ export const orchestrationSchema = {
     .index("by_orchestration", ["orchestrationId"])
     .index("by_agent", ["agentKey"])
     .index("by_status", ["status"]),
+
+  parallelOrchestrations: defineTable({
+    name: v.string(),
+    description: v.string(),
+    agents: v.array(v.object({
+      agentKey: v.string(),
+      mode: v.string(),
+      input: v.optional(v.string()),
+    })),
+    isActive: v.boolean(),
+    createdAt: v.number(),
+    updatedAt: v.optional(v.number()),
+  }),
+
+  chainOrchestrations: defineTable({
+    name: v.string(),
+    description: v.string(),
+    chain: v.array(v.object({
+      agentKey: v.string(),
+      mode: v.string(),
+      inputTransform: v.optional(v.string()),
+    })),
+    initialInput: v.string(),
+    isActive: v.boolean(),
+    createdAt: v.number(),
+    updatedAt: v.optional(v.number()),
+  }),
+
+  consensusOrchestrations: defineTable({
+    name: v.string(),
+    description: v.string(),
+    agents: v.array(v.string()),
+    question: v.string(),
+    consensusThreshold: v.number(),
+    isActive: v.boolean(),
+    createdAt: v.number(),
+    updatedAt: v.optional(v.number()),
+  }),
 };
