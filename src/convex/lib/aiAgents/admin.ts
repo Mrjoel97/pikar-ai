@@ -112,7 +112,15 @@ export async function adminUpsertAgent(ctx: any, args: any) {
   };
 
   let agentId: string;
+  const isUpdate = !!existing;
+  
   if (existing) {
+    // Save version snapshot before updating
+    await (ctx as any).runMutation("aiAgents:saveAgentVersionInternal" as any, {
+      agent_key: args.agent_key,
+      note: "Auto-saved before update",
+    });
+    
     await ctx.db.patch(existing._id, agentData);
     agentId = existing._id;
   } else {
@@ -122,8 +130,33 @@ export async function adminUpsertAgent(ctx: any, args: any) {
     });
   }
 
-  // Audit logging removed to avoid TypeScript type instantiation issues
-  // Context: admin_update_agent or admin_create_agent, agent_key, display_name, active
+  // Audit logging
+  try {
+    await (ctx as any).runMutation("audit:write" as any, {
+      businessId: args.businessId || ("system" as any),
+      action: isUpdate ? "admin_update_agent" : "admin_create_agent",
+      entityType: "agent",
+      entityId: args.agent_key,
+      details: {
+        agent_key: args.agent_key,
+        display_name: args.display_name,
+        active: args.active,
+        changes: isUpdate ? {
+          display_name: existing?.display_name !== args.display_name,
+          short_desc: existing?.short_desc !== args.short_desc,
+          long_desc: existing?.long_desc !== args.long_desc,
+          default_model: existing?.default_model !== args.default_model,
+          capabilities: JSON.stringify(existing?.capabilities) !== JSON.stringify(args.capabilities),
+          tier_restrictions: JSON.stringify(existing?.tier_restrictions) !== JSON.stringify(args.tier_restrictions),
+          confidence_hint: existing?.confidence_hint !== args.confidence_hint,
+          active: existing?.active !== args.active,
+        } : undefined,
+      },
+    });
+  } catch (e) {
+    // Don't fail the operation if audit logging fails
+    console.error("Audit logging failed:", e);
+  }
 
   return { agentId, created: !existing };
 }
@@ -139,13 +172,29 @@ export async function adminToggleAgent(ctx: any, args: any) {
 
   if (!agent) throw new Error("Agent not found");
 
+  const previousActive = agent.active;
+  
   await ctx.db.patch(agent._id, {
     active: args.active,
     updatedAt: Date.now(),
   });
 
-  // Audit logging removed to avoid TypeScript type instantiation issues
-  // Context: admin_toggle_agent, agent_key, active, previous_active
+  // Audit logging
+  try {
+    await (ctx as any).runMutation("audit:write" as any, {
+      businessId: "system" as any,
+      action: "admin_toggle_agent",
+      entityType: "agent",
+      entityId: args.agent_key,
+      details: {
+        agent_key: args.agent_key,
+        active: args.active,
+        previous_active: previousActive,
+      },
+    });
+  } catch (e) {
+    console.error("Audit logging failed:", e);
+  }
 
   return { success: true };
 }
@@ -246,6 +295,23 @@ export async function adminDeleteAgent(ctx: any, args: any) {
     active: false,
     updatedAt: Date.now(),
   });
+
+  // Audit logging
+  try {
+    await (ctx as any).runMutation("audit:write" as any, {
+      businessId: "system" as any,
+      action: "admin_delete_agent",
+      entityType: "agent",
+      entityId: args.agent_key,
+      details: {
+        agent_key: args.agent_key,
+        display_name: agent.display_name,
+        soft_delete: true,
+      },
+    });
+  } catch (e) {
+    console.error("Audit logging failed:", e);
+  }
 
   return { success: true, deleted: false, deactivated: true };
 }

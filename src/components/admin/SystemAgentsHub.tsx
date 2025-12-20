@@ -7,10 +7,11 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
-import { Bot, Zap, CheckCircle, XCircle, Search, Plus, Edit, Eye, BookOpen, Trash2 } from "lucide-react";
+import { Bot, Zap, CheckCircle, XCircle, Search, Plus, Edit, Eye, BookOpen, Trash2, History } from "lucide-react";
 import { AgentCreateDialog } from "./AgentCreateDialog";
 import { AgentEditDialog } from "./AgentEditDialog";
 import { AgentTrainingDialog } from "./AgentTrainingDialog";
+import { AgentVersionsDrawer } from "./AgentVersionsDrawer";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -30,6 +31,8 @@ export function SystemAgentsHub() {
   const [trainingDialogOpen, setTrainingDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedAgent, setSelectedAgent] = useState<{ key: string; name: string } | null>(null);
+  const [versionsDrawerOpen, setVersionsDrawerOpen] = useState(false);
+  const [selectedAgentForVersions, setSelectedAgentForVersions] = useState<string | null>(null);
 
   const catalogAgents = useQuery(api.aiAgents.adminListAgents as any, {
     activeOnly: false,
@@ -49,6 +52,11 @@ export function SystemAgentsHub() {
 
   const toggleAgent = useMutation(api.aiAgents.adminToggleAgent as any);
   const deleteAgent = useMutation(api.aiAgents.adminDeleteAgent as any);
+  const versions = useQuery(
+    api.aiAgents.adminListAgentVersions,
+    selectedAgentForVersions ? { agent_key: selectedAgentForVersions, limit: 20 } : "skip"
+  );
+  const rollbackToVersion = useMutation(api.aiAgents.adminRollbackAgentToVersion);
 
   const filteredAgents = (catalogAgents || []).filter((agent) => {
     const matchesSearch = searchQuery
@@ -86,6 +94,26 @@ export function SystemAgentsHub() {
   const handleOpenDelete = (agentKey: string, agentName: string) => {
     setSelectedAgent({ key: agentKey, name: agentName });
     setDeleteDialogOpen(true);
+  };
+
+  const handleOpenVersions = (agentKey: string) => {
+    setSelectedAgentForVersions(agentKey);
+    setVersionsDrawerOpen(true);
+  };
+
+  const handleRestoreVersion = async (versionId: string) => {
+    if (!selectedAgentForVersions) return;
+    
+    try {
+      await rollbackToVersion({ 
+        agent_key: selectedAgentForVersions, 
+        versionId: versionId as any 
+      });
+      toast.success("Agent restored to selected version");
+      setVersionsDrawerOpen(false);
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to restore version");
+    }
   };
 
   const handleConfirmDelete = async () => {
@@ -247,6 +275,14 @@ export function SystemAgentsHub() {
                 <Button
                   size="sm"
                   variant="outline"
+                  onClick={() => handleOpenVersions(agent.agent_key)}
+                >
+                  <History className="h-3 w-3 mr-1" />
+                  Versions
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
                   onClick={() => handleOpenTraining(agent.agent_key, agent.display_name || agent.agent_key)}
                 >
                   <BookOpen className="h-3 w-3 mr-1" />
@@ -263,6 +299,7 @@ export function SystemAgentsHub() {
                   size="sm"
                   variant="destructive"
                   onClick={() => handleOpenDelete(agent.agent_key, agent.display_name || agent.agent_key)}
+                  className="col-span-2"
                 >
                   <Trash2 className="h-3 w-3 mr-1" />
                   Delete
@@ -327,6 +364,16 @@ export function SystemAgentsHub() {
             </AlertDialogContent>
           </AlertDialog>
         </>
+      )}
+
+      {selectedAgentForVersions && (
+        <AgentVersionsDrawer
+          open={versionsDrawerOpen}
+          onOpenChange={setVersionsDrawerOpen}
+          agentKey={selectedAgentForVersions}
+          versions={versions || []}
+          onRestore={handleRestoreVersion}
+        />
       )}
     </div>
   );
