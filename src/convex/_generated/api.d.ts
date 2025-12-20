@@ -14,6 +14,8 @@ import type * as admin from "../admin.js";
 import type * as adminAssistant from "../adminAssistant.js";
 import type * as adminAuth from "../adminAuth.js";
 import type * as adminAuthData from "../adminAuthData.js";
+import type * as adminUsers from "../adminUsers.js";
+import type * as adminUsersActions from "../adminUsersActions.js";
 import type * as agentDatasets from "../agentDatasets.js";
 import type * as agentMemory from "../agentMemory.js";
 import type * as agentPerformance from "../agentPerformance.js";
@@ -306,6 +308,8 @@ declare const fullApi: ApiFromModules<{
   adminAssistant: typeof adminAssistant;
   adminAuth: typeof adminAuth;
   adminAuthData: typeof adminAuthData;
+  adminUsers: typeof adminUsers;
+  adminUsersActions: typeof adminUsersActions;
   agentDatasets: typeof agentDatasets;
   agentMemory: typeof agentMemory;
   agentPerformance: typeof agentPerformance;

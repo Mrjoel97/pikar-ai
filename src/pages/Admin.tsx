@@ -21,6 +21,7 @@ import { EnvironmentSettings } from "@/components/admin/EnvironmentSettings";
 import { SocialApiSettings } from "@/components/admin/SocialApiSettings";
 import DemoVideoManager from "@/components/admin/DemoVideoManager";
 import { DocsContentManager } from "@/components/admin/DocsContentManager";
+import { UserManagement } from "@/components/admin/UserManagement";
 
 // Add local types for transcript steps
 export default function AdminPage() {
@@ -1328,6 +1329,9 @@ export default function AdminPage() {
           adminSessionValid={isAdminSession}
           adminToken={adminToken}
         />
+
+        {/* User Management Section */}
+        <UserManagement />
 
         {/* System Agents placeholder section (training studio to be built in next phase) */}
         <Card>
