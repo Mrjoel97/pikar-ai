@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation, useQuery, useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { GitBranch, Plus, Trash2, Save, Edit2, ArrowDown } from "lucide-react";
+import { GitBranch, Plus, Trash2, Save, Edit2, ArrowDown, Play, Loader2 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 type ChainStep = {
@@ -34,12 +34,14 @@ export function ChainOrchestrationBuilder() {
   const [newAgentKey, setNewAgentKey] = useState("");
   const [newAgentMode, setNewAgentMode] = useState("proposeNextAction");
   const [newTransform, setNewTransform] = useState("");
+  const [executing, setExecuting] = useState<string | null>(null);
 
   const orchestrations = useQuery(api.agentOrchestrationData.listChainOrchestrations as any) as ChainOrchestration[] | undefined;
   const createOrchestration = useMutation(api.agentOrchestrationData.createChainOrchestration as any);
   const updateOrchestration = useMutation(api.agentOrchestrationData.updateChainOrchestration as any);
   const deleteOrchestration = useMutation(api.agentOrchestrationData.deleteChainOrchestration as any);
   const toggleOrchestration = useMutation(api.agentOrchestrationData.toggleChainOrchestration as any);
+  const chainAgents = useAction(api.agentOrchestration.chainAgents);
 
   const systemAgents = useQuery(api.aiAgents.adminListAgents as any, { activeOnly: true, limit: 50 }) as Array<{ agent_key: string; display_name: string }> | undefined;
 
@@ -114,6 +116,27 @@ export function ChainOrchestrationBuilder() {
       toast.success(`Chain ${!currentStatus ? "activated" : "deactivated"}`);
     } catch (e: any) {
       toast.error(e?.message || "Failed to toggle");
+    }
+  };
+
+  const handleExecute = async (orch: ChainOrchestration) => {
+    setExecuting(orch._id);
+    try {
+      const result = await chainAgents({
+        chain: orch.chain,
+        initialInput: orch.initialInput,
+        businessId: "placeholder" as any, // TODO: Get from context
+      });
+      
+      if (result.success) {
+        toast.success(`Chain executed successfully in ${result.totalDuration}ms`);
+      } else {
+        toast.error(`Chain failed at step ${result.failedAt + 1}`);
+      }
+    } catch (e: any) {
+      toast.error(e?.message || "Execution failed");
+    } finally {
+      setExecuting(null);
     }
   };
 
@@ -269,6 +292,18 @@ export function ChainOrchestrationBuilder() {
                   </div>
                 </div>
                 <div className="flex gap-2">
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    onClick={() => handleExecute(orch)}
+                    disabled={!orch.isActive || executing === orch._id}
+                  >
+                    {executing === orch._id ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : (
+                      <Play className="h-3 w-3" />
+                    )}
+                  </Button>
                   <Button size="sm" variant="outline" onClick={() => handleEdit(orch)}>
                     <Edit2 className="h-3 w-3" />
                   </Button>

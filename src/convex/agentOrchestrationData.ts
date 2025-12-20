@@ -268,6 +268,49 @@ export const toggleConsensusOrchestration = internalMutation({
   },
 });
 
+// Add execution status tracking
+export const getOrchestrationExecutions = internalQuery({
+  args: {
+    orchestrationId: v.optional(v.id("agentOrchestrations")),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    if (args.orchestrationId) {
+      return await ctx.db
+        .query("agentExecutions")
+        .withIndex("by_orchestration", (q) => q.eq("orchestrationId", args.orchestrationId))
+        .order("desc")
+        .take(args.limit || 50);
+    }
+    
+    return await ctx.db
+      .query("agentExecutions")
+      .order("desc")
+      .take(args.limit || 100);
+  },
+});
+
+// Get recent orchestration runs with status
+export const getRecentOrchestrationRuns = internalQuery({
+  args: {
+    type: v.optional(v.union(v.literal("parallel"), v.literal("chain"), v.literal("consensus"))),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    let query = ctx.db.query("agentOrchestrations");
+    
+    if (args.type) {
+      query = query.withIndex("by_type", (q) => q.eq("type", args.type));
+    }
+    
+    const runs = await query
+      .order("desc")
+      .take(args.limit || 20);
+    
+    return runs;
+  },
+});
+
 /**
  * Orchestration Analytics: Get performance metrics
  */

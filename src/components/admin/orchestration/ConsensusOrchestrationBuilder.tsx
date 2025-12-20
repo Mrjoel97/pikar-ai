@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation, useQuery, useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
 import { toast } from "sonner";
-import { Users, Plus, Trash2, Save, Edit2 } from "lucide-react";
+import { Users, Plus, Trash2, Save, Edit2, Play, Loader2 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 type ConsensusOrchestration = {
@@ -29,12 +29,14 @@ export function ConsensusOrchestrationBuilder() {
   const [agents, setAgents] = useState<string[]>([]);
   const [threshold, setThreshold] = useState(0.6);
   const [newAgentKey, setNewAgentKey] = useState("");
+  const [executing, setExecuting] = useState<string | null>(null);
 
   const orchestrations = useQuery(api.agentOrchestrationData.listConsensusOrchestrations as any) as ConsensusOrchestration[] | undefined;
   const createOrchestration = useMutation(api.agentOrchestrationData.createConsensusOrchestration as any);
   const updateOrchestration = useMutation(api.agentOrchestrationData.updateConsensusOrchestration as any);
   const deleteOrchestration = useMutation(api.agentOrchestrationData.deleteConsensusOrchestration as any);
   const toggleOrchestration = useMutation(api.agentOrchestrationData.toggleConsensusOrchestration as any);
+  const resolveWithConsensus = useAction(api.agentOrchestration.resolveWithConsensus);
 
   const systemAgents = useQuery(api.aiAgents.adminListAgents as any, { activeOnly: true, limit: 50 }) as Array<{ agent_key: string; display_name: string }> | undefined;
 
@@ -117,6 +119,28 @@ export function ConsensusOrchestrationBuilder() {
       toast.success(`Consensus ${!currentStatus ? "activated" : "deactivated"}`);
     } catch (e: any) {
       toast.error(e?.message || "Failed to toggle");
+    }
+  };
+
+  const handleExecute = async (orch: ConsensusOrchestration) => {
+    setExecuting(orch._id);
+    try {
+      const result = await resolveWithConsensus({
+        agents: orch.agents,
+        question: orch.question,
+        businessId: "placeholder" as any, // TODO: Get from context
+        consensusThreshold: orch.consensusThreshold,
+      });
+      
+      if (result.hasConsensus) {
+        toast.success(`Consensus reached! Score: ${Math.round(result.consensusScore * 100)}%`);
+      } else {
+        toast.warning(`No consensus reached. Score: ${Math.round(result.consensusScore * 100)}%`);
+      }
+    } catch (e: any) {
+      toast.error(e?.message || "Execution failed");
+    } finally {
+      setExecuting(null);
     }
   };
 
@@ -252,6 +276,18 @@ export function ConsensusOrchestrationBuilder() {
                   </div>
                 </div>
                 <div className="flex gap-2">
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    onClick={() => handleExecute(orch)}
+                    disabled={!orch.isActive || executing === orch._id}
+                  >
+                    {executing === orch._id ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : (
+                      <Play className="h-3 w-3" />
+                    )}
+                  </Button>
                   <Button size="sm" variant="outline" onClick={() => handleEdit(orch)}>
                     <Edit2 className="h-3 w-3" />
                   </Button>

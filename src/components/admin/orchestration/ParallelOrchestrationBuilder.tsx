@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation, useQuery, useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Zap, Plus, Trash2, Play, Save, Edit2 } from "lucide-react";
+import { Zap, Plus, Trash2, Play, Save, Edit2, Loader2 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 type AgentConfig = {
@@ -31,12 +31,14 @@ export function ParallelOrchestrationBuilder() {
   const [agents, setAgents] = useState<AgentConfig[]>([]);
   const [newAgentKey, setNewAgentKey] = useState("");
   const [newAgentMode, setNewAgentMode] = useState("proposeNextAction");
+  const [executing, setExecuting] = useState<string | null>(null);
 
   const orchestrations = useQuery(api.agentOrchestrationData.listParallelOrchestrations as any) as ParallelOrchestration[] | undefined;
   const createOrchestration = useMutation(api.agentOrchestrationData.createParallelOrchestration as any);
   const updateOrchestration = useMutation(api.agentOrchestrationData.updateParallelOrchestration as any);
   const deleteOrchestration = useMutation(api.agentOrchestrationData.deleteParallelOrchestration as any);
   const toggleOrchestration = useMutation(api.agentOrchestrationData.toggleParallelOrchestration as any);
+  const executeParallel = useAction(api.agentOrchestration.executeParallel);
 
   const systemAgents = useQuery(api.aiAgents.adminListAgents as any, { activeOnly: true, limit: 50 }) as Array<{ agent_key: string; display_name: string }> | undefined;
 
@@ -108,6 +110,24 @@ export function ParallelOrchestrationBuilder() {
       toast.success(`Orchestration ${!currentStatus ? "activated" : "deactivated"}`);
     } catch (e: any) {
       toast.error(e?.message || "Failed to toggle");
+    }
+  };
+
+  const handleExecute = async (orch: ParallelOrchestration) => {
+    setExecuting(orch._id);
+    try {
+      // Get a business ID (in real app, this would come from context)
+      const result = await executeParallel({
+        agents: orch.agents,
+        businessId: "placeholder" as any, // TODO: Get from context
+        orchestrationId: orch._id,
+      });
+      
+      toast.success(`Executed successfully! Success rate: ${Math.round(result.successRate * 100)}%`);
+    } catch (e: any) {
+      toast.error(e?.message || "Execution failed");
+    } finally {
+      setExecuting(null);
     }
   };
 
@@ -233,6 +253,18 @@ export function ParallelOrchestrationBuilder() {
                   </div>
                 </div>
                 <div className="flex gap-2">
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    onClick={() => handleExecute(orch)}
+                    disabled={!orch.isActive || executing === orch._id}
+                  >
+                    {executing === orch._id ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : (
+                      <Play className="h-3 w-3" />
+                    )}
+                  </Button>
                   <Button size="sm" variant="outline" onClick={() => handleEdit(orch)}>
                     <Edit2 className="h-3 w-3" />
                   </Button>
