@@ -177,10 +177,9 @@ export function AgentTrainingDialog({
                     variant={sourceType === "file" ? "default" : "outline"}
                     onClick={() => setSourceType("file")}
                     className="flex-1"
-                    disabled
                   >
                     <Upload className="h-4 w-4 mr-2" />
-                    File (Coming Soon)
+                    File
                   </Button>
                 </div>
               </div>
@@ -207,6 +206,53 @@ export function AgentTrainingDialog({
                     onChange={(e) => setNoteText(e.target.value)}
                     rows={10}
                   />
+                </div>
+              )}
+
+              {sourceType === "file" && (
+                <div className="space-y-2">
+                  <Label htmlFor="fileUpload">Upload File *</Label>
+                  <Input
+                    id="fileUpload"
+                    type="file"
+                    accept=".txt,.pdf,.doc,.docx,.md"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        toast.info(`File selected: ${file.name}. Processing...`);
+                        // TODO: Implement file upload to Convex storage
+                        // For now, read as text if it's a text file
+                        if (file.type.startsWith('text/') || file.name.endsWith('.txt') || file.name.endsWith('.md')) {
+                          const reader = new FileReader();
+                          reader.onload = (event) => {
+                            const text = event.target?.result as string;
+                            setNoteText(text);
+                            toast.success('File content loaded');
+                          };
+                          reader.onerror = () => {
+                            toast.error('Failed to read file');
+                          };
+                          reader.readAsText(file);
+                        } else {
+                          toast.warning('PDF and DOC files will be supported soon. Please use text files for now.');
+                        }
+                      }
+                    }}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Supported formats: TXT, MD (PDF and DOC processing coming soon)
+                  </p>
+                  {noteText && (
+                    <div className="mt-2">
+                      <Label>File Content Preview</Label>
+                      <Textarea
+                        value={noteText}
+                        onChange={(e) => setNoteText(e.target.value)}
+                        rows={8}
+                        className="mt-1"
+                      />
+                    </div>
+                  )}
                 </div>
               )}
 
