@@ -111,6 +111,49 @@ export const envStatus = query({
   },
 });
 
+export const testResendKey = query({
+  args: {},
+  handler: async (ctx) => {
+    const key = process.env.RESEND_API_KEY;
+    if (!key) {
+      return { success: false, message: "RESEND_API_KEY not configured" };
+    }
+    // Basic validation - key should start with "re_"
+    if (!key.startsWith("re_")) {
+      return { success: false, message: "Invalid Resend API key format" };
+    }
+    return { success: true, message: "Resend API key is configured and format is valid" };
+  },
+});
+
+export const testPublicBaseUrl = query({
+  args: {},
+  handler: async (ctx) => {
+    const url = process.env.VITE_PUBLIC_BASE_URL;
+    if (!url) {
+      return { success: false, message: "VITE_PUBLIC_BASE_URL not configured" };
+    }
+    // Basic URL validation
+    try {
+      const parsed = new URL(url.startsWith("http") ? url : `https://${url}`);
+      return { success: true, message: `Public Base URL is configured: ${parsed.href}` };
+    } catch {
+      return { success: false, message: "Invalid URL format" };
+    }
+  },
+});
+
+export const getStripeConfig = query({
+  args: {},
+  handler: async (ctx) => {
+    return {
+      hasPublishableKey: !!process.env.STRIPE_PUBLISHABLE_KEY,
+      hasSecretKey: !!process.env.STRIPE_SECRET_KEY,
+      hasWebhookSecret: !!process.env.STRIPE_WEBHOOK_SECRET,
+    };
+  },
+});
+
 export const systemHealth = query({
   args: {},
   handler: async (ctx) => {
