@@ -28,6 +28,9 @@ import { PendingSeniorRequestsPanel } from "@/components/admin/PendingSeniorRequ
 import { AdministratorsPanel } from "@/components/admin/AdministratorsPanel";
 import { KpiSnapshot } from "@/components/admin/KpiSnapshot";
 import { FeatureFlagsPanel } from "@/components/admin/FeatureFlagsPanel";
+import { ApiKeysPanel } from "@/components/admin/ApiKeysPanel";
+import { BillingUsagePanel } from "@/components/admin/BillingUsagePanel";
+import { CustomAgentsPanel } from "@/components/admin/CustomAgentsPanel";
 
 // Add local types for transcript steps
 export default function AdminPage() {
@@ -159,11 +162,6 @@ export default function AdminPage() {
     | undefined;
 
   // Add: API Keys panel state & operations
-  const apiKeys = useQuery(
-    api.admin.listApiKeys as any,
-    selectedTenantId ? { tenantId: selectedTenantId } : undefined
-  ) as Array<{ _id: string; name: string; scopes: string[]; createdAt: number; revokedAt?: number }> | undefined;
-
   const createApiKey = useMutation(api.admin.createApiKey as any);
   const revokeApiKey = useMutation(api.admin.revokeApiKey as any);
   const [newKeyName, setNewKeyName] = useState<string>("");
@@ -429,258 +427,18 @@ export default function AdminPage() {
           onSelectTenant={setSelectedTenantId}
         />
 
-        {/* API Keys Panel (generate/revoke) */}
-        <Card>
-          <CardHeader>
-            <CardTitle id="section-api-keys">API Keys</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <p className="text-sm text-muted-foreground">
-              Keys are scoped to the selected tenant. New keys are shown once; the secret cannot be retrieved again.
-            </p>
+        {/* Replace inline API Keys Panel with component */}
+        <ApiKeysPanel
+          selectedTenantId={selectedTenantId}
+          tenants={tenants}
+          onSelectTenant={setSelectedTenantId}
+        />
 
-            <div className="grid md:grid-cols-3 gap-3">
-              <div className="space-y-1.5">
-                <div className="text-sm font-medium">Tenant</div>
-                <select
-                  className="h-9 rounded-md border bg-background px-3 text-sm"
-                  value={selectedTenantId}
-                  onChange={(e) => setSelectedTenantId(e.target.value)}
-                >
-                  <option value="">Select a tenant</option>
-                  {(tenants || []).map((t) => (
-                    <option key={t._id} value={t._id}>
-                      {t.name || t._id}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="space-y-1.5">
-                <div className="text-sm font-medium">Key Name</div>
-                <Input
-                  placeholder="Server Key"
-                  value={newKeyName}
-                  onChange={(e) => setNewKeyName(e.target.value)}
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <div className="text-sm font-medium">Scopes (comma-separated)</div>
-                <Input
-                  placeholder="admin:read,admin:write"
-                  value={newKeyScopes}
-                  onChange={(e) => setNewKeyScopes(e.target.value)}
-                />
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <Button
-                size="sm"
-                onClick={async () => {
-                  if (!selectedTenantId) {
-                    toast.error("Select a tenant first.");
-                    return;
-                  }
-                  if (!newKeyName.trim()) {
-                    toast.error("Enter a key name.");
-                    return;
-                  }
-                  try {
-                    toast("Creating API key...");
-                    const scopesArr = newKeyScopes
-                      .split(",")
-                      .map((s) => s.trim())
-                      .filter(Boolean);
-                    const res = await createApiKey({
-                      tenantId: selectedTenantId,
-                      name: newKeyName.trim(),
-                      scopes: scopesArr,
-                    } as any);
-                    // Expect { secret: string }
-                    setFreshSecret(res?.secret || null);
-                    if (res?.secret) {
-                      toast.success("Key created. Copy and store it securely.");
-                    } else {
-                      toast.success("Key created.");
-                    }
-                    setNewKeyName("");
-                  } catch (e: any) {
-                    toast.error(e?.message || "Failed to create API key");
-                  }
-                }}
-                disabled={!selectedTenantId}
-              >
-                Generate Key
-              </Button>
-
-              {freshSecret && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => {
-                    navigator.clipboard.writeText(freshSecret).then(() => {
-                      toast.success("Copied API key secret");
-                    });
-                  }}
-                >
-                  Copy New Key
-                </Button>
-              )}
-            </div>
-
-            {freshSecret && (
-              <div className="p-3 rounded-md border bg-amber-50 text-amber-900 text-sm">
-                This secret will not be shown again. Copy and store it securely now.
-              </div>
-            )}
-
-            <div className="rounded-md border overflow-hidden">
-              <div className="grid grid-cols-3 md:grid-cols-6 gap-2 p-3 bg-muted/40 text-xs font-medium">
-                <div>Name</div>
-                <div className="hidden md:block">Scopes</div>
-                <div>Created</div>
-                <div className="hidden md:block">Revoked</div>
-                <div className="hidden md:block">Id</div>
-                <div className="text-right">Action</div>
-              </div>
-              <Separator />
-              <div className="divide-y">
-                {(apiKeys || []).map((k) => (
-                  <div key={k._id} className="grid grid-cols-3 md:grid-cols-6 gap-2 p-3 text-sm items-center">
-                    <div className="truncate">{k.name}</div>
-                    <div className="hidden md:block truncate">{(k.scopes || []).join(", ") || "—"}</div>
-                    <div className="truncate">{new Date(k.createdAt).toLocaleString()}</div>
-                    <div className="hidden md:block">{k.revokedAt ? new Date(k.revokedAt).toLocaleString() : "—"}</div>
-                    <div className="hidden md:block text-muted-foreground truncate">{k._id}</div>
-                    <div className="text-right">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        disabled={!!k.revokedAt}
-                        onClick={async () => {
-                          try {
-                            await revokeApiKey({ apiKeyId: k._id } as any);
-                            toast.success("Key revoked");
-                          } catch (e: any) {
-                            toast.error(e?.message || "Failed to revoke key");
-                          }
-                        }}
-                      >
-                        Revoke
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-                {(!apiKeys || apiKeys.length === 0) && (
-                  <div className="p-3 text-sm text-muted-foreground">
-                    {selectedTenantId ? "No API keys for this tenant yet." : "Select a tenant to view keys."}
-                  </div>
-                )}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Billing & Usage Section */}
-        <Card>
-          <CardHeader>
-            <CardTitle id="section-billing">Billing & Usage</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <p className="text-sm text-muted-foreground">
-              Select a tenant to view plan, status, recent billing events, and usage.
-            </p>
-
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-              <div className="p-3 rounded-md border">
-                <div className="text-xs text-muted-foreground">Tenant</div>
-                <div className="text-sm font-medium">
-                  {selectedTenantId
-                    ? (tenants || []).find((t) => t._id === selectedTenantId)?.name || selectedTenantId
-                    : "None"}
-                </div>
-              </div>
-              <div className="p-3 rounded-md border">
-                <div className="text-xs text-muted-foreground">Plan</div>
-                <div className="text-sm font-medium">
-                  {(tenants || []).find((t) => t._id === selectedTenantId)?.plan || "—"}
-                </div>
-              </div>
-              <div className="p-3 rounded-md border">
-                <div className="text-xs text-muted-foreground">Status</div>
-                <div className="text-sm font-medium">
-                  {(tenants || []).find((t) => t._id === selectedTenantId)?.status || "—"}
-                </div>
-              </div>
-              <div className="p-3 rounded-md border">
-                <div className="text-xs text-muted-foreground">Stripe IDs</div>
-                <div className="text-xs text-muted-foreground">
-                  Not available in summary
-                </div>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <div className="p-3 rounded-md border">
-                <div className="text-xs text-muted-foreground">Workflows</div>
-                <div className="text-xl font-semibold">{usage?.workflows ?? 0}</div>
-              </div>
-              <div className="p-3 rounded-md border">
-                <div className="text-xs text-muted-foreground">Runs</div>
-                <div className="text-xl font-semibold">{usage?.runs ?? 0}</div>
-              </div>
-              <div className="p-3 rounded-md border">
-                <div className="text-xs text-muted-foreground">Agents</div>
-                <div className="text-xl font-semibold">{usage?.agents ?? 0}</div>
-              </div>
-              <div className="p-3 rounded-md border">
-                <div className="text-xs text-muted-foreground">Emails (7d)</div>
-                <div className="text-xl font-semibold">{usage?.emailsSentLast7 ?? 0}</div>
-              </div>
-            </div>
-
-            <div className="rounded-md border overflow-hidden">
-              <div className="grid grid-cols-4 md:grid-cols-6 gap-2 p-3 bg-muted/40 text-xs font-medium">
-                <div>When</div>
-                <div className="hidden md:block">Type</div>
-                <div>Amount</div>
-                <div className="hidden md:block">Currency</div>
-                <div>Status</div>
-                <div className="text-right">Info</div>
-              </div>
-              <Separator />
-              <div className="divide-y">
-                {(billingEvents || []).map((ev) => (
-                  <div key={ev._id} className="grid grid-cols-4 md:grid-cols-6 gap-2 p-3 text-sm items-center">
-                    <div className="text-xs text-muted-foreground">
-                      {ev._creationTime ? new Date(ev._creationTime).toLocaleString() : "—"}
-                    </div>
-                    <div className="hidden md:block truncate">{ev.type || "—"}</div>
-                    <div className="truncate">{typeof ev.amount === "number" ? ev.amount : "—"}</div>
-                    <div className="hidden md:block">{ev.currency || "—"}</div>
-                    <div>{ev.status || "—"}</div>
-                    <div className="text-right">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => toast(JSON.stringify(ev, null, 2))}
-                      >
-                        View
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-                {(!billingEvents || billingEvents.length === 0) && (
-                  <div className="p-3 text-sm text-muted-foreground">
-                    {selectedTenantId ? "No recent billing events." : "Select a tenant to view billing events."}
-                  </div>
-                )}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        {/* Replace inline Billing & Usage Section with component */}
+        <BillingUsagePanel
+          selectedTenantId={selectedTenantId}
+          tenants={tenants}
+        />
 
         {/* Integrations Hub */}
         <Card>
@@ -756,137 +514,11 @@ export default function AdminPage() {
           </CardContent>
         </Card>
 
-        {/* Custom Agents Admin Panel */}
-        <Card>
-          <CardHeader>
-            <CardTitle id="section-custom-agents">Custom Agents</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <p className="text-sm text-muted-foreground">
-              Read-only visibility with safe admin overrides (training notes, brand voice). Use tenant filter above to scope.
-            </p>
-
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-              <div className="p-3 rounded-md border">
-                <div className="text-xs text-muted-foreground">Total Agents</div>
-                <div className="text-xl font-semibold">{agentSummary?.total ?? 0}</div>
-              </div>
-              <div className="p-3 rounded-md border md:col-span-3">
-                <div className="text-xs text-muted-foreground">Counts by Tenant</div>
-                <div className="text-xs">
-                  {(agentSummary?.byTenant || []).slice(0, 6).map((t) => (
-                    <span key={t.businessId} className="inline-block mr-2 mb-1 px-2 py-0.5 rounded border">
-                      {t.businessId}: {t.count}
-                    </span>
-                  ))}
-                  {!(agentSummary?.byTenant?.length) && <span className="text-muted-foreground">None</span>}
-                </div>
-              </div>
-            </div>
-
-            <div className="rounded-md border overflow-hidden">
-              <div className="grid grid-cols-4 md:grid-cols-8 gap-2 p-3 bg-muted/40 text-xs font-medium">
-                <div>Tenant</div>
-                <div className="hidden md:block">User</div>
-                <div>Brand Voice</div>
-                <div className="hidden md:block">Timezone</div>
-                <div className="hidden md:block">Last Updated</div>
-                <div className="hidden md:block">Disabled?</div>
-                <div className="hidden md:block">Actions</div>
-                <div className="text-right">Id</div>
-              </div>
-              <Separator />
-              <div className="divide-y">
-                {(agents || []).map((a) => {
-                  const disabled = (a.trainingNotes || "").includes("[DISABLED]");
-                  return (
-                    <div key={a._id} className="grid grid-cols-4 md:grid-cols-8 gap-2 p-3 text-sm items-center">
-                      <div className="truncate">{a.businessId}</div>
-                      <div className="hidden md:block truncate">{a.userId}</div>
-                      <div className="truncate">{a.brandVoice || "—"}</div>
-                      <div className="hidden md:block truncate">{a.timezone || "—"}</div>
-                      <div className="hidden md:block text-xs text-muted-foreground">
-                        {a.lastUpdated ? new Date(a.lastUpdated).toLocaleString() : "—"}
-                      </div>
-                      <div className="hidden md:block">
-                        <Badge variant={disabled ? "destructive" : "outline"}>{disabled ? "Disabled" : "Active"}</Badge>
-                      </div>
-                      <div className="hidden md:flex gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={async () => {
-                            const input = prompt("Update training notes (will overwrite):", a.trainingNotes || "");
-                            if (input == null) return;
-                            try {
-                              await adminUpdateAgentProfile({ profileId: a._id, trainingNotes: input });
-                              toast.success("Training notes updated");
-                            } catch (e: any) {
-                              toast.error(e?.message || "Failed to update notes");
-                            }
-                          }}
-                        >
-                          Notes
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={async () => {
-                            const input = prompt("Update brand voice (e.g., casual, formal):", a.brandVoice || "");
-                            if (input == null) return;
-                            try {
-                              await adminUpdateAgentProfile({ profileId: a._id, brandVoice: input });
-                              toast.success("Brand voice updated");
-                            } catch (e: any) {
-                              toast.error(e?.message || "Failed to update voice");
-                            }
-                          }}
-                        >
-                          Voice
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={async () => {
-                            const reason = prompt("Reason for disabling this agent? (optional)") || "";
-                            try {
-                              await adminMarkAgentDisabled({ profileId: a._id, reason });
-                              toast.success("Agent marked disabled");
-                            } catch (e: any) {
-                              toast.error(e?.message || "Failed to mark disabled");
-                            }
-                          }}
-                          disabled={disabled}
-                        >
-                          Disable
-                        </Button>
-                        <Button
-                          size="sm"
-                          onClick={() => {
-                            setViewAgentId(a._id);
-                            setAgentViewerOpen(true);
-                          }}
-                        >
-                          View
-                        </Button>
-                      </div>
-                      <div className="text-right text-muted-foreground truncate">{a._id}</div>
-                    </div>
-                  );
-                })}
-                {(!agents || agents.length === 0) && (
-                  <div className="p-3 text-sm text-muted-foreground">
-                    {selectedTenantId ? "No agents for this tenant." : "No agents found."}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div className="text-xs text-muted-foreground">
-              Guardrails: Admin-only; all operations audited. "Disable" adds a sentinel to notes. For full isolation, use tenant-scoped feature flags.
-            </div>
-          </CardContent>
-        </Card>
+        {/* Replace inline Custom Agents Admin Panel with component */}
+        <CustomAgentsPanel
+          selectedTenantId={selectedTenantId}
+          recentAudits={recentAudits}
+        />
 
         {/* Add the new "Assistant Docs" section */}
         <Card>
