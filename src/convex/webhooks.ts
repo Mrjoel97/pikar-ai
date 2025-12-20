@@ -331,3 +331,25 @@ export const getWebhookStats = query({
     };
   },
 });
+
+// Add helper to get public base URL from database or environment
+async function getPublicBaseUrl(ctx: any): Promise<string> {
+  // Try database first
+  const config = await ctx.db
+    .query("systemConfig")
+    .withIndex("by_key", (q: any) => q.eq("key", "publicBaseUrl"))
+    .unique();
+  
+  if (config?.value) {
+    return config.value.trim();
+  }
+
+  // Fallback to environment variable
+  const envUrl = process.env.VITE_PUBLIC_BASE_URL;
+  if (envUrl) {
+    return envUrl.trim();
+  }
+
+  // Default fallback
+  return "https://pikar-ai.com";
+}
