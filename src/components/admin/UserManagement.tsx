@@ -45,12 +45,12 @@ export function UserManagement() {
   );
 
   const sendEmail = useMutation(api.adminUsers.sendAdminEmail);
-  const toggleUserStatus = useMutation(api.adminUsers.toggleUserStatus);
   const updateUserTier = useMutation(api.adminUsers.updateUserTier);
   const updateAgentLimits = useMutation(api.adminUsers.updateAgentLimits);
   const toggleUserAgent = useMutation(api.adminUsers.toggleUserAgent);
   const bulkToggleStatus = useMutation(api.adminUsers.bulkToggleUserStatus);
   const bulkUpdateTier = useMutation(api.adminUsers.bulkUpdateUserTier);
+  const updateBusinessProfile = useMutation(api.adminUsers.updateBusinessProfile);
 
   const handleSelectAll = () => {
     if (!users) return;
@@ -162,6 +162,8 @@ export function UserManagement() {
     }
   };
 
+  const toggleUserStatus = useMutation(api.adminUsers.toggleUserStatus);
+
   const handleToggleUserStatus = async (userId: Id<"users">, currentStatus: boolean) => {
     try {
       await toggleUserStatus({ userId, isActive: !currentStatus });
@@ -229,6 +231,24 @@ export function UserManagement() {
     document.body.removeChild(link);
 
     toast.success(`Exported ${users.length} user(s)`);
+  };
+
+  const handleUpdateBusinessProfile = async (
+    businessId: Id<"businesses">,
+    updates: {
+      name?: string;
+      industry?: string;
+      website?: string;
+      location?: string;
+      description?: string;
+    }
+  ) => {
+    try {
+      await updateBusinessProfile({ businessId, ...updates });
+      toast.success("Business profile updated successfully");
+    } catch (error: any) {
+      toast.error(error.message || "Failed to update business profile");
+    }
   };
 
   return (
@@ -408,6 +428,7 @@ export function UserManagement() {
           onUpdateTier={handleUpdateTier}
           onUpdateAgentLimit={handleUpdateAgentLimit}
           onToggleAgent={handleToggleAgent}
+          onUpdateBusinessProfile={handleUpdateBusinessProfile}
         />
 
         {/* Pagination Controls */}

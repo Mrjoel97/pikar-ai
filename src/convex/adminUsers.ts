@@ -21,7 +21,7 @@ async function isPlatformAdmin(ctx: any): Promise<boolean> {
   return role === "super_admin" || role === "senior" || role === "admin";
 }
 
-// List all users in the system (admin only)
+// List all users in the system (admin only) - OPTIMIZED
 export const listAllUsers = query({
   args: {
     limit: v.optional(v.number()),
@@ -39,10 +39,11 @@ export const listAllUsers = query({
     const limit = Math.min(args.limit ?? 50, 500);
     const offset = args.offset ?? 0;
     
-    // Fetch more than needed to calculate hasMore
-    let users = await ctx.db.query("users").take(offset + limit + 1);
+    // Fetch users with efficient batching
+    const batchSize = Math.min(offset + limit + 100, 1000);
+    let users = await ctx.db.query("users").take(batchSize);
     
-    // Filter by email if search term provided
+    // Filter by email/name search
     if (args.searchEmail) {
       const searchTerm = args.searchEmail.toLowerCase();
       users = users.filter((u: any) => 
@@ -511,5 +512,51 @@ export const sendAdminEmail = mutation({
     });
 
     return { success: true, recipientCount: args.recipientEmails.length };
+  },
+});
+
+// NEW: Update business profile details
+export const updateBusinessProfile = mutation({
+  args: {
+    businessId: v.id("businesses"),
+    name: v.optional(v.string()),
+    industry: v.optional(v.string()),
+    website: v.optional(v.string()),
+    location: v.optional(v.string()),
+    description: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const isAdmin = await isPlatformAdmin(ctx);
+    if (!isAdmin) throw new Error("Admin access required");
+
+    const business = await ctx.db.get(args.businessId);
+    if (!business) throw new Error("Business not found");
+
+    const updates: any = {};
+    if (args.name !== undefined) updates.name = args.name;
+    if (args.industry !== undefined) updates.industry = args.industry;
+    if (args.website !== undefined) updates.website = args.website;
+    if (args.location !== undefined) updates.location = args.location;
+    if (args.description !== undefined) updates.description = args.description;
+
+    await ctx.db.patch(args.businessId, updates);
+
+    const identity = await ctx.auth.getUserIdentity();
+    const adminEmail = identity?.email || "admin@pikar-ai.com";
+
+    await ctx.db.insert("audit_logs", {
+      businessId: args.businessId,
+      action: "business_profile_updated",
+      entityType: "business",
+      entityId: String(args.businessId),
+      details: {
+        businessName: business.name,
+        updatedFields: Object.keys(updates),
+        performedBy: adminEmail,
+      },
+      createdAt: Date.now(),
+    });
+
+    return { success: true };
   },
 });

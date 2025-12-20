@@ -23,6 +23,13 @@ interface UserDetailsDialogProps {
   onUpdateTier: (userId: Id<"users">, tier: string) => void;
   onUpdateAgentLimit: (businessId: Id<"businesses">, maxAgents: number) => void;
   onToggleAgent: (agentId: Id<"aiAgents">, isActive: boolean) => void;
+  onUpdateBusinessProfile?: (businessId: Id<"businesses">, updates: {
+    name?: string;
+    industry?: string;
+    website?: string;
+    location?: string;
+    description?: string;
+  }) => void;
 }
 
 export function UserDetailsDialog({
@@ -33,6 +40,7 @@ export function UserDetailsDialog({
   onUpdateTier,
   onUpdateAgentLimit,
   onToggleAgent,
+  onUpdateBusinessProfile,
 }: UserDetailsDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -40,7 +48,7 @@ export function UserDetailsDialog({
         <DialogHeader>
           <DialogTitle>User Management</DialogTitle>
           <DialogDescription>
-            Manage user account, tier, and AI agent access
+            Manage user account, tier, business profiles, and AI agent access
           </DialogDescription>
         </DialogHeader>
         
@@ -57,6 +65,7 @@ export function UserDetailsDialog({
             <BusinessProfilesSection
               businesses={userDetails.businesses}
               onUpdateAgentLimit={onUpdateAgentLimit}
+              onUpdateBusinessProfile={onUpdateBusinessProfile}
             />
 
             <Separator />
