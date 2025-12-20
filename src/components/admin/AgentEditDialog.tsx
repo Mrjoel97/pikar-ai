@@ -114,12 +114,27 @@ export function AgentEditDialog({ open, onOpenChange, agentKey }: AgentEditDialo
     }
   };
 
-  if (!agent) {
+  if (agent === undefined) {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent>
           <div className="flex items-center justify-center py-8">
             <Loader2 className="h-8 w-8 animate-spin" />
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  if (agent === null) {
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent>
+          <div className="flex flex-col items-center justify-center py-8 gap-4">
+            <p className="text-muted-foreground">Agent not found or access denied.</p>
+            <Button variant="outline" onClick={() => onOpenChange(false)}>
+              Close
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

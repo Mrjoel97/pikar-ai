@@ -61,14 +61,13 @@ export async function adminListAgents(ctx: any, args: any) {
 
 export async function adminGetAgent(ctx: any, args: any) {
   const isAdmin = await (ctx as any).runQuery("admin:getIsAdmin" as any, {});
-  if (!isAdmin) throw new Error("Admin access required");
+  if (!isAdmin) return null;
 
   const agent = await ctx.db
     .query("agentCatalog")
     .withIndex("by_agent_key", (q: any) => q.eq("agent_key", args.agent_key))
     .unique();
 
-  if (!agent) throw new Error("Agent not found");
   return agent;
 }
 
