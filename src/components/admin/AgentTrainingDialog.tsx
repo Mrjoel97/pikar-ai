@@ -16,7 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Upload, FileText, Link as LinkIcon, Type, Trash2, BookOpen } from "lucide-react";
+import { Upload, FileText, Link as LinkIcon, Type, Trash2, BookOpen, Loader2 } from "lucide-react";
 
 interface AgentTrainingDialogProps {
   open: boolean;
@@ -24,6 +24,18 @@ interface AgentTrainingDialogProps {
   agentKey: string;
   agentName: string;
 }
+
+// File validation constants
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+const ALLOWED_FILE_TYPES = {
+  'text/plain': ['.txt'],
+  'text/markdown': ['.md'],
+  'application/pdf': ['.pdf'],
+  'application/msword': ['.doc'],
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
+};
+
+const ALLOWED_EXTENSIONS = ['.txt', '.md', '.pdf', '.doc', '.docx'];
 
 export function AgentTrainingDialog({
   open,
@@ -36,6 +48,9 @@ export function AgentTrainingDialog({
   const [noteText, setNoteText] = useState("");
   const [title, setTitle] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isProcessingFile, setIsProcessingFile] = useState(false);
+  const [uploadedFileId, setUploadedFileId] = useState<string | null>(null);
+  const [uploadedFileName, setUploadedFileName] = useState<string>("");
 
   const datasets = useQuery(api.lib.aiAgents.datasets.listDatasets as any) as Array<{
     _id: string;
@@ -51,9 +66,111 @@ export function AgentTrainingDialog({
   const createDataset = useMutation(api.lib.aiAgents.datasets.adminCreateDataset as any);
   const linkDataset = useMutation(api.lib.aiAgents.datasets.adminLinkDatasetToAgent as any);
   const unlinkDataset = useMutation(api.lib.aiAgents.datasets.adminUnlinkDatasetFromAgent as any);
+  const generateUploadUrl = useAction(api.files.generateUploadUrl);
+  const processFile = useAction(api.lib.aiAgents.fileProcessing.processUploadedFile as any);
 
   const agentDatasets = datasets?.filter(d => d.linkedAgentKeys.includes(agentKey)) || [];
   const availableDatasets = datasets?.filter(d => !d.linkedAgentKeys.includes(agentKey)) || [];
+
+  const validateFile = (file: File): { valid: boolean; error?: string } => {
+    // Check file size
+    if (file.size > MAX_FILE_SIZE) {
+      return {
+        valid: false,
+        error: `File size exceeds ${MAX_FILE_SIZE / 1024 / 1024}MB limit`,
+      };
+    }
+
+    // Check file extension
+    const extension = '.' + file.name.split('.').pop()?.toLowerCase();
+    if (!ALLOWED_EXTENSIONS.includes(extension)) {
+      return {
+        valid: false,
+        error: `File type not supported. Allowed types: ${ALLOWED_EXTENSIONS.join(', ')}`,
+      };
+    }
+
+    // Check MIME type if available
+    if (file.type && !Object.keys(ALLOWED_FILE_TYPES).includes(file.type)) {
+      const hasValidExtension = Object.values(ALLOWED_FILE_TYPES)
+        .flat()
+        .includes(extension);
+      
+      if (!hasValidExtension) {
+        return {
+          valid: false,
+          error: 'File type not supported',
+        };
+      }
+    }
+
+    return { valid: true };
+  };
+
+  const handleFileUpload = async (file: File) => {
+    // Validate file
+    const validation = validateFile(file);
+    if (!validation.valid) {
+      toast.error(validation.error || 'Invalid file');
+      return;
+    }
+
+    setIsProcessingFile(true);
+    toast.info(`Uploading ${file.name}...`);
+
+    try {
+      // Get upload URL
+      const { uploadUrl, storageId } = await generateUploadUrl();
+
+      // Upload file to Convex storage
+      const uploadResponse = await fetch(uploadUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': file.type },
+        body: file,
+      });
+
+      if (!uploadResponse.ok) {
+        throw new Error('Failed to upload file');
+      }
+
+      // Get the storage ID from the response
+      const { storageId: finalStorageId } = await uploadResponse.json();
+      const fileId = finalStorageId || storageId;
+
+      toast.success('File uploaded successfully');
+      setUploadedFileId(fileId);
+      setUploadedFileName(file.name);
+
+      // Process the file to extract text
+      toast.info('Processing file...');
+      const result = await processFile({
+        fileId: fileId as any,
+        fileName: file.name,
+      });
+
+      if (result.success && result.text) {
+        setNoteText(result.text);
+        toast.success('File processed successfully');
+        
+        // Auto-fill title if empty
+        if (!title) {
+          const nameWithoutExt = file.name.replace(/\.[^/.]+$/, '');
+          setTitle(nameWithoutExt);
+        }
+      } else {
+        toast.error(result.error || 'Failed to process file');
+        // Keep the file uploaded but show error
+        setNoteText(`[File uploaded but processing failed: ${result.error}]\n\nPlease edit manually or re-upload.`);
+      }
+    } catch (error: any) {
+      console.error('File upload error:', error);
+      toast.error(error.message || 'Failed to upload file');
+      setUploadedFileId(null);
+      setUploadedFileName('');
+    } finally {
+      setIsProcessingFile(false);
+    }
+  };
 
   const handleCreateDataset = async () => {
     if (!title) {
@@ -71,13 +188,19 @@ export function AgentTrainingDialog({
       return;
     }
 
+    if (sourceType === "file" && !uploadedFileId) {
+      toast.error("Please upload a file");
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       const datasetId = await createDataset({
         title,
         sourceType,
         sourceUrl: sourceType === "url" ? sourceUrl : undefined,
-        noteText: sourceType === "text" ? noteText : undefined,
+        noteText: sourceType === "text" || sourceType === "file" ? noteText : undefined,
+        fileId: sourceType === "file" ? uploadedFileId : undefined,
       });
 
       await linkDataset({
@@ -91,6 +214,8 @@ export function AgentTrainingDialog({
       setTitle("");
       setSourceUrl("");
       setNoteText("");
+      setUploadedFileId(null);
+      setUploadedFileName("");
     } catch (error: any) {
       toast.error(error?.message || "Failed to add training data");
     } finally {
@@ -212,52 +337,63 @@ export function AgentTrainingDialog({
               {sourceType === "file" && (
                 <div className="space-y-2">
                   <Label htmlFor="fileUpload">Upload File *</Label>
-                  <Input
-                    id="fileUpload"
-                    type="file"
-                    accept=".txt,.pdf,.doc,.docx,.md"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        toast.info(`File selected: ${file.name}. Processing...`);
-                        // TODO: Implement file upload to Convex storage
-                        // For now, read as text if it's a text file
-                        if (file.type.startsWith('text/') || file.name.endsWith('.txt') || file.name.endsWith('.md')) {
-                          const reader = new FileReader();
-                          reader.onload = (event) => {
-                            const text = event.target?.result as string;
-                            setNoteText(text);
-                            toast.success('File content loaded');
-                          };
-                          reader.onerror = () => {
-                            toast.error('Failed to read file');
-                          };
-                          reader.readAsText(file);
-                        } else {
-                          toast.warning('PDF and DOC files will be supported soon. Please use text files for now.');
+                  <div className="flex items-center gap-2">
+                    <Input
+                      id="fileUpload"
+                      type="file"
+                      accept={ALLOWED_EXTENSIONS.join(',')}
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          handleFileUpload(file);
                         }
-                      }
-                    }}
-                  />
+                      }}
+                      disabled={isProcessingFile}
+                    />
+                    {isProcessingFile && (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    )}
+                  </div>
                   <p className="text-xs text-muted-foreground">
-                    Supported formats: TXT, MD (PDF and DOC processing coming soon)
+                    Supported formats: TXT, MD, PDF, DOC, DOCX (Max size: 10MB)
                   </p>
+                  {uploadedFileName && (
+                    <Badge variant="secondary" className="mt-2">
+                      <FileText className="h-3 w-3 mr-1" />
+                      {uploadedFileName}
+                    </Badge>
+                  )}
                   {noteText && (
                     <div className="mt-2">
-                      <Label>File Content Preview</Label>
+                      <Label>Extracted Content Preview</Label>
                       <Textarea
                         value={noteText}
                         onChange={(e) => setNoteText(e.target.value)}
                         rows={8}
                         className="mt-1"
+                        placeholder="File content will appear here..."
                       />
+                      <p className="text-xs text-muted-foreground mt-1">
+                        You can edit the extracted content before saving
+                      </p>
                     </div>
                   )}
                 </div>
               )}
 
-              <Button onClick={handleCreateDataset} disabled={isSubmitting} className="w-full">
-                {isSubmitting ? "Adding..." : "Add Training Data"}
+              <Button 
+                onClick={handleCreateDataset} 
+                disabled={isSubmitting || isProcessingFile} 
+                className="w-full"
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Adding...
+                  </>
+                ) : (
+                  "Add Training Data"
+                )}
               </Button>
             </div>
           </TabsContent>

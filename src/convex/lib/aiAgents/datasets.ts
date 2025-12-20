@@ -29,6 +29,7 @@ export async function adminCreateDataset(ctx: any, args: any) {
     sourceType: args.sourceType,
     sourceUrl: args.sourceUrl,
     noteText: args.noteText,
+    fileId: args.fileId,
     linkedAgentKeys: [] as Array<string>,
     businessScope: undefined,
     createdAt: Date.now(),
