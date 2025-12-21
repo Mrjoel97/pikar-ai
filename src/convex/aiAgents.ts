@@ -942,3 +942,34 @@ export const seedOrchestrations = mutation({
     return await (ctx as any).runMutation("orchestrationSeed:seedOrchestrations", {});
   },
 });
+
+export const deleteCustomAgent = mutation({
+  args: { profileId: v.id("agentProfiles") },
+  handler: async (ctx, args) => {
+    const isAdmin = await (ctx as any).runQuery("admin:getIsAdmin" as any, {});
+    if (!isAdmin) throw new Error("Admin access required");
+
+    const profile = await ctx.db.get(args.profileId);
+    if (!profile) throw new Error("Agent profile not found");
+
+    await ctx.db.delete(args.profileId);
+
+    // Audit logging
+    try {
+      await (ctx as any).runMutation("audit:write" as any, {
+        businessId: profile.businessId,
+        action: "admin_delete_custom_agent",
+        entityType: "agentProfile",
+        entityId: args.profileId,
+        details: {
+          businessId: profile.businessId,
+          userId: profile.userId,
+        },
+      });
+    } catch (e) {
+      console.error("Audit logging failed:", e);
+    }
+
+    return { success: true };
+  },
+});

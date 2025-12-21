@@ -6,7 +6,12 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription } from "@/components/ui/drawer";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { Trash2, Edit } from "lucide-react";
 
 interface CustomAgentsPanelProps {
   selectedTenantId: string;
@@ -16,6 +21,10 @@ interface CustomAgentsPanelProps {
 export function CustomAgentsPanel({ selectedTenantId, recentAudits }: CustomAgentsPanelProps) {
   const [agentViewerOpen, setAgentViewerOpen] = useState(false);
   const [viewAgentId, setViewAgentId] = useState<string | null>(null);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [selectedAgent, setSelectedAgent] = useState<any>(null);
+  const [editForm, setEditForm] = useState({ trainingNotes: "", brandVoice: "" });
 
   const agentSummary = useQuery(
     api.aiAgents.adminCustomAgentSummary as any,
@@ -37,6 +46,48 @@ export function CustomAgentsPanel({ selectedTenantId, recentAudits }: CustomAgen
 
   const adminUpdateAgentProfile = useMutation(api.aiAgents.adminUpdateAgentProfile as any);
   const adminMarkAgentDisabled = useMutation(api.aiAgents.adminMarkAgentDisabled as any);
+  const deleteCustomAgent = useMutation(api.aiAgents.deleteCustomAgent as any);
+
+  const handleOpenEdit = (agent: any) => {
+    setSelectedAgent(agent);
+    setEditForm({
+      trainingNotes: agent.trainingNotes || "",
+      brandVoice: agent.brandVoice || "",
+    });
+    setEditDialogOpen(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!selectedAgent) return;
+    try {
+      await adminUpdateAgentProfile({
+        profileId: selectedAgent._id,
+        trainingNotes: editForm.trainingNotes,
+        brandVoice: editForm.brandVoice,
+      });
+      toast.success("Agent profile updated successfully");
+      setEditDialogOpen(false);
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to update agent");
+    }
+  };
+
+  const handleOpenDelete = (agent: any) => {
+    setSelectedAgent(agent);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!selectedAgent) return;
+    try {
+      await deleteCustomAgent({ profileId: selectedAgent._id });
+      toast.success("Custom agent deleted successfully");
+      setDeleteDialogOpen(false);
+      setSelectedAgent(null);
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to delete agent");
+    }
+  };
 
   const viewAgentAudits = useMemo(() => {
     if (!viewAgentId) return [] as any[];
@@ -138,35 +189,10 @@ export function CustomAgentsPanel({ selectedTenantId, recentAudits }: CustomAgen
                         size="sm"
                         variant="outline"
                         className="text-xs h-7 px-2"
-                        onClick={async () => {
-                          const input = prompt("Update training notes (will overwrite):", a.trainingNotes || "");
-                          if (input == null) return;
-                          try {
-                            await adminUpdateAgentProfile({ profileId: a._id, trainingNotes: input });
-                            toast.success("Training notes updated");
-                          } catch (e: any) {
-                            toast.error(e?.message || "Failed to update notes");
-                          }
-                        }}
+                        onClick={() => handleOpenEdit(a)}
                       >
-                        Notes
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="text-xs h-7 px-2"
-                        onClick={async () => {
-                          const input = prompt("Update brand voice (e.g., casual, formal):", a.brandVoice || "");
-                          if (input == null) return;
-                          try {
-                            await adminUpdateAgentProfile({ profileId: a._id, brandVoice: input });
-                            toast.success("Brand voice updated");
-                          } catch (e: any) {
-                            toast.error(e?.message || "Failed to update voice");
-                          }
-                        }}
-                      >
-                        Voice
+                        <Edit className="h-3 w-3 mr-1" />
+                        Edit
                       </Button>
                       <Button
                         size="sm"
@@ -184,6 +210,15 @@ export function CustomAgentsPanel({ selectedTenantId, recentAudits }: CustomAgen
                         disabled={disabled}
                       >
                         Disable
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        className="text-xs h-7 px-2"
+                        onClick={() => handleOpenDelete(a)}
+                      >
+                        <Trash2 className="h-3 w-3 mr-1" />
+                        Delete
                       </Button>
                       <Button
                         size="sm"
@@ -283,6 +318,81 @@ export function CustomAgentsPanel({ selectedTenantId, recentAudits }: CustomAgen
           </div>
         </DrawerContent>
       </Drawer>
+
+      {/* Edit Dialog */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Edit Agent Profile</DialogTitle>
+            <DialogDescription>
+              Update training notes and brand voice for {selectedAgent?.businessId}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="trainingNotes">Training Notes</Label>
+              <Textarea
+                id="trainingNotes"
+                placeholder="Add context, guidelines, or instructions for this agent..."
+                value={editForm.trainingNotes}
+                onChange={(e) => setEditForm({ ...editForm, trainingNotes: e.target.value })}
+                rows={6}
+              />
+              <p className="text-xs text-muted-foreground">
+                These notes will guide the agent's behavior without modifying its core configuration
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="brandVoice">Brand Voice</Label>
+              <Input
+                id="brandVoice"
+                placeholder="e.g., casual, formal, friendly, professional"
+                value={editForm.brandVoice}
+                onChange={(e) => setEditForm({ ...editForm, brandVoice: e.target.value })}
+              />
+              <p className="text-xs text-muted-foreground">
+                Define the tone and style for agent communications
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveEdit}>
+              Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Custom Agent</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this custom agent? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <p className="text-sm">
+              <strong>Tenant:</strong> {selectedAgent?.businessId}
+            </p>
+            <p className="text-sm">
+              <strong>User:</strong> {selectedAgent?.userId}
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleConfirmDelete}>
+              Delete Agent
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

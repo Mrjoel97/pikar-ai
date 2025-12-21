@@ -23,10 +23,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Label } from "@/components/ui/label";
+import { SystemAgentAnalytics } from "./SystemAgentAnalytics";
 
 export function SystemAgentsHub() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTier, setSelectedTier] = useState<string>("");
+  const [selectedTenantForAnalytics, setSelectedTenantForAnalytics] = useState<string>("");
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [trainingDialogOpen, setTrainingDialogOpen] = useState(false);
@@ -149,182 +153,207 @@ export function SystemAgentsHub() {
         </Button>
       </div>
 
-      {/* Filters */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search agents..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9"
-              />
-            </div>
-            <select
-              className="h-10 rounded-md border bg-background px-3 text-sm"
-              value={selectedTier}
-              onChange={(e) => setSelectedTier(e.target.value)}
-            >
-              <option value="">All Tiers</option>
-              <option value="solopreneur">Solopreneur</option>
-              <option value="startup">Startup</option>
-              <option value="sme">SME</option>
-              <option value="enterprise">Enterprise</option>
-            </select>
-            <div className="flex items-center gap-2">
-              <Badge variant="outline">
-                Total: {catalogAgents?.length || 0}
-              </Badge>
-              <Badge variant="outline">
-                Active: {catalogAgents?.filter(a => a.active).length || 0}
-              </Badge>
-              <Badge variant="outline">
-                Filtered: {filteredAgents.length}
-              </Badge>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Add Tabs */}
+      <Tabs defaultValue="agents" className="space-y-6">
+        <TabsList>
+          <TabsTrigger value="agents">Agent Management</TabsTrigger>
+          <TabsTrigger value="analytics">Analytics & Insights</TabsTrigger>
+        </TabsList>
 
-      {/* Agent Cards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredAgents.map((agent) => (
-          <Card key={agent._id} className="hover:shadow-lg transition-shadow">
-            <CardHeader>
-              <div className="flex items-start justify-between">
+        <TabsContent value="agents" className="space-y-6">
+          {/* Filters */}
+          <Card>
+            <CardContent className="pt-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search agents..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-9"
+                  />
+                </div>
+                <select
+                  className="h-10 rounded-md border bg-background px-3 text-sm"
+                  value={selectedTier}
+                  onChange={(e) => setSelectedTier(e.target.value)}
+                >
+                  <option value="">All Tiers</option>
+                  <option value="solopreneur">Solopreneur</option>
+                  <option value="startup">Startup</option>
+                  <option value="sme">SME</option>
+                  <option value="enterprise">Enterprise</option>
+                </select>
                 <div className="flex items-center gap-2">
-                  <Bot className="h-5 w-5 text-emerald-600" />
-                  <CardTitle className="text-lg">{agent.display_name || agent.agent_key}</CardTitle>
+                  <Badge variant="outline">
+                    Total: {catalogAgents?.length || 0}
+                  </Badge>
+                  <Badge variant="outline">
+                    Active: {catalogAgents?.filter(a => a.active).length || 0}
+                  </Badge>
+                  <Badge variant="outline">
+                    Filtered: {filteredAgents.length}
+                  </Badge>
                 </div>
-                <Badge variant={agent.active ? "default" : "secondary"}>
-                  {agent.active ? (
-                    <CheckCircle className="h-3 w-3 mr-1" />
-                  ) : (
-                    <XCircle className="h-3 w-3 mr-1" />
-                  )}
-                  {agent.active ? "Active" : "Inactive"}
-                </Badge>
-              </div>
-              <CardDescription className="text-xs text-muted-foreground">
-                {agent.agent_key}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <p className="text-sm text-muted-foreground line-clamp-2">
-                {agent.short_desc || agent.long_desc || "No description available"}
-              </p>
-
-              <Separator />
-
-              {/* Capabilities */}
-              <div>
-                <div className="text-xs font-medium mb-2">Capabilities</div>
-                <div className="flex flex-wrap gap-1">
-                  {(agent.capabilities || []).slice(0, 3).map((cap, idx) => (
-                    <Badge key={idx} variant="outline" className="text-xs">
-                      {cap}
-                    </Badge>
-                  ))}
-                  {(agent.capabilities || []).length > 3 && (
-                    <Badge variant="outline" className="text-xs">
-                      +{agent.capabilities.length - 3} more
-                    </Badge>
-                  )}
-                </div>
-              </div>
-
-              {/* Tier Restrictions */}
-              {agent.tier_restrictions && agent.tier_restrictions.length > 0 && (
-                <div>
-                  <div className="text-xs font-medium mb-2">Available for</div>
-                  <div className="flex flex-wrap gap-1">
-                    {agent.tier_restrictions.map((tier, idx) => (
-                      <Badge key={idx} variant="secondary" className="text-xs">
-                        {tier}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Model Info */}
-              <div className="text-xs text-muted-foreground">
-                Model: {agent.default_model || "gpt-4o-mini"}
-              </div>
-
-              {/* Confidence */}
-              {typeof agent.confidence_hint === "number" && (
-                <div className="text-xs text-muted-foreground">
-                  Confidence: {Math.round(agent.confidence_hint * 100)}%
-                </div>
-              )}
-
-              <Separator />
-
-              {/* Actions */}
-              <div className="grid grid-cols-2 gap-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => handleOpenEdit(agent.agent_key, agent.display_name || agent.agent_key)}
-                >
-                  <Edit className="h-3 w-3 mr-1" />
-                  Edit
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => handleOpenVersions(agent.agent_key)}
-                >
-                  <History className="h-3 w-3 mr-1" />
-                  Versions
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => handleOpenTraining(agent.agent_key, agent.display_name || agent.agent_key)}
-                >
-                  <BookOpen className="h-3 w-3 mr-1" />
-                  Train
-                </Button>
-                <Button
-                  size="sm"
-                  variant={agent.active ? "secondary" : "default"}
-                  onClick={() => handleToggleAgent(agent.agent_key, agent.active)}
-                >
-                  {agent.active ? "Disable" : "Enable"}
-                </Button>
-                <Button
-                  size="sm"
-                  variant="destructive"
-                  onClick={() => handleOpenDelete(agent.agent_key, agent.display_name || agent.agent_key)}
-                  className="col-span-2"
-                >
-                  <Trash2 className="h-3 w-3 mr-1" />
-                  Delete
-                </Button>
               </div>
             </CardContent>
           </Card>
-        ))}
-      </div>
 
-      {/* Empty State */}
-      {filteredAgents.length === 0 && (
-        <Card>
-          <CardContent className="py-12 text-center">
-            <Bot className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-            <h3 className="text-lg font-medium mb-2">No agents found</h3>
-            <p className="text-sm text-muted-foreground">
-              {searchQuery || selectedTier
-                ? "Try adjusting your filters"
-                : "No system agents are configured yet"}
-            </p>
-          </CardContent>
-        </Card>
-      )}
+          {/* Agent Cards Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filteredAgents.map((agent) => (
+              <Card key={agent._id} className="hover:shadow-lg transition-shadow">
+                <CardHeader>
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-2">
+                      <Bot className="h-5 w-5 text-emerald-600" />
+                      <CardTitle className="text-lg">{agent.display_name || agent.agent_key}</CardTitle>
+                    </div>
+                    <Badge variant={agent.active ? "default" : "secondary"}>
+                      {agent.active ? (
+                        <CheckCircle className="h-3 w-3 mr-1" />
+                      ) : (
+                        <XCircle className="h-3 w-3 mr-1" />
+                      )}
+                      {agent.active ? "Active" : "Inactive"}
+                    </Badge>
+                  </div>
+                  <CardDescription className="text-xs text-muted-foreground">
+                    {agent.agent_key}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <p className="text-sm text-muted-foreground line-clamp-2">
+                    {agent.short_desc || agent.long_desc || "No description available"}
+                  </p>
+
+                  <Separator />
+
+                  {/* Capabilities */}
+                  <div>
+                    <div className="text-xs font-medium mb-2">Capabilities</div>
+                    <div className="flex flex-wrap gap-1">
+                      {(agent.capabilities || []).slice(0, 3).map((cap, idx) => (
+                        <Badge key={idx} variant="outline" className="text-xs">
+                          {cap}
+                        </Badge>
+                      ))}
+                      {(agent.capabilities || []).length > 3 && (
+                        <Badge variant="outline" className="text-xs">
+                          +{agent.capabilities.length - 3} more
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Tier Restrictions */}
+                  {agent.tier_restrictions && agent.tier_restrictions.length > 0 && (
+                    <div>
+                      <div className="text-xs font-medium mb-2">Available for</div>
+                      <div className="flex flex-wrap gap-1">
+                        {agent.tier_restrictions.map((tier, idx) => (
+                          <Badge key={idx} variant="secondary" className="text-xs">
+                            {tier}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Model Info */}
+                  <div className="text-xs text-muted-foreground">
+                    Model: {agent.default_model || "gpt-4o-mini"}
+                  </div>
+
+                  {/* Confidence */}
+                  {typeof agent.confidence_hint === "number" && (
+                    <div className="text-xs text-muted-foreground">
+                      Confidence: {Math.round(agent.confidence_hint * 100)}%
+                    </div>
+                  )}
+
+                  <Separator />
+
+                  {/* Actions */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleOpenEdit(agent.agent_key, agent.display_name || agent.agent_key)}
+                    >
+                      <Edit className="h-3 w-3 mr-1" />
+                      Edit
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleOpenVersions(agent.agent_key)}
+                    >
+                      <History className="h-3 w-3 mr-1" />
+                      Versions
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleOpenTraining(agent.agent_key, agent.display_name || agent.agent_key)}
+                    >
+                      <BookOpen className="h-3 w-3 mr-1" />
+                      Train
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant={agent.active ? "secondary" : "default"}
+                      onClick={() => handleToggleAgent(agent.agent_key, agent.active)}
+                    >
+                      {agent.active ? "Disable" : "Enable"}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      onClick={() => handleOpenDelete(agent.agent_key, agent.display_name || agent.agent_key)}
+                      className="col-span-2"
+                    >
+                      <Trash2 className="h-3 w-3 mr-1" />
+                      Delete
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          {/* Empty State */}
+          {filteredAgents.length === 0 && (
+            <Card>
+              <CardContent className="py-12 text-center">
+                <Bot className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                <h3 className="text-lg font-medium mb-2">No agents found</h3>
+                <p className="text-sm text-muted-foreground">
+                  {searchQuery || selectedTier
+                    ? "Try adjusting your filters"
+                    : "No system agents are configured yet"}
+                </p>
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+
+        <TabsContent value="analytics">
+          <div className="mb-4">
+            <Label>Select Tenant for Analytics</Label>
+            <select
+              className="h-10 rounded-md border bg-background px-3 text-sm w-full max-w-md mt-2"
+              value={selectedTenantForAnalytics}
+              onChange={(e) => setSelectedTenantForAnalytics(e.target.value)}
+            >
+              <option value="">Select a tenant...</option>
+              {/* You'll need to fetch tenants list - placeholder for now */}
+            </select>
+          </div>
+          <SystemAgentAnalytics selectedTenantId={selectedTenantForAnalytics} />
+        </TabsContent>
+      </Tabs>
 
       {/* Dialogs */}
       <AgentCreateDialog
