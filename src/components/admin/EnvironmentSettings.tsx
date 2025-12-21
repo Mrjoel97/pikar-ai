@@ -46,6 +46,9 @@ export function EnvironmentSettings({ env }: EnvironmentSettingsProps) {
   const testPublicBaseUrl = useQuery(api.health.testPublicBaseUrl, {});
   const saveSystemConfig = useMutation(api.admin.saveSystemConfig);
 
+  // Get admin session token from localStorage
+  const adminToken = typeof window !== 'undefined' ? localStorage.getItem('adminSessionToken') : null;
+
   React.useEffect(() => {
     if (publicBaseUrlData?.url && !baseUrlInput) {
       setBaseUrlInput(publicBaseUrlData.url);
@@ -93,6 +96,7 @@ export function EnvironmentSettings({ env }: EnvironmentSettingsProps) {
         key: "publicBaseUrl",
         value: baseUrlInput.trim(),
         description: "System-wide public base URL for generating absolute links",
+        adminToken: adminToken || undefined,
       });
       toast.success("Public Base URL saved successfully!");
       setEditingBaseUrl(false);
