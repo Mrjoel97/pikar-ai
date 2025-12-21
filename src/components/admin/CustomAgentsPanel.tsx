@@ -104,36 +104,40 @@ export function CustomAgentsPanel({ selectedTenantId, recentAudits }: CustomAgen
           </div>
 
           <div className="rounded-md border overflow-hidden">
-            <div className="grid grid-cols-4 md:grid-cols-8 gap-2 p-3 bg-muted/40 text-xs font-medium">
-              <div>Tenant</div>
-              <div className="hidden md:block">User</div>
-              <div>Brand Voice</div>
-              <div className="hidden md:block">Timezone</div>
-              <div className="hidden md:block">Last Updated</div>
-              <div className="hidden md:block">Disabled?</div>
-              <div className="hidden md:block">Actions</div>
-              <div className="text-right">Id</div>
-            </div>
-            <Separator />
-            <div className="divide-y">
+            <div className="overflow-x-auto">
+              <div className="min-w-[800px]">
+                <div className="grid grid-cols-8 gap-2 p-3 bg-muted/40 text-xs font-medium">
+                  <div>Tenant</div>
+                  <div>User</div>
+                  <div>Brand Voice</div>
+                  <div>Timezone</div>
+                  <div>Last Updated</div>
+                  <div>Status</div>
+                  <div className="col-span-2">Actions</div>
+                </div>
+                <Separator />
+                <div className="divide-y max-h-[500px] overflow-y-auto">
               {(agents || []).map((a) => {
                 const disabled = (a.trainingNotes || "").includes("[DISABLED]");
                 return (
-                  <div key={a._id} className="grid grid-cols-4 md:grid-cols-8 gap-2 p-3 text-sm items-center">
-                    <div className="truncate">{a.businessId}</div>
-                    <div className="hidden md:block truncate">{a.userId}</div>
-                    <div className="truncate">{a.brandVoice || "—"}</div>
-                    <div className="hidden md:block truncate">{a.timezone || "—"}</div>
-                    <div className="hidden md:block text-xs text-muted-foreground">
-                      {a.lastUpdated ? new Date(a.lastUpdated).toLocaleString() : "—"}
+                  <div key={a._id} className="grid grid-cols-8 gap-2 p-3 text-sm items-center">
+                    <div className="truncate text-xs" title={a.businessId}>{a.businessId}</div>
+                    <div className="truncate text-xs" title={a.userId}>{a.userId}</div>
+                    <div className="truncate text-xs">{a.brandVoice || "—"}</div>
+                    <div className="truncate text-xs">{a.timezone || "—"}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {a.lastUpdated ? new Date(a.lastUpdated).toLocaleDateString() : "—"}
                     </div>
-                    <div className="hidden md:block">
-                      <Badge variant={disabled ? "destructive" : "outline"}>{disabled ? "Disabled" : "Active"}</Badge>
+                    <div>
+                      <Badge variant={disabled ? "destructive" : "outline"} className="text-xs">
+                        {disabled ? "Disabled" : "Active"}
+                      </Badge>
                     </div>
-                    <div className="hidden md:flex gap-2">
+                    <div className="col-span-2 flex gap-1 flex-wrap">
                       <Button
                         size="sm"
                         variant="outline"
+                        className="text-xs h-7 px-2"
                         onClick={async () => {
                           const input = prompt("Update training notes (will overwrite):", a.trainingNotes || "");
                           if (input == null) return;
@@ -150,6 +154,7 @@ export function CustomAgentsPanel({ selectedTenantId, recentAudits }: CustomAgen
                       <Button
                         size="sm"
                         variant="outline"
+                        className="text-xs h-7 px-2"
                         onClick={async () => {
                           const input = prompt("Update brand voice (e.g., casual, formal):", a.brandVoice || "");
                           if (input == null) return;
@@ -166,6 +171,7 @@ export function CustomAgentsPanel({ selectedTenantId, recentAudits }: CustomAgen
                       <Button
                         size="sm"
                         variant="outline"
+                        className="text-xs h-7 px-2"
                         onClick={async () => {
                           const reason = prompt("Reason for disabling this agent? (optional)") || "";
                           try {
@@ -181,6 +187,7 @@ export function CustomAgentsPanel({ selectedTenantId, recentAudits }: CustomAgen
                       </Button>
                       <Button
                         size="sm"
+                        className="text-xs h-7 px-2"
                         onClick={() => {
                           setViewAgentId(a._id);
                           setAgentViewerOpen(true);
@@ -189,7 +196,6 @@ export function CustomAgentsPanel({ selectedTenantId, recentAudits }: CustomAgen
                         View
                       </Button>
                     </div>
-                    <div className="text-right text-muted-foreground truncate">{a._id}</div>
                   </div>
                 );
               })}
@@ -198,6 +204,8 @@ export function CustomAgentsPanel({ selectedTenantId, recentAudits }: CustomAgen
                   {selectedTenantId ? "No agents for this tenant." : "No agents found."}
                 </div>
               )}
+                </div>
+              </div>
             </div>
           </div>
 
