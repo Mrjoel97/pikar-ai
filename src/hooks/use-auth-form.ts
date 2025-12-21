@@ -3,6 +3,8 @@ import { useNavigate } from "react-router";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
 import { setGuestMode } from "@/lib/guestUtils";
+import { useAction } from "convex/react";
+import { api } from "@/convex/_generated/api";
 
 export type AuthMode = "signup" | "login";
 export type AuthMethod = "email" | "password" | "google";
@@ -28,6 +30,10 @@ export function useAuthForm() {
   const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   const isValidEmail = emailPattern.test(email);
 
+  // Convex actions
+  const signUpPasswordAction = useAction(api.passwordAuth.signUpPassword);
+  const loginPasswordAction = useAction(api.passwordAuth.loginPassword);
+
   // Password authentication handler
   const handlePasswordSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -42,9 +48,22 @@ export function useAuthForm() {
         if (password.length < 8) {
           throw new Error("Password must be at least 8 characters long");
         }
-        throw new Error("Password signup is not available yet. Please use Google Sign-In.");
+        
+        await signUpPasswordAction({ email, password });
+        
+        toast.success("Account created! Please sign in.");
+        setAuthMode("login");
+        setPassword("");
+        setConfirmPassword("");
       } else {
-        throw new Error("Password login is not available yet. Please use Google Sign-In.");
+        const result = await loginPasswordAction({ email, password });
+        
+        if (result.success) {
+          // Use the token to authenticate with Convex
+          await signIn("anonymous"); // Temporary - need to integrate with Convex Auth
+          toast.success("Signed in successfully!");
+          navigate("/dashboard");
+        }
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
