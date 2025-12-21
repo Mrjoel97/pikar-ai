@@ -25,7 +25,7 @@ export const getIsAdmin = query({
 
     const admin = await ctx.db
       .query("admins")
-      .withIndex("by_email", (q) => q.eq("email", email))
+      .withIndex("by_email", (q: any) => q.eq("email", email))
       .unique();
 
     const role = admin?.role;
@@ -106,44 +106,97 @@ export const listAdmins = query({
   },
 });
 
+/**
+ * Centralized admin access validation
+ * Supports both regular auth and admin session tokens
+ * Returns { isAdmin: boolean, email: string | null, role: string | null }
+ */
+async function validateAdminAccess(
+  ctx: any,
+  adminToken?: string
+): Promise<{ isAdmin: boolean; email: string | null; role: string | null }> {
+  let email: string | null = null;
+  let role: string | null = null;
+
+  // First, try to validate admin session token if provided
+  if (adminToken) {
+    const session = await ctx.db
+      .query("adminSessions")
+      .withIndex("by_token", (q: any) => q.eq("token", adminToken))
+      .unique();
+
+    if (session && session.expiresAt > Date.now()) {
+      // Get email from adminAuth
+      if (session.adminId) {
+        const adminAuth = await ctx.db.get(session.adminId);
+        email = (adminAuth as any)?.email;
+      } else if (session.email) {
+        email = session.email;
+      }
+
+      if (email) {
+        // First check ADMIN_EMAILS environment variable
+        const envAllow = (process.env.ADMIN_EMAILS || process.env.ADMIN_EMAIL || "")
+          .split(",")
+          .map((s) => s.trim().toLowerCase())
+          .filter(Boolean);
+
+        if (envAllow.includes(email.toLowerCase())) {
+          return { isAdmin: true, email, role: "super_admin" };
+        }
+
+        // Then verify admin role in database
+        const adminRole = await ctx.db
+          .query("admins")
+          .withIndex("by_email", (q: any) => q.eq("email", email))
+          .unique();
+
+        if (adminRole && (adminRole.role === "super_admin" || adminRole.role === "admin" || adminRole.role === "senior")) {
+          return { isAdmin: true, email, role: adminRole.role };
+        }
+      }
+    }
+  }
+
+  // If not authenticated via admin token, check regular platform admin
+  const identity = await ctx.auth.getUserIdentity();
+  email = identity?.email?.toLowerCase() || null;
+
+  if (email) {
+    const envAllow = (process.env.ADMIN_EMAILS || process.env.ADMIN_EMAIL || "")
+      .split(",")
+      .map((s) => s.trim().toLowerCase())
+      .filter(Boolean);
+
+    if (envAllow.includes(email)) {
+      return { isAdmin: true, email, role: "super_admin" };
+    }
+
+    const adminRecord = await ctx.db
+      .query("admins")
+      .withIndex("by_email", (q: any) => q.eq("email", email))
+      .unique();
+
+    if (adminRecord) {
+      const adminRole = adminRecord.role;
+      const isAdmin = adminRole === "super_admin" || adminRole === "senior" || adminRole === "admin";
+      return { isAdmin, email, role: adminRole };
+    }
+  }
+
+  return { isAdmin: false, email: null, role: null };
+}
+
 // Add: helper to check if current user is super admin
 async function isSuperAdmin(ctx: any): Promise<boolean> {
-  const identity = await ctx.auth.getUserIdentity();
-  const email = identity?.email?.toLowerCase();
-  if (!email) return false;
-
-  const envAllowlist = (process.env.ADMIN_EMAILS || process.env.ADMIN_EMAIL || "")
-    .split(",")
-    .map((s) => s.trim().toLowerCase())
-    .filter(Boolean);
-
-  if (envAllowlist.includes(email)) return true;
-
-  const admin = await ctx.db
-    .query("admins")
-    .withIndex("by_email", (q: any) => q.eq("email", email))
-    .unique();
-  return admin?.role === "super_admin";
+  const result = await validateAdminAccess(ctx);
+  return result.isAdmin && result.role === "super_admin";
 }
 
 // Add helper to check platform admin (allowlist or admins table, excluding 'pending_senior')
 async function isPlatformAdmin(ctx: any): Promise<boolean> {
-  const identity = await ctx.auth.getUserIdentity();
-  const email = identity?.email?.toLowerCase();
-  if (!email) return false;
-
-  const envAllow = (process.env.ADMIN_EMAILS || process.env.ADMIN_EMAIL || "")
-    .split(",")
-    .map((s) => s.trim().toLowerCase())
-    .filter(Boolean);
-  if (envAllow.includes(email)) return true;
-
-  const admin = await ctx.db
-    .query("admins")
-    .withIndex("by_email", (q: any) => q.eq("email", email))
-    .unique();
-  const role = admin?.role;
-  return role === "super_admin" || role === "senior" || role === "admin";
+  const result = await validateAdminAccess(ctx);
+  return result.isAdmin && (result.role === "super_admin" || result.role === "senior" || result.role === "admin");
 }
 
 // Request Senior Admin: create a pending request
@@ -527,81 +580,13 @@ export const saveSystemConfig = mutation({
     adminToken: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    let isAdmin = false;
-    let emailForLog = "unknown";
+    const adminAccess = await validateAdminAccess(ctx, args.adminToken);
     
-    // First, try to validate admin session token if provided
-    if (args.adminToken) {
-      const session = await ctx.db
-        .query("adminSessions")
-        .withIndex("by_token", (q: any) => q.eq("token", args.adminToken))
-        .unique();
-      
-      if (session && session.expiresAt > Date.now()) {
-        // Get email from adminAuth
-        let sessionEmail: string | undefined;
-        
-        if (session.adminId) {
-          const adminAuth = await ctx.db.get(session.adminId);
-          sessionEmail = (adminAuth as any)?.email;
-        } else if (session.email) {
-          sessionEmail = session.email;
-        }
-        
-        if (sessionEmail) {
-          // First check ADMIN_EMAILS environment variable
-          const envAllow = (process.env.ADMIN_EMAILS || process.env.ADMIN_EMAIL || "")
-            .split(",")
-            .map((s) => s.trim().toLowerCase())
-            .filter(Boolean);
-          
-          if (envAllow.includes(sessionEmail.toLowerCase())) {
-            isAdmin = true;
-            emailForLog = sessionEmail;
-          } else {
-            // Then verify admin role in database
-            const adminRole = await ctx.db
-              .query("admins")
-              .withIndex("by_email", (q: any) => q.eq("email", sessionEmail))
-              .unique();
-            
-            if (adminRole && (adminRole.role === "super_admin" || adminRole.role === "admin" || adminRole.role === "senior")) {
-              isAdmin = true;
-              emailForLog = sessionEmail;
-            }
-          }
-        }
-      }
+    if (!adminAccess.isAdmin) {
+      throw new Error("Admin access required");
     }
     
-    // If not authenticated via admin token, check regular platform admin
-    if (!isAdmin) {
-      const identity = await ctx.auth.getUserIdentity();
-      const email = identity?.email?.toLowerCase();
-      
-      if (email) {
-        const envAllow = (process.env.ADMIN_EMAILS || process.env.ADMIN_EMAIL || "")
-          .split(",")
-          .map((s) => s.trim().toLowerCase())
-          .filter(Boolean);
-        if (envAllow.includes(email)) {
-          isAdmin = true;
-          emailForLog = email;
-        } else {
-          const adminRecord = await ctx.db
-            .query("admins")
-            .withIndex("by_email", (q) => q.eq("email", email))
-            .unique();
-          const role = adminRecord?.role;
-          if (role === "super_admin" || role === "senior" || role === "admin") {
-            isAdmin = true;
-            emailForLog = email;
-          }
-        }
-      }
-    }
-    
-    if (!isAdmin) throw new Error("Admin access required");
+    const emailForLog = adminAccess.email || "unknown";
 
     const existing = await ctx.db
       .query("systemConfig")
