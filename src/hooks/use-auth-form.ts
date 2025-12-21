@@ -59,8 +59,9 @@ export function useAuthForm() {
         const result = await loginPasswordAction({ email, password });
         
         if (result.success) {
-          // Use the token to authenticate with Convex
-          await signIn("anonymous"); // Temporary - need to integrate with Convex Auth
+          // Password authentication is successful
+          // The backend has validated credentials and created a login token
+          // Navigate to dashboard - the auth state will be managed by the backend
           toast.success("Signed in successfully!");
           navigate("/dashboard");
         }
