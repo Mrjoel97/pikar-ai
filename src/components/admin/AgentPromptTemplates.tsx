@@ -41,9 +41,19 @@ export function AgentPromptTemplates({ agentKey, agentName }: AgentPromptTemplat
   const [editingTemplate, setEditingTemplate] = useState<PromptTemplate | null>(null);
   const [newTemplate, setNewTemplate] = useState<Partial<PromptTemplate>>({});
   const [previewMode, setPreviewMode] = useState(false);
+  const [selectedAgentKey, setSelectedAgentKey] = useState<string>(agentKey);
 
-  // Fetch templates from database
-  const templates = useQuery(api.aiAgents.getAgentPromptTemplates, { agent_key: agentKey }) as Array<PromptTemplate & {
+  // Fetch all agents for the dropdown
+  const allAgents = useQuery(api.aiAgents.adminListAgents, {
+    activeOnly: false,
+    limit: 100,
+  }) as Array<{
+    agent_key: string;
+    display_name: string;
+  }> | undefined;
+
+  // Fetch templates from database for the selected agent
+  const templates = useQuery(api.aiAgents.getAgentPromptTemplates, { agent_key: selectedAgentKey }) as Array<PromptTemplate & {
     variableMetadata?: Record<string, { type: string; description: string; placeholder: string; options?: string[] }>;
   }> | undefined;
   const addTemplate = useMutation(api.aiAgents.addPromptTemplate);
@@ -51,6 +61,19 @@ export function AgentPromptTemplates({ agentKey, agentName }: AgentPromptTemplat
   const deleteTemplate = useMutation(api.aiAgents.deletePromptTemplate);
 
   const availableTemplates = templates || [];
+
+  // Predefined category options
+  const categoryOptions = [
+    "Communication",
+    "Content Creation",
+    "Analysis",
+    "Customer Service",
+    "Marketing",
+    "Sales",
+    "Operations",
+    "Technical",
+    "Custom",
+  ];
 
   const handleTemplateSelect = (template: PromptTemplate) => {
     setSelectedTemplate(template);
@@ -94,7 +117,7 @@ export function AgentPromptTemplates({ agentKey, agentName }: AgentPromptTemplat
     try {
       if (editingTemplate) {
         await updateTemplate({
-          agent_key: agentKey,
+          agent_key: selectedAgentKey,
           templateId: editingTemplate.id,
           template: {
             name: newTemplate.name,
@@ -107,7 +130,7 @@ export function AgentPromptTemplates({ agentKey, agentName }: AgentPromptTemplat
         toast.success("Template updated successfully!");
       } else {
         await addTemplate({
-          agent_key: agentKey,
+          agent_key: selectedAgentKey,
           template: {
             id: `custom_${Date.now()}`,
             name: newTemplate.name,
@@ -147,7 +170,7 @@ export function AgentPromptTemplates({ agentKey, agentName }: AgentPromptTemplat
 
   const handleDeleteTemplate = async (templateId: string) => {
     try {
-      await deleteTemplate({ agent_key: agentKey, templateId });
+      await deleteTemplate({ agent_key: selectedAgentKey, templateId });
       toast.success("Template deleted successfully!");
     } catch (error: any) {
       toast.error(error?.message || "Failed to delete template");
@@ -203,10 +226,10 @@ export function AgentPromptTemplates({ agentKey, agentName }: AgentPromptTemplat
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-lg font-semibold">Prompt Templates for {agentName}</h3>
+        <div className="flex-1">
+          <h3 className="text-lg font-semibold">Prompt Templates</h3>
           <p className="text-sm text-muted-foreground">
-            Select a template and customize it to create effective prompts
+            Select an agent and template to create effective prompts
           </p>
         </div>
         <Button size="sm" onClick={handleOpenAddTemplate}>
@@ -214,6 +237,32 @@ export function AgentPromptTemplates({ agentKey, agentName }: AgentPromptTemplat
           Add Template
         </Button>
       </div>
+
+      {/* Agent Selector */}
+      <Card>
+        <CardContent className="pt-6">
+          <div className="space-y-2">
+            <Label>Select Agent</Label>
+            <select
+              className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+              value={selectedAgentKey}
+              onChange={(e) => {
+                setSelectedAgentKey(e.target.value);
+                setSelectedTemplate(null);
+                setGeneratedPrompt("");
+                setPreviewMode(false);
+              }}
+            >
+              <option value={agentKey}>{agentName} (Current)</option>
+              {allAgents?.filter(a => a.agent_key !== agentKey).map((agent) => (
+                <option key={agent.agent_key} value={agent.agent_key}>
+                  {agent.display_name || agent.agent_key}
+                </option>
+              ))}
+            </select>
+          </div>
+        </CardContent>
+      </Card>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {availableTemplates.map((template) => (
@@ -398,11 +447,18 @@ export function AgentPromptTemplates({ agentKey, agentName }: AgentPromptTemplat
             </div>
             <div className="space-y-2">
               <Label>Category</Label>
-              <Input
-                placeholder="e.g., Communication"
+              <select
+                className="h-10 w-full rounded-md border bg-background px-3 text-sm"
                 value={newTemplate.category || ""}
                 onChange={(e) => setNewTemplate({ ...newTemplate, category: e.target.value })}
-              />
+              >
+                <option value="">Select a category...</option>
+                {categoryOptions.map((cat) => (
+                  <option key={cat} value={cat}>
+                    {cat}
+                  </option>
+                ))}
+              </select>
             </div>
             <div className="space-y-2">
               <Label>Template (use {"{variable}"} for placeholders)</Label>
