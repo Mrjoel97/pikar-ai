@@ -569,9 +569,23 @@ export const saveSystemConfig = mutation({
       const email = identity?.email?.toLowerCase();
       
       if (email) {
-        isAdmin = await isPlatformAdmin(ctx);
-        if (isAdmin) {
+        const envAllow = (process.env.ADMIN_EMAILS || process.env.ADMIN_EMAIL || "")
+          .split(",")
+          .map((s) => s.trim().toLowerCase())
+          .filter(Boolean);
+        if (envAllow.includes(email)) {
+          isAdmin = true;
           emailForLog = email;
+        } else {
+          const adminRecord = await ctx.db
+            .query("admins")
+            .withIndex("by_email", (q) => q.eq("email", email))
+            .unique();
+          const role = adminRecord?.role;
+          if (role === "super_admin" || role === "senior" || role === "admin") {
+            isAdmin = true;
+            emailForLog = email;
+          }
         }
       }
     }
