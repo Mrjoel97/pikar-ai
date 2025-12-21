@@ -549,15 +549,26 @@ export const saveSystemConfig = mutation({
         }
         
         if (sessionEmail) {
-          // Verify admin role
-          const adminRole = await ctx.db
-            .query("admins")
-            .withIndex("by_email", (q: any) => q.eq("email", sessionEmail))
-            .unique();
+          // First check ADMIN_EMAILS environment variable
+          const envAllow = (process.env.ADMIN_EMAILS || process.env.ADMIN_EMAIL || "")
+            .split(",")
+            .map((s) => s.trim().toLowerCase())
+            .filter(Boolean);
           
-          if (adminRole && (adminRole.role === "super_admin" || adminRole.role === "admin" || adminRole.role === "senior")) {
+          if (envAllow.includes(sessionEmail.toLowerCase())) {
             isAdmin = true;
             emailForLog = sessionEmail;
+          } else {
+            // Then verify admin role in database
+            const adminRole = await ctx.db
+              .query("admins")
+              .withIndex("by_email", (q: any) => q.eq("email", sessionEmail))
+              .unique();
+            
+            if (adminRole && (adminRole.role === "super_admin" || adminRole.role === "admin" || adminRole.role === "senior")) {
+              isAdmin = true;
+              emailForLog = sessionEmail;
+            }
           }
         }
       }
