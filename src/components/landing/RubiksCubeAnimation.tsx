@@ -12,16 +12,23 @@ export default function RubiksCubeAnimation() {
     if (!ctx) return;
 
     // Set canvas size
-    const size = Math.min(window.innerWidth * 0.4, 400);
+    const size = Math.min(window.innerWidth * 0.5, 500);
     canvas.width = size;
     canvas.height = size;
 
     const centerX = size / 2;
     const centerY = size / 2;
-    const cubeSize = size * 0.15;
+    const cubeSize = size * 0.18;
 
-    // Rubik's cube colors
-    const colors = ["#FF5733", "#33FF57", "#3357FF", "#FFFF33", "#FF33FF", "#33FFFF"];
+    // Hyper-realistic Rubik's cube colors with gradients
+    const colors = [
+      { base: "#FF0000", light: "#FF6666", dark: "#CC0000" }, // Red
+      { base: "#00FF00", light: "#66FF66", dark: "#00CC00" }, // Green
+      { base: "#0000FF", light: "#6666FF", dark: "#0000CC" }, // Blue
+      { base: "#FFFF00", light: "#FFFF66", dark: "#CCCC00" }, // Yellow
+      { base: "#FF8800", light: "#FFAA44", dark: "#CC6600" }, // Orange
+      { base: "#FFFFFF", light: "#FFFFFF", dark: "#CCCCCC" }, // White
+    ];
 
     // Animation state
     let animationFrame: number;
@@ -36,13 +43,13 @@ export default function RubiksCubeAnimation() {
       targetX: number;
       targetY: number;
       targetZ: number;
-      color: string;
+      color: { base: string; light: string; dark: string };
       opacity: number;
       rotationX: number;
       rotationY: number;
       rotationZ: number;
 
-      constructor(x: number, y: number, z: number, color: string) {
+      constructor(x: number, y: number, z: number, color: { base: string; light: string; dark: string }) {
         this.x = x;
         this.y = y;
         this.z = z;
@@ -65,18 +72,18 @@ export default function RubiksCubeAnimation() {
 
         if (phase === 0) {
           // Disassembly phase
-          this.targetX = this.x * (1 + easedProgress * 2);
-          this.targetY = this.y * (1 + easedProgress * 2);
-          this.targetZ = this.z * (1 + easedProgress * 2);
-          this.opacity = 1 - easedProgress * 0.5;
+          this.targetX = this.x * (1 + easedProgress * 2.5);
+          this.targetY = this.y * (1 + easedProgress * 2.5);
+          this.targetZ = this.z * (1 + easedProgress * 2.5);
+          this.opacity = 1 - easedProgress * 0.3;
           this.rotationX = easedProgress * Math.PI * 2;
           this.rotationY = easedProgress * Math.PI * 1.5;
         } else if (phase === 1) {
           // Reassembly phase
-          this.targetX = this.x * (3 - easedProgress * 2);
-          this.targetY = this.y * (3 - easedProgress * 2);
-          this.targetZ = this.z * (3 - easedProgress * 2);
-          this.opacity = 0.5 + easedProgress * 0.5;
+          this.targetX = this.x * (3.5 - easedProgress * 2.5);
+          this.targetY = this.y * (3.5 - easedProgress * 2.5);
+          this.targetZ = this.z * (3.5 - easedProgress * 2.5);
+          this.opacity = 0.7 + easedProgress * 0.3;
           this.rotationX = Math.PI * 2 - easedProgress * Math.PI * 2;
           this.rotationY = Math.PI * 1.5 - easedProgress * Math.PI * 1.5;
         } else {
@@ -153,16 +160,62 @@ export default function RubiksCubeAnimation() {
         const projX = x * scale;
         const projY = y * scale;
 
-        // Draw cube face
+        // Draw cube face with realistic lighting
         const faceSize = cubeSize * scale;
-        ctx.globalAlpha = this.opacity * (0.6 + (z + 200) / 400 * 0.4);
-        ctx.fillStyle = this.color;
-        ctx.fillRect(projX - faceSize / 2, projY - faceSize / 2, faceSize, faceSize);
+        
+        // Calculate lighting based on z-depth and angle
+        const lightIntensity = 0.6 + (z + 200) / 400 * 0.4;
+        const normalizedZ = Math.max(0, Math.min(1, (z + 300) / 600));
+        
+        // Create gradient for 3D effect
+        const gradient = ctx.createLinearGradient(
+          projX - faceSize / 2, 
+          projY - faceSize / 2, 
+          projX + faceSize / 2, 
+          projY + faceSize / 2
+        );
+        
+        gradient.addColorStop(0, this.color.light);
+        gradient.addColorStop(0.5, this.color.base);
+        gradient.addColorStop(1, this.color.dark);
 
-        // Draw border
-        ctx.strokeStyle = "rgba(0, 0, 0, 0.3)";
-        ctx.lineWidth = 2;
-        ctx.strokeRect(projX - faceSize / 2, projY - faceSize / 2, faceSize, faceSize);
+        ctx.globalAlpha = this.opacity * lightIntensity;
+        ctx.fillStyle = gradient;
+        
+        // Draw main face with rounded corners
+        const radius = faceSize * 0.1;
+        ctx.beginPath();
+        ctx.roundRect(projX - faceSize / 2, projY - faceSize / 2, faceSize, faceSize, radius);
+        ctx.fill();
+
+        // Add glossy highlight
+        const highlightGradient = ctx.createRadialGradient(
+          projX - faceSize * 0.2, 
+          projY - faceSize * 0.2, 
+          0,
+          projX, 
+          projY, 
+          faceSize * 0.6
+        );
+        highlightGradient.addColorStop(0, "rgba(255, 255, 255, 0.4)");
+        highlightGradient.addColorStop(1, "rgba(255, 255, 255, 0)");
+        
+        ctx.fillStyle = highlightGradient;
+        ctx.beginPath();
+        ctx.roundRect(projX - faceSize / 2, projY - faceSize / 2, faceSize, faceSize, radius);
+        ctx.fill();
+
+        // Draw border with shadow
+        ctx.globalAlpha = this.opacity * 0.8;
+        ctx.strokeStyle = "rgba(0, 0, 0, 0.5)";
+        ctx.lineWidth = 3;
+        ctx.shadowColor = "rgba(0, 0, 0, 0.5)";
+        ctx.shadowBlur = 8;
+        ctx.shadowOffsetX = 2;
+        ctx.shadowOffsetY = 2;
+        ctx.beginPath();
+        ctx.roundRect(projX - faceSize / 2, projY - faceSize / 2, faceSize, faceSize, radius);
+        ctx.stroke();
 
         ctx.restore();
       }
@@ -199,7 +252,9 @@ export default function RubiksCubeAnimation() {
         progress = (cycleProgress - 0.66) / 0.34;
       }
 
-      // Clear canvas
+      // Clear canvas with slight transparency for motion blur effect
+      ctx.fillStyle = "rgba(255, 255, 255, 0.1)";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
       // Update and sort pieces by z-depth
@@ -232,9 +287,9 @@ export default function RubiksCubeAnimation() {
     >
       <canvas
         ref={canvasRef}
-        className="opacity-20"
+        className="opacity-60"
         style={{
-          filter: "blur(1px)",
+          filter: "drop-shadow(0 10px 30px rgba(0, 0, 0, 0.3))",
         }}
       />
     </motion.div>
