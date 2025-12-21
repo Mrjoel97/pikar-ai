@@ -534,6 +534,14 @@ export default function AdminPage() {
         <DocsContentManager />
         <AuditExplorerPanel recentAudits={recentAudits} />
         <AlertsIncidentsPanel selectedTenantId={selectedTenantId} />
+
+        {/* Add Content Management Section */}
+        <div id="section-content-management" className="space-y-6">
+          <h2 className="text-xl font-semibold">Content Management</h2>
+          <DemoVideoManager />
+          <DocsContentManager />
+        </div>
+
         <AdminAssistantSection
           adminSessionValid={isAdminSession}
           adminToken={adminToken}

@@ -28,6 +28,9 @@ export function AssistantDocsPanel({ hasAdminAccess, generateDocsProposal, appro
     createdAt: number;
   }> | undefined;
 
+  // Get current user for businessId and userId
+  const currentUser = useQuery(api.users.currentUser, {});
+
   return (
     <Card>
       <CardHeader>
@@ -42,14 +45,23 @@ export function AssistantDocsPanel({ hasAdminAccess, generateDocsProposal, appro
           <Button
             size="sm"
             onClick={async () => {
+              if (!currentUser?._id || !currentUser?.businessId) {
+                toast.error("User not authenticated");
+                return;
+              }
               try {
                 toast("Generating proposal from seed...");
-                await generateDocsProposal({ source: "seed:readme" } as any);
+                await generateDocsProposal({ 
+                  source: "seed:readme",
+                  businessId: currentUser.businessId,
+                  userId: currentUser._id
+                } as any);
                 toast.success("Proposal generated");
               } catch (e: any) {
                 toast.error(e?.message || "Failed to generate proposal");
               }
             }}
+            disabled={!currentUser?._id}
           >
             Generate from README seed
           </Button>
