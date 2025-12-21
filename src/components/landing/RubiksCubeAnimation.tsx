@@ -11,14 +11,13 @@ export default function RubiksCubeAnimation() {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    // Set canvas size
-    const size = Math.min(window.innerWidth * 0.5, 500);
-    canvas.width = size;
-    canvas.height = size;
+    // Set canvas size to fill the entire hero section
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
 
-    const centerX = size / 2;
-    const centerY = size / 2;
-    const cubeSize = size * 0.18;
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height / 2;
+    const cubeSize = Math.min(window.innerWidth, window.innerHeight) * 0.135; // Reduced by 25% from 0.18
 
     // Hyper-realistic Rubik's cube colors with gradients
     const colors = [
@@ -154,8 +153,8 @@ export default function RubiksCubeAnimation() {
         y = tempY;
         z = tempZ;
 
-        // Perspective projection
-        const perspective = 600;
+        // Perspective projection - increased to push cube further back
+        const perspective = 900;
 
         // Skip drawing if point is behind camera or too close to projection plane
         if (perspective + z <= 50) {
@@ -300,12 +299,12 @@ export default function RubiksCubeAnimation() {
       initial={{ opacity: 0, scale: 0.8 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 1, delay: 0.3 }}
-      className="absolute inset-0 flex items-center justify-center pointer-events-none"
+      className="absolute inset-0 pointer-events-none"
       style={{ zIndex: 0 }}
     >
       <canvas
         ref={canvasRef}
-        className="opacity-60"
+        className="opacity-60 w-full h-full"
         style={{
           filter: "drop-shadow(0 10px 30px rgba(0, 0, 0, 0.3))",
         }}
