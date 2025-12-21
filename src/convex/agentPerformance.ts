@@ -260,11 +260,20 @@ export const getSystemAgentAnalytics = query({
         .sort((a, b) => b[1] - a[1])
         .slice(0, 10)
         .map(async ([agentId, count]) => {
-          const agent = await ctx.db.get(agentId as any);
-          return {
-            name: agent?.name || "Unknown",
-            executions: count,
-          };
+          try {
+            const agent = await ctx.db.get(agentId as any);
+            // Type guard to ensure we have an agent with a name property
+            const agentName = agent && 'name' in agent ? agent.name : "Unknown";
+            return {
+              name: agentName,
+              executions: count,
+            };
+          } catch {
+            return {
+              name: "Unknown",
+              executions: count,
+            };
+          }
         })
     );
 

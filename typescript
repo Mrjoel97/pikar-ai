@@ -1,7 +1,1 @@
-const saveSystemConfigMutation = useMutation(api.admin.saveSystemConfig as any);
-await saveSystemConfigMutation({
-  key: "BASE_URL",
-  value: newUrl,
-  description: "Public base URL for the application",
-  adminToken: adminToken || undefined,
-});
+<CardTitle id="section-pending-senior">Pending Senior Admin Requests</CardTitle>
