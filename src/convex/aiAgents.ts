@@ -156,7 +156,10 @@ export const adminListAgents = query({
 
 // Admin-gated: get single agent by key
 export const adminGetAgent = query({
-  args: { agent_key: v.string() },
+  args: { 
+    agent_key: v.string(),
+    adminToken: v.optional(v.string()),
+  },
   handler: (ctx, args) => admin.adminGetAgent(ctx, args),
 });
 

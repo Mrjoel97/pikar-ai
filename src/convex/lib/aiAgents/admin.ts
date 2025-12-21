@@ -60,13 +60,38 @@ export async function adminListAgents(ctx: any, args: any) {
 }
 
 export async function adminGetAgent(ctx: any, args: any) {
-  // Check admin access directly without deep type instantiation
+  // Check admin access - support both regular auth and admin session tokens
+  let email: string | null = null;
+  
+  // First, try regular user authentication
   const identity = await ctx.auth.getUserIdentity();
-  if (!identity) return null;
+  if (identity?.email) {
+    email = identity.email;
+  }
+  
+  // If no regular auth, check for admin session token
+  if (!email && args.adminToken) {
+    const session = await ctx.db
+      .query("adminSessions")
+      .withIndex("by_token", (q: any) => q.eq("token", args.adminToken))
+      .unique();
+    
+    if (session && session.expiresAt > Date.now()) {
+      // Get email from adminAuth
+      if (session.adminId) {
+        const adminAuth = await ctx.db.get(session.adminId);
+        email = (adminAuth as any)?.email;
+      } else if (session.email) {
+        email = session.email;
+      }
+    }
+  }
+  
+  if (!email) return null;
   
   const adminRecord = await ctx.db
     .query("admins")
-    .withIndex("by_email", (q: any) => q.eq("email", identity.email))
+    .withIndex("by_email", (q: any) => q.eq("email", email))
     .first();
   
   const isAdmin = adminRecord?.role === "super_admin" || adminRecord?.role === "senior" || adminRecord?.role === "admin";

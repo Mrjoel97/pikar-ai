@@ -37,7 +37,13 @@ export function AgentEditDialog({ open, onOpenChange, agentKey }: AgentEditDialo
   const [isActive, setIsActive] = useState(true);
   const [versionsDrawerOpen, setVersionsDrawerOpen] = useState(false);
 
-  const agent = useQuery(api.aiAgents.adminGetAgent, { agent_key: agentKey });
+  // Get admin session token from localStorage
+  const adminToken = typeof window !== 'undefined' ? localStorage.getItem('adminSessionToken') : null;
+  
+  const agent = useQuery(api.aiAgents.adminGetAgent, { 
+    agent_key: agentKey,
+    adminToken: adminToken || undefined,
+  });
   const updateAgent = useMutation(api.aiAgents.adminUpsertAgent);
   const versions = useQuery(api.aiAgents.adminListAgentVersions, { agent_key: agentKey, limit: 20 });
   const rollbackToVersion = useMutation(api.aiAgents.adminRollbackAgentToVersion);
