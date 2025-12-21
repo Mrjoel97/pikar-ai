@@ -166,6 +166,29 @@ export const getPublicBaseUrl = query({
   },
 });
 
+export const getSalesInbox = query({
+  args: {},
+  handler: async (ctx) => {
+    // Try database first
+    const config = await ctx.db
+      .query("systemConfig")
+      .withIndex("by_key", (q) => q.eq("key", "salesInbox"))
+      .unique();
+    
+    if (config?.value) {
+      return { source: "database", email: config.value };
+    }
+
+    // Fallback to environment variable
+    const envEmail = process.env.SALES_INBOX || process.env.PUBLIC_SALES_INBOX;
+    if (envEmail) {
+      return { source: "environment", email: envEmail };
+    }
+
+    return { source: "none", email: null };
+  },
+});
+
 export const getStripeConfig = query({
   args: {},
   handler: async (ctx) => {

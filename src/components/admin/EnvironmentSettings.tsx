@@ -37,10 +37,13 @@ interface EnvironmentSettingsProps {
 export function EnvironmentSettings({ env }: EnvironmentSettingsProps) {
   const stripeConfig = useQuery(api.health.getStripeConfig, {});
   const publicBaseUrlData = useQuery(api.health.getPublicBaseUrl, {});
+  const salesInboxData = useQuery(api.health.getSalesInbox, {});
   const [testingResend, setTestingResend] = React.useState(false);
   const [testingBaseUrl, setTestingBaseUrl] = React.useState(false);
   const [editingBaseUrl, setEditingBaseUrl] = React.useState(false);
+  const [editingSalesInbox, setEditingSalesInbox] = React.useState(false);
   const [baseUrlInput, setBaseUrlInput] = React.useState("");
+  const [salesInboxInput, setSalesInboxInput] = React.useState("");
 
   const testResendKey = useQuery(api.health.testResendKey, {});
   const testPublicBaseUrl = useQuery(api.health.testPublicBaseUrl, {});
@@ -54,6 +57,12 @@ export function EnvironmentSettings({ env }: EnvironmentSettingsProps) {
       setBaseUrlInput(publicBaseUrlData.url);
     }
   }, [publicBaseUrlData]);
+
+  React.useEffect(() => {
+    if (salesInboxData?.email && !salesInboxInput) {
+      setSalesInboxInput(salesInboxData.email);
+    }
+  }, [salesInboxData]);
 
   const openConvexDashboard = () => {
     const convexUrl = "https://dashboard.convex.dev/d/hushed-cat-860";
@@ -105,6 +114,33 @@ export function EnvironmentSettings({ env }: EnvironmentSettingsProps) {
     }
   };
 
+  const handleSaveSalesInbox = async () => {
+    if (!salesInboxInput.trim()) {
+      toast.error("Please enter a valid email address");
+      return;
+    }
+
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(salesInboxInput.trim())) {
+      toast.error("Please enter a valid email address");
+      return;
+    }
+
+    try {
+      await saveSystemConfig({
+        key: "salesInbox",
+        value: salesInboxInput.trim(),
+        description: "System-wide sales inbox email for receiving inquiries",
+        adminToken: adminToken || undefined,
+      });
+      toast.success("Sales Inbox email saved successfully!");
+      setEditingSalesInbox(false);
+    } catch (error: any) {
+      toast.error(error.message || "Failed to save Sales Inbox email");
+    }
+  };
+
   return (
     <div className="space-y-4">
       {/* System Health Overview */}
@@ -150,6 +186,21 @@ export function EnvironmentSettings({ env }: EnvironmentSettingsProps) {
                     ? "Configured in database (editable below)"
                     : publicBaseUrlData?.source === "environment"
                     ? "Set via VITE_PUBLIC_BASE_URL environment variable"
+                    : "Not configured"}
+                </TooltipContent>
+              </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Badge variant={salesInboxData?.email ? "outline" : "destructive"}>
+                    Sales Inbox: {salesInboxData?.email ? "OK" : "Missing"}
+                  </Badge>
+                </TooltipTrigger>
+                <TooltipContent className="max-w-xs text-xs">
+                  {salesInboxData?.source === "database" 
+                    ? "Configured in database (editable below)"
+                    : salesInboxData?.source === "environment"
+                    ? "Set via SALES_INBOX environment variable"
                     : "Not configured"}
                 </TooltipContent>
               </Tooltip>
@@ -383,6 +434,79 @@ export function EnvironmentSettings({ env }: EnvironmentSettingsProps) {
           {!publicBaseUrlData?.url && (
             <div className="p-3 rounded-md border border-amber-300 bg-amber-50 text-amber-900 text-sm">
               Set your public base URL above (e.g., "https://pikar-ai.com"). This will be used by backend functions to generate absolute URLs.
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Sales Inbox Email - New Editable Card */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Sales Inbox Email (System-Wide)</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-sm text-muted-foreground">
+            System-wide sales inbox email for receiving customer inquiries and contact form submissions.
+          </p>
+          <div className="flex items-center gap-2">
+            <Badge variant={salesInboxData?.email ? "outline" : "destructive"}>
+              {salesInboxData?.email ? "Configured ✓" : "Not Configured"}
+            </Badge>
+            {salesInboxData?.source && (
+              <span className="text-xs text-muted-foreground">
+                Source: {salesInboxData.source}
+              </span>
+            )}
+          </div>
+
+          {editingSalesInbox ? (
+            <div className="space-y-2">
+              <Label htmlFor="salesInbox">Sales Inbox Email</Label>
+              <Input
+                id="salesInbox"
+                type="email"
+                placeholder="joel@pikar-ai.com"
+                value={salesInboxInput}
+                onChange={(e) => setSalesInboxInput(e.target.value)}
+              />
+              <div className="flex gap-2">
+                <Button size="sm" onClick={handleSaveSalesInbox}>
+                  Save Email
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    setEditingSalesInbox(false);
+                    setSalesInboxInput(salesInboxData?.email || "");
+                  }}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {salesInboxData?.email && (
+                <div className="p-2 rounded-md bg-muted text-sm font-mono">
+                  {salesInboxData.email}
+                </div>
+              )}
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  variant="default"
+                  onClick={() => setEditingSalesInbox(true)}
+                >
+                  {salesInboxData?.email ? "Edit Email" : "Set Email"}
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {!salesInboxData?.email && (
+            <div className="p-3 rounded-md border border-amber-300 bg-amber-50 text-amber-900 text-sm">
+              Set your sales inbox email above (e.g., "joel@pikar-ai.com"). This will be used to receive customer inquiries from contact forms.
             </div>
           )}
         </CardContent>
