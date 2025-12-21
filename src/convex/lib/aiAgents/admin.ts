@@ -97,12 +97,11 @@ export async function adminGetAgent(ctx: any, args: any) {
   const isAdmin = adminRecord?.role === "super_admin" || adminRecord?.role === "senior" || adminRecord?.role === "admin";
   if (!isAdmin) return null;
 
-  const agent = await ctx.db
-    .query("agentCatalog")
-    .withIndex("by_agent_key", (q: any) => q.eq("agent_key", args.agent_key))
-    .unique();
+  // Use collect() and find() to avoid index issues
+  const agents = await ctx.db.query("agentCatalog").collect();
+  const agent = agents.find((a: any) => a.agent_key === args.agent_key);
 
-  return agent;
+  return agent || null;
 }
 
 export async function adminUpsertAgent(ctx: any, args: any) {
@@ -120,10 +119,9 @@ export async function adminUpsertAgent(ctx: any, args: any) {
     }
   }
 
-  const existing = await ctx.db
-    .query("agentCatalog")
-    .withIndex("by_agent_key", (q: any) => q.eq("agent_key", args.agent_key))
-    .unique();
+  // Use collect() and find() to avoid index issues
+  const agents = await ctx.db.query("agentCatalog").collect();
+  const existing = agents.find((a: any) => a.agent_key === args.agent_key);
 
   const now = Date.now();
   const agentData = {
@@ -198,10 +196,9 @@ export async function adminToggleAgent(ctx: any, args: any) {
   const isAdmin = await (ctx as any).runQuery("admin:getIsAdmin" as any, {});
   if (!isAdmin) throw new Error("Admin access required");
 
-  const agent = await ctx.db
-    .query("agentCatalog")
-    .withIndex("by_agent_key", (q: any) => q.eq("agent_key", args.agent_key))
-    .unique();
+  // Use collect() and find() to avoid index issues
+  const agents = await ctx.db.query("agentCatalog").collect();
+  const agent = agents.find((a: any) => a.agent_key === args.agent_key);
 
   if (!agent) throw new Error("Agent not found");
 
@@ -280,10 +277,9 @@ export async function adminDeleteAgent(ctx: any, args: any) {
   const isAdmin = await (ctx as any).runQuery("admin:getIsAdmin" as any, {});
   if (!isAdmin) throw new Error("Admin access required");
 
-  const agent = await ctx.db
-    .query("agentCatalog")
-    .withIndex("by_agent_key", (q: any) => q.eq("agent_key", args.agent_key))
-    .unique();
+  // Use collect() and find() to avoid index issues
+  const agents = await ctx.db.query("agentCatalog").collect();
+  const agent = agents.find((a: any) => a.agent_key === args.agent_key);
 
   if (!agent) throw new Error("Agent not found");
 
