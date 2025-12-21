@@ -179,30 +179,8 @@ export function FullInstrumentationProvider({
   // Gate queries to avoid network errors when Convex isn't configured/reachable
   const healthStatus = useQuery(api.health.envStatus as any, hasConvex ? ({} as any) : undefined);
 
-  useEffect(() => {
-    if (!hasConvex || !healthStatus || hasShownEnvToast) return;
-
-    const missingVars = [];
-    if (!healthStatus.hasRESEND) missingVars.push("RESEND_API_KEY");
-    if (!healthStatus.hasSALES_INBOX && !healthStatus.hasPUBLIC_SALES_INBOX) {
-      missingVars.push("SALES_INBOX or PUBLIC_SALES_INBOX");
-    }
-    if (!healthStatus.hasBASE_URL) missingVars.push("VITE_PUBLIC_BASE_URL");
-
-    if (missingVars.length > 0) {
-      toast.error(`Missing environment variables: ${missingVars.join(", ")}`);
-      setHasShownEnvToast(true);
-    }
-  }, [hasConvex, healthStatus, hasShownEnvToast]);
-
-  useEffect(() => {
-    if (!hasConvex || !healthStatus || hasShownQueueToast) return;
-
-    if (healthStatus.emailQueueDepth > 100) {
-      toast.warning(`High email queue depth: ${healthStatus.emailQueueDepth} pending`);
-      setHasShownQueueToast(true);
-    }
-  }, [hasConvex, healthStatus, hasShownQueueToast]);
+  // Startup environment check notifications removed
+  // Administrators can check environment settings via Admin > Environment Settings
 
   const [error, setError] = useState<GenericError | null>(null);
 
