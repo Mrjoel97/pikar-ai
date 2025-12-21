@@ -48,19 +48,14 @@ export const signUp = action({
       }
     );
 
-    // Ensure admin role exists
-    const adminRole = (await ctx.runQuery(
-      (internal as any)["adminAuthData"]["getAdminByEmail"],
-      { email: normalizedEmail } as any
-    )) as any;
-    if (!adminRole) {
-      await ctx.runMutation(
-        (internal as any)["adminAuthData"]["ensureAdminRole"],
-        {
+    // Ensure admin role exists - always create/update to ensure consistency
+    await ctx.runMutation(
+      (internal as any)["adminAuthData"]["ensureAdminRole"],
+      {
         email: normalizedEmail,
         role: "admin",
-      });
-    }
+      }
+    );
 
     // Log admin signup
     await ctx.runMutation(
