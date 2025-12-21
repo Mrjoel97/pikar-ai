@@ -12,7 +12,10 @@ export async function getAgentPromptTemplates(ctx: any, args: { agent_key: strin
   if (!agent) return [];
 
   // Return templates with enhanced variable metadata
-  const templates = agent.prompt_templates || [];
+  // Ensure templates is an array before mapping
+  const rawTemplates = agent.prompt_templates;
+  const templates = Array.isArray(rawTemplates) ? rawTemplates : [];
+  
   return templates.map((template: any) => ({
     ...template,
     variableMetadata: generateVariableMetadata(template.variables || []),
@@ -162,7 +165,8 @@ export async function addPromptTemplate(ctx: any, args: {
 
   if (!agent) throw new Error("Agent not found");
 
-  const existingTemplates = agent.prompt_templates || [];
+  const rawTemplates = agent.prompt_templates;
+  const existingTemplates = Array.isArray(rawTemplates) ? rawTemplates : [];
   const updatedTemplates = [...existingTemplates, args.template];
 
   await ctx.db.patch(agent._id, {
@@ -192,7 +196,8 @@ export async function updatePromptTemplate(ctx: any, args: {
 
   if (!agent) throw new Error("Agent not found");
 
-  const existingTemplates = agent.prompt_templates || [];
+  const rawTemplates = agent.prompt_templates;
+  const existingTemplates = Array.isArray(rawTemplates) ? rawTemplates : [];
   const templateIndex = existingTemplates.findIndex((t: any) => t.id === args.templateId);
   
   if (templateIndex === -1) throw new Error("Template not found");
@@ -224,7 +229,8 @@ export async function deletePromptTemplate(ctx: any, args: {
 
   if (!agent) throw new Error("Agent not found");
 
-  const existingTemplates = agent.prompt_templates || [];
+  const rawTemplates = agent.prompt_templates;
+  const existingTemplates = Array.isArray(rawTemplates) ? rawTemplates : [];
   const updatedTemplates = existingTemplates.filter((t: any) => t.id !== args.templateId);
 
   await ctx.db.patch(agent._id, {
