@@ -156,16 +156,22 @@ export default function RubiksCubeAnimation() {
 
         // Perspective projection
         const perspective = 600;
+
+        // Skip drawing if point is behind camera or too close to projection plane
+        if (perspective + z <= 50) {
+            ctx.restore();
+            return;
+        }
+
         const scale = perspective / (perspective + z);
         const projX = x * scale;
         const projY = y * scale;
 
         // Draw cube face with realistic lighting
-        const faceSize = cubeSize * scale;
+        const faceSize = Math.max(0, cubeSize * scale);
         
         // Calculate lighting based on z-depth and angle
         const lightIntensity = 0.6 + (z + 200) / 400 * 0.4;
-        const normalizedZ = Math.max(0, Math.min(1, (z + 300) / 600));
         
         // Create gradient for 3D effect
         const gradient = ctx.createLinearGradient(
@@ -179,13 +185,17 @@ export default function RubiksCubeAnimation() {
         gradient.addColorStop(0.5, this.color.base);
         gradient.addColorStop(1, this.color.dark);
 
-        ctx.globalAlpha = this.opacity * lightIntensity;
+        ctx.globalAlpha = Math.max(0, Math.min(1, this.opacity * lightIntensity));
         ctx.fillStyle = gradient;
         
         // Draw main face with rounded corners
-        const radius = faceSize * 0.1;
+        const radius = Math.max(0, faceSize * 0.1);
         ctx.beginPath();
-        ctx.roundRect(projX - faceSize / 2, projY - faceSize / 2, faceSize, faceSize, radius);
+        if (ctx.roundRect) {
+            ctx.roundRect(projX - faceSize / 2, projY - faceSize / 2, faceSize, faceSize, radius);
+        } else {
+            ctx.rect(projX - faceSize / 2, projY - faceSize / 2, faceSize, faceSize);
+        }
         ctx.fill();
 
         // Add glossy highlight
@@ -202,19 +212,27 @@ export default function RubiksCubeAnimation() {
         
         ctx.fillStyle = highlightGradient;
         ctx.beginPath();
-        ctx.roundRect(projX - faceSize / 2, projY - faceSize / 2, faceSize, faceSize, radius);
+        if (ctx.roundRect) {
+            ctx.roundRect(projX - faceSize / 2, projY - faceSize / 2, faceSize, faceSize, radius);
+        } else {
+            ctx.rect(projX - faceSize / 2, projY - faceSize / 2, faceSize, faceSize);
+        }
         ctx.fill();
 
         // Draw border with shadow
-        ctx.globalAlpha = this.opacity * 0.8;
+        ctx.globalAlpha = Math.max(0, Math.min(1, this.opacity * 0.8));
         ctx.strokeStyle = "rgba(0, 0, 0, 0.5)";
-        ctx.lineWidth = 3;
+        ctx.lineWidth = Math.max(1, 3 * scale);
         ctx.shadowColor = "rgba(0, 0, 0, 0.5)";
-        ctx.shadowBlur = 8;
-        ctx.shadowOffsetX = 2;
-        ctx.shadowOffsetY = 2;
+        ctx.shadowBlur = 8 * scale;
+        ctx.shadowOffsetX = 2 * scale;
+        ctx.shadowOffsetY = 2 * scale;
         ctx.beginPath();
-        ctx.roundRect(projX - faceSize / 2, projY - faceSize / 2, faceSize, faceSize, radius);
+        if (ctx.roundRect) {
+            ctx.roundRect(projX - faceSize / 2, projY - faceSize / 2, faceSize, faceSize, radius);
+        } else {
+            ctx.rect(projX - faceSize / 2, projY - faceSize / 2, faceSize, faceSize);
+        }
         ctx.stroke();
 
         ctx.restore();
