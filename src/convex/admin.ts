@@ -615,20 +615,25 @@ export const saveSystemConfig = mutation({
       });
     }
 
-    // Log system config change
-    await ctx.db.insert("audit_logs", {
-      businessId: "system" as any,
-      action: "system_config_updated",
-      entityType: "system_config",
-      entityId: args.key,
-      details: {
-        key: args.key,
-        previousValue: existing?.value,
-        newValue: args.value,
-        updatedBy: emailForLog,
-      },
-      createdAt: now,
-    });
+    // Log system config change to audit_logs
+    try {
+      await ctx.db.insert("audit_logs", {
+        businessId: "system" as any,
+        action: "system_config_updated",
+        entityType: "system_config",
+        entityId: args.key,
+        details: {
+          key: args.key,
+          previousValue: existing?.value,
+          newValue: args.value,
+          updatedBy: emailForLog,
+        },
+        createdAt: now,
+      });
+    } catch (auditError) {
+      // Don't fail the operation if audit logging fails
+      console.error("Audit logging failed:", auditError);
+    }
 
     return configId;
   },
