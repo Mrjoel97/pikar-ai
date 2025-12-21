@@ -60,7 +60,16 @@ export async function adminListAgents(ctx: any, args: any) {
 }
 
 export async function adminGetAgent(ctx: any, args: any) {
-  const isAdmin = await (ctx as any).runQuery("admin:getIsAdmin" as any, {});
+  // Check admin access directly without deep type instantiation
+  const identity = await ctx.auth.getUserIdentity();
+  if (!identity) return null;
+  
+  const adminRecord = await ctx.db
+    .query("admins")
+    .withIndex("by_email", (q: any) => q.eq("email", identity.email))
+    .first();
+  
+  const isAdmin = adminRecord?.role === "superadmin" || adminRecord?.role === "senior" || adminRecord?.role === "admin";
   if (!isAdmin) return null;
 
   const agent = await ctx.db
