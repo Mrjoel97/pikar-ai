@@ -616,6 +616,21 @@ export const coreSchema = {
     .index("by_user_and_provider", ["userId", "provider"])
     .index("by_provider_and_account_id", ["provider", "providerAccountId"]),
 
+  authVerificationCodes: defineTable({
+    accountId: v.id("authAccounts"),
+    provider: v.string(),
+    code: v.string(),
+    expirationTime: v.number(),
+  })
+    .index("by_account_and_provider", ["accountId", "provider"])
+    .index("by_code", ["code"]),
+
+  authRateLimits: defineTable({
+    identifier: v.string(),
+    lastAttempt: v.number(),
+    attempts: v.number(),
+  }).index("by_identifier", ["identifier"]),
+
   featureFlags: defineTable({
     name: v.string(),
     description: v.optional(v.string()),
