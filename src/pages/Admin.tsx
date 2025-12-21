@@ -54,6 +54,9 @@ export default function AdminPage() {
   // Add: Health drawer UI state
   const [healthOpen, setHealthOpen] = useState(false);
 
+  // Get current user for operations that require businessId/userId
+  const currentUser = useQuery(api.users.currentUser, {});
+
   // Validate admin session
   const adminSession = useQuery(
     api.admin.validateAdminSession as any,
@@ -365,6 +368,23 @@ export default function AdminPage() {
     }
     return errs.slice(0, 5);
   }, [viewAgentAudits]);
+
+  const handleGenerateDocsProposal = async () => {
+    if (!currentUser?._id) {
+      toast.error("User not authenticated");
+      return;
+    }
+    try {
+      const result = await generateDocsProposal({ 
+        source: "seed:readme",
+        businessId: currentUser?.businessId as any,
+        userId: currentUser?._id as any
+      });
+      toast.success("Documentation proposal generated!");
+    } catch (error: any) {
+      toast.error(error?.message || "Failed to generate documentation proposal");
+    }
+  };
 
   return (
     <>

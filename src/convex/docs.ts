@@ -31,7 +31,11 @@ export const listPages = query({
 
 // Add URL-based proposal generation action
 export const generateFromUrl = action({
-  args: { url: v.string() },
+  args: { 
+    url: v.string(),
+    businessId: v.id("businesses"),
+    userId: v.id("users")
+  },
   handler: async (ctx, args): Promise<{ proposalId: Id<"docsProposals"> }> => {
     // Basic fetch and parsing; future improvements can add markdown/HTML normalization
     let content = "";
@@ -72,6 +76,8 @@ export const generateFromUrl = action({
         contentMarkdown,
         source: args.url,
         diffPreview,
+        businessId: args.businessId,
+        userId: args.userId,
       }
     );
 
@@ -81,7 +87,11 @@ export const generateFromUrl = action({
 
 // Generate a docs proposal from a simple internal seed
 export const generateFromSeed = action({
-  args: { source: v.string() },
+  args: { 
+    source: v.string(),
+    businessId: v.id("businesses"),
+    userId: v.id("users")
+  },
   handler: async (ctx, args): Promise<{ proposalId: Id<"docsProposals"> }> => {
     // Minimal seed scaffolding; in future can scrape/ingest additional sources
     const title = "Pikar AI – Overview";
@@ -112,6 +122,8 @@ export const generateFromSeed = action({
         contentMarkdown,
         source: args.source,
         diffPreview,
+        businessId: args.businessId,
+        userId: args.userId,
       }
     );
 

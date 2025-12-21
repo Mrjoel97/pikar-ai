@@ -11,11 +11,60 @@ type Props = {
 
 export default function DocumentationManager({ evalSummary }: Props) {
   const [importUrl, setImportUrl] = useState("");
+  const [isGenerating, setIsGenerating] = useState(false);
+
+  // Get current user for businessId and userId
+  const currentUser = useQuery(api.users.currentUser, {});
 
   const proposals = useQuery(api.docs.listProposals as any);
   const generateDocsSeed = useAction(api.docs.generateFromSeed as any);
   const approveDocsProposal = useMutation(api.docs.approveAndPublish as any);
   const generateDocsFromUrl = useAction(api.docs.generateFromUrl as any);
+
+  const handleGenerateSeed = async () => {
+    if (!currentUser?._id) {
+      toast.error("User not authenticated");
+      return;
+    }
+    try {
+      setIsGenerating(true);
+      const result = await generateDocsSeed({ 
+        source: "seed:readme",
+        businessId: currentUser?.businessId as any,
+        userId: currentUser?._id as any
+      });
+      toast.success("Documentation proposal generated from seed!");
+      setIsGenerating(false);
+    } catch (error: any) {
+      toast.error(error?.message || "Failed to generate documentation");
+      setIsGenerating(false);
+    }
+  };
+
+  const handleGenerateFromUrl = async () => {
+    if (!currentUser?._id) {
+      toast.error("User not authenticated");
+      return;
+    }
+    if (!importUrl.trim()) {
+      toast.error("Please enter a URL");
+      return;
+    }
+    try {
+      setIsGenerating(true);
+      const result = await generateDocsFromUrl({ 
+        url: importUrl,
+        businessId: currentUser?.businessId as any,
+        userId: currentUser?._id as any
+      });
+      toast.success("Documentation proposal generated from URL!");
+      setImportUrl("");
+      setIsGenerating(false);
+    } catch (error: any) {
+      toast.error(error?.message || "Failed to generate documentation from URL");
+      setIsGenerating(false);
+    }
+  };
 
   return (
     <div className="space-y-4">
@@ -30,37 +79,15 @@ export default function DocumentationManager({ evalSummary }: Props) {
           />
           <Button
             variant="secondary"
-            onClick={async () => {
-              try {
-                const url = importUrl.trim();
-                if (!url) {
-                  toast.error("Enter a URL to import");
-                  return;
-                }
-                const res = await generateDocsFromUrl({ url } as any);
-                toast.success("Imported proposal", {
-                  description: `Proposal ID: ${res?.proposalId || "created"}`,
-                });
-                setImportUrl("");
-              } catch (e: any) {
-                toast.error(e?.message || "Failed to import proposal");
-              }
-            }}
+            onClick={handleGenerateFromUrl}
+            disabled={isGenerating || !currentUser?._id}
           >
             Import
           </Button>
           <Button
             variant="default"
-            onClick={async () => {
-              try {
-                const res = await generateDocsSeed({ source: "internal:seed" } as any);
-                toast.success("Generated proposal", {
-                  description: `Proposal ID: ${res?.proposalId || "created"}`,
-                });
-              } catch (e: any) {
-                toast.error(e?.message || "Failed to generate proposal");
-              }
-            }}
+            onClick={handleGenerateSeed}
+            disabled={isGenerating || !currentUser?._id}
           >
             Generate Seed Page
           </Button>
@@ -93,7 +120,14 @@ export default function DocumentationManager({ evalSummary }: Props) {
                           );
                           return;
                         }
-                        await approveDocsProposal({ proposalId: p._id } as any);
+                        if (!currentUser?.businessId) {
+                          toast.error("Business ID not found");
+                          return;
+                        }
+                        await approveDocsProposal({ 
+                          proposalId: p._id,
+                          businessId: currentUser.businessId
+                        } as any);
                         toast.success("Proposal approved & published");
                       } catch (e: any) {
                         toast.error(e?.message || "Failed to publish proposal");

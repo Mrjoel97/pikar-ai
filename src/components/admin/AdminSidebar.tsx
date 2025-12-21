@@ -160,25 +160,11 @@ export function AdminSidebar({ onNavigate, isAdminSession, onLogout }: Props) {
       keywords: ["custom", "agents", "ai", "training"]
     },
     {
-      id: "assistant-docs",
-      label: "Assistant Docs",
-      icon: <BookOpen className="h-4 w-4 text-emerald-200 group-hover:text-white transition-colors" />,
-      onClick: () => onNavigate("section-assistant-docs"),
-      keywords: ["docs", "documentation", "assistant", "help"]
-    },
-    {
-      id: "demo-videos",
-      label: "Demo Videos",
-      icon: <Video className="h-4 w-4 text-emerald-200 group-hover:text-white transition-colors" />,
-      onClick: () => onNavigate("section-demo-videos"),
-      keywords: ["demo", "videos", "tutorials", "content"]
-    },
-    {
       id: "content-management",
       label: "Content Management",
       icon: <FileText className="h-4 w-4 text-emerald-200 group-hover:text-white transition-colors" />,
       onClick: () => onNavigate("section-content-management"),
-      keywords: ["content", "management", "cms", "docs"]
+      keywords: ["content", "management", "cms", "docs", "videos", "faq", "documentation"]
     },
     {
       id: "audit-explorer",
