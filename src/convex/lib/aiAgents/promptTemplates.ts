@@ -20,19 +20,48 @@ export async function getAgentPromptTemplates(ctx: any, args: { agent_key: strin
   }));
 }
 
-// Helper to generate metadata for variables
+// Helper to generate metadata for variables with enhanced types
 function generateVariableMetadata(variables: string[]) {
-  const metadata: Record<string, { type: string; description: string; placeholder: string }> = {};
+  const metadata: Record<string, { type: string; description: string; placeholder: string; options?: string[] }> = {};
   
   variables.forEach(variable => {
     const varLower = variable.toLowerCase();
     
-    // Infer variable type and provide helpful metadata
+    // Enhanced variable type inference with more options
     if (varLower.includes('tone') || varLower.includes('style')) {
       metadata[variable] = {
         type: 'select',
         description: 'Communication tone or style',
-        placeholder: 'e.g., professional, casual, friendly',
+        placeholder: 'Select tone...',
+        options: ['professional', 'casual', 'friendly', 'formal', 'enthusiastic', 'empathetic', 'authoritative', 'conversational'],
+      };
+    } else if (varLower.includes('priority') || varLower.includes('urgency')) {
+      metadata[variable] = {
+        type: 'select',
+        description: 'Priority or urgency level',
+        placeholder: 'Select priority...',
+        options: ['low', 'medium', 'high', 'critical'],
+      };
+    } else if (varLower.includes('language') || varLower.includes('locale')) {
+      metadata[variable] = {
+        type: 'select',
+        description: 'Language or locale',
+        placeholder: 'Select language...',
+        options: ['English', 'Spanish', 'French', 'German', 'Chinese', 'Japanese'],
+      };
+    } else if (varLower.includes('sentiment') || varLower.includes('emotion')) {
+      metadata[variable] = {
+        type: 'select',
+        description: 'Sentiment or emotional tone',
+        placeholder: 'Select sentiment...',
+        options: ['positive', 'neutral', 'negative', 'mixed'],
+      };
+    } else if (varLower.includes('length') || varLower.includes('size')) {
+      metadata[variable] = {
+        type: 'select',
+        description: 'Content length',
+        placeholder: 'Select length...',
+        options: ['brief', 'short', 'medium', 'long', 'detailed'],
       };
     } else if (varLower.includes('date') || varLower.includes('time')) {
       metadata[variable] = {
@@ -46,7 +75,13 @@ function generateVariableMetadata(variables: string[]) {
         description: 'Numeric value',
         placeholder: 'e.g., 100',
       };
-    } else if (varLower.includes('list') || varLower.includes('items')) {
+    } else if (varLower.includes('percentage') || varLower.includes('percent')) {
+      metadata[variable] = {
+        type: 'number',
+        description: 'Percentage value (0-100)',
+        placeholder: 'e.g., 75',
+      };
+    } else if (varLower.includes('list') || varLower.includes('items') || varLower.includes('points')) {
       metadata[variable] = {
         type: 'textarea',
         description: 'List of items (one per line)',
@@ -58,11 +93,17 @@ function generateVariableMetadata(variables: string[]) {
         description: 'Email address',
         placeholder: 'e.g., user@example.com',
       };
-    } else if (varLower.includes('url') || varLower.includes('link')) {
+    } else if (varLower.includes('url') || varLower.includes('link') || varLower.includes('website')) {
       metadata[variable] = {
         type: 'url',
         description: 'Web URL',
         placeholder: 'e.g., https://example.com',
+      };
+    } else if (varLower.includes('description') || varLower.includes('details') || varLower.includes('content')) {
+      metadata[variable] = {
+        type: 'textarea',
+        description: `Detailed ${variable.replace(/_/g, ' ')}`,
+        placeholder: `Enter ${variable.replace(/_/g, ' ')}`,
       };
     } else {
       metadata[variable] = {

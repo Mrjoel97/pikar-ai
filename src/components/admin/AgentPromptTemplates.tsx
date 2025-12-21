@@ -39,10 +39,11 @@ export function AgentPromptTemplates({ agentKey, agentName }: AgentPromptTemplat
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<PromptTemplate | null>(null);
   const [newTemplate, setNewTemplate] = useState<Partial<PromptTemplate>>({});
+  const [previewMode, setPreviewMode] = useState(false);
 
   // Fetch templates from database
   const templates = useQuery(api.aiAgents.getAgentPromptTemplates, { agent_key: agentKey }) as Array<PromptTemplate & {
-    variableMetadata?: Record<string, { type: string; description: string; placeholder: string }>;
+    variableMetadata?: Record<string, { type: string; description: string; placeholder: string; options?: string[] }>;
   }> | undefined;
   const addTemplate = useMutation(api.aiAgents.addPromptTemplate);
   const updateTemplate = useMutation(api.aiAgents.updatePromptTemplate);
@@ -53,6 +54,7 @@ export function AgentPromptTemplates({ agentKey, agentName }: AgentPromptTemplat
   const handleTemplateSelect = (template: PromptTemplate) => {
     setSelectedTemplate(template);
     setGeneratedPrompt("");
+    setPreviewMode(false);
     const initialValues: Record<string, string> = {};
     template.variables?.forEach(v => {
       initialValues[v] = "";
@@ -71,6 +73,7 @@ export function AgentPromptTemplates({ agentKey, agentName }: AgentPromptTemplat
     });
 
     setGeneratedPrompt(prompt);
+    setPreviewMode(true);
     toast.success("Prompt generated successfully!");
   };
 
@@ -89,7 +92,6 @@ export function AgentPromptTemplates({ agentKey, agentName }: AgentPromptTemplat
 
     try {
       if (editingTemplate) {
-        // Update existing template
         await updateTemplate({
           agent_key: agentKey,
           templateId: editingTemplate.id,
@@ -103,7 +105,6 @@ export function AgentPromptTemplates({ agentKey, agentName }: AgentPromptTemplat
         });
         toast.success("Template updated successfully!");
       } else {
-        // Add new template
         await addTemplate({
           agent_key: agentKey,
           template: {
@@ -149,6 +150,52 @@ export function AgentPromptTemplates({ agentKey, agentName }: AgentPromptTemplat
       toast.success("Template deleted successfully!");
     } catch (error: any) {
       toast.error(error?.message || "Failed to delete template");
+    }
+  };
+
+  const renderVariableInput = (variable: string, metadata: any) => {
+    if (metadata.type === 'textarea') {
+      return (
+        <Textarea
+          id={variable}
+          placeholder={metadata.placeholder}
+          value={variableValues[variable] || ""}
+          onChange={(e) =>
+            setVariableValues({ ...variableValues, [variable]: e.target.value })
+          }
+          rows={3}
+        />
+      );
+    } else if (metadata.type === 'select' && metadata.options) {
+      return (
+        <select
+          id={variable}
+          className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+          value={variableValues[variable] || ""}
+          onChange={(e) =>
+            setVariableValues({ ...variableValues, [variable]: e.target.value })
+          }
+        >
+          <option value="">{metadata.placeholder}</option>
+          {metadata.options.map((opt: string) => (
+            <option key={opt} value={opt}>
+              {opt.charAt(0).toUpperCase() + opt.slice(1)}
+            </option>
+          ))}
+        </select>
+      );
+    } else {
+      return (
+        <Input
+          id={variable}
+          type={metadata.type}
+          placeholder={metadata.placeholder}
+          value={variableValues[variable] || ""}
+          onChange={(e) =>
+            setVariableValues({ ...variableValues, [variable]: e.target.value })
+          }
+        />
+      );
     }
   };
 
@@ -247,95 +294,68 @@ export function AgentPromptTemplates({ agentKey, agentName }: AgentPromptTemplat
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {selectedTemplate.variables?.map((variable) => {
-                const metadata = (selectedTemplate as any).variableMetadata?.[variable] || {
-                  type: 'text',
-                  description: variable.replace(/_/g, ' '),
-                  placeholder: `Enter ${variable.replace(/_/g, ' ')}`,
-                };
-                
-                return (
-                  <div key={variable} className="space-y-2">
-                    <Label htmlFor={variable} className="capitalize">
-                      {variable.replace(/_/g, " ")}
-                    </Label>
-                    <p className="text-xs text-muted-foreground">{metadata.description}</p>
+            {!previewMode ? (
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {selectedTemplate.variables?.map((variable) => {
+                    const metadata = (selectedTemplate as any).variableMetadata?.[variable] || {
+                      type: 'text',
+                      description: variable.replace(/_/g, ' '),
+                      placeholder: `Enter ${variable.replace(/_/g, ' ')}`,
+                    };
                     
-                    {metadata.type === 'textarea' ? (
-                      <Textarea
-                        id={variable}
-                        placeholder={metadata.placeholder}
-                        value={variableValues[variable] || ""}
-                        onChange={(e) =>
-                          setVariableValues({ ...variableValues, [variable]: e.target.value })
-                        }
-                        rows={3}
-                      />
-                    ) : metadata.type === 'select' && variable.toLowerCase().includes('tone') ? (
-                      <select
-                        id={variable}
-                        className="h-10 w-full rounded-md border bg-background px-3 text-sm"
-                        value={variableValues[variable] || ""}
-                        onChange={(e) =>
-                          setVariableValues({ ...variableValues, [variable]: e.target.value })
-                        }
-                      >
-                        <option value="">Select tone...</option>
-                        <option value="professional">Professional</option>
-                        <option value="casual">Casual</option>
-                        <option value="friendly">Friendly</option>
-                        <option value="formal">Formal</option>
-                        <option value="enthusiastic">Enthusiastic</option>
-                        <option value="empathetic">Empathetic</option>
-                      </select>
-                    ) : (
-                      <Input
-                        id={variable}
-                        type={metadata.type}
-                        placeholder={metadata.placeholder}
-                        value={variableValues[variable] || ""}
-                        onChange={(e) =>
-                          setVariableValues({ ...variableValues, [variable]: e.target.value })
-                        }
-                      />
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+                    return (
+                      <div key={variable} className="space-y-2">
+                        <Label htmlFor={variable} className="capitalize">
+                          {variable.replace(/_/g, " ")}
+                        </Label>
+                        <p className="text-xs text-muted-foreground">{metadata.description}</p>
+                        {renderVariableInput(variable, metadata)}
+                      </div>
+                    );
+                  })}
+                </div>
 
-            <Button onClick={handleGeneratePrompt} className="w-full">
-              <Sparkles className="h-4 w-4 mr-2" />
-              Generate Prompt
-            </Button>
-
-            {generatedPrompt && (
-              <div className="space-y-2">
+                <Button onClick={handleGeneratePrompt} className="w-full">
+                  <Sparkles className="h-4 w-4 mr-2" />
+                  Generate Prompt
+                </Button>
+              </>
+            ) : (
+              <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <Label>Generated Prompt</Label>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={handleCopyPrompt}
-                  >
-                    {copied ? (
-                      <>
-                        <Check className="h-4 w-4 mr-2" />
-                        Copied
-                      </>
-                    ) : (
-                      <>
-                        <Copy className="h-4 w-4 mr-2" />
-                        Copy
-                      </>
-                    )}
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setPreviewMode(false)}
+                    >
+                      Edit Variables
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={handleCopyPrompt}
+                    >
+                      {copied ? (
+                        <>
+                          <Check className="h-4 w-4 mr-2" />
+                          Copied
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="h-4 w-4 mr-2" />
+                          Copy
+                        </>
+                      )}
+                    </Button>
+                  </div>
                 </div>
                 <Textarea
                   value={generatedPrompt}
                   onChange={(e) => setGeneratedPrompt(e.target.value)}
-                  rows={6}
+                  rows={8}
                   className="font-mono text-sm"
                 />
               </div>
@@ -351,7 +371,7 @@ export function AgentPromptTemplates({ agentKey, agentName }: AgentPromptTemplat
           setNewTemplate({});
         }
       }}>
-        <DialogContent>
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>{editingTemplate ? "Edit" : "Add"} Prompt Template</DialogTitle>
             <DialogDescription>
@@ -389,8 +409,12 @@ export function AgentPromptTemplates({ agentKey, agentName }: AgentPromptTemplat
                 placeholder="Write a {tone} email about {subject}..."
                 value={newTemplate.template || ""}
                 onChange={(e) => setNewTemplate({ ...newTemplate, template: e.target.value })}
-                rows={4}
+                rows={6}
+                className="font-mono text-sm"
               />
+              <p className="text-xs text-muted-foreground">
+                Tip: Use descriptive variable names like {"{tone}"}, {"{priority}"}, {"{language}"} for automatic type detection
+              </p>
             </div>
             <div className="space-y-2">
               <Label>Variables (comma-separated)</Label>
