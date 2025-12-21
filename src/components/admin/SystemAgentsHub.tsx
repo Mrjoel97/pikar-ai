@@ -38,6 +38,8 @@ export function SystemAgentsHub() {
   const [selectedAgent, setSelectedAgent] = useState<{ key: string; name: string } | null>(null);
   const [versionsDrawerOpen, setVersionsDrawerOpen] = useState(false);
   const [selectedAgentForVersions, setSelectedAgentForVersions] = useState<string | null>(null);
+  const [promptTemplatesOpen, setPromptTemplatesOpen] = useState(false);
+  const [selectedAgentForPrompts, setSelectedAgentForPrompts] = useState<{ key: string; name: string } | null>(null);
 
   const catalogAgents = useQuery(api.aiAgents.adminListAgents as any, {
     activeOnly: false,
@@ -106,6 +108,11 @@ export function SystemAgentsHub() {
     setVersionsDrawerOpen(true);
   };
 
+  const handleOpenPromptTemplates = (agentKey: string, agentName: string) => {
+    setSelectedAgentForPrompts({ key: agentKey, name: agentName });
+    setPromptTemplatesOpen(true);
+  };
+
   const handleRestoreVersion = async (versionId: string) => {
     if (!selectedAgentForVersions) return;
     
@@ -158,6 +165,7 @@ export function SystemAgentsHub() {
         <TabsList>
           <TabsTrigger value="agents">Agent Management</TabsTrigger>
           <TabsTrigger value="analytics">Analytics & Insights</TabsTrigger>
+          <TabsTrigger value="prompts">Prompt Templates</TabsTrigger>
         </TabsList>
 
         <TabsContent value="agents" className="space-y-6">
@@ -296,6 +304,14 @@ export function SystemAgentsHub() {
                     <Button
                       size="sm"
                       variant="outline"
+                      onClick={() => handleOpenPromptTemplates(agent.agent_key, agent.display_name || agent.agent_key)}
+                    >
+                      <BookOpen className="h-3 w-3 mr-1" />
+                      Prompts
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
                       onClick={() => handleOpenTraining(agent.agent_key, agent.display_name || agent.agent_key)}
                     >
                       <BookOpen className="h-3 w-3 mr-1" />
@@ -352,6 +368,25 @@ export function SystemAgentsHub() {
             </select>
           </div>
           <SystemAgentAnalytics selectedTenantId={selectedTenantForAnalytics} />
+        </TabsContent>
+
+        <TabsContent value="prompts" className="space-y-6">
+          {selectedAgentForPrompts ? (
+            <AgentPromptTemplates
+              agentKey={selectedAgentForPrompts.key}
+              agentName={selectedAgentForPrompts.name}
+            />
+          ) : (
+            <Card>
+              <CardContent className="py-12 text-center">
+                <BookOpen className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                <h3 className="text-lg font-medium mb-2">Select an Agent</h3>
+                <p className="text-sm text-muted-foreground">
+                  Click the "Prompts" button on any agent card to manage its prompt templates
+                </p>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
       </Tabs>
 
