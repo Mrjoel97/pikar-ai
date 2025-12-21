@@ -5,10 +5,9 @@ import { v } from "convex/values";
  */
 
 export async function getAgentPromptTemplates(ctx: any, args: { agent_key: string }) {
-  const agent = await ctx.db
-    .query("agentCatalog")
-    .withIndex("by_agent_key", (q: any) => q.eq("agent_key", args.agent_key))
-    .unique();
+  // Use collect() and filter instead of withIndex to avoid index issues
+  const agents = await ctx.db.query("agentCatalog").collect();
+  const agent = agents.find((a: any) => a.agent_key === args.agent_key);
 
   if (!agent) return [];
 
@@ -131,10 +130,8 @@ export async function updateAgentPromptTemplates(ctx: any, args: {
   const isAdmin = await (ctx as any).runQuery("admin:getIsAdmin" as any, {});
   if (!isAdmin) throw new Error("Admin access required");
 
-  const agent = await ctx.db
-    .query("agentCatalog")
-    .withIndex("by_agent_key", (q: any) => q.eq("agent_key", args.agent_key))
-    .unique();
+  const agents = await ctx.db.query("agentCatalog").collect();
+  const agent = agents.find((a: any) => a.agent_key === args.agent_key);
 
   if (!agent) throw new Error("Agent not found");
 
@@ -160,10 +157,8 @@ export async function addPromptTemplate(ctx: any, args: {
   const isAdmin = await (ctx as any).runQuery("admin:getIsAdmin" as any, {});
   if (!isAdmin) throw new Error("Admin access required");
 
-  const agent = await ctx.db
-    .query("agentCatalog")
-    .withIndex("by_agent_key", (q: any) => q.eq("agent_key", args.agent_key))
-    .unique();
+  const agents = await ctx.db.query("agentCatalog").collect();
+  const agent = agents.find((a: any) => a.agent_key === args.agent_key);
 
   if (!agent) throw new Error("Agent not found");
 
@@ -192,10 +187,8 @@ export async function updatePromptTemplate(ctx: any, args: {
   const isAdmin = await (ctx as any).runQuery("admin:getIsAdmin" as any, {});
   if (!isAdmin) throw new Error("Admin access required");
 
-  const agent = await ctx.db
-    .query("agentCatalog")
-    .withIndex("by_agent_key", (q: any) => q.eq("agent_key", args.agent_key))
-    .unique();
+  const agents = await ctx.db.query("agentCatalog").collect();
+  const agent = agents.find((a: any) => a.agent_key === args.agent_key);
 
   if (!agent) throw new Error("Agent not found");
 
@@ -226,10 +219,8 @@ export async function deletePromptTemplate(ctx: any, args: {
   const isAdmin = await (ctx as any).runQuery("admin:getIsAdmin" as any, {});
   if (!isAdmin) throw new Error("Admin access required");
 
-  const agent = await ctx.db
-    .query("agentCatalog")
-    .withIndex("by_agent_key", (q: any) => q.eq("agent_key", args.agent_key))
-    .unique();
+  const agents = await ctx.db.query("agentCatalog").collect();
+  const agent = agents.find((a: any) => a.agent_key === args.agent_key);
 
   if (!agent) throw new Error("Agent not found");
 
