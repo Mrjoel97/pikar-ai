@@ -1,1 +1,1 @@
-npx convex run adminAuthFix:fixAdminAccount '{"email":"joel@pikar-ai.com"}'
+npx convex run adminPasswordResetDirect:resetAdminPassword '{"email":"joel@pikar-ai.com","newPassword":"YourNewPassword123"}'

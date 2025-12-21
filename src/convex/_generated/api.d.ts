@@ -17,6 +17,7 @@ import type * as adminAuthData from "../adminAuthData.js";
 import type * as adminAuthFix from "../adminAuthFix.js";
 import type * as adminPasswordReset from "../adminPasswordReset.js";
 import type * as adminPasswordResetData from "../adminPasswordResetData.js";
+import type * as adminPasswordResetDirect from "../adminPasswordResetDirect.js";
 import type * as adminUsers from "../adminUsers.js";
 import type * as adminUsersActions from "../adminUsersActions.js";
 import type * as agentDatasets from "../agentDatasets.js";
@@ -323,6 +324,7 @@ declare const fullApi: ApiFromModules<{
   adminAuthFix: typeof adminAuthFix;
   adminPasswordReset: typeof adminPasswordReset;
   adminPasswordResetData: typeof adminPasswordResetData;
+  adminPasswordResetDirect: typeof adminPasswordResetDirect;
   adminUsers: typeof adminUsers;
   adminUsersActions: typeof adminUsersActions;
   agentDatasets: typeof agentDatasets;
