@@ -407,6 +407,73 @@ export default function AdminPage() {
         </div>
 
         <EnvironmentSettings env={env} />
+        
+        {/* System Health Section */}
+        <Card id="section-system-health">
+          <CardHeader>
+            <CardTitle>System Health</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <div className="text-sm font-medium">Environment Checks</div>
+                <div className="space-y-1 text-sm">
+                  <div className="flex items-center justify-between">
+                    <span>Resend API Key</span>
+                    <Badge variant={env?.checks?.resendApiKey ? "default" : "destructive"}>
+                      {env?.checks?.resendApiKey ? "✓" : "✗"}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>OpenAI API Key</span>
+                    <Badge variant={env?.checks?.openaiApiKey ? "default" : "destructive"}>
+                      {env?.checks?.openaiApiKey ? "✓" : "✗"}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>Convex URL</span>
+                    <Badge variant={env?.checks?.convexUrl ? "default" : "destructive"}>
+                      {env?.checks?.convexUrl ? "✓" : "✗"}
+                    </Badge>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <div className="text-sm font-medium">System Metrics</div>
+                <div className="space-y-1 text-sm">
+                  <div className="flex items-center justify-between">
+                    <span>Email Queue</span>
+                    <Badge variant={env?.metrics?.emailQueueStatus === "healthy" ? "default" : "secondary"}>
+                      {env?.metrics?.emailQueueDepth || 0} pending
+                    </Badge>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>Cron Status</span>
+                    <Badge variant={env?.metrics?.cronStatus === "healthy" ? "default" : "secondary"}>
+                      {env?.metrics?.cronStatus || "unknown"}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>Overdue Approvals</span>
+                    <Badge variant={env?.metrics?.overdueApprovals === 0 ? "default" : "destructive"}>
+                      {env?.metrics?.overdueApprovals || 0}
+                    </Badge>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div className="pt-2">
+              <div className="text-xs text-muted-foreground">
+                Overall Status: <Badge variant={env?.status === "healthy" ? "default" : "destructive"}>
+                  {env?.status || "unknown"}
+                </Badge>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         <KpiSnapshot kpis={kpis} />
         <FeatureFlagsPanel
           flags={flags}

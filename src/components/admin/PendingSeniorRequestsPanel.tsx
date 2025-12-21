@@ -10,20 +10,22 @@ interface PendingSeniorRequestsPanelProps {
 }
 
 export function PendingSeniorRequestsPanel({ pending, approveSenior }: PendingSeniorRequestsPanelProps) {
-  if (!pending || pending.length === 0) {
-    return null;
-  }
-
   return (
-    <Card>
+    <Card id="section-pending-senior">
       <CardHeader>
-        <CardTitle id="section-pending-senior">Pending Senior Admin Requests</CardTitle>
+        <CardTitle>Pending Senior Admin Requests</CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
         <p className="text-sm text-muted-foreground">
           Approve requests to grant Senior Admin privileges.
         </p>
-        <div className="rounded-md border">
+        
+        {!pending || pending.length === 0 ? (
+          <div className="text-sm text-muted-foreground p-4 text-center border rounded-md">
+            No pending senior admin requests at this time.
+          </div>
+        ) : (
+          <div className="rounded-md border">
           <div className="grid grid-cols-2 md:grid-cols-3 gap-2 p-3 bg-muted/40 text-xs font-medium">
             <div>Email</div>
             <div>Status</div>
@@ -57,6 +59,7 @@ export function PendingSeniorRequestsPanel({ pending, approveSenior }: PendingSe
             ))}
           </div>
         </div>
+        )}
       </CardContent>
     </Card>
   );
