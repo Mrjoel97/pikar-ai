@@ -40,6 +40,7 @@ export function SystemAgentsHub() {
   const [selectedAgentForVersions, setSelectedAgentForVersions] = useState<string | null>(null);
   const [promptTemplatesOpen, setPromptTemplatesOpen] = useState(false);
   const [selectedAgentForPrompts, setSelectedAgentForPrompts] = useState<{ key: string; name: string } | null>(null);
+  const [activeTab, setActiveTab] = useState("agents");
 
   const catalogAgents = useQuery(api.aiAgents.adminListAgents as any, {
     activeOnly: false,
@@ -110,7 +111,7 @@ export function SystemAgentsHub() {
 
   const handleOpenPromptTemplates = (agentKey: string, agentName: string) => {
     setSelectedAgentForPrompts({ key: agentKey, name: agentName });
-    setPromptTemplatesOpen(true);
+    setActiveTab("prompts");
   };
 
   const handleRestoreVersion = async (versionId: string) => {
@@ -161,7 +162,7 @@ export function SystemAgentsHub() {
       </div>
 
       {/* Add Tabs */}
-      <Tabs defaultValue="agents" className="space-y-6">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <TabsList>
           <TabsTrigger value="agents">Agent Management</TabsTrigger>
           <TabsTrigger value="analytics">Analytics & Insights</TabsTrigger>
