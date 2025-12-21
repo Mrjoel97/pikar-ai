@@ -16,7 +16,7 @@ export const getIsAdmin = query({
 
     const email = identity.email.toLowerCase();
 
-    const envAllowlist = (process.env.ADMIN_EMAILS || "")
+    const envAllowlist = (process.env.ADMIN_EMAILS || process.env.ADMIN_EMAIL || "")
       .split(",")
       .map((s) => s.trim().toLowerCase())
       .filter(Boolean);
@@ -44,7 +44,7 @@ export const ensureAdminSelf = mutation({
     if (!identity?.email) throw new Error("Not authenticated");
 
     const email = identity.email.toLowerCase();
-    const envAllowlist = (process.env.ADMIN_EMAILS || "")
+    const envAllowlist = (process.env.ADMIN_EMAILS || process.env.ADMIN_EMAIL || "")
       .split(",")
       .map((s) => s.trim().toLowerCase())
       .filter(Boolean);
@@ -112,7 +112,7 @@ async function isSuperAdmin(ctx: any): Promise<boolean> {
   const email = identity?.email?.toLowerCase();
   if (!email) return false;
 
-  const envAllowlist = (process.env.ADMIN_EMAILS || "")
+  const envAllowlist = (process.env.ADMIN_EMAILS || process.env.ADMIN_EMAIL || "")
     .split(",")
     .map((s) => s.trim().toLowerCase())
     .filter(Boolean);
@@ -132,7 +132,7 @@ async function isPlatformAdmin(ctx: any): Promise<boolean> {
   const email = identity?.email?.toLowerCase();
   if (!email) return false;
 
-  const envAllow = (process.env.ADMIN_EMAILS || "")
+  const envAllow = (process.env.ADMIN_EMAILS || process.env.ADMIN_EMAIL || "")
     .split(",")
     .map((s) => s.trim().toLowerCase())
     .filter(Boolean);
@@ -314,7 +314,7 @@ export const listTenantUsers = query({
     if (!identity) {
       throw new Error("Admin access required");
     }
-    const envAllow = (process.env.ADMIN_EMAILS || "")
+    const envAllow = (process.env.ADMIN_EMAILS || process.env.ADMIN_EMAIL || "")
       .split(",")
       .map((s) => s.trim().toLowerCase())
       .filter(Boolean);

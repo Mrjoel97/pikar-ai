@@ -69,7 +69,7 @@ export async function adminGetAgent(ctx: any, args: any) {
     .withIndex("by_email", (q: any) => q.eq("email", identity.email))
     .first();
   
-  const isAdmin = adminRecord?.role === "superadmin" || adminRecord?.role === "senior" || adminRecord?.role === "admin";
+  const isAdmin = adminRecord?.role === "super_admin" || adminRecord?.role === "senior" || adminRecord?.role === "admin";
   if (!isAdmin) return null;
 
   const agent = await ctx.db
