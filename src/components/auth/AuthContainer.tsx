@@ -78,6 +78,9 @@ export function AuthContainer() {
                   setEmail={authForm.setEmail}
                   password={authForm.password}
                   setPassword={authForm.setPassword}
+                  confirmPassword={authForm.confirmPassword}
+                  setConfirmPassword={authForm.setConfirmPassword}
+                  authMode={authForm.authMode}
                   showPassword={false}
                   setShowPassword={() => {}}
                   isLoading={authForm.isSubmitting}
