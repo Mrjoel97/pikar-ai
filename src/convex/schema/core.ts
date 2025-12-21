@@ -595,6 +595,27 @@ export const coreSchema = {
     sessionId: v.optional(v.string()),
   }).index("by_token", ["token"]),
 
+  authSessions: defineTable({
+    userId: v.id("users"),
+    expirationTime: v.number(),
+  }).index("by_user", ["userId"]),
+
+  authAccounts: defineTable({
+    userId: v.id("users"),
+    provider: v.string(),
+    providerAccountId: v.string(),
+    refreshToken: v.optional(v.string()),
+    accessToken: v.optional(v.string()),
+    expiresAt: v.optional(v.number()),
+    tokenType: v.optional(v.string()),
+    scope: v.optional(v.string()),
+    idToken: v.optional(v.string()),
+    sessionState: v.optional(v.string()),
+    emailVerified: v.optional(v.string()),
+  })
+    .index("by_user_and_provider", ["userId", "provider"])
+    .index("by_provider_and_account_id", ["provider", "providerAccountId"]),
+
   featureFlags: defineTable({
     name: v.string(),
     description: v.optional(v.string()),
