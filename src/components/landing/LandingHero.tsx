@@ -1,7 +1,6 @@
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Sparkles } from "lucide-react";
-import HeroBackgroundAnimation from "@/components/landing/HeroBackgroundAnimation";
 import RubiksCubeAnimation from "@/components/landing/RubiksCubeAnimation";
 
 interface LandingHeroProps {
@@ -22,9 +21,6 @@ export default function LandingHero({ handleGetStarted, setDemoOpen }: LandingHe
       id="main"
       className="relative pt-5 pb-12 sm:pt-10 sm:pb-20 lg:pt-10 lg:pb-24 px-4 sm:px-6 lg:px-8"
     >
-      {/* 3D Cube Animation Background */}
-      <HeroBackgroundAnimation />
-      
       {/* Rubik's Cube Animation */}
       <RubiksCubeAnimation />
 
