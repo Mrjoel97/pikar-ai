@@ -96,7 +96,11 @@ export const login = action({
     }
 
     // Verify password
-    const [, salt, storedKey] = adminAuth.passwordHash.split(":");
+    const parts = adminAuth.passwordHash.split(":");
+    if (parts.length !== 3 || parts[0] !== "scrypt") {
+      throw new Error("Invalid password hash format");
+    }
+    const [, salt, storedKey] = parts;
     const derivedKey = await scryptAsync(password, salt, 64);
     const derivedKeyHex = (derivedKey as Buffer).toString("hex");
 

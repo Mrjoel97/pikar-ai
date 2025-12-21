@@ -16,6 +16,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { RichTemplateEditor } from "./RichTemplateEditor";
 
 interface PromptTemplate {
   id: string;
@@ -405,12 +406,12 @@ export function AgentPromptTemplates({ agentKey, agentName }: AgentPromptTemplat
             </div>
             <div className="space-y-2">
               <Label>Template (use {"{variable}"} for placeholders)</Label>
-              <Textarea
-                placeholder="Write a {tone} email about {subject}..."
+              <RichTemplateEditor
                 value={newTemplate.template || ""}
-                onChange={(e) => setNewTemplate({ ...newTemplate, template: e.target.value })}
-                rows={6}
-                className="font-mono text-sm"
+                onChange={(template) => setNewTemplate({ ...newTemplate, template })}
+                placeholder="Write a {tone} email about {subject}..."
+                rows={8}
+                variables={newTemplate.variables || []}
               />
               <p className="text-xs text-muted-foreground">
                 Tip: Use descriptive variable names like {"{tone}"}, {"{priority}"}, {"{language}"} for automatic type detection
