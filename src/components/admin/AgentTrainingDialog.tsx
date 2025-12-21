@@ -12,12 +12,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
+import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Upload, FileText, Link as LinkIcon, Type, Trash2, BookOpen, Loader2, CheckCircle, AlertCircle } from "lucide-react";
+import { Link as LinkIcon, Type, BookOpen, Loader2, FileText, Upload } from "lucide-react";
+import { FileUploadSection } from "./training/FileUploadSection";
+import { DatasetCard } from "./training/DatasetCard";
 
 interface AgentTrainingDialogProps {
   open: boolean;
@@ -271,35 +271,6 @@ export function AgentTrainingDialog({
     }
   };
 
-  const getProcessingIcon = () => {
-    switch (processingStage) {
-      case 'uploading':
-      case 'processing':
-        return <Loader2 className="h-4 w-4 animate-spin text-blue-500" />;
-      case 'complete':
-        return <CheckCircle className="h-4 w-4 text-green-500" />;
-      case 'error':
-        return <AlertCircle className="h-4 w-4 text-red-500" />;
-      default:
-        return null;
-    }
-  };
-
-  const getProcessingMessage = () => {
-    switch (processingStage) {
-      case 'uploading':
-        return 'Uploading file...';
-      case 'processing':
-        return 'Extracting text content...';
-      case 'complete':
-        return 'File processed successfully';
-      case 'error':
-        return 'Processing failed';
-      default:
-        return '';
-    }
-  };
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
@@ -388,68 +359,15 @@ export function AgentTrainingDialog({
               )}
 
               {sourceType === "file" && (
-                <div className="space-y-2">
-                  <Label htmlFor="fileUpload">Upload File *</Label>
-                  <div className="flex items-center gap-2">
-                    <Input
-                      id="fileUpload"
-                      type="file"
-                      accept={ALLOWED_EXTENSIONS.join(',')}
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) {
-                          handleFileUpload(file);
-                        }
-                      }}
-                      disabled={processingStage === 'uploading' || processingStage === 'processing'}
-                    />
-                    {getProcessingIcon()}
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Supported formats: TXT, MD, DOC, DOCX, PDF (Max size: 10MB)
-                  </p>
-                  
-                  {/* Processing Progress */}
-                  {(processingStage === 'uploading' || processingStage === 'processing') && (
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-muted-foreground">{getProcessingMessage()}</span>
-                        <span className="font-medium">{uploadProgress}%</span>
-                      </div>
-                      <Progress value={uploadProgress} className="h-2" />
-                    </div>
-                  )}
-                  
-                  {uploadedFileName && (
-                    <div className="flex items-center gap-2">
-                      <Badge variant="secondary" className="mt-2">
-                        <FileText className="h-3 w-3 mr-1" />
-                        {uploadedFileName}
-                      </Badge>
-                      {fileStats && (
-                        <Badge variant="outline" className="mt-2">
-                          {fileStats.wordCount} words, {fileStats.charCount} chars
-                        </Badge>
-                      )}
-                    </div>
-                  )}
-                  
-                  {noteText && (
-                    <div className="mt-2">
-                      <Label>Extracted Content Preview</Label>
-                      <Textarea
-                        value={noteText}
-                        onChange={(e) => setNoteText(e.target.value)}
-                        rows={8}
-                        className="mt-1"
-                        placeholder="File content will appear here..."
-                      />
-                      <p className="text-xs text-muted-foreground mt-1">
-                        You can edit the extracted content before saving
-                      </p>
-                    </div>
-                  )}
-                </div>
+                <FileUploadSection
+                  processingStage={processingStage}
+                  uploadProgress={uploadProgress}
+                  uploadedFileName={uploadedFileName}
+                  fileStats={fileStats}
+                  noteText={noteText}
+                  onFileChange={handleFileUpload}
+                  onNoteTextChange={setNoteText}
+                />
               )}
 
               <Button 
@@ -483,43 +401,11 @@ export function AgentTrainingDialog({
             ) : (
               <div className="space-y-3">
                 {agentDatasets.map((dataset) => (
-                  <Card key={dataset._id}>
-                    <CardHeader className="pb-3">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <CardTitle className="text-base">{dataset.title}</CardTitle>
-                          <div className="flex gap-2 mt-2">
-                            <Badge variant="outline">{dataset.sourceType}</Badge>
-                            <Badge variant={dataset.status === "new" ? "secondary" : "default"}>
-                              {dataset.status}
-                            </Badge>
-                          </div>
-                        </div>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => handleUnlink(dataset._id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      {dataset.sourceUrl && (
-                        <p className="text-sm text-muted-foreground truncate">
-                          {dataset.sourceUrl}
-                        </p>
-                      )}
-                      {dataset.noteText && (
-                        <p className="text-sm text-muted-foreground line-clamp-2">
-                          {dataset.noteText}
-                        </p>
-                      )}
-                      <p className="text-xs text-muted-foreground mt-2">
-                        Added {new Date(dataset.createdAt).toLocaleDateString()}
-                      </p>
-                    </CardContent>
-                  </Card>
+                  <DatasetCard
+                    key={dataset._id}
+                    dataset={dataset}
+                    onUnlink={handleUnlink}
+                  />
                 ))}
               </div>
             )}
@@ -539,39 +425,12 @@ export function AgentTrainingDialog({
             ) : (
               <div className="space-y-3">
                 {availableDatasets.map((dataset) => (
-                  <Card key={dataset._id}>
-                    <CardHeader className="pb-3">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <CardTitle className="text-base">{dataset.title}</CardTitle>
-                          <div className="flex gap-2 mt-2">
-                            <Badge variant="outline">{dataset.sourceType}</Badge>
-                            <Badge variant="secondary">
-                              Used by {dataset.linkedAgentKeys.length} agent(s)
-                            </Badge>
-                          </div>
-                        </div>
-                        <Button
-                          size="sm"
-                          onClick={() => handleLinkExisting(dataset._id)}
-                        >
-                          Link
-                        </Button>
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      {dataset.sourceUrl && (
-                        <p className="text-sm text-muted-foreground truncate">
-                          {dataset.sourceUrl}
-                        </p>
-                      )}
-                      {dataset.noteText && (
-                        <p className="text-sm text-muted-foreground line-clamp-2">
-                          {dataset.noteText}
-                        </p>
-                      )}
-                    </CardContent>
-                  </Card>
+                  <DatasetCard
+                    key={dataset._id}
+                    dataset={dataset}
+                    onLink={handleLinkExisting}
+                    showLinkButton
+                  />
                 ))}
               </div>
             )}

@@ -56,53 +56,101 @@ export const processUploadedFile = action({
           throw new Error(`${fileExtension.toUpperCase()} parsing failed: ${docError.message}`);
         }
       } else if (fileExtension === 'pdf') {
-        // Basic PDF text extraction without canvas dependencies
+        // Enhanced PDF text extraction
         const arrayBuffer = await response.arrayBuffer();
         const buffer = Buffer.from(arrayBuffer);
         
         try {
-          // Convert buffer to string and extract text between stream markers
           const pdfText = buffer.toString('binary');
           const textChunks: string[] = [];
           
-          // Extract text from PDF streams
+          // Method 1: Extract text from PDF streams with better filtering
           const streamRegex = /stream\s*([\s\S]*?)\s*endstream/g;
           let match;
           
           while ((match = streamRegex.exec(pdfText)) !== null) {
             const streamContent = match[1];
-            // Try to extract readable text
-            const readable = streamContent
-              .replace(/[\x00-\x1F\x7F-\x9F]/g, ' ') // Remove control characters
+            // Decode common PDF text encodings
+            let readable = streamContent
+              .replace(/[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F-\x9F]/g, ' ') // Remove control chars except \t, \n, \r
               .replace(/\s+/g, ' ')
               .trim();
             
-            if (readable.length > 20) {
+            // Filter out binary/encoded content
+            const textRatio = (readable.match(/[a-zA-Z0-9\s.,!?;:'"()-]/g) || []).length / readable.length;
+            if (readable.length > 20 && textRatio > 0.6) {
               textChunks.push(readable);
             }
           }
           
-          // Also try to extract text objects
-          const textObjectRegex = /\(([^)]+)\)/g;
-          const textMatches = pdfText.match(textObjectRegex);
+          // Method 2: Extract text objects with better decoding
+          const textObjectRegex = /\(((?:[^()\\]|\\.)*)\)\s*Tj/g;
+          const textShowRegex = /\[((?:[^\[\]\\]|\\.)*)\]\s*TJ/g;
           
-          if (textMatches) {
-            textMatches.forEach(match => {
-              const text = match.slice(1, -1)
-                .replace(/\\n/g, '\n')
-                .replace(/\\r/g, '\r')
-                .replace(/\\t/g, '\t')
-                .replace(/\\\\/g, '\\')
-                .replace(/\\\(/g, '(')
-                .replace(/\\\)/g, ')');
-              
-              if (text.length > 3 && /[a-zA-Z]/.test(text)) {
-                textChunks.push(text);
-              }
-            });
+          // Extract Tj (show text) commands
+          while ((match = textObjectRegex.exec(pdfText)) !== null) {
+            let text = match[1]
+              .replace(/\\n/g, '\n')
+              .replace(/\\r/g, '\r')
+              .replace(/\\t/g, '\t')
+              .replace(/\\\\/g, '\\')
+              .replace(/\\\(/g, '(')
+              .replace(/\\\)/g, ')')
+              .replace(/\\'/g, "'")
+              .replace(/\\"/g, '"');
+            
+            if (text.length > 2 && /[a-zA-Z]/.test(text)) {
+              textChunks.push(text);
+            }
           }
           
-          extractedText = textChunks.join('\n').trim();
+          // Extract TJ (show text with positioning) commands
+          while ((match = textShowRegex.exec(pdfText)) !== null) {
+            const arrayContent = match[1];
+            // Extract strings from array notation
+            const stringMatches = arrayContent.match(/\(((?:[^()\\]|\\.)*)\)/g);
+            if (stringMatches) {
+              stringMatches.forEach(str => {
+                const text = str.slice(1, -1)
+                  .replace(/\\n/g, '\n')
+                  .replace(/\\r/g, '\r')
+                  .replace(/\\t/g, '\t')
+                  .replace(/\\\\/g, '\\')
+                  .replace(/\\\(/g, '(')
+                  .replace(/\\\)/g, ')');
+                
+                if (text.length > 2 && /[a-zA-Z]/.test(text)) {
+                  textChunks.push(text);
+                }
+              });
+            }
+          }
+          
+          // Method 3: Extract from content streams
+          const contentStreamRegex = /BT\s*([\s\S]*?)\s*ET/g;
+          while ((match = contentStreamRegex.exec(pdfText)) !== null) {
+            const content = match[1];
+            const textMatches = content.match(/\(((?:[^()\\]|\\.)*)\)/g);
+            if (textMatches) {
+              textMatches.forEach(text => {
+                const decoded = text.slice(1, -1)
+                  .replace(/\\n/g, '\n')
+                  .replace(/\\r/g, '\r')
+                  .replace(/\\t/g, '\t')
+                  .replace(/\\\\/g, '\\')
+                  .replace(/\\\(/g, '(')
+                  .replace(/\\\)/g, ')');
+                
+                if (decoded.length > 2 && /[a-zA-Z]/.test(decoded)) {
+                  textChunks.push(decoded);
+                }
+              });
+            }
+          }
+          
+          // Deduplicate and join
+          const uniqueChunks = Array.from(new Set(textChunks));
+          extractedText = uniqueChunks.join('\n').trim();
           
           if (!extractedText || extractedText.length < 50) {
             throw new Error(
@@ -111,7 +159,7 @@ export const processUploadedFile = action({
             );
           }
           
-          console.log(`PDF processed: extracted ${extractedText.length} characters`);
+          console.log(`PDF processed: extracted ${extractedText.length} characters from ${uniqueChunks.length} text chunks`);
         } catch (pdfError: any) {
           throw new Error(`PDF processing failed: ${pdfError.message}`);
         }

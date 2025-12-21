@@ -40,7 +40,9 @@ export function AgentPromptTemplates({ agentKey, agentName }: AgentPromptTemplat
   const [newTemplate, setNewTemplate] = useState<Partial<PromptTemplate>>({});
 
   // Fetch templates from database
-  const templates = useQuery(api.aiAgents.getAgentPromptTemplates, { agent_key: agentKey }) as PromptTemplate[] | undefined;
+  const templates = useQuery(api.aiAgents.getAgentPromptTemplates, { agent_key: agentKey }) as Array<PromptTemplate & {
+    variableMetadata?: Record<string, { type: string; description: string; placeholder: string }>;
+  }> | undefined;
   const addTemplate = useMutation(api.aiAgents.addPromptTemplate);
   const deleteTemplate = useMutation(api.aiAgents.deletePromptTemplate);
 
@@ -196,21 +198,61 @@ export function AgentPromptTemplates({ agentKey, agentName }: AgentPromptTemplat
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {selectedTemplate.variables?.map((variable) => (
-                <div key={variable} className="space-y-2">
-                  <Label htmlFor={variable} className="capitalize">
-                    {variable.replace(/_/g, " ")}
-                  </Label>
-                  <Input
-                    id={variable}
-                    placeholder={`Enter ${variable.replace(/_/g, " ")}`}
-                    value={variableValues[variable] || ""}
-                    onChange={(e) =>
-                      setVariableValues({ ...variableValues, [variable]: e.target.value })
-                    }
-                  />
-                </div>
-              ))}
+              {selectedTemplate.variables?.map((variable) => {
+                const metadata = (selectedTemplate as any).variableMetadata?.[variable] || {
+                  type: 'text',
+                  description: variable.replace(/_/g, ' '),
+                  placeholder: `Enter ${variable.replace(/_/g, ' ')}`,
+                };
+                
+                return (
+                  <div key={variable} className="space-y-2">
+                    <Label htmlFor={variable} className="capitalize">
+                      {variable.replace(/_/g, " ")}
+                    </Label>
+                    <p className="text-xs text-muted-foreground">{metadata.description}</p>
+                    
+                    {metadata.type === 'textarea' ? (
+                      <Textarea
+                        id={variable}
+                        placeholder={metadata.placeholder}
+                        value={variableValues[variable] || ""}
+                        onChange={(e) =>
+                          setVariableValues({ ...variableValues, [variable]: e.target.value })
+                        }
+                        rows={3}
+                      />
+                    ) : metadata.type === 'select' && variable.toLowerCase().includes('tone') ? (
+                      <select
+                        id={variable}
+                        className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+                        value={variableValues[variable] || ""}
+                        onChange={(e) =>
+                          setVariableValues({ ...variableValues, [variable]: e.target.value })
+                        }
+                      >
+                        <option value="">Select tone...</option>
+                        <option value="professional">Professional</option>
+                        <option value="casual">Casual</option>
+                        <option value="friendly">Friendly</option>
+                        <option value="formal">Formal</option>
+                        <option value="enthusiastic">Enthusiastic</option>
+                        <option value="empathetic">Empathetic</option>
+                      </select>
+                    ) : (
+                      <Input
+                        id={variable}
+                        type={metadata.type}
+                        placeholder={metadata.placeholder}
+                        value={variableValues[variable] || ""}
+                        onChange={(e) =>
+                          setVariableValues({ ...variableValues, [variable]: e.target.value })
+                        }
+                      />
+                    )}
+                  </div>
+                );
+              })}
             </div>
 
             <Button onClick={handleGeneratePrompt} className="w-full">

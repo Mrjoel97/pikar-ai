@@ -12,7 +12,68 @@ export async function getAgentPromptTemplates(ctx: any, args: { agent_key: strin
 
   if (!agent) return [];
 
-  return agent.prompt_templates || [];
+  // Return templates with enhanced variable metadata
+  const templates = agent.prompt_templates || [];
+  return templates.map((template: any) => ({
+    ...template,
+    variableMetadata: generateVariableMetadata(template.variables || []),
+  }));
+}
+
+// Helper to generate metadata for variables
+function generateVariableMetadata(variables: string[]) {
+  const metadata: Record<string, { type: string; description: string; placeholder: string }> = {};
+  
+  variables.forEach(variable => {
+    const varLower = variable.toLowerCase();
+    
+    // Infer variable type and provide helpful metadata
+    if (varLower.includes('tone') || varLower.includes('style')) {
+      metadata[variable] = {
+        type: 'select',
+        description: 'Communication tone or style',
+        placeholder: 'e.g., professional, casual, friendly',
+      };
+    } else if (varLower.includes('date') || varLower.includes('time')) {
+      metadata[variable] = {
+        type: 'date',
+        description: 'Date or time value',
+        placeholder: 'e.g., 2024-01-15',
+      };
+    } else if (varLower.includes('number') || varLower.includes('count') || varLower.includes('amount')) {
+      metadata[variable] = {
+        type: 'number',
+        description: 'Numeric value',
+        placeholder: 'e.g., 100',
+      };
+    } else if (varLower.includes('list') || varLower.includes('items')) {
+      metadata[variable] = {
+        type: 'textarea',
+        description: 'List of items (one per line)',
+        placeholder: 'Enter items, one per line',
+      };
+    } else if (varLower.includes('email') || varLower.includes('contact')) {
+      metadata[variable] = {
+        type: 'email',
+        description: 'Email address',
+        placeholder: 'e.g., user@example.com',
+      };
+    } else if (varLower.includes('url') || varLower.includes('link')) {
+      metadata[variable] = {
+        type: 'url',
+        description: 'Web URL',
+        placeholder: 'e.g., https://example.com',
+      };
+    } else {
+      metadata[variable] = {
+        type: 'text',
+        description: `Value for ${variable.replace(/_/g, ' ')}`,
+        placeholder: `Enter ${variable.replace(/_/g, ' ')}`,
+      };
+    }
+  });
+  
+  return metadata;
 }
 
 export async function updateAgentPromptTemplates(ctx: any, args: {
