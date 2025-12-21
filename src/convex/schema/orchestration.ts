@@ -34,14 +34,13 @@ export const orchestrationSchema = {
     .index("by_type", ["type"])
     .index("by_status", ["status"]),
 
-  agentExecutions: defineTable({
+  orchestrationExecutions: defineTable({
     orchestrationId: v.id("agentOrchestrations"),
     agentKey: v.string(),
     status: v.string(), // success, failed
     duration: v.number(),
     result: v.optional(v.any()),
     error: v.optional(v.string()),
-    createdAt: v.number(),
     metadata: v.optional(v.object({
       inputTokens: v.optional(v.number()),
       outputTokens: v.optional(v.number()),

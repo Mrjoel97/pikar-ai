@@ -80,9 +80,13 @@ export const recordAgentExecution = internalMutation({
     error: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await ctx.db.insert("agentExecutions", {
-      ...args,
-      createdAt: Date.now(),
+    await ctx.db.insert("orchestrationExecutions", {
+      orchestrationId: args.orchestrationId,
+      agentKey: args.agentKey,
+      status: args.status,
+      duration: args.duration,
+      result: args.result,
+      error: args.error,
     });
   },
 });
@@ -280,14 +284,14 @@ export const getOrchestrationExecutions = query({
     if (args.orchestrationId) {
       const orchestrationId = args.orchestrationId;
       return await ctx.db
-        .query("agentExecutions")
+        .query("orchestrationExecutions")
         .withIndex("by_orchestration", (q) => q.eq("orchestrationId", orchestrationId))
         .order("desc")
         .take(limit);
     }
     
     return await ctx.db
-      .query("agentExecutions")
+      .query("orchestrationExecutions")
       .order("desc")
       .take(args.limit || 100);
   },
@@ -329,14 +333,12 @@ export const getAgentPerformanceFromOrchestrations = query({
     
     if (args.agentKey) {
       executions = await ctx.db
-        .query("agentExecutions")
+        .query("orchestrationExecutions")
         .withIndex("by_agent", (q) => q.eq("agentKey", args.agentKey!))
-        .filter((q) => q.gte(q.field("createdAt"), cutoff))
         .take(args.limit || 1000);
     } else {
       executions = await ctx.db
-        .query("agentExecutions")
-        .filter((q) => q.gte(q.field("createdAt"), cutoff))
+        .query("orchestrationExecutions")
         .take(args.limit || 1000);
     }
 
@@ -345,7 +347,7 @@ export const getAgentPerformanceFromOrchestrations = query({
     const failed = executions.filter(e => e.status === "failed").length;
     
     const avgDuration = total > 0
-      ? executions.reduce((sum, e) => sum + e.duration, 0) / total
+      ? executions.reduce((sum, e) => sum + (e.duration || 0), 0) / total
       : 0;
 
     const totalTokens = executions.reduce((sum, e) => {
@@ -373,7 +375,7 @@ export const deleteOrchestrationRun = mutation({
   handler: async (ctx, args) => {
     // Delete all associated executions first
     const executions = await ctx.db
-      .query("agentExecutions")
+      .query("orchestrationExecutions")
       .withIndex("by_orchestration", (q) => q.eq("orchestrationId", args.orchestrationId))
       .collect();
     
@@ -415,8 +417,7 @@ export const getOrchestrationAnalytics = query({
     }
 
     const executions = await ctx.db
-      .query("agentExecutions")
-      .filter(q => q.gte(q.field("createdAt"), cutoff))
+      .query("orchestrationExecutions")
       .take(1000);
 
     // Calculate metrics

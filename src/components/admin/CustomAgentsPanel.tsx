@@ -57,6 +57,23 @@ export function CustomAgentsPanel({ selectedTenantId, recentAudits }: CustomAgen
     setEditDialogOpen(true);
   };
 
+  const handleQuickOverride = async (agent: any, field: "trainingNotes" | "brandVoice") => {
+    const currentValue = agent[field] || "";
+    const newValue = prompt(`Override ${field === "trainingNotes" ? "Training Notes" : "Brand Voice"} for this agent:`, currentValue);
+    
+    if (newValue !== null && newValue !== currentValue) {
+      try {
+        await adminUpdateAgentProfile({
+          profileId: agent._id,
+          [field]: newValue,
+        });
+        toast.success(`${field === "trainingNotes" ? "Training notes" : "Brand voice"} updated successfully`);
+      } catch (e: any) {
+        toast.error(e?.message || "Failed to update agent");
+      }
+    }
+  };
+
   const handleSaveEdit = async () => {
     if (!selectedAgent) return;
     try {
@@ -193,6 +210,24 @@ export function CustomAgentsPanel({ selectedTenantId, recentAudits }: CustomAgen
                       >
                         <Edit className="h-3 w-3 mr-1" />
                         Edit
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        className="text-xs h-7 px-2"
+                        onClick={() => handleQuickOverride(a, "trainingNotes")}
+                        title="Quick override training notes"
+                      >
+                        Notes
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        className="text-xs h-7 px-2"
+                        onClick={() => handleQuickOverride(a, "brandVoice")}
+                        title="Quick override brand voice"
+                      >
+                        Voice
                       </Button>
                       <Button
                         size="sm"

@@ -153,8 +153,15 @@ export const agentsSchema = {
     completedAt: v.optional(v.number()),
     error: v.optional(v.string()),
     responseTime: v.optional(v.number()),
+    metadata: v.optional(v.object({
+      model: v.optional(v.string()),
+      inputTokens: v.optional(v.number()),
+      outputTokens: v.optional(v.number()),
+      retries: v.optional(v.number()),
+    })),
   })
     .index("by_agent", ["agentId"])
     .index("by_business", ["businessId"])
-    .index("by_status", ["status"]),
+    .index("by_status", ["status"])
+    .index("by_agent_and_status", ["agentId", "status"]),
 };

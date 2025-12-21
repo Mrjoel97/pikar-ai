@@ -37,7 +37,7 @@ export const getOrchestrationInsights = internalQuery({
   },
   handler: async (ctx, args) => {
     const executions = await ctx.db
-      .query("agentExecutions")
+      .query("orchestrationExecutions")
       .withIndex("by_agent", (q) => q.eq("agentKey", args.agentKey))
       .order("desc")
       .take(args.limit || 100);
@@ -47,7 +47,7 @@ export const getOrchestrationInsights = internalQuery({
       : 0;
 
     const avgDuration = executions.length > 0
-      ? executions.reduce((sum, e) => sum + e.duration, 0) / executions.length
+      ? executions.reduce((sum, e) => sum + (e.duration || 0), 0) / executions.length
       : 0;
 
     // Identify common failure patterns

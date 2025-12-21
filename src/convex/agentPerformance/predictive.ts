@@ -27,13 +27,13 @@ export const getPredictivePerformance = query({
         const historicalPeriod = 90 * 24 * 60 * 60 * 1000;
         const executions = await ctx.db
           .query("agentExecutions")
-          .withIndex("by_agent", (q) => q.eq("agentKey", agent._id))
-          .filter((q) => q.gte(q.field("_creationTime"), Date.now() - historicalPeriod))
+          .withIndex("by_agent", (q) => q.eq("agentId", agent._id))
+          .filter((q) => q.gte(q.field("startedAt"), Date.now() - historicalPeriod))
           .collect();
 
         // Calculate performance metrics
         const successRate = executions.length > 0
-          ? (executions.filter(e => e.status === "completed").length / executions.length) * 100
+          ? (executions.filter(e => e.status === "completed" || e.status === "success").length / executions.length) * 100
           : 0;
 
         const avgDuration = executions.length > 0
@@ -44,10 +44,10 @@ export const getPredictivePerformance = query({
         const recentExecs = executions.slice(-30);
         const olderExecs = executions.slice(0, 30);
         const recentSuccess = recentExecs.length > 0
-          ? (recentExecs.filter(e => e.status === "completed").length / recentExecs.length) * 100
+          ? (recentExecs.filter(e => e.status === "completed" || e.status === "success").length / recentExecs.length) * 100
           : successRate;
         const olderSuccess = olderExecs.length > 0
-          ? (olderExecs.filter(e => e.status === "completed").length / olderExecs.length) * 100
+          ? (olderExecs.filter(e => e.status === "completed" || e.status === "success").length / olderExecs.length) * 100
           : successRate;
 
         const trendSlope = (recentSuccess - olderSuccess) / 30;
@@ -90,14 +90,14 @@ export const getPerformanceForecast = query({
 
     const executions = await ctx.db
       .query("agentExecutions")
-      .withIndex("by_agent", (q) => q.eq("agentKey", args.agentId))
-      .filter((q) => q.gte(q.field("_creationTime"), Date.now() - 90 * 24 * 60 * 60 * 1000))
+      .withIndex("by_agent", (q) => q.eq("agentId", args.agentId))
+      .filter((q) => q.gte(q.field("startedAt"), Date.now() - 90 * 24 * 60 * 60 * 1000))
       .collect();
 
     // Generate daily forecast
     const forecast = [];
     const baseSuccess = executions.length > 0
-      ? (executions.filter(e => e.status === "completed").length / executions.length) * 100
+      ? (executions.filter(e => e.status === "completed" || e.status === "success").length / executions.length) * 100
       : 80;
 
     for (let i = 0; i <= days; i++) {
@@ -144,12 +144,12 @@ export const getOptimizationRecommendations = query({
 
         const executions = await ctx.db
           .query("agentExecutions")
-          .withIndex("by_agent", (q) => q.eq("agentKey", agent._id))
-          .filter((q) => q.gte(q.field("_creationTime"), Date.now() - 30 * 24 * 60 * 60 * 1000))
+          .withIndex("by_agent", (q) => q.eq("agentId", agent._id))
+          .filter((q) => q.gte(q.field("startedAt"), Date.now() - 30 * 24 * 60 * 60 * 1000))
           .collect();
 
         const successRate = executions.length > 0
-          ? (executions.filter(e => e.status === "completed").length / executions.length) * 100
+          ? (executions.filter(e => e.status === "completed" || e.status === "success").length / executions.length) * 100
           : 0;
 
         const avgDuration = executions.length > 0
@@ -238,12 +238,12 @@ export const getAgentHealthPredictions = query({
       agents.map(async (agent) => {
         const executions = await ctx.db
           .query("agentExecutions")
-          .withIndex("by_agent", (q) => q.eq("agentKey", agent._id))
-          .filter((q) => q.gte(q.field("_creationTime"), Date.now() - 30 * 24 * 60 * 60 * 1000))
+          .withIndex("by_agent", (q) => q.eq("agentId", agent._id))
+          .filter((q) => q.gte(q.field("startedAt"), Date.now() - 30 * 24 * 60 * 60 * 1000))
           .collect();
 
         const successRate = executions.length > 0
-          ? (executions.filter(e => e.status === "completed").length / executions.length) * 100
+          ? (executions.filter(e => e.status === "completed" || e.status === "success").length / executions.length) * 100
           : 0;
 
         const errorRate = executions.length > 0

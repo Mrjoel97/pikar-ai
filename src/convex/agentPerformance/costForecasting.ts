@@ -27,8 +27,8 @@ export const getCostForecast = query({
         const historicalDays = 30;
         const executions = await ctx.db
           .query("agentExecutions")
-          .withIndex("by_agent", (q) => q.eq("agentKey", agent._id))
-          .filter((q) => q.gte(q.field("_creationTime"), Date.now() - historicalDays * 24 * 60 * 60 * 1000))
+          .withIndex("by_agent", (q) => q.eq("agentId", agent._id))
+          .filter((q) => q.gte(q.field("startedAt"), Date.now() - historicalDays * 24 * 60 * 60 * 1000))
           .collect();
 
         // Calculate current costs
@@ -92,8 +92,8 @@ export const getCostOptimizationScenarios = query({
 
         const executions = await ctx.db
           .query("agentExecutions")
-          .withIndex("by_agent", (q) => q.eq("agentKey", agent._id))
-          .filter((q) => q.gte(q.field("_creationTime"), Date.now() - 30 * 24 * 60 * 60 * 1000))
+          .withIndex("by_agent", (q) => q.eq("agentId", agent._id))
+          .filter((q) => q.gte(q.field("startedAt"), Date.now() - 30 * 24 * 60 * 60 * 1000))
           .collect();
 
         const currentMonthlyCost = executions.length * 0.01;
@@ -166,13 +166,13 @@ export const getROIProjections = query({
 
         const executions = await ctx.db
           .query("agentExecutions")
-          .withIndex("by_agent", (q) => q.eq("agentKey", agent._id))
-          .filter((q) => q.gte(q.field("_creationTime"), Date.now() - 30 * 24 * 60 * 60 * 1000))
+          .withIndex("by_agent", (q) => q.eq("agentId", agent._id))
+          .filter((q) => q.gte(q.field("startedAt"), Date.now() - 30 * 24 * 60 * 60 * 1000))
           .collect();
 
         const monthlyCost = executions.length * 0.01;
         const estimatedValuePerExecution = 0.50; // $0.50 value per successful execution
-        const successfulExecutions = executions.filter(e => e.status === "completed").length;
+        const successfulExecutions = executions.filter(e => e.status === "completed" || e.status === "success").length;
         const monthlyValue = successfulExecutions * estimatedValuePerExecution;
         const monthlyROI = monthlyCost > 0 ? ((monthlyValue - monthlyCost) / monthlyCost) * 100 : 0;
 

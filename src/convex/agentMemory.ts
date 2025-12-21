@@ -218,12 +218,12 @@ export const getAgentPerformanceMetrics = query({
 
     const executions = await ctx.db
       .query("agentExecutions")
-      .withIndex("by_agent", (q) => q.eq("agentKey", args.agentId))
-      .filter((q) => q.gte(q.field("createdAt"), cutoff))
+      .withIndex("by_agent", (q) => q.eq("agentId", args.agentId))
+      .filter((q) => q.gte(q.field("startedAt"), cutoff))
       .collect();
 
     const totalExecutions = executions.length;
-    const successfulExecutions = executions.filter(e => e.status === "success").length;
+    const successfulExecutions = executions.filter(e => e.status === "success" || e.status === "completed").length;
     const avgResponseTime = executions.reduce((sum, e) => sum + (e.duration || 0), 0) / totalExecutions;
     const errorRate = (totalExecutions - successfulExecutions) / totalExecutions;
 
@@ -251,14 +251,14 @@ export const getBusinessAgentAnalytics = query({
       agents.map(async (agent) => {
         const executions = await ctx.db
           .query("agentExecutions")
-          .withIndex("by_agent", (q) => q.eq("agentKey", agent._id))
+          .withIndex("by_agent", (q) => q.eq("agentId", agent._id))
           .collect();
 
         return {
           agentId: agent._id,
           agentName: agent.name,
           totalExecutions: executions.length,
-          successRate: executions.filter(e => e.status === "success").length / executions.length,
+          successRate: executions.filter(e => e.status === "success" || e.status === "completed").length / executions.length,
         };
       })
     );
