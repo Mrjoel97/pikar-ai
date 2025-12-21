@@ -137,6 +137,47 @@ export async function addPromptTemplate(ctx: any, args: {
   return { success: true };
 }
 
+export async function updatePromptTemplate(ctx: any, args: {
+  agent_key: string;
+  templateId: string;
+  template: {
+    name: string;
+    description: string;
+    template: string;
+    variables?: string[];
+    category?: string;
+  };
+}) {
+  const isAdmin = await (ctx as any).runQuery("admin:getIsAdmin" as any, {});
+  if (!isAdmin) throw new Error("Admin access required");
+
+  const agent = await ctx.db
+    .query("agentCatalog")
+    .withIndex("by_agent_key", (q: any) => q.eq("agent_key", args.agent_key))
+    .unique();
+
+  if (!agent) throw new Error("Agent not found");
+
+  const existingTemplates = agent.prompt_templates || [];
+  const templateIndex = existingTemplates.findIndex((t: any) => t.id === args.templateId);
+  
+  if (templateIndex === -1) throw new Error("Template not found");
+
+  // Update the template while preserving the ID
+  const updatedTemplates = [...existingTemplates];
+  updatedTemplates[templateIndex] = {
+    id: args.templateId,
+    ...args.template,
+  };
+
+  await ctx.db.patch(agent._id, {
+    prompt_templates: updatedTemplates,
+    updatedAt: Date.now(),
+  });
+
+  return { success: true };
+}
+
 export async function deletePromptTemplate(ctx: any, args: {
   agent_key: string;
   templateId: string;

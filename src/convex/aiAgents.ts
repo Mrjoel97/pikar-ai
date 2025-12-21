@@ -698,6 +698,21 @@ export const addPromptTemplate = mutation({
   handler: (ctx, args) => promptTemplates.addPromptTemplate(ctx, args),
 });
 
+export const updatePromptTemplate = mutation({
+  args: {
+    agent_key: v.string(),
+    templateId: v.string(),
+    template: v.object({
+      name: v.string(),
+      description: v.string(),
+      template: v.string(),
+      variables: v.optional(v.array(v.string())),
+      category: v.optional(v.string()),
+    }),
+  },
+  handler: (ctx, args) => promptTemplates.updatePromptTemplate(ctx, args),
+});
+
 export const deletePromptTemplate = mutation({
   args: {
     agent_key: v.string(),

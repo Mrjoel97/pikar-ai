@@ -64,19 +64,34 @@ export const processUploadedFile = action({
           const pdfText = buffer.toString('binary');
           const textChunks: string[] = [];
           
-          // Method 1: Extract text from PDF streams with better filtering
+          // Method 1: Extract text from PDF streams with better filtering and decoding
           const streamRegex = /stream\s*([\s\S]*?)\s*endstream/g;
           let match;
           
           while ((match = streamRegex.exec(pdfText)) !== null) {
             const streamContent = match[1];
-            // Decode common PDF text encodings
-            let readable = streamContent
-              .replace(/[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F-\x9F]/g, ' ') // Remove control chars except \t, \n, \r
+            
+            // Try to detect and decode FlateDecode or ASCII85 encoded streams
+            let readable = streamContent;
+            
+            // Remove control characters but preserve newlines and tabs
+            readable = readable
+              .replace(/[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F-\x9F]/g, ' ')
               .replace(/\s+/g, ' ')
               .trim();
             
-            // Filter out binary/encoded content
+            // Decode common PDF escape sequences
+            readable = readable
+              .replace(/\\n/g, '\n')
+              .replace(/\\r/g, '\r')
+              .replace(/\\t/g, '\t')
+              .replace(/\\b/g, '\b')
+              .replace(/\\f/g, '\f')
+              .replace(/\\\\/g, '\\')
+              .replace(/\\'/g, "'")
+              .replace(/\\"/g, '"');
+            
+            // Filter out binary/encoded content by checking text ratio
             const textRatio = (readable.match(/[a-zA-Z0-9\s.,!?;:'"()-]/g) || []).length / readable.length;
             if (readable.length > 20 && textRatio > 0.6) {
               textChunks.push(readable);

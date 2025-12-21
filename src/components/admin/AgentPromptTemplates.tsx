@@ -37,6 +37,7 @@ export function AgentPromptTemplates({ agentKey, agentName }: AgentPromptTemplat
   const [generatedPrompt, setGeneratedPrompt] = useState("");
   const [copied, setCopied] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editingTemplate, setEditingTemplate] = useState<PromptTemplate | null>(null);
   const [newTemplate, setNewTemplate] = useState<Partial<PromptTemplate>>({});
 
   // Fetch templates from database
@@ -44,6 +45,7 @@ export function AgentPromptTemplates({ agentKey, agentName }: AgentPromptTemplat
     variableMetadata?: Record<string, { type: string; description: string; placeholder: string }>;
   }> | undefined;
   const addTemplate = useMutation(api.aiAgents.addPromptTemplate);
+  const updateTemplate = useMutation(api.aiAgents.updatePromptTemplate);
   const deleteTemplate = useMutation(api.aiAgents.deletePromptTemplate);
 
   const availableTemplates = templates || [];
@@ -79,30 +81,66 @@ export function AgentPromptTemplates({ agentKey, agentName }: AgentPromptTemplat
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleAddTemplate = async () => {
+  const handleSaveTemplate = async () => {
     if (!newTemplate.name || !newTemplate.template) {
       toast.error("Please provide name and template");
       return;
     }
 
     try {
-      await addTemplate({
-        agent_key: agentKey,
-        template: {
-          id: `custom_${Date.now()}`,
-          name: newTemplate.name,
-          description: newTemplate.description || "",
-          template: newTemplate.template,
-          variables: newTemplate.variables || [],
-          category: newTemplate.category || "Custom",
-        },
-      });
-      toast.success("Template added successfully!");
+      if (editingTemplate) {
+        // Update existing template
+        await updateTemplate({
+          agent_key: agentKey,
+          templateId: editingTemplate.id,
+          template: {
+            name: newTemplate.name,
+            description: newTemplate.description || "",
+            template: newTemplate.template,
+            variables: newTemplate.variables || [],
+            category: newTemplate.category || "Custom",
+          },
+        });
+        toast.success("Template updated successfully!");
+      } else {
+        // Add new template
+        await addTemplate({
+          agent_key: agentKey,
+          template: {
+            id: `custom_${Date.now()}`,
+            name: newTemplate.name,
+            description: newTemplate.description || "",
+            template: newTemplate.template,
+            variables: newTemplate.variables || [],
+            category: newTemplate.category || "Custom",
+          },
+        });
+        toast.success("Template added successfully!");
+      }
       setEditDialogOpen(false);
+      setEditingTemplate(null);
       setNewTemplate({});
     } catch (error: any) {
-      toast.error(error?.message || "Failed to add template");
+      toast.error(error?.message || "Failed to save template");
     }
+  };
+
+  const handleOpenEditTemplate = (template: PromptTemplate) => {
+    setEditingTemplate(template);
+    setNewTemplate({
+      name: template.name,
+      description: template.description,
+      template: template.template,
+      variables: template.variables || [],
+      category: template.category,
+    });
+    setEditDialogOpen(true);
+  };
+
+  const handleOpenAddTemplate = () => {
+    setEditingTemplate(null);
+    setNewTemplate({});
+    setEditDialogOpen(true);
   };
 
   const handleDeleteTemplate = async (templateId: string) => {
@@ -123,7 +161,7 @@ export function AgentPromptTemplates({ agentKey, agentName }: AgentPromptTemplat
             Select a template and customize it to create effective prompts
           </p>
         </div>
-        <Button size="sm" onClick={() => setEditDialogOpen(true)}>
+        <Button size="sm" onClick={handleOpenAddTemplate}>
           <Plus className="h-4 w-4 mr-2" />
           Add Template
         </Button>
@@ -153,16 +191,28 @@ export function AgentPromptTemplates({ agentKey, agentName }: AgentPromptTemplat
                     </Badge>
                   )}
                   {template.id.startsWith('custom_') && (
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDeleteTemplate(template.id);
-                      }}
-                    >
-                      <Trash2 className="h-3 w-3" />
-                    </Button>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleOpenEditTemplate(template);
+                        }}
+                      >
+                        <Edit className="h-3 w-3" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteTemplate(template.id);
+                        }}
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </div>
                   )}
                 </div>
               </div>
@@ -294,12 +344,18 @@ export function AgentPromptTemplates({ agentKey, agentName }: AgentPromptTemplat
         </Card>
       )}
 
-      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+      <Dialog open={editDialogOpen} onOpenChange={(open) => {
+        setEditDialogOpen(open);
+        if (!open) {
+          setEditingTemplate(null);
+          setNewTemplate({});
+        }
+      }}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Add Prompt Template</DialogTitle>
+            <DialogTitle>{editingTemplate ? "Edit" : "Add"} Prompt Template</DialogTitle>
             <DialogDescription>
-              Create a new prompt template for this agent
+              {editingTemplate ? "Update the" : "Create a new"} prompt template for this agent
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
@@ -347,8 +403,8 @@ export function AgentPromptTemplates({ agentKey, agentName }: AgentPromptTemplat
                 })}
               />
             </div>
-            <Button onClick={handleAddTemplate} className="w-full">
-              Add Template
+            <Button onClick={handleSaveTemplate} className="w-full">
+              {editingTemplate ? "Update Template" : "Add Template"}
             </Button>
           </div>
         </DialogContent>
