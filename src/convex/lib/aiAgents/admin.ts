@@ -10,15 +10,42 @@ export async function adminAgentSummary(ctx: any, args: any) {
 
   if (args.tenantId) {
     const rows = await ctx.db
+      .query("agentCatalog")
+      .withIndex("by_active", (q: any) => q.eq("active", true))
+      .take(1000);
+    total = rows.length;
+    byTenantMap.set(String(args.tenantId), rows.length);
+  } else {
+    const batch = await ctx.db.query("agentCatalog").take(1000);
+    total = batch.length;
+    for (const r of batch) {
+      const key = "system";
+      byTenantMap.set(key, (byTenantMap.get(key) ?? 0) + 1);
+    }
+  }
+
+  const byTenant: Array<{ businessId: Id<"businesses">; count: number }> = Array.from(
+    byTenantMap.entries(),
+  ).map(([k, count]) => ({ businessId: k as unknown as Id<"businesses">, count }));
+
+  return { total, byTenant };
+}
+
+export async function adminCustomAgentSummary(ctx: any, args: any) {
+  const isAdmin = await (ctx as any).runQuery("admin:getIsAdmin" as any, {});
+  if (!isAdmin) return { total: 0, byTenant: [] as Array<{ businessId: Id<"businesses">; count: number }> };
+
+  const byTenantMap = new Map<string, number>();
+  let total = 0;
+
+  if (args.tenantId) {
+    const rows = await ctx.db
       .query("agentProfiles")
       .withIndex("by_business", (q: any) => q.eq("businessId", args.tenantId!))
       .take(1000);
     total = rows.length;
-    // Fix: ensure map key is a string
     byTenantMap.set(String(args.tenantId), rows.length);
   } else {
-    // iterate all agentProfiles in chunks (Convex scans; keep bounded)
-    // fetch by known businesses via index with no eq is not supported; fallback to take batches
     const batch = await ctx.db.query("agentProfiles").take(1000);
     total = batch.length;
     for (const r of batch) {

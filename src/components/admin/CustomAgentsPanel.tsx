@@ -18,13 +18,13 @@ export function CustomAgentsPanel({ selectedTenantId, recentAudits }: CustomAgen
   const [viewAgentId, setViewAgentId] = useState<string | null>(null);
 
   const agentSummary = useQuery(
-    api.aiAgents.adminAgentSummary as any,
+    api.aiAgents.adminCustomAgentSummary as any,
     selectedTenantId ? { tenantId: selectedTenantId } : {}
   ) as { total: number; byTenant: Array<{ businessId: string; count: number }> } | undefined;
 
   const agents = useQuery(
-    api.aiAgents.adminListAgents as any,
-    selectedTenantId ? { tenantId: selectedTenantId, limit: 200 } : { limit: 200 }
+    api.aiAgents.listCustomAgents as any,
+    selectedTenantId ? { businessId: selectedTenantId } : {}
   ) as Array<{
     _id: string;
     businessId: string;

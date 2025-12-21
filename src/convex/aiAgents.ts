@@ -103,6 +103,12 @@ export const adminAgentSummary = query({
   handler: (ctx, args) => admin.adminAgentSummary(ctx, args),
 });
 
+// Admin-gated: summarize custom agent counts (global or by tenant)
+export const adminCustomAgentSummary = query({
+  args: { tenantId: v.optional(v.id("businesses")) },
+  handler: (ctx, args) => admin.adminCustomAgentSummary(ctx, args),
+});
+
 // Admin-gated: list agent profiles (optionally by tenant), minimal fields
 export const adminListAgents = query({
   args: {
