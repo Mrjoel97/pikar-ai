@@ -60,10 +60,9 @@ export function useAuthForm() {
         
         if (result.success) {
           // Password authentication is successful
-          // The backend has validated credentials and created a login token
-          // Navigate to dashboard - the auth state will be managed by the backend
+          // Redirect to onboarding to complete profile setup
           toast.success("Signed in successfully!");
-          navigate("/dashboard");
+          navigate("/onboarding");
         }
       }
     } catch (error) {

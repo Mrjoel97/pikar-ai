@@ -124,9 +124,9 @@ export default function Onboarding() {
     setIsSaving(true);
     try {
       await selectTier({ tier });
-      toast.success("Tier selected");
-      // For Phase 1, Payment is a lightweight step; allow skipping checkout for now
-      setStep("payment");
+      toast.success(`${tier.charAt(0).toUpperCase() + tier.slice(1)} tier selected successfully`);
+      // Skip payment step and go directly to confirm
+      setStep("confirm");
     } catch (e) {
       console.error(e);
       toast.error("Failed to save tier");
@@ -302,17 +302,14 @@ export default function Onboarding() {
   const renderPayment = () => (
     <div className="space-y-3">
       <p className="text-sm text-muted-foreground">
-        Proceed to secure checkout to activate your {tier || "selected"} plan. You can also continue now and complete payment later.
+        Your {tier || "selected"} tier has been recorded. Payment processing will be available soon.
       </p>
       <div className="flex gap-2 pt-2">
         <Button variant="outline" className="neu-flat rounded-xl" onClick={() => setStep("tier")} disabled={isSaving}>
           Back
         </Button>
-        <Button className="neu-raised rounded-xl" onClick={goCheckout} disabled={isSaving || !tier}>
-          Proceed to checkout
-        </Button>
         <Button className="neu-raised rounded-xl" onClick={() => setStep("confirm")} disabled={isSaving}>
-          Continue without payment
+          Continue to Dashboard
         </Button>
       </div>
     </div>
