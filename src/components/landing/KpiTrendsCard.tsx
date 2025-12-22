@@ -162,6 +162,9 @@ export default function KpiTrendsCard({ data }: { data: Array<Trend> }) {
                   <p className="text-sm text-emerald-800 leading-relaxed">
                     <span className="font-semibold">What this shows:</span> This chart tracks the average performance metrics of businesses using Pikar AI over a 6-month period. The <span className="font-medium text-emerald-700">revenue line</span> demonstrates consistent monthly growth, while the <span className="font-medium text-emerald-600">efficiency line</span> shows operational improvements through AI automation. Real data from 8,200+ active users across all tiers.
                   </p>
+                  <p className="text-sm text-emerald-800 leading-relaxed mt-3">
+                    <span className="font-semibold">Why it matters:</span> These trends showcase the compound effect of AI-powered automation on business performance. Companies typically see initial gains within the first month, with accelerating returns as AI agents learn and optimize workflows. The steady upward trajectory reflects how businesses scale operations without proportionally increasing costs or headcount.
+                  </p>
                 </div>
               </CardContent>
             </Card>
