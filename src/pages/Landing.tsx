@@ -1,24 +1,31 @@
-import React, { useState } from "react";
+import React, { useState, lazy, Suspense } from "react";
 import { useNavigate } from "react-router";
 import { motion } from "framer-motion";
 import { Brain, BarChart3, Zap, Shield, Users } from "lucide-react";
 
-// Import sub-components
+// Import sub-components - Keep critical above-the-fold components
 import LandingNavbar from "@/components/landing/LandingNavbar";
 import LandingHero from "@/components/landing/LandingHero";
-import LandingPricing from "@/components/landing/LandingPricing";
-import LandingCTA from "@/components/landing/LandingCTA";
 import LandingFooter from "@/components/landing/LandingFooter";
 import LandingChat from "@/components/landing/LandingChat";
-import IndustriesSection from "@/components/landing/IndustriesSection";
-import BenefitsSection from "@/components/landing/BenefitsSection";
 
-// Static imports for stability
-import TrustedLogosMarquee from "@/components/landing/TrustedLogosMarquee";
-import FeaturesSection from "@/components/landing/FeaturesSection";
-import KpiTrendsCard from "@/components/landing/KpiTrendsCard";
-import DemoVideoCarousel from "@/components/landing/DemoVideoCarousel";
-import TestimonialsSection from "@/components/landing/TestimonialsSection";
+// Lazy load below-the-fold components
+const IndustriesSection = lazy(() => import("@/components/landing/IndustriesSection"));
+const TrustedLogosMarquee = lazy(() => import("@/components/landing/TrustedLogosMarquee"));
+const FeaturesSection = lazy(() => import("@/components/landing/FeaturesSection"));
+const KpiTrendsCard = lazy(() => import("@/components/landing/KpiTrendsCard"));
+const BenefitsSection = lazy(() => import("@/components/landing/BenefitsSection"));
+const DemoVideoCarousel = lazy(() => import("@/components/landing/DemoVideoCarousel"));
+const TestimonialsSection = lazy(() => import("@/components/landing/TestimonialsSection"));
+const LandingPricing = lazy(() => import("@/components/landing/LandingPricing"));
+const LandingCTA = lazy(() => import("@/components/landing/LandingCTA"));
+
+// Loading fallback component
+const SectionLoader = () => (
+  <div className="flex items-center justify-center py-12">
+    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+  </div>
+);
 
 // Add static KPI trend data used by KpiTrendsCard
 const trendData: Array<{ month: string; revenue: number; leads: number; efficiency: number }> = [
@@ -144,6 +151,63 @@ export default function Landing() {
     { name: "Shopify", src: "https://cdn.simpleicons.org/shopify/95BF47" },
   ];
 
+  const testimonials = [
+    {
+      name: "Sarah Chen",
+      role: "Founder & CEO",
+      company: "TechFlow SaaS",
+      industry: "SaaS",
+      image: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&h=400&fit=crop",
+      quote: "Pikar AI helped us automate our entire customer onboarding process. We've seen a 340% ROI in just 4 months and saved 20+ hours per week.",
+      tier: "Startup"
+    },
+    {
+      name: "Marcus Johnson",
+      role: "Operations Director",
+      company: "HealthCare Plus",
+      industry: "Healthcare",
+      image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop",
+      quote: "The compliance automation alone is worth it. We maintain 98% compliance scores effortlessly while our team focuses on patient care.",
+      tier: "SME"
+    },
+    {
+      name: "Elena Rodriguez",
+      role: "Marketing Lead",
+      company: "GreenLeaf Organics",
+      industry: "eCommerce",
+      image: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&h=400&fit=crop",
+      quote: "Our social media engagement tripled within 2 months. The AI content creation is phenomenal - it understands our brand voice perfectly.",
+      tier: "Solopreneur"
+    },
+    {
+      name: "David Park",
+      role: "CTO",
+      company: "FinSecure",
+      industry: "Fintech",
+      image: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=400&h=400&fit=crop",
+      quote: "Enterprise-grade security with startup-level agility. The API integration was seamless, and we're processing 10x more transactions.",
+      tier: "Enterprise"
+    },
+    {
+      name: "Priya Sharma",
+      role: "Owner",
+      company: "Wellness Studio",
+      industry: "Fitness & Wellness",
+      image: "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=400&h=400&fit=crop",
+      quote: "As a solo business owner, Pikar AI is like having a full team. Client bookings are up 150%, and I finally have time for myself.",
+      tier: "Solopreneur"
+    },
+    {
+      name: "James Mitchell",
+      role: "VP of Sales",
+      company: "LogiTrans Global",
+      industry: "Logistics",
+      image: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=400&fit=crop",
+      quote: "The workflow automation across departments saved us $2M annually. Our delivery times improved by 35% with better coordination.",
+      tier: "Enterprise"
+    }
+  ];
+
   const normalizeTier = (name: string): "solopreneur" | "startup" | "sme" | "enterprise" => {
     const k = name.toLowerCase();
     if (k.includes("solo")) return "solopreneur";
@@ -178,108 +242,67 @@ export default function Landing() {
 
       <LandingHero handleGetStarted={handleGetStarted} setDemoOpen={setDemoOpen} />
 
-      {/* High-Traction Industries */}
-      <IndustriesSection />
+      {/* Lazy loaded sections with Suspense boundaries */}
+      <Suspense fallback={<SectionLoader />}>
+        <IndustriesSection />
+      </Suspense>
 
-      {/* Trusted Logos - Animated Marquee */}
-      <motion.div
-        initial={{ y: 50, opacity: 0 }}
-        whileInView={{ y: 0, opacity: 1 }}
-        transition={{ duration: 0.8 }}
-        viewport={{ once: true }}
-      >
-        <TrustedLogosMarquee logos={trustedLogos} />
-      </motion.div>
+      <Suspense fallback={<SectionLoader />}>
+        <motion.div
+          initial={{ y: 50, opacity: 0 }}
+          whileInView={{ y: 0, opacity: 1 }}
+          transition={{ duration: 0.8 }}
+          viewport={{ once: true }}
+        >
+          <TrustedLogosMarquee logos={trustedLogos} />
+        </motion.div>
+      </Suspense>
 
-      <motion.div
-        initial={{ y: 50, opacity: 0 }}
-        whileInView={{ y: 0, opacity: 1 }}
-        transition={{ duration: 0.8, delay: 0.2 }}
-        viewport={{ once: true }}
-      >
-        <FeaturesSection features={features} />
-      </motion.div>
+      <Suspense fallback={<SectionLoader />}>
+        <motion.div
+          initial={{ y: 50, opacity: 0 }}
+          whileInView={{ y: 0, opacity: 1 }}
+          transition={{ duration: 0.8, delay: 0.2 }}
+          viewport={{ once: true }}
+        >
+          <FeaturesSection features={features} />
+        </motion.div>
+      </Suspense>
 
-      <motion.div
-        initial={{ y: 50, opacity: 0 }}
-        whileInView={{ y: 0, opacity: 1 }}
-        transition={{ duration: 0.8, delay: 0.2 }}
-        viewport={{ once: true }}
-      >
-        <KpiTrendsCard data={trendData} />
-      </motion.div>
+      <Suspense fallback={<SectionLoader />}>
+        <motion.div
+          initial={{ y: 50, opacity: 0 }}
+          whileInView={{ y: 0, opacity: 1 }}
+          transition={{ duration: 0.8, delay: 0.2 }}
+          viewport={{ once: true }}
+        >
+          <KpiTrendsCard data={trendData} />
+        </motion.div>
+      </Suspense>
 
-      {/* Benefits Card - What You Get with Pikar AI */}
-      <BenefitsSection handleGetStarted={handleGetStarted} />
+      <Suspense fallback={<SectionLoader />}>
+        <BenefitsSection handleGetStarted={handleGetStarted} />
+      </Suspense>
 
-      {/* Demo Video Carousel */}
-      <DemoVideoCarousel
-        open={demoOpen}
-        onOpenChange={setDemoOpen}
-        onSelectTier={handleDemoTierSelect}
-      />
+      <Suspense fallback={<SectionLoader />}>
+        <DemoVideoCarousel
+          open={demoOpen}
+          onOpenChange={setDemoOpen}
+          onSelectTier={handleDemoTierSelect}
+        />
+      </Suspense>
 
-      {/* Testimonials Section */}
-      <TestimonialsSection testimonials={[
-          {
-            name: "Sarah Chen",
-            role: "Founder & CEO",
-            company: "TechFlow SaaS",
-            industry: "SaaS",
-            image: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&h=400&fit=crop",
-            quote: "Pikar AI helped us automate our entire customer onboarding process. We've seen a 340% ROI in just 4 months and saved 20+ hours per week.",
-            tier: "Startup"
-          },
-          {
-            name: "Marcus Johnson",
-            role: "Operations Director",
-            company: "HealthCare Plus",
-            industry: "Healthcare",
-            image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop",
-            quote: "The compliance automation alone is worth it. We maintain 98% compliance scores effortlessly while our team focuses on patient care.",
-            tier: "SME"
-          },
-          {
-            name: "Elena Rodriguez",
-            role: "Marketing Lead",
-            company: "GreenLeaf Organics",
-            industry: "eCommerce",
-            image: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&h=400&fit=crop",
-            quote: "Our social media engagement tripled within 2 months. The AI content creation is phenomenal - it understands our brand voice perfectly.",
-            tier: "Solopreneur"
-          },
-          {
-            name: "David Park",
-            role: "CTO",
-            company: "FinSecure",
-            industry: "Fintech",
-            image: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=400&h=400&fit=crop",
-            quote: "Enterprise-grade security with startup-level agility. The API integration was seamless, and we're processing 10x more transactions.",
-            tier: "Enterprise"
-          },
-          {
-            name: "Priya Sharma",
-            role: "Owner",
-            company: "Wellness Studio",
-            industry: "Fitness & Wellness",
-            image: "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=400&h=400&fit=crop",
-            quote: "As a solo business owner, Pikar AI is like having a full team. Client bookings are up 150%, and I finally have time for myself.",
-            tier: "Solopreneur"
-          },
-          {
-            name: "James Mitchell",
-            role: "VP of Sales",
-            company: "LogiTrans Global",
-            industry: "Logistics",
-            image: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=400&fit=crop",
-            quote: "The workflow automation across departments saved us $2M annually. Our delivery times improved by 35% with better coordination.",
-            tier: "Enterprise"
-          }
-        ]} />
+      <Suspense fallback={<SectionLoader />}>
+        <TestimonialsSection testimonials={testimonials} />
+      </Suspense>
 
-      <LandingPricing tiers={tiers} openUpgrade={openUpgrade} />
+      <Suspense fallback={<SectionLoader />}>
+        <LandingPricing tiers={tiers} openUpgrade={openUpgrade} />
+      </Suspense>
 
-      <LandingCTA openUpgrade={openUpgrade} isLoading={isLoading} />
+      <Suspense fallback={<SectionLoader />}>
+        <LandingCTA openUpgrade={openUpgrade} isLoading={isLoading} />
+      </Suspense>
 
       <LandingFooter />
 
