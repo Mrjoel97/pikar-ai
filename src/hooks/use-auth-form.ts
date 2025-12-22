@@ -60,19 +60,12 @@ export function useAuthForm() {
         const result = await loginPasswordAction({ email, password });
         
         if (result.success) {
-          // Now sign in with email OTP provider using a special flow
-          // This will create the proper Convex Auth session
-          toast.success("Credentials verified. Completing sign-in...");
-          
-          // Use a special token-based sign-in that bypasses OTP
-          // The backend has already verified the password
-          await signIn("email-otp", new FormData([
-            ["email", email],
-            ["code", "verified"], // Special code to indicate password was verified
-          ] as any));
-          
           toast.success("Signed in successfully!");
-          navigate("/onboarding");
+          
+          // Force page reload to establish Convex Auth session
+          setTimeout(() => {
+            window.location.href = "/onboarding";
+          }, 500);
         }
       }
     } catch (error) {
