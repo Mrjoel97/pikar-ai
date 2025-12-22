@@ -17,24 +17,6 @@ function verifyPassword(password: string, hash: string, salt: string): boolean {
   return testHash === hash;
 }
 
-/** moved to passwordAuthData.ts: getCredentialByEmail */
-
-/** moved to passwordAuthData.ts: setCredential */
-
-/** moved to passwordAuthData.ts: setResetToken */
-
-/** moved to passwordAuthData.ts: clearReset */
-
-/** moved to passwordAuthData.ts: createLoginToken */
-
-// New internal helper to find a credential by reset token (actions can't access db directly)
-/** moved to passwordAuthData.ts: getCredentialByResetToken */
-
-// New internal helper to update password hash by credential id
-/** moved to passwordAuthData.ts: updateCredentialHash */
-
-// Public actions (now calling internal.* via ctx.runQuery/ctx.runMutation)
-
 export const signUpPassword = action({
   args: {
     email: v.string(),
@@ -72,6 +54,11 @@ export const signUpPassword = action({
       updatedAt: now,
     });
 
+    // Create user record
+    await ctx.runMutation(internal.passwordAuthData.createUserForEmail, {
+      email,
+    });
+
     return { success: true, email };
   },
 });
@@ -81,7 +68,7 @@ export const loginPassword = action({
     email: v.string(),
     password: v.string(),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<{ success: boolean; email: string; userId: any }> => {
     const email = args.email.toLowerCase().trim();
 
     const credential = await ctx.runQuery(internal.passwordAuthData.getCredentialByEmail, {
@@ -97,17 +84,18 @@ export const loginPassword = action({
       throw new Error("Invalid email or password");
     }
 
-    // Create short-lived login token
-    const token = randomBytes(32).toString("hex");
-    const expiresAt = Date.now() + 15 * 60 * 1000; // 15 minutes
-
-    await ctx.runMutation(internal.passwordAuthData.createLoginToken, {
+    // Ensure user exists
+    const userId: any = await ctx.runMutation(internal.passwordAuthData.ensureUserForEmail, {
       email,
-      token,
-      expiresAt,
     });
 
-    return { success: true, email, token };
+    // Create auth session
+    await ctx.runMutation(internal.passwordAuthData.createAuthSession, {
+      email,
+      userId,
+    });
+
+    return { success: true, email, userId };
   },
 });
 

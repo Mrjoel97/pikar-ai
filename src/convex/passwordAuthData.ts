@@ -30,6 +30,96 @@ export const setCredential = internalMutation({
   },
 });
 
+// Mutation: create user for email (during signup)
+export const createUserForEmail = internalMutation({
+  args: { email: v.string() },
+  handler: async (ctx, args) => {
+    const email = args.email.toLowerCase();
+    
+    // Check if user already exists
+    const existing = await ctx.db
+      .query("users")
+      .withIndex("email", (q) => q.eq("email", email))
+      .unique();
+    
+    if (existing) {
+      return existing._id;
+    }
+    
+    // Create new user
+    const userId = await ctx.db.insert("users", {
+      email,
+      name: email.split("@")[0],
+      isAnonymous: false,
+    });
+    
+    return userId;
+  },
+});
+
+// Mutation: ensure user exists for email (during login)
+export const ensureUserForEmail = internalMutation({
+  args: { email: v.string() },
+  handler: async (ctx, args) => {
+    const email = args.email.toLowerCase();
+    
+    // Check if user exists
+    const existing = await ctx.db
+      .query("users")
+      .withIndex("email", (q) => q.eq("email", email))
+      .unique();
+    
+    if (existing) {
+      return existing._id;
+    }
+    
+    // Create new user if doesn't exist
+    const userId = await ctx.db.insert("users", {
+      email,
+      name: email.split("@")[0],
+      isAnonymous: false,
+    });
+    
+    return userId;
+  },
+});
+
+// Mutation: create auth session
+export const createAuthSession = internalMutation({
+  args: {
+    email: v.string(),
+    userId: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    const expirationTime = Date.now() + 30 * 24 * 60 * 60 * 1000; // 30 days
+    
+    // Create auth session
+    const sessionId = await ctx.db.insert("authSessions", {
+      userId: args.userId,
+      expirationTime,
+    });
+    
+    // Create auth account entry for password provider
+    const existingAccount = await ctx.db
+      .query("authAccounts")
+      .withIndex("by_user_and_provider", (q) => 
+        q.eq("userId", args.userId).eq("provider", "password")
+      )
+      .unique();
+    
+    if (!existingAccount) {
+      await ctx.db.insert("authAccounts", {
+        userId: args.userId,
+        provider: "password",
+        providerAccountId: args.email,
+        emailVerified: args.email,
+      });
+    }
+    
+    return sessionId;
+  },
+});
+
 // Mutation: set password reset token
 export const setResetToken = internalMutation({
   args: {
@@ -144,3 +234,6 @@ export const updateCredentialHash = internalMutation({
     });
   },
 });
+
+// Alias for compatibility
+export const clearResetToken = clearReset;
