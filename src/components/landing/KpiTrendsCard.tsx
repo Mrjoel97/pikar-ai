@@ -156,6 +156,13 @@ export default function KpiTrendsCard({ data }: { data: Array<Trend> }) {
                     </AreaChart>
                   </ChartContainer>
                 </div>
+                
+                {/* Graph Description */}
+                <div className="mt-5 p-4 bg-emerald-50/50 rounded-xl border border-emerald-100">
+                  <p className="text-sm text-emerald-800 leading-relaxed">
+                    <span className="font-semibold">What this shows:</span> This chart tracks the average performance metrics of businesses using Pikar AI over a 6-month period. The <span className="font-medium text-emerald-700">revenue line</span> demonstrates consistent monthly growth, while the <span className="font-medium text-emerald-600">efficiency line</span> shows operational improvements through AI automation. Real data from 8,200+ active users across all tiers.
+                  </p>
+                </div>
               </CardContent>
             </Card>
           </motion.div>
