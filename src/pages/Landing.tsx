@@ -53,37 +53,37 @@ export default function Landing() {
       icon: Brain,
       title: "AI-Powered Agents",
       description: "Deploy specialized AI agents for content creation, sales intelligence, and customer support.",
-      image: "https://images.unsplash.com/photo-1677442136019-21780ecad995?w=800&h=600&fit=crop&q=80"
+      image: "https://images.unsplash.com/photo-1635070041078-e363dbe005cb?w=800&h=600&fit=crop&q=80"
     },
     {
       icon: Brain,
       title: "Intelligent Orchestration", 
       description: "Seamlessly coordinate multiple AI agents to execute complex business workflows.",
-      image: "https://images.unsplash.com/photo-1620712943543-bcc4688e7485?w=800&h=600&fit=crop&q=80"
+      image: "https://images.unsplash.com/photo-1633356122544-f134324a6cee?w=800&h=600&fit=crop&q=80"
     },
     {
       icon: BarChart3,
       title: "Advanced Analytics",
       description: "Get real-time insights and predictive analytics to optimize your business performance.",
-      image: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=800&h=600&fit=crop&q=80"
+      image: "https://images.unsplash.com/photo-1639762681485-074b7f938ba0?w=800&h=600&fit=crop&q=80"
     },
     {
       icon: Zap,
       title: "Automated Workflows",
       description: "Streamline operations with intelligent automation that adapts to your business needs.",
-      image: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=800&h=600&fit=crop&q=80"
+      image: "https://images.unsplash.com/photo-1639322537228-f710d846310a?w=800&h=600&fit=crop&q=80"
     },
     {
       icon: Shield,
       title: "Enterprise Security",
       description: "Bank-level security with compliance standards for data protection and privacy.",
-      image: "https://images.unsplash.com/photo-1563986768609-322da13575f3?w=800&h=600&fit=crop&q=80"
+      image: "https://images.unsplash.com/photo-1614064641938-3bbee52942c7?w=800&h=600&fit=crop&q=80"
     },
     {
       icon: Users,
       title: "Team Collaboration",
       description: "Enable seamless collaboration between human teams and AI agents.",
-      image: "https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=800&h=600&fit=crop&q=80"
+      image: "https://images.unsplash.com/photo-1633356122102-3fe601e05bd2?w=800&h=600&fit=crop&q=80"
     }
   ];
 

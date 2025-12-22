@@ -51,7 +51,6 @@ export default function FeaturesSection({ features }: { features: Array<Feature>
                         transformStyle: 'preserve-3d'
                       }}
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-background/80 to-transparent" />
                   </div>
                 )}
                 <CardContent className="p-5 sm:p-6 md:p-8">
