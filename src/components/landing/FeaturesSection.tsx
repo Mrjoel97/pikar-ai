@@ -5,6 +5,7 @@ type Feature = {
   icon: React.ComponentType<{ className?: string }>;
   title: string;
   description: string;
+  image?: string;
 };
 
 export default function FeaturesSection({ features }: { features: Array<Feature> }) {
@@ -37,7 +38,22 @@ export default function FeaturesSection({ features }: { features: Array<Feature>
               transition={{ duration: shouldReduceMotion ? 0 : 0.6, delay: shouldReduceMotion ? 0 : index * 0.1 }}
               viewport={{ once: true }}
             >
-              <Card className="neu-raised rounded-xl sm:rounded-2xl border-0 h-full hover:shadow-lg transition-all duration-300">
+              <Card className="neu-raised rounded-xl sm:rounded-2xl border-0 h-full hover:shadow-lg transition-all duration-300 overflow-hidden">
+                {feature.image && (
+                  <div className="relative h-40 sm:h-48 overflow-hidden">
+                    <img
+                      src={feature.image}
+                      alt={feature.title}
+                      className="w-full h-full object-cover"
+                      loading="lazy"
+                      style={{
+                        transform: 'perspective(1000px) rotateX(2deg)',
+                        transformStyle: 'preserve-3d'
+                      }}
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-background/80 to-transparent" />
+                  </div>
+                )}
                 <CardContent className="p-5 sm:p-6 md:p-8">
                   <div className="neu-inset rounded-lg sm:rounded-xl p-2.5 sm:p-3 w-fit mb-4 sm:mb-5 md:mb-6">
                     <feature.icon className="h-6 w-6 text-primary" />
