@@ -42,35 +42,29 @@ export function useAuthForm() {
         if (password.length < 8) {
           throw new Error("Password must be at least 8 characters long");
         }
-        
-        // Use Convex Auth Password provider for signup
-        const formData = new FormData();
-        formData.append("email", email);
-        formData.append("password", password);
-        formData.append("flow", "signUp");
-        
-        await signIn("password", formData);
-        toast.success("Account created! Redirecting to onboarding...");
-        
-        // Navigate to onboarding after successful signup
-        setTimeout(() => {
-          navigate("/onboarding");
-        }, 500);
-      } else {
-        // Use Convex Auth Password provider for login
-        const formData = new FormData();
-        formData.append("email", email);
-        formData.append("password", password);
-        formData.append("flow", "signIn");
-        
-        await signIn("password", formData);
-        toast.success("Signed in successfully!");
-        
-        // Navigate to onboarding after successful login
-        setTimeout(() => {
-          navigate("/onboarding");
-        }, 500);
       }
+      
+      // Create FormData from the actual form element
+      const form = event.currentTarget;
+      const formData = new FormData(form);
+      
+      // Ensure email and password are in the FormData
+      formData.set("email", email);
+      formData.set("password", password);
+      formData.set("flow", authMode === "signup" ? "signUp" : "signIn");
+      
+      await signIn("password", formData);
+      
+      if (authMode === "signup") {
+        toast.success("Account created! Redirecting to onboarding...");
+      } else {
+        toast.success("Signed in successfully!");
+      }
+      
+      // Navigate to onboarding after successful authentication
+      setTimeout(() => {
+        navigate("/onboarding");
+      }, 500);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       console.error("Password auth error:", errorMessage);

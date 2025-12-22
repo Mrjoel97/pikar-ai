@@ -612,6 +612,8 @@ export const coreSchema = {
     idToken: v.optional(v.string()),
     sessionState: v.optional(v.string()),
     emailVerified: v.optional(v.string()),
+    // Password provider fields
+    secret: v.optional(v.string()),
   })
     .index("by_user_and_provider", ["userId", "provider"])
     .index("by_provider_and_account_id", ["provider", "providerAccountId"]),
