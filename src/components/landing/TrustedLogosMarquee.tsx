@@ -40,7 +40,7 @@ export default function TrustedLogosMarquee({ logos }: { logos: Array<Logo> }) {
                 <img
                   src={logo.src}
                   alt={`${logo.name} logo`}
-                  className="h-8 sm:h-10 w-auto mx-auto object-contain transition-opacity"
+                  className="h-4 sm:h-5 w-auto mx-auto object-contain transition-opacity"
                   loading="eager"
                   style={{ 
                     filter: 'brightness(0.8) contrast(1.2)',
