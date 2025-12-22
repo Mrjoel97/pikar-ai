@@ -84,39 +84,15 @@ export const ensureUserForEmail = internalMutation({
   },
 });
 
-// Mutation: create auth session
+// Mutation: create auth session - simplified to just return userId
 export const createAuthSession = internalMutation({
   args: {
     email: v.string(),
     userId: v.id("users"),
   },
   handler: async (ctx, args) => {
-    const expirationTime = Date.now() + 30 * 24 * 60 * 60 * 1000; // 30 days
-    
-    // Create auth session
-    const sessionId = await ctx.db.insert("authSessions", {
-      userId: args.userId,
-      expirationTime,
-    });
-    
-    // Create auth account entry for password provider
-    const existingAccount = await ctx.db
-      .query("authAccounts")
-      .withIndex("by_user_and_provider", (q) => 
-        q.eq("userId", args.userId).eq("provider", "password")
-      )
-      .unique();
-    
-    if (!existingAccount) {
-      await ctx.db.insert("authAccounts", {
-        userId: args.userId,
-        provider: "password",
-        providerAccountId: args.email,
-        emailVerified: args.email,
-      });
-    }
-    
-    return sessionId;
+    // Just return the userId - the frontend will handle session creation via Convex Auth
+    return args.userId;
   },
 });
 
