@@ -1,1 +1,4 @@
-npx convex run adminPasswordResetDirect:resetAdminPassword '{"email":"joel@pikar-ai.com","newPassword":"YourNewPassword123"}'
+   git add .
+   git commit -m "Your commit message"
+   git push origin main
+   
