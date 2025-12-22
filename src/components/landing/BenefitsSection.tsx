@@ -14,37 +14,37 @@ export default function BenefitsSection({ handleGetStarted }: BenefitsSectionPro
       icon: Zap,
       title: "10x Faster Execution",
       description: "Automate repetitive tasks and workflows, freeing up 15+ hours per week to focus on strategic growth initiatives.",
-      image: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=400&h=300&fit=crop"
+      image: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=800&h=600&fit=crop&q=80"
     },
     {
       icon: BarChart3,
       title: "Data-Driven Insights",
       description: "Real-time analytics and predictive intelligence help you make informed decisions that drive 3x revenue growth.",
-      image: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=400&h=300&fit=crop"
+      image: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=800&h=600&fit=crop&q=80"
     },
     {
       icon: Brain,
       title: "AI-Powered Agents",
       description: "Deploy specialized AI agents for content creation, customer support, sales, and marketing—working 24/7 for you.",
-      image: "https://images.unsplash.com/photo-1677442136019-21780ecad995?w=400&h=300&fit=crop"
+      image: "https://images.unsplash.com/photo-1677442136019-21780ecad995?w=800&h=600&fit=crop&q=80"
     },
     {
       icon: Shield,
       title: "Enterprise Security",
       description: "Bank-level encryption, 95%+ compliance automation, and SOC 2 certified infrastructure protect your business data.",
-      image: "https://images.unsplash.com/photo-1563986768609-322da13575f3?w=400&h=300&fit=crop"
+      image: "https://images.unsplash.com/photo-1563986768609-322da13575f3?w=800&h=600&fit=crop&q=80"
     },
     {
       icon: Users,
       title: "Seamless Collaboration",
       description: "Unite your team with integrated workflows, real-time updates, and AI-assisted coordination across all departments.",
-      image: "https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=400&h=300&fit=crop"
+      image: "https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=800&h=600&fit=crop&q=80"
     },
     {
       icon: DollarSign,
       title: "Proven ROI",
       description: "Average 340% ROI in 4 months. Our customers save $50K+ annually while increasing revenue by 200%+.",
-      image: "https://images.unsplash.com/photo-1579621970563-ebec7560ff3e?w=400&h=300&fit=crop"
+      image: "https://images.unsplash.com/photo-1579621970563-ebec7560ff3e?w=800&h=600&fit=crop&q=80"
     }
   ];
 
@@ -94,13 +94,14 @@ export default function BenefitsSection({ handleGetStarted }: BenefitsSectionPro
                     className="w-full h-full object-cover"
                     loading="lazy"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-card/90 to-transparent" />
-                  <div className="absolute bottom-3 left-3 p-2.5 sm:p-3 bg-primary/10 backdrop-blur-sm rounded-lg">
-                    <benefit.icon className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
-                  </div>
                 </div>
                 <div className="p-5 sm:p-6">
-                  <h3 className="text-lg sm:text-xl font-semibold mb-2 sm:mb-3">{benefit.title}</h3>
+                  <div className="flex items-center gap-3 mb-2 sm:mb-3">
+                    <div className="p-2.5 sm:p-3 bg-primary/10 backdrop-blur-sm rounded-lg">
+                      <benefit.icon className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
+                    </div>
+                    <h3 className="text-lg sm:text-xl font-semibold">{benefit.title}</h3>
+                  </div>
                   <p className="text-sm sm:text-base text-muted-foreground">
                     {benefit.description}
                   </p>
