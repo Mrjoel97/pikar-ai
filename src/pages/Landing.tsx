@@ -131,7 +131,7 @@ export default function Landing() {
   const trustedLogos = [
     { name: "Stripe", src: "https://cdn.simpleicons.org/stripe/0A2540" },
     { name: "Google", src: "https://cdn.simpleicons.org/google/1A73E8" },
-    { name: "Slack", src: "https://cdn.simpleicons.org/slack/4A154B" },
+    { name: "Slack", src: "https://logo.clearbit.com/slack.com" },
     { name: "Notion", src: "https://cdn.simpleicons.org/notion/0F0F0F" },
     { name: "HubSpot", src: "https://cdn.simpleicons.org/hubspot/FF7A59" },
     { name: "Salesforce", src: "https://cdn.simpleicons.org/salesforce/00A1E0" },
