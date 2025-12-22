@@ -35,7 +35,7 @@ export default function TrustedLogosMarquee({ logos }: { logos: Array<Logo> }) {
             {[...logos, ...logos].map((logo, i) => (
               <div
                 key={`${logo.name}-${i}`}
-                className="neu-inset rounded-xl px-6 py-4 sm:px-8 sm:py-5 bg-card hover:bg-card/80 transition-all hover:scale-105 shadow-sm flex items-center justify-center min-w-[120px]"
+                className="flex items-center justify-center min-w-[120px] px-6 py-4 sm:px-8 sm:py-5 transition-all hover:scale-105"
               >
                 <img
                   src={logo.src}
