@@ -66,13 +66,13 @@ export default function Landing() {
       icon: Brain,
       title: "Intelligent Orchestration", 
       description: "Seamlessly coordinate multiple AI agents to execute complex business workflows.",
-      image: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=800&h=600&fit=crop&q=80"
+      image: "https://images.unsplash.com/photo-1639762681485-074b7f938ba0?w=800&h=600&fit=crop&q=80"
     },
     {
       icon: BarChart3,
       title: "Advanced Analytics",
       description: "Get real-time insights and predictive analytics to optimize your business performance.",
-      image: "https://images.unsplash.com/photo-1639762681485-074b7f938ba0?w=800&h=600&fit=crop&q=80"
+      image: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=800&h=600&fit=crop&q=80"
     },
     {
       icon: Zap,
