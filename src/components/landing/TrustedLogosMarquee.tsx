@@ -40,12 +40,12 @@ export default function TrustedLogosMarquee({ logos }: { logos: Array<Logo> }) {
                 <img
                   src={logo.src}
                   alt={`${logo.name} logo`}
-                  className="h-3 sm:h-4 w-auto mx-auto object-contain transition-opacity"
+                  className="h-5 sm:h-6 w-auto mx-auto object-contain transition-opacity"
                   loading="eager"
                   style={{ 
                     filter: 'brightness(0.8) contrast(1.2)',
                     opacity: 1,
-                    maxHeight: '16px'
+                    maxHeight: '24px'
                   }}
                   onError={(e) => {
                     const target = e.target as HTMLImageElement;
