@@ -36,11 +36,11 @@ export const createUserForEmail = internalMutation({
   handler: async (ctx, args) => {
     const email = args.email.toLowerCase();
     
-    // Check if user already exists
+    // Check if user already exists - use first() instead of unique() to handle duplicates
     const existing = await ctx.db
       .query("users")
       .withIndex("email", (q) => q.eq("email", email))
-      .unique();
+      .first();
     
     if (existing) {
       return existing._id;
@@ -63,11 +63,11 @@ export const ensureUserForEmail = internalMutation({
   handler: async (ctx, args) => {
     const email = args.email.toLowerCase();
     
-    // Check if user exists
+    // Check if user exists - use first() instead of unique() to handle duplicates
     const existing = await ctx.db
       .query("users")
       .withIndex("email", (q) => q.eq("email", email))
-      .unique();
+      .first();
     
     if (existing) {
       return existing._id;
