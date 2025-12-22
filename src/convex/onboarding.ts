@@ -35,7 +35,17 @@ export const getOnboardingStatus = query({
   handler: async (ctx) => {
     const user = await getCurrentUser(ctx);
     if (!user?._id) {
-      return { needsOnboarding: false, step: null, trialInfo: null };
+      return { 
+        needsOnboarding: true, 
+        nextStep: "account" as const,
+        step: "account" as const, 
+        trialInfo: null,
+        hasBusiness: false,
+        tier: null,
+        planStatus: null,
+        user: null,
+        business: null,
+      };
     }
 
     // Check completion status
