@@ -100,9 +100,9 @@ export default function KpiTrendsCard({ data }: { data: Array<Trend> }) {
           ))}
         </div>
 
-        {/* Compact Chart with Stats */}
-        <div className="grid lg:grid-cols-3 gap-7 items-start">
-          {/* Chart - Takes 2 columns */}
+        {/* Chart with Stats - Updated Layout */}
+        <div className="grid lg:grid-cols-3 gap-7 items-stretch">
+          {/* Chart - Takes 2 columns with 3D effect */}
           <motion.div
             initial={{ y: 30, opacity: 0 }}
             whileInView={{ y: 0, opacity: 1 }}
@@ -110,7 +110,10 @@ export default function KpiTrendsCard({ data }: { data: Array<Trend> }) {
             viewport={{ once: true }}
             className="lg:col-span-2"
           >
-            <Card className="neu-raised rounded-2xl border-0 shadow-lg hover:shadow-xl transition-shadow">
+            <Card className="neu-raised rounded-2xl border-0 shadow-lg hover:shadow-xl transition-shadow h-full" style={{
+              transform: 'perspective(1000px) rotateX(2deg)',
+              transformStyle: 'preserve-3d'
+            }}>
               <CardContent className="p-5 sm:p-7">
                 <div className="mb-5">
                   <h3 className="text-xl font-bold mb-2 text-emerald-700">Performance Trends</h3>
@@ -118,47 +121,52 @@ export default function KpiTrendsCard({ data }: { data: Array<Trend> }) {
                     Revenue & efficiency growth over 6 months
                   </p>
                 </div>
-                <ChartContainer
-                  config={{
-                    revenue: { label: "Revenue", color: "hsl(160, 84%, 39%)" },
-                    efficiency: { label: "Efficiency", color: "hsl(160, 60%, 50%)" },
-                  }}
-                  className="rounded-xl bg-emerald-50/50 h-[260px] sm:h-[300px]"
-                >
-                  <AreaChart data={data}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#d1fae5" />
-                    <XAxis dataKey="month" stroke="#059669" />
-                    <YAxis stroke="#059669" />
-                    <ChartTooltip content={<ChartTooltipContent />} />
-                    <Area
-                      type="monotone"
-                      dataKey="revenue"
-                      stroke="var(--color-revenue)"
-                      fill="var(--color-revenue)"
-                      fillOpacity={0.2}
-                      strokeWidth={2}
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="efficiency"
-                      stroke="var(--color-efficiency)"
-                      fill="var(--color-efficiency)"
-                      fillOpacity={0.15}
-                      strokeWidth={2}
-                    />
-                  </AreaChart>
-                </ChartContainer>
+                <div style={{
+                  transform: 'translateZ(20px)',
+                  boxShadow: '0 10px 40px rgba(0,0,0,0.1)'
+                }}>
+                  <ChartContainer
+                    config={{
+                      revenue: { label: "Revenue", color: "hsl(160, 84%, 39%)" },
+                      efficiency: { label: "Efficiency", color: "hsl(160, 60%, 50%)" },
+                    }}
+                    className="rounded-xl bg-emerald-50/50 h-[260px] sm:h-[300px]"
+                  >
+                    <AreaChart data={data}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#d1fae5" />
+                      <XAxis dataKey="month" stroke="#059669" />
+                      <YAxis stroke="#059669" />
+                      <ChartTooltip content={<ChartTooltipContent />} />
+                      <Area
+                        type="monotone"
+                        dataKey="revenue"
+                        stroke="var(--color-revenue)"
+                        fill="var(--color-revenue)"
+                        fillOpacity={0.2}
+                        strokeWidth={2}
+                      />
+                      <Area
+                        type="monotone"
+                        dataKey="efficiency"
+                        stroke="var(--color-efficiency)"
+                        fill="var(--color-efficiency)"
+                        fillOpacity={0.15}
+                        strokeWidth={2}
+                      />
+                    </AreaChart>
+                  </ChartContainer>
+                </div>
               </CardContent>
             </Card>
           </motion.div>
 
-          {/* Stats Column */}
+          {/* Stats Column - Extended to fill space */}
           <motion.div
             initial={{ y: 30, opacity: 0 }}
             whileInView={{ y: 0, opacity: 1 }}
             transition={{ duration: shouldReduceMotion ? 0 : 0.8, delay: 0.3 }}
             viewport={{ once: true }}
-            className="space-y-5"
+            className="space-y-5 flex flex-col"
           >
             {testimonialStats.map((stat, index) => (
               <Card key={stat.label} className="neu-raised rounded-2xl border-0 shadow-lg hover:shadow-xl transition-shadow bg-gradient-to-br from-emerald-50 to-emerald-100/50">
@@ -169,9 +177,9 @@ export default function KpiTrendsCard({ data }: { data: Array<Trend> }) {
               </Card>
             ))}
 
-            {/* Social Proof */}
-            <Card className="neu-raised rounded-2xl border-0 shadow-lg bg-gradient-to-br from-emerald-500 to-emerald-600">
-              <CardContent className="p-6">
+            {/* Social Proof - Extended to fill remaining space */}
+            <Card className="neu-raised rounded-2xl border-0 shadow-lg bg-gradient-to-br from-emerald-500 to-emerald-600 flex-grow">
+              <CardContent className="p-6 h-full flex flex-col justify-center">
                 <div className="flex items-center gap-2 mb-3">
                   <div className="flex -space-x-2">
                     {[1, 2, 3, 4].map((i) => (
