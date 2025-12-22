@@ -3,8 +3,6 @@ import { useNavigate } from "react-router";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
 import { setGuestMode } from "@/lib/guestUtils";
-import { useAction } from "convex/react";
-import { api } from "@/convex/_generated/api";
 
 export type AuthMode = "signup" | "login";
 export type AuthMethod = "email" | "password" | "google";
@@ -30,11 +28,7 @@ export function useAuthForm() {
   const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   const isValidEmail = emailPattern.test(email);
 
-  // Convex actions
-  const signUpPasswordAction = useAction(api.passwordAuth.signUpPassword);
-  const loginPasswordAction = useAction(api.passwordAuth.loginPassword);
-
-  // Password authentication handler
+  // Password authentication handler using Convex Auth Password provider
   const handlePasswordSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setIsSubmitting(true);
@@ -49,24 +43,33 @@ export function useAuthForm() {
           throw new Error("Password must be at least 8 characters long");
         }
         
-        await signUpPasswordAction({ email, password });
+        // Use Convex Auth Password provider for signup
+        const formData = new FormData();
+        formData.append("email", email);
+        formData.append("password", password);
+        formData.append("flow", "signUp");
         
-        toast.success("Account created! Please sign in.");
-        setAuthMode("login");
-        setPassword("");
-        setConfirmPassword("");
+        await signIn("password", formData);
+        toast.success("Account created! Redirecting to onboarding...");
+        
+        // Navigate to onboarding after successful signup
+        setTimeout(() => {
+          navigate("/onboarding");
+        }, 500);
       } else {
-        // Verify credentials first
-        const result = await loginPasswordAction({ email, password });
+        // Use Convex Auth Password provider for login
+        const formData = new FormData();
+        formData.append("email", email);
+        formData.append("password", password);
+        formData.append("flow", "signIn");
         
-        if (result.success) {
-          toast.success("Signed in successfully!");
-          
-          // Force page reload to establish Convex Auth session
-          setTimeout(() => {
-            window.location.href = "/onboarding";
-          }, 500);
-        }
+        await signIn("password", formData);
+        toast.success("Signed in successfully!");
+        
+        // Navigate to onboarding after successful login
+        setTimeout(() => {
+          navigate("/onboarding");
+        }, 500);
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
