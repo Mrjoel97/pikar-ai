@@ -29,7 +29,7 @@ export default function LandingPricing({ tiers, openUpgrade }: LandingPricingPro
           <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight mb-2 sm:mb-3 md:mb-4 px-2">
             Choose Your Growth Path
           </h2>
-          <p className="text-sm sm:text-base md:text-xl text-muted-foreground max-w-2xl mx-auto px-4">
+          <p className="text-sm sm:text-base md:text-lg text-muted-foreground max-w-2xl mx-auto px-4">
             From solopreneurs to enterprises, we have the perfect plan for your business size
           </p>
         </motion.div>
@@ -46,28 +46,28 @@ export default function LandingPricing({ tiers, openUpgrade }: LandingPricingPro
               <Card className={`neu-raised rounded-xl sm:rounded-2xl border-0 h-full ${index === 1 ? 'ring-2 ring-primary' : ''}`}>
                 <CardContent className="p-5 sm:p-6">
                   {index === 1 && (
-                    <div className="text-center mb-4">
-                      <span className="bg-primary text-primary-foreground px-3 py-1 rounded-full text-sm font-medium">
+                    <div className="text-center mb-3 sm:mb-4">
+                      <span className="bg-primary text-primary-foreground px-3 py-1 rounded-full text-xs sm:text-sm font-medium">
                         Most Popular
                       </span>
                     </div>
                   )}
-                  <div className="text-center mb-5 sm:mb-6">
-                    <h3 className="text-lg sm:text-xl font-semibold mb-2">{tier.name}</h3>
-                    <div className="text-2xl sm:text-3xl font-bold text-primary mb-2">{tier.price}</div>
-                    <p className="text-sm text-muted-foreground">{tier.description}</p>
+                  <div className="text-center mb-4 sm:mb-5 md:mb-6">
+                    <h3 className="text-base sm:text-lg md:text-xl font-semibold mb-2">{tier.name}</h3>
+                    <div className="text-xl sm:text-2xl md:text-3xl font-bold text-primary mb-2">{tier.price}</div>
+                    <p className="text-xs sm:text-sm text-muted-foreground">{tier.description}</p>
                   </div>
-                  <ul className="space-y-2.5 sm:space-y-3 mb-5 sm:mb-6">
+                  <ul className="space-y-2 sm:space-y-2.5 md:space-y-3 mb-4 sm:mb-5 md:mb-6">
                     {tier.features.map((feature) => (
-                      <li key={feature} className="flex items-center">
-                        <CheckCircle className="h-4 w-4 text-primary mr-3 flex-shrink-0" />
-                        <span className="text-sm">{feature}</span>
+                      <li key={feature} className="flex items-start">
+                        <CheckCircle className="h-4 w-4 text-primary mr-2 sm:mr-3 flex-shrink-0 mt-0.5" />
+                        <span className="text-xs sm:text-sm leading-tight">{feature}</span>
                       </li>
                     ))}
                   </ul>
                   <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
                     <Button 
-                      className="w-full neu-flat rounded-xl"
+                      className="w-full neu-flat rounded-xl text-sm sm:text-base py-5 sm:py-6"
                       variant={index === 1 ? "default" : "outline"}
                       onClick={() => openUpgrade(tier.name)}
                     >

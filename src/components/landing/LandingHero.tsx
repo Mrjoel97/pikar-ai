@@ -19,7 +19,7 @@ export default function LandingHero({ handleGetStarted, setDemoOpen }: LandingHe
   return (
     <section
       id="main"
-      className="relative pt-5 pb-12 sm:pt-10 sm:pb-20 lg:pt-10 lg:pb-24 px-4 sm:px-6 lg:px-8"
+      className="relative pt-8 pb-12 sm:pt-12 sm:pb-16 lg:pt-16 lg:pb-24 px-4 sm:px-6 lg:px-8"
     >
       {/* Rubik's Cube Animation */}
       <RubiksCubeAnimation />
@@ -36,13 +36,13 @@ export default function LandingHero({ handleGetStarted, setDemoOpen }: LandingHe
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ duration: 0.6, delay: 0.3 }}
-            className="inline-flex items-center space-x-2 bg-primary/10 rounded-full px-3 py-1.5 sm:px-4 sm:py-2 mb-6 sm:mb-8 neu-inset"
+            className="inline-flex items-center space-x-2 bg-primary/10 rounded-full px-3 py-1.5 sm:px-4 sm:py-2 mb-4 sm:mb-6 neu-inset"
           >
             <motion.div
               animate={{ rotate: [0, 360] }}
               transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
             >
-              <Sparkles className="h-4 w-4 text-primary" />
+              <Sparkles className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-primary" />
             </motion.div>
             <span className="text-xs sm:text-sm font-medium text-primary">AI-Powered Business Intelligence</span>
           </motion.div>
@@ -51,17 +51,17 @@ export default function LandingHero({ handleGetStarted, setDemoOpen }: LandingHe
             initial={{ y: 30, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ duration: 0.8, delay: 0.5 }}
-            className="text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight mb-4 sm:mb-6 leading-[1.2] sm:leading-[1.15] md:leading-[1.1] px-2"
+            className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold tracking-tight mb-3 sm:mb-4 md:mb-6 leading-[1.15] sm:leading-[1.12] md:leading-[1.1] px-2"
           >
             <motion.span
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.6, delay: 0.7 }}
-              className="text-foreground"
+              className="text-foreground block sm:inline"
             >
               Transform Your Business
             </motion.span>
-            <br />
+            <br className="hidden sm:block" />
             <motion.span
               initial={{ opacity: 0, scale: 0.8 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -84,7 +84,7 @@ export default function LandingHero({ handleGetStarted, setDemoOpen }: LandingHe
             initial={{ y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ duration: 0.8, delay: 1.3 }}
-            className="text-sm sm:text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto mb-6 sm:mb-8 md:mb-10 leading-relaxed px-4"
+            className="text-sm sm:text-base md:text-lg lg:text-xl text-muted-foreground max-w-3xl mx-auto mb-6 sm:mb-8 leading-relaxed px-4"
           >
             Pikar AI helps entrepreneurs and businesses evaluate ideas, diagnose problems,
             and integrate with ERP systems using cutting-edge artificial intelligence.
@@ -94,7 +94,7 @@ export default function LandingHero({ handleGetStarted, setDemoOpen }: LandingHe
             initial={{ y: 30, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ duration: 0.8, delay: 1.5 }}
-            className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-center"
+            className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-stretch sm:items-center px-4 sm:px-0"
           >
             <motion.div
               initial={{ x: -20, opacity: 0 }}
@@ -106,12 +106,12 @@ export default function LandingHero({ handleGetStarted, setDemoOpen }: LandingHe
             >
               <Button
                 size="lg"
-                className="w-full sm:w-auto neu-raised rounded-xl bg-primary hover:bg-primary/90 px-8 py-4 text-lg"
+                className="w-full sm:w-auto neu-raised rounded-xl bg-primary hover:bg-primary/90 px-6 sm:px-8 py-5 sm:py-6 text-base sm:text-lg font-semibold"
                 onClick={handleGetStarted}
                 aria-label="Start free assessment"
               >
                 Start Free Assessment
-                <ArrowRight className="ml-2 h-5 w-5" />
+                <ArrowRight className="ml-2 h-4 w-4 sm:h-5 sm:w-5" />
               </Button>
             </motion.div>
             <motion.div
@@ -124,7 +124,7 @@ export default function LandingHero({ handleGetStarted, setDemoOpen }: LandingHe
             >
               <Button
                 size="lg"
-                className="w-full sm:w-auto neu-flat rounded-xl px-8 py-4 text-lg"
+                className="w-full sm:w-auto neu-flat rounded-xl px-6 sm:px-8 py-5 sm:py-6 text-base sm:text-lg font-semibold"
                 variant="outline"
                 onClick={() => setDemoOpen(true)}
                 aria-label="Watch demo"
@@ -137,7 +137,7 @@ export default function LandingHero({ handleGetStarted, setDemoOpen }: LandingHe
       </div>
 
       <motion.div 
-        className="mt-6 sm:mt-8 md:mt-10 relative z-10 px-2"
+        className="mt-8 sm:mt-10 md:mt-12 relative z-10 px-2"
         initial={{ y: 50, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.8, delay: 0.6 }}
@@ -146,14 +146,14 @@ export default function LandingHero({ handleGetStarted, setDemoOpen }: LandingHe
           {heroStats.map((stat, index) => (
             <motion.div
               key={stat.label}
-              className="neu-inset rounded-lg sm:rounded-xl px-3 py-2.5 sm:px-4 sm:py-3 md:px-5 md:py-4 bg-card/70 text-center"
+              className="neu-inset rounded-lg sm:rounded-xl px-3 py-3 sm:px-4 sm:py-4 md:px-5 md:py-5 bg-card/70 text-center"
               initial={{ scale: 0.8, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={{ duration: 0.5, delay: 0.7 + index * 0.1 }}
               whileHover={{ scale: 1.05, y: -5 }}
             >
-              <div className="text-base sm:text-xl md:text-2xl font-bold text-black">{stat.value}</div>
-              <div className="text-[10px] sm:text-xs md:text-sm text-muted-foreground leading-tight">{stat.label}</div>
+              <div className="text-lg sm:text-xl md:text-2xl font-bold text-black">{stat.value}</div>
+              <div className="text-[10px] sm:text-xs md:text-sm text-muted-foreground leading-tight mt-1">{stat.label}</div>
             </motion.div>
           ))}
         </div>
