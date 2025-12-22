@@ -29,7 +29,7 @@ export default function FeaturesSection({ features }: { features: Array<Feature>
           </p>
         </motion.div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6 md:gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 md:gap-6">
           {features.map((feature, index) => (
             <motion.div
               key={feature.title}
@@ -38,9 +38,9 @@ export default function FeaturesSection({ features }: { features: Array<Feature>
               transition={{ duration: shouldReduceMotion ? 0 : 0.6, delay: shouldReduceMotion ? 0 : index * 0.1 }}
               viewport={{ once: true }}
             >
-              <Card className="neu-raised rounded-xl sm:rounded-2xl border-0 h-full hover:shadow-lg transition-all duration-300 overflow-hidden">
+              <Card className="neu-raised rounded-xl sm:rounded-2xl border-0 h-full hover:shadow-lg transition-all duration-300 overflow-hidden p-0">
                 {feature.image && (
-                  <div className="relative h-40 sm:h-48 overflow-hidden">
+                  <div className="relative h-32 sm:h-36 overflow-hidden">
                     <img
                       src={feature.image}
                       alt={feature.title}
@@ -53,12 +53,12 @@ export default function FeaturesSection({ features }: { features: Array<Feature>
                     />
                   </div>
                 )}
-                <CardContent className="p-5 sm:p-6 md:p-8">
-                  <div className="neu-inset rounded-lg sm:rounded-xl p-2.5 sm:p-3 w-fit mb-4 sm:mb-5 md:mb-6">
-                    <feature.icon className="h-6 w-6 text-primary" />
+                <CardContent className="p-4 sm:p-5">
+                  <div className="neu-inset rounded-lg sm:rounded-xl p-2 sm:p-2.5 w-fit mb-3 sm:mb-4">
+                    <feature.icon className="h-5 w-5 text-primary" />
                   </div>
-                  <h3 className="text-lg sm:text-xl font-semibold mb-2 sm:mb-3">{feature.title}</h3>
-                  <p className="text-sm sm:text-base text-muted-foreground leading-relaxed">{feature.description}</p>
+                  <h3 className="text-base sm:text-lg font-semibold mb-2">{feature.title}</h3>
+                  <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">{feature.description}</p>
                 </CardContent>
               </Card>
             </motion.div>
