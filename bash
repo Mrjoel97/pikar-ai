@@ -1,4 +1,4 @@
-   git add .
-   git commit -m "Your commit message"
+   git checkout main
+   git merge <branch-name>
    git push origin main
    
