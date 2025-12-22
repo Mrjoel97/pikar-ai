@@ -66,7 +66,7 @@ export default function Landing() {
       icon: Brain,
       title: "Intelligent Orchestration", 
       description: "Seamlessly coordinate multiple AI agents to execute complex business workflows.",
-      image: "https://images.unsplash.com/photo-1633356122544-f134324a6cee?w=800&h=600&fit=crop&q=80"
+      image: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=800&h=600&fit=crop&q=80"
     },
     {
       icon: BarChart3,
@@ -90,7 +90,7 @@ export default function Landing() {
       icon: Users,
       title: "Team Collaboration",
       description: "Enable seamless collaboration between human teams and AI agents.",
-      image: "https://images.unsplash.com/photo-1633356122102-3fe601e05bd2?w=800&h=600&fit=crop&q=80"
+      image: "https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=800&h=600&fit=crop&q=80"
     }
   ];
 
