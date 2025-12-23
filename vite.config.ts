@@ -11,49 +11,36 @@ export default defineConfig({
   },
   build: {
     sourcemap: false,
+    chunkSizeWarningLimit: 1000,
     rollupOptions: {
       output: {
-        manualChunks: {
-          'react-vendor': ['react', 'react-dom', 'react-router'],
-          'ui-vendor': [
-            '@radix-ui/react-accordion',
-            '@radix-ui/react-alert-dialog',
-            '@radix-ui/react-aspect-ratio',
-            '@radix-ui/react-avatar',
-            '@radix-ui/react-checkbox',
-            '@radix-ui/react-collapsible',
-            '@radix-ui/react-context-menu',
-            '@radix-ui/react-dialog',
-            '@radix-ui/react-dropdown-menu',
-            '@radix-ui/react-hover-card',
-            '@radix-ui/react-label',
-            '@radix-ui/react-menubar',
-            '@radix-ui/react-navigation-menu',
-            '@radix-ui/react-popover',
-            '@radix-ui/react-progress',
-            '@radix-ui/react-radio-group',
-            '@radix-ui/react-scroll-area',
-            '@radix-ui/react-select',
-            '@radix-ui/react-separator',
-            '@radix-ui/react-slider',
-            '@radix-ui/react-slot',
-            '@radix-ui/react-switch',
-            '@radix-ui/react-tabs',
-            '@radix-ui/react-toggle',
-            '@radix-ui/react-toggle-group',
-            '@radix-ui/react-tooltip',
-            'class-variance-authority',
-            'clsx',
-            'tailwind-merge',
-            'lucide-react'
-          ],
-          'convex-vendor': ['convex', '@convex-dev/auth'],
-          'three-vendor': ['three', '@react-three/fiber', '@react-three/drei'],
-          'charts': ['recharts'],
-          'framer': ['framer-motion'],
+        manualChunks: (id) => {
+          if (id.includes('node_modules')) {
+            if (id.includes('react') || id.includes('react-dom')) {
+              return 'react-vendor';
+            }
+            if (id.includes('three') || id.includes('@react-three')) {
+              return 'three-vendor';
+            }
+            if (id.includes('convex')) {
+              return 'convex-vendor';
+            }
+            if (id.includes('framer-motion')) {
+              return 'framer';
+            }
+            if (id.includes('recharts')) {
+              return 'charts';
+            }
+            if (id.includes('@radix-ui') || id.includes('lucide')) {
+              return 'ui-vendor';
+            }
+            if (id.includes('openai') || id.includes('@ai-sdk')) {
+              return 'ai-vendor';
+            }
+            return 'vendor';
+          }
         },
       },
     },
-    chunkSizeWarningLimit: 1000,
   },
 });
