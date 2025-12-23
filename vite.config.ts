@@ -11,36 +11,18 @@ export default defineConfig({
   },
   build: {
     sourcemap: false,
-    chunkSizeWarningLimit: 1000,
     rollupOptions: {
       output: {
-        manualChunks: (id) => {
-          if (id.includes('node_modules')) {
-            if (id.includes('react') || id.includes('react-dom')) {
-              return 'react-vendor';
-            }
-            if (id.includes('three') || id.includes('@react-three')) {
-              return 'three-vendor';
-            }
-            if (id.includes('convex')) {
-              return 'convex-vendor';
-            }
-            if (id.includes('framer-motion')) {
-              return 'framer';
-            }
-            if (id.includes('recharts')) {
-              return 'charts';
-            }
-            if (id.includes('@radix-ui') || id.includes('lucide')) {
-              return 'ui-vendor';
-            }
-            if (id.includes('openai') || id.includes('@ai-sdk')) {
-              return 'ai-vendor';
-            }
-            return 'vendor';
-          }
+        manualChunks: {
+          'react-vendor': ['react', 'react-dom', 'react-router'],
+          'ui-vendor': ['@radix-ui/react-dialog', '@radix-ui/react-slot', '@radix-ui/react-label', 'class-variance-authority', 'clsx', 'tailwind-merge', 'lucide-react'],
+          'convex-vendor': ['convex', '@convex-dev/auth'],
+          'three-vendor': ['three', '@react-three/fiber', '@react-three/drei'],
+          'charts': ['recharts'],
+          'framer': ['framer-motion'],
         },
       },
     },
+    chunkSizeWarningLimit: 1000,
   },
 });
