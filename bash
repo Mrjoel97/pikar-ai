@@ -1,2 +1,2 @@
-pnpm build
-pnpm preview
+   npx convex deploy
+   
