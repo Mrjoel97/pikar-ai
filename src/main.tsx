@@ -109,7 +109,7 @@ function AppProviders({ children }: { children: React.ReactNode }) {
       </div>
     );
   }
-  const convex = new ConvexReactClient(convexUrl);
+  const convex = new ConvexReactClient(convexUrl) as any;
   return <ConvexAuthProvider client={convex}>{children}</ConvexAuthProvider>;
 }
 

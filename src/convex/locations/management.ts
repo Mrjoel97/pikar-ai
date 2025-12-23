@@ -89,7 +89,7 @@ export const getLocations = query({
   },
 });
 
-interface LocationNode {
+export interface LocationNode {
   _id: string;
   name: string;
   code?: string;
