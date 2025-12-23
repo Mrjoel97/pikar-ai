@@ -89,6 +89,15 @@ export const getLocations = query({
   },
 });
 
+interface LocationNode {
+  _id: string;
+  name: string;
+  code?: string;
+  type?: string;
+  parentLocationId?: string;
+  children: LocationNode[];
+}
+
 /**
  * Get location hierarchy
  */
@@ -101,15 +110,6 @@ export const getLocationHierarchy = query({
       .query("locations")
       .withIndex("by_business", (q) => q.eq("businessId", args.businessId))
       .collect();
-
-    interface LocationNode {
-      _id: string;
-      name: string;
-      code?: string;
-      type?: string;
-      parentLocationId?: string;
-      children: LocationNode[];
-    }
 
     const buildHierarchy = (parentId?: string): LocationNode[] => {
       return locations

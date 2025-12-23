@@ -4,18 +4,18 @@
 import { openai } from "@/utils/openai";
 
 // CHAT MODELS
-export function getDefaultChatModel() {
+export function getDefaultChatModel(): any {
   // General purpose, good quality
   return openai("gpt-4o");
 }
 
-export function getLightweightChatModel() {
+export function getLightweightChatModel(): any {
   // Fast/cheap routing or quick tasks
   return openai("gpt-4o-mini");
 }
 
 // EMBEDDINGS
-export function getDefaultEmbeddingModel() {
+export function getDefaultEmbeddingModel(): any {
   // Cost-effective, solid performance for RAG
   return openai.textEmbeddingModel("text-embedding-3-small");
 }
