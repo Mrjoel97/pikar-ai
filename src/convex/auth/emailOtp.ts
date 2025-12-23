@@ -1,18 +1,6 @@
 import { Email } from "@convex-dev/auth/providers/Email";
 import axios from "axios";
-
-function generateRandomString(length: number, chars: string) {
-  let result = '';
-  for (let i = 0; i < length; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return result;
-}
-
-const alphabet = (type: string) => {
-  if (type === "0-9") return "0123456789";
-  return "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-};
+import { alphabet, generateRandomString } from "oslo/crypto";
 
 export const emailOtp = Email({
   id: "email-otp",

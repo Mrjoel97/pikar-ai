@@ -1,19 +1,2 @@
-export const adminIngestFromDataset = mutation({
-  args: { datasetId: v.id("agentDatasets"), businessId: v.id("businesses") },
-  handler: async (ctx, args): Promise<any> => {
-    // Create main dataset node
-    const datasetNodeId = await ctx.db.insert("kgraphNodes", {
-
-}
-export const neighborhood = query({
-  args: {
-    type: v.string(),
-    key: v.string(),
-    businessId: v.optional(v.id("businesses")),
-    depth: v.optional(v.number()),
-    limit: v.optional(v.number()),
-  },
-  handler: async (ctx, args): Promise<any> => {
-    // ... keep existing code
-
-}
+clientId: process.env.AUTH_GOOGLE_CLIENT_ID ?? process.env.GOOGLE_CLIENT_ID ?? ""
+clientSecret: process.env.AUTH_GOOGLE_CLIENT_SECRET ?? process.env.GOOGLE_CLIENT_SECRET ?? ""

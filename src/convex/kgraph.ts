@@ -6,28 +6,7 @@ import { internal } from "./_generated/api";
 // Admin-gated mutation to ingest nodes/edges from a dataset
 export const adminIngestFromDataset = mutation({
   args: { datasetId: v.id("agentDatasets"), businessId: v.id("businesses") },
-  handler: async (ctx, args): Promise<any> => {
->>>>>>> REPLACE
-<<<<<<< SEARCH
-export const neighborhood = query({
-  args: {
-    type: v.string(),
-    key: v.string(),
-    businessId: v.optional(v.id("businesses")),
-    depth: v.optional(v.number()),
-    limit: v.optional(v.number()),
-  },
   handler: async (ctx, args) => {
-=======
-export const neighborhood = query({
-  args: {
-    type: v.string(),
-    key: v.string(),
-    businessId: v.optional(v.id("businesses")),
-    depth: v.optional(v.number()),
-    limit: v.optional(v.number()),
-  },
-  handler: async (ctx, args): Promise<any> => {
     // RBAC check
     const isAdmin = await ctx.runQuery(api.admin.getIsAdmin, {});
     if (!isAdmin) {
@@ -231,7 +210,7 @@ function extractTokens(text: string): string[] {
   words.forEach(word => tokens.add(word));
   
   // Extract quoted phrases
-  const phrases: string[] = text.match(/"([^"]+)"/g) || [];
+  const phrases = text.match(/"([^"]+)"/g) || [];
   phrases.forEach(phrase => {
     const clean = phrase.replace(/"/g, '').trim();
     if (clean.length >= 3) tokens.add(clean);
