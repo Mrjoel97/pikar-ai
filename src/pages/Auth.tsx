@@ -22,24 +22,33 @@ function Auth({ redirectAfterAuth = "/dashboard" }: AuthProps) {
 
   useEffect(() => {
     // Wait for auth to finish loading
-    if (authLoading) return;
+    if (authLoading) {
+      console.log("Auth still loading...");
+      return;
+    }
     
     // If not authenticated, stay on auth page
-    if (!isAuthenticated) return;
+    if (!isAuthenticated) {
+      console.log("User not authenticated, staying on auth page");
+      return;
+    }
     
     // Wait for onboarding status to load
-    if (onboardingStatus === undefined) return;
+    if (onboardingStatus === undefined) {
+      console.log("Waiting for onboarding status...");
+      return;
+    }
 
     // Check if user needs onboarding
     if (onboardingStatus?.needsOnboarding) {
-      console.log("Redirecting to onboarding, status:", onboardingStatus);
-      navigate("/onboarding");
+      console.log("User needs onboarding, redirecting...", onboardingStatus);
+      navigate("/onboarding", { replace: true });
       return;
     }
 
     // User is authenticated and onboarding is complete
-    console.log("Redirecting to dashboard, onboarding complete");
-    navigate(redirectAfterAuth);
+    console.log("User authenticated and onboarding complete, redirecting to:", redirectAfterAuth);
+    navigate(redirectAfterAuth, { replace: true });
   }, [isAuthenticated, authLoading, onboardingStatus, navigate, redirectAfterAuth]);
 
   const features = [

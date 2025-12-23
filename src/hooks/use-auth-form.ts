@@ -61,10 +61,8 @@ export function useAuthForm() {
         toast.success("Signed in successfully!");
       }
       
-      // Navigate to onboarding after successful authentication
-      setTimeout(() => {
-        navigate("/onboarding");
-      }, 500);
+      // Let Auth.tsx handle the redirect based on onboarding status
+      // No explicit navigation needed here
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       console.error("Password auth error:", errorMessage);
@@ -83,6 +81,7 @@ export function useAuthForm() {
     try {
       await signIn("google");
       toast.success("Redirecting to Google…");
+      // After Google OAuth completes and redirects back, Auth.tsx will handle routing
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : String(err);
       console.error("Google sign-in error:", errorMessage);
