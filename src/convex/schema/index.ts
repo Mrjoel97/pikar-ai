@@ -1,5 +1,10 @@
 import { defineSchema } from "convex/server";
-import { coreSchema } from "./core";
+import { authSchema } from "./auth";
+import { businessSchema } from "./business";
+import { notificationsSchema } from "./notifications";
+import { invoicingSchema } from "./invoicing";
+import { customerDataSchema } from "./customerData";
+import { miscellaneousSchema } from "./miscellaneous";
 import { teamSchema } from "./team";
 import { docsSchema } from "./docs";
 import { winsSchema } from "./wins";
@@ -29,7 +34,12 @@ import { authTables } from "@convex-dev/auth/server";
 
 export default defineSchema({
   ...authTables,
-  ...coreSchema,
+  ...authSchema,
+  ...businessSchema,
+  ...notificationsSchema,
+  ...invoicingSchema,
+  ...customerDataSchema,
+  ...miscellaneousSchema,
   ...teamSchema,
   ...docsSchema,
   ...winsSchema,
