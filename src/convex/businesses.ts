@@ -5,13 +5,14 @@ export const getUserBusinesses = query({
   args: {},
   handler: async (ctx) => {
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity?.email) {
+    if (!identity || !identity.email) {
       return [];
     }
     
+    const email = identity.email;
     const user = await ctx.db
       .query("users")
-      .withIndex("email", (q) => q.eq("email", identity.email))
+      .withIndex("email", (q) => q.eq("email", email))
       .first();
     
     if (!user) {
@@ -32,13 +33,14 @@ export const currentUserBusiness = query({
   args: {},
   handler: async (ctx) => {
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity?.email) {
+    if (!identity || !identity.email) {
       return null;
     }
     
+    const email = identity.email;
     const user = await ctx.db
       .query("users")
-      .withIndex("email", (q) => q.eq("email", identity.email))
+      .withIndex("email", (q) => q.eq("email", email))
       .first();
     
     if (!user) {

@@ -25,8 +25,10 @@ import { vectorsSchema } from "./vectors";
 import { whiteLabelSchema } from "./whiteLabel";
 import { demoVideosSchema } from "./demoVideos";
 import { orchestrationSchema } from "./orchestration";
+import { authTables } from "@convex-dev/auth/server";
 
 export default defineSchema({
+  ...authTables,
   ...coreSchema,
   ...teamSchema,
   ...docsSchema,

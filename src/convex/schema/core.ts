@@ -1,4 +1,4 @@
-import { defineTable } from "convex/server";
+import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
 export const coreSchema = {
@@ -6,18 +6,24 @@ export const coreSchema = {
     name: v.optional(v.string()),
     email: v.optional(v.string()),
     image: v.optional(v.string()),
+    role: v.optional(v.string()), // "admin", "user", "guest"
+    isAnonymous: v.optional(v.boolean()),
+    // Auth fields
     emailVerificationTime: v.optional(v.number()),
     phone: v.optional(v.string()),
     phoneVerificationTime: v.optional(v.number()),
-    isAnonymous: v.optional(v.boolean()),
+    isSuspended: v.optional(v.boolean()),
+    // Business fields
+    businessId: v.optional(v.id("businesses")),
+    businessTier: v.optional(v.string()),
+    tokenIdentifier: v.optional(v.string()),
+    // Extra fields found in data
     companyName: v.optional(v.string()),
     industry: v.optional(v.string()),
-    businessTier: v.optional(v.string()),
     onboardingCompleted: v.optional(v.boolean()),
-    businessId: v.optional(v.id("businesses")),
-    tokenIdentifier: v.optional(v.string()),
   })
     .index("email", ["email"])
+    .index("by_role", ["role"])
     .index("by_token", ["tokenIdentifier"]),
 
   businesses: defineTable({
