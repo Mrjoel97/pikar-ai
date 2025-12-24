@@ -13,10 +13,7 @@ export const createOnboardingSession = mutation({
     startDate: v.number(),
     hrSystemId: v.optional(v.string()),
   },
-  handler: async (ctx: any, args) => {
-    // TODO: Add teamOnboarding table to schema
-    const sessionId = args.userId; // Temporary workaround
-    /*
+  handler: async (ctx, args) => {
     const sessionId = await ctx.db.insert("teamOnboarding", {
       businessId: args.businessId,
       userId: args.userId,
@@ -31,7 +28,6 @@ export const createOnboardingSession = mutation({
       createdAt: Date.now(),
       updatedAt: Date.now(),
     });
-    */
 
     // Automatically create role-based tasks
     await ctx.scheduler.runAfter(0, internal.teamOnboarding.createRoleBasedTasks, {
@@ -63,7 +59,7 @@ export const createRoleBasedTasks = internalMutation({
     userId: v.id("users"),
     role: v.string(),
   },
-  handler: async (ctx: any, args) => {
+  handler: async (ctx, args) => {
     const templates = getRoleTaskTemplates(args.role);
     const now = Date.now();
 
@@ -98,12 +94,12 @@ export const updateOnboardingProgress = mutation({
     stepCompleted: v.number(),
     notes: v.optional(v.string()),
   },
-  handler: async (ctx: any, args) => {
+  handler: async (ctx, args) => {
     const session = await ctx.db.get(args.sessionId);
     if (!session) throw new Error("Onboarding session not found");
 
     const completedSteps = [...session.completedSteps, args.stepCompleted];
-    const totalSteps = 8; // Standard onboarding steps
+    const totalSteps = 8;
     const progress = calculateProgress(completedSteps, totalSteps);
     const status = determineStatus(progress);
 

@@ -261,6 +261,8 @@ import type * as security_incidents from "../security/incidents.js";
 import type * as security_threats from "../security/threats.js";
 import type * as seed from "../seed.js";
 import type * as seed_agentCatalog from "../seed/agentCatalog.js";
+import type * as seed_demoData from "../seed/demoData.js";
+import type * as seed_featureFlags from "../seed/featureFlags.js";
 import type * as setupWizard from "../setupWizard.js";
 import type * as setupWizardData from "../setupWizardData.js";
 import type * as socialAnalytics from "../socialAnalytics.js";
@@ -587,6 +589,8 @@ declare const fullApi: ApiFromModules<{
   "security/threats": typeof security_threats;
   seed: typeof seed;
   "seed/agentCatalog": typeof seed_agentCatalog;
+  "seed/demoData": typeof seed_demoData;
+  "seed/featureFlags": typeof seed_featureFlags;
   setupWizard: typeof setupWizard;
   setupWizardData: typeof setupWizardData;
   socialAnalytics: typeof socialAnalytics;
