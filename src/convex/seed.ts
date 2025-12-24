@@ -1199,10 +1199,13 @@ export const seedAgentCatalog = action({
   },
 });
 
-export const applyAgentCatalogSeed = internalMutation({
+// Re-export modular seed functions
+export { applyAgentCatalogSeed } from "./seed/agentCatalog";
+
+export const applyAgentCatalogSeedLegacy = internalMutation({
   args: {},
   handler: async (ctx) => {
-    // Define default agents (10)
+    // Legacy implementation - use seed/agentCatalog.ts instead
     const defaults: Array<{
       agent_key: string;
       display_name: string;

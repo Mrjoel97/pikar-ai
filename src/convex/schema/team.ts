@@ -32,19 +32,6 @@ export const teamSchema = {
     .index("by_user_and_business", ["userId", "businessId"])
     .index("by_business", ["businessId"]),
 
-  milestones: defineTable({
-    keyResultId: v.id("keyResults"),
-    title: v.string(),
-    description: v.optional(v.string()),
-    targetDate: v.number(),
-    targetValue: v.number(),
-    actualValue: v.optional(v.number()),
-    completed: v.boolean(),
-    completedAt: v.optional(v.number()),
-    createdAt: v.number(),
-  })
-    .index("by_key_result", ["keyResultId"]),
-
   userRoles: defineTable({
     userId: v.id("users"),
     businessId: v.id("businesses"),
@@ -68,6 +55,19 @@ export const teamSchema = {
     createdAt: v.number(),
   })
     .index("by_role", ["role"]),
+
+  milestones: defineTable({
+    keyResultId: v.id("keyResults"),
+    title: v.string(),
+    description: v.optional(v.string()),
+    targetDate: v.number(),
+    targetValue: v.number(),
+    actualValue: v.optional(v.number()),
+    completed: v.boolean(),
+    completedAt: v.optional(v.number()),
+    createdAt: v.number(),
+  })
+    .index("by_key_result", ["keyResultId"]),
 
   objectives: defineTable({
     businessId: v.id("businesses"),
