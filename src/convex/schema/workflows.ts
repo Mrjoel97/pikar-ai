@@ -8,12 +8,16 @@ export const workflowsSchema = {
     description: v.optional(v.string()),
     status: v.union(v.literal("active"), v.literal("paused"), v.literal("archived"), v.literal("draft")),
     trigger: v.optional(v.any()),
+    triggerConfig: v.optional(v.any()),
     steps: v.optional(v.array(v.any())),
     tags: v.optional(v.array(v.string())),
     template: v.optional(v.boolean()),
     createdBy: v.optional(v.id("users")),
     createdAt: v.optional(v.number()),
     updatedAt: v.optional(v.number()),
+    isActive: v.optional(v.boolean()),
+    approvalPolicy: v.optional(v.any()),
+    associatedAgentIds: v.optional(v.array(v.id("aiAgents"))),
     // Governance fields
     pipeline: v.optional(v.array(v.any())),
     governanceHealth: v.optional(v.object({
@@ -26,9 +30,41 @@ export const workflowsSchema = {
       required: v.boolean(),
       threshold: v.optional(v.number()),
     })),
+    requiresHumanReview: v.optional(v.boolean()),
+    approverRoles: v.optional(v.array(v.string())),
+    metrics: v.optional(v.object({
+      totalRuns: v.optional(v.number()),
+      successRate: v.optional(v.number()),
+      avgExecutionTime: v.optional(v.number()),
+    })),
   })
     .index("by_business", ["businessId"])
-    .index("by_status", ["status"]),
+    .index("by_status", ["status"])
+    .index("by_business_and_template", ["businessId", "template"]),
+
+  workflowSteps: defineTable({
+    workflowId: v.id("workflows"),
+    order: v.number(),
+    type: v.union(v.literal("agent"), v.literal("approval"), v.literal("delay")),
+    title: v.string(),
+    config: v.any(),
+    agentId: v.optional(v.id("aiAgents")),
+  })
+    .index("by_workflow_id", ["workflowId"]),
+
+  workflowTemplates: defineTable({
+    name: v.string(),
+    description: v.string(),
+    category: v.optional(v.string()),
+    steps: v.array(v.any()),
+    recommendedAgents: v.optional(v.array(v.string())),
+    industryTags: v.optional(v.array(v.string())),
+    tags: v.optional(v.array(v.string())),
+    createdBy: v.optional(v.id("users")),
+    createdAt: v.optional(v.number()),
+    tier: v.optional(v.string()),
+  })
+    .index("by_name", ["name"]),
 
   playbooks: defineTable({
     businessId: v.optional(v.id("businesses")),
@@ -97,6 +133,9 @@ export const workflowsSchema = {
     startedAt: v.number(),
     completedAt: v.optional(v.number()),
     result: v.optional(v.any()),
+    mode: v.optional(v.string()),
+    summary: v.optional(v.string()),
+    metrics: v.optional(v.any()),
   })
     .index("by_workflow", ["workflowId"])
     .index("by_business", ["businessId"]),
@@ -310,14 +349,32 @@ export const workflowsSchema = {
     businessId: v.id("businesses"),
     workflowId: v.id("workflows"),
     trigger: v.string(),
-    status: v.union(v.literal("running"), v.literal("completed"), v.literal("failed")),
+    status: v.union(v.literal("running"), v.literal("completed"), v.literal("failed"), v.literal("succeeded")),
     startedAt: v.number(),
     completedAt: v.optional(v.number()),
     duration: v.optional(v.number()),
     error: v.optional(v.string()),
     logs: v.optional(v.array(v.string())),
+    steps: v.optional(v.array(v.any())),
   })
     .index("by_business", ["businessId"])
     .index("by_workflow", ["workflowId"])
     .index("by_status", ["status"]),
+
+  workflowRunSteps: defineTable({
+    runId: v.id("workflowRuns"),
+    stepId: v.id("workflowSteps"),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("running"),
+      v.literal("completed"),
+      v.literal("failed"),
+      v.literal("awaiting_approval")
+    ),
+    startedAt: v.optional(v.number()),
+    finishedAt: v.optional(v.number()),
+    output: v.optional(v.any()),
+    error: v.optional(v.string()),
+  })
+    .index("by_run", ["runId"]),
 };
