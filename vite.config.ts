@@ -17,7 +17,9 @@ export default defineConfig({
   preview: {
     host: "0.0.0.0",
     port: 4173,
-    strictPort: false,
+    strictPort: true,
+    // Enable SPA fallback for client-side routing
+    proxy: {},
   },
   build: {
     rollupOptions: {
