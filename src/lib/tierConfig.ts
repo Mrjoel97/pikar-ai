@@ -207,10 +207,21 @@ export const tierConfigs: Record<TierType, TierConfig> = {
     upgradeMessage: "Contact sales to upgrade to Enterprise command center",
     nextTier: "enterprise",
     featureHighlights: [
-      "Unlimited Agents",
-      "Custom Workflows",
-      "API Access",
-      "Dedicated Support",
+      "Unlimited AI Agents + Custom Configurations",
+      "Advanced Workflow Automation & Orchestration",
+      "Multi-Department Coordination & Analytics",
+      "Vendor Management & Performance Tracking",
+      "Compliance Automation (95%+ Score)",
+      "Risk Management & Mitigation Tools",
+      "Resource Allocation & Optimization",
+      "Custom Reporting & Business Intelligence",
+      "Multi-Brand/Location Management",
+      "API Access + Custom Integrations",
+      "Dedicated Account Manager",
+      "Up to 50 Team Members",
+      "50,000 AI Actions/month",
+      "Priority Support (4hr response)",
+      "Advanced Security & Audit Logs"
     ]
   },
   enterprise: {
@@ -267,10 +278,21 @@ export const tierConfigs: Record<TierType, TierConfig> = {
     upgradeMessage: "You have access to all Enterprise features",
     nextTier: undefined,
     featureHighlights: [
-      "White-label Solution",
-      "Custom Integrations",
-      "SLA Guarantee",
-      "On-premise Option",
+      "Unlimited Custom AI Agents & Workflows",
+      "White-Label Solution (Your Brand)",
+      "Global Portfolio Management Dashboard",
+      "Data Warehouse & Advanced ETL Pipelines",
+      "Enterprise Security Suite (SOC 2, GDPR)",
+      "SSO, SCIM Provisioning & KMS Encryption",
+      "Custom API Development & Webhooks",
+      "Multi-Tenant Architecture Support",
+      "Strategic Command Center & Telemetry",
+      "Predictive Analytics & AI Forecasting",
+      "24/7 Dedicated Support Team",
+      "Unlimited Team Members",
+      "Unlimited AI Actions",
+      "Custom SLA Guarantee",
+      "On-Premise Deployment Option"
     ]
   }
 };
