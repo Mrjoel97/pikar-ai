@@ -58,7 +58,13 @@ export const tierConfigs: Record<TierType, TierConfig> = {
       "content_calendar",
       "schedule_assistant",
       "agent_insights",
-      "content_capsule"
+      "content_capsule",
+      "social_media_posting",
+      "basic_analytics",
+      "customer_management",
+      "task_automation",
+      "email_campaigns",
+      "brand_builder"
     ],
     sidebarItems: [
       { label: "Dashboard", icon: BarChart3, to: "/dashboard" },
@@ -79,13 +85,21 @@ export const tierConfigs: Record<TierType, TierConfig> = {
     upgradeMessage: "Upgrade to Startup for team features and advanced workflows",
     nextTier: "startup",
     featureHighlights: [
-      "3 Core Agents",
-      "Complete Solo Biz Toolkit",
-      "Personal Brand Builder",
+      "3 Core AI Agents (Content, Marketing, Productivity)",
+      "Complete Solo Business Toolkit",
+      "Personal Brand Builder & Voice Assistant",
       "Task Automation Suite",
+      "Social Media Scheduler & Content Calendar",
+      "Email Campaign Builder & Automation",
+      "Invoice & Payment Management",
+      "Voice Notes & Brain Dump Capture",
+      "Customer Relationship Management",
+      "Basic Analytics & Performance Tracking",
       "Learning Center: Solopreneur Courses",
-      "Templates & Market Research",
-      "Email Support",
+      "Templates & Market Research Library",
+      "Email Support (24-48hr response)",
+      "1 User Account",
+      "Up to 1,000 AI Actions/month"
     ]
   },
   startup: {
@@ -128,10 +142,23 @@ export const tierConfigs: Record<TierType, TierConfig> = {
     upgradeMessage: "Upgrade to SME for governance and compliance features",
     nextTier: "sme",
     featureHighlights: [
-      "10 AI Agents",
-      "Advanced Analytics",
-      "Priority Support",
-      "Team Collaboration",
+      "10 AI Agents (All Solopreneur + Sales, Support, Operations)",
+      "Advanced Analytics & Predictive Insights",
+      "Team Collaboration & Workflow Management",
+      "CRM Integration (HubSpot, Salesforce, Pipedrive)",
+      "Customer Journey Mapping & Automation",
+      "A/B Testing & Conversion Optimization",
+      "Multi-Channel Campaign Orchestration",
+      "Team Onboarding & Role Management",
+      "Approval Workflows & Governance",
+      "ROI Dashboard & Revenue Attribution",
+      "Advanced Reporting & Custom Dashboards",
+      "API Access & Webhooks",
+      "Priority Support (12hr response)",
+      "Up to 10 Team Members",
+      "Up to 10,000 AI Actions/month",
+      "Slack/Teams Integration",
+      "Custom Agent Training"
     ]
   },
   sme: {
