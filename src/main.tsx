@@ -57,6 +57,10 @@ import AdminResetPasswordPage from "./pages/AdminResetPassword.tsx";
 
 console.log("Main.tsx: Module loaded");
 
+// Initialize Convex client outside of component to ensure stability
+const convexUrl = import.meta.env.VITE_CONVEX_URL as string | undefined;
+const convex = (convexUrl && convexUrl !== "undefined") ? new ConvexReactClient(convexUrl) : undefined;
+
 class ErrorBoundary extends Component<
   { children: React.ReactNode },
   { hasError: boolean; error?: any }
@@ -95,8 +99,8 @@ class ErrorBoundary extends Component<
 
 function AppProviders({ children }: { children: React.ReactNode }) {
   console.log("Main.tsx: Rendering AppProviders");
-  const convexUrl = import.meta.env.VITE_CONVEX_URL as string | undefined;
-  if (!convexUrl || convexUrl === "undefined") {
+  
+  if (!convex) {
     console.error("Main.tsx: Missing VITE_CONVEX_URL");
     return (
       <div className="min-h-screen flex items-center justify-center p-6">
@@ -109,7 +113,7 @@ function AppProviders({ children }: { children: React.ReactNode }) {
       </div>
     );
   }
-  const convex = new ConvexReactClient(convexUrl);
+  
   return <ConvexAuthProvider client={convex}>{children}</ConvexAuthProvider>;
 }
 

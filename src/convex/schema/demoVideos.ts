@@ -1,17 +1,12 @@
 import { defineTable } from "convex/server";
 import { v } from "convex/values";
 
-export const demoVideosSchema = {
-  demoVideos: defineTable({
-    title: v.string(),
-    url: v.string(),
-    description: v.optional(v.string()),
-    category: v.string(),
-    duration: v.optional(v.number()),
-    thumbnailUrl: v.optional(v.string()),
-    views: v.number(),
-    isActive: v.boolean(),
-    createdAt: v.number(),
-    createdBy: v.string(),
-  }).index("by_category", ["category"]),
-};
+export const demoVideos = defineTable({
+  title: v.string(),
+  description: v.string(),
+  url: v.string(),
+  thumbnail: v.string(),
+  duration: v.string(),
+  tier: v.string(),
+  featured: v.boolean(),
+}).index("by_featured", ["featured"]);

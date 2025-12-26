@@ -1,200 +1,126 @@
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Play, User, Users, Building, Building2 } from "lucide-react";
-import { motion } from "framer-motion";
+import React from "react";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Play, CheckCircle2 } from "lucide-react";
+import { motion } from "framer-motion";
 
-type DemoVideoCarouselProps = {
+// Define interface locally to avoid dependency on generated types during build
+interface DemoVideo {
+  _id: string;
+  title: string;
+  description: string;
+  url: string;
+  thumbnail: string;
+  duration: string;
+  tier: string;
+  featured: boolean;
+}
+
+interface DemoVideoCarouselProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSelectTier?: (tier: string) => void;
-};
+  onSelectTier: (tier: string) => void;
+}
 
-export default function DemoVideoCarousel({ open, onOpenChange, onSelectTier }: DemoVideoCarouselProps) {
-  const demoVideos = useQuery(api.demoVideos.list);
+export default function DemoVideoCarousel({
+  open,
+  onOpenChange,
+  onSelectTier,
+}: DemoVideoCarouselProps) {
+  // This useQuery is causing the error if context is missing
+  const videos = useQuery(api.demoVideos.getFeaturedVideos) || [];
 
-  // Merge database videos with default tier data
-  const tierVideos = [
-    {
-      id: "solopreneur",
-      name: "Solopreneur",
-      icon: User,
-      color: "bg-blue-500",
-      videoUrl: demoVideos?.find((v: any) => v.tier === "solopreneur")?.videoUrl || "https://www.youtube.com/embed/dQw4w9WgXcQ",
-      thumbnail: demoVideos?.find((v: any) => v.tier === "solopreneur")?.thumbnail || "https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=800&h=450&fit=crop",
-      duration: demoVideos?.find((v: any) => v.tier === "solopreneur")?.duration || "3:45",
-      description: "See how solo entrepreneurs automate their entire business workflow",
-      benefits: [
-        "One-click campaign setup",
-        "AI content generation",
-        "Automated social posting",
-        "Lead capture & follow-up"
-      ]
-    },
-    {
-      id: "startup",
-      name: "Startup",
-      icon: Users,
-      color: "bg-green-500",
-      videoUrl: demoVideos?.find((v: any) => v.tier === "startup")?.videoUrl || "https://www.youtube.com/embed/dQw4w9WgXcQ",
-      thumbnail: demoVideos?.find((v: any) => v.tier === "startup")?.thumbnail || "https://images.unsplash.com/photo-1556761175-b413da4baf72?w=800&h=450&fit=crop",
-      duration: demoVideos?.find((v: any) => v.tier === "startup")?.duration || "5:20",
-      description: "Watch how growing teams coordinate and scale with AI agents",
-      benefits: [
-        "Team collaboration tools",
-        "Multi-channel campaigns",
-        "Advanced analytics",
-        "Workflow automation"
-      ]
-    },
-    {
-      id: "sme",
-      name: "SME",
-      icon: Building,
-      color: "bg-purple-500",
-      videoUrl: demoVideos?.find((v: any) => v.tier === "sme")?.videoUrl || "https://www.youtube.com/embed/dQw4w9WgXcQ",
-      thumbnail: demoVideos?.find((v: any) => v.tier === "sme")?.thumbnail || "https://images.unsplash.com/photo-1497366216548-37526070297c?w=800&h=450&fit=crop",
-      duration: demoVideos?.find((v: any) => v.tier === "sme")?.duration || "6:15",
-      description: "Discover enterprise-grade orchestration for mid-sized businesses",
-      benefits: [
-        "Department-level dashboards",
-        "Compliance automation",
-        "Multi-brand management",
-        "Custom AI agents"
-      ]
-    },
-    {
-      id: "enterprise",
-      name: "Enterprise",
-      icon: Building2,
-      color: "bg-orange-500",
-      videoUrl: demoVideos?.find((v: any) => v.tier === "enterprise")?.videoUrl || "https://www.youtube.com/embed/dQw4w9WgXcQ",
-      thumbnail: demoVideos?.find((v: any) => v.tier === "enterprise")?.thumbnail || "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=800&h=450&fit=crop",
-      duration: demoVideos?.find((v: any) => v.tier === "enterprise")?.duration || "8:30",
-      description: "Experience global business transformation at scale",
-      benefits: [
-        "White-label capabilities",
-        "Custom API access",
-        "SSO & SCIM integration",
-        "Dedicated support"
-      ]
-    }
-  ];
+  const [selectedVideo, setSelectedVideo] = React.useState<string | null>(null);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl w-full bg-background/95 backdrop-blur-xl border-border/50">
         <DialogHeader>
-          <DialogTitle className="text-2xl font-bold">Watch Pikar AI in Action</DialogTitle>
-          <p className="text-muted-foreground">
-            Choose your business tier to see how Pikar AI transforms your workflow
-          </p>
+          <DialogTitle className="text-2xl font-bold">
+            See Pikar AI in Action
+          </DialogTitle>
+          <DialogDescription>
+            Watch how our AI agents transform businesses across different stages.
+          </DialogDescription>
         </DialogHeader>
 
-        <Tabs defaultValue="solopreneur" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 lg:grid-cols-4 gap-2 h-auto p-1">
-            {tierVideos.map((tier) => {
-              const Icon = tier.icon;
-              return (
-                <TabsTrigger
-                  key={tier.id}
-                  value={tier.id}
-                  className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
-                >
-                  <Icon className="h-4 w-4" />
-                  <span className="hidden sm:inline">{tier.name}</span>
-                </TabsTrigger>
-              );
-            })}
-          </TabsList>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
+          {videos.map((video: any) => (
+            <motion.div
+              key={video._id}
+              whileHover={{ scale: 1.02 }}
+              className="relative group cursor-pointer rounded-xl overflow-hidden border border-border/50 bg-card"
+              onClick={() => setSelectedVideo(video.url)}
+            >
+              <div className="aspect-video bg-muted relative">
+                <img
+                  src={video.thumbnail}
+                  alt={video.title}
+                  className="w-full h-full object-cover"
+                />
+                <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="w-12 h-12 rounded-full bg-primary/90 flex items-center justify-center text-primary-foreground">
+                    <Play className="w-6 h-6 fill-current" />
+                  </div>
+                </div>
+                <div className="absolute bottom-2 right-2 px-2 py-1 bg-black/60 rounded text-xs text-white font-medium">
+                  {video.duration}
+                </div>
+              </div>
+              <div className="p-4">
+                <h3 className="font-semibold mb-1">{video.title}</h3>
+                <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
+                  {video.description}
+                </p>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-medium px-2 py-1 rounded-full bg-primary/10 text-primary">
+                    {video.tier}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 text-xs"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onSelectTier(video.tier);
+                      onOpenChange(false);
+                    }}
+                  >
+                    Select Plan
+                  </Button>
+                </div>
+              </div>
+            </motion.div>
+          ))}
+        </div>
 
-          {tierVideos.map((tier) => {
-            const Icon = tier.icon;
-            return (
-              <TabsContent key={tier.id} value={tier.id} className="mt-6">
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3 }}
-                >
-                  <Card className="neu-raised border-0">
-                    <CardHeader>
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <div className={`neu-inset rounded-xl p-3 ${tier.color} bg-opacity-10`}>
-                            <Icon className="h-6 w-6 text-primary" />
-                          </div>
-                          <div>
-                            <CardTitle className="text-xl">{tier.name} Tier Demo</CardTitle>
-                            <CardDescription>{tier.description}</CardDescription>
-                          </div>
-                        </div>
-                        <Badge variant="secondary" className="neu-inset">
-                          {tier.duration}
-                        </Badge>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="space-y-6">
-                      <div className="relative aspect-video rounded-xl overflow-hidden neu-inset bg-muted">
-                        <iframe
-                          src={tier.videoUrl}
-                          title={`${tier.name} Demo Video`}
-                          className="w-full h-full"
-                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                          allowFullScreen
-                        />
-                      </div>
-
-                      <div>
-                        <h4 className="font-semibold mb-3">What You'll See:</h4>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                          {tier.benefits.map((benefit, idx) => (
-                            <div
-                              key={idx}
-                              className="flex items-center gap-2 text-sm neu-inset rounded-lg p-3 bg-card/50"
-                            >
-                              <div className="h-2 w-2 rounded-full bg-primary flex-shrink-0" />
-                              <span>{benefit}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-
-                      <div className="flex flex-col sm:flex-row gap-3 pt-4">
-                        <Button
-                          className="flex-1 neu-raised bg-primary hover:bg-primary/90"
-                          onClick={() => {
-                            onSelectTier?.(tier.id);
-                            onOpenChange(false);
-                          }}
-                        >
-                          Start with {tier.name}
-                        </Button>
-                        <Button
-                          variant="outline"
-                          className="flex-1 neu-flat"
-                          onClick={() => {
-                            // Scroll to pricing section
-                            onOpenChange(false);
-                            setTimeout(() => {
-                              document.getElementById("pricing")?.scrollIntoView({ behavior: "smooth" });
-                            }, 100);
-                          }}
-                        >
-                          View Pricing
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </motion.div>
-              </TabsContent>
-            );
-          })}
-        </Tabs>
+        {/* Video Player Overlay */}
+        {selectedVideo && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4">
+            <div className="relative w-full max-w-5xl aspect-video bg-black rounded-xl overflow-hidden shadow-2xl">
+              <button
+                onClick={() => setSelectedVideo(null)}
+                className="absolute top-4 right-4 z-10 p-2 bg-black/50 rounded-full text-white hover:bg-white/20 transition-colors"
+              >
+                ✕
+              </button>
+              <iframe
+                src={selectedVideo}
+                className="w-full h-full"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              />
+            </div>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );
